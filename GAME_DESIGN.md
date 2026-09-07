@@ -2,14 +2,30 @@
 
 Updated: 2026-09-08
 
-This document records agreed design decisions and proposals that still need playtests. Revise it as we learn. Level layouts and story concepts are candidates, not finished content.
+This document records agreed design decisions and proposals that still need playtests. Update it when the user confirms a correction or clarification. Replace conflicting text so only the current decision remains; Git preserves the history. Level layouts and story concepts are candidates, not finished content.
 
 ## Experience
 
 - A calm spatial puzzle game built around discovery and creative experiments.
 - Players change reflected structures to reach places that ordinary paths cannot reach.
 - Clear previews, short failure animations, undo, and quick resets keep experiments inexpensive.
-- Mobile is the leading platform candidate; desktop support is also under consideration.
+- iPhone and iPad are the primary playtest devices. Android support is required. PC support remains a potential release target.
+
+## Platforms and responsive design
+
+- Design the game view and interface for phone, tablet, and resizable desktop screens from the start.
+- Adapt camera framing and control layout to the available area, aspect ratio, and device safe areas. Keep relevant original, reflected, and absolute structures visible as the mirror changes.
+- Keep text readable and touch targets large. Controls must remain reachable without covering the route, mirror boundary, or objectives.
+- Provide touch controls for mobile and equivalent mouse and keyboard actions for desktop tests. Essential actions must work without hover.
+- Test portrait and landscape layouts, narrow phones, iPad proportions, and desktop window resizing. Final orientation policy and minimum supported devices remain open.
+- Run the first device playtests on iOS and iPadOS, with Android checks early enough to detect rendering and input differences.
+
+## Technical baseline
+
+- Use the latest stable Godot release at setup: **4.7.2**, verified on 2026-09-08 against the [official download page](https://godotengine.org/download/macos/). Keep the selected version fixed until an explicit upgrade is tested.
+- Typed GDScript, procedural prototype geometry, and a later Blender art kit are the current implementation proposal. Renderer selection still needs device tests.
+- Start a clean project. The old prototype is available at [Camerash/mirror](https://github.com/Camerash/mirror), with inspected revision `7d4c0bd`.
+- Useful prototype references: orthographic camera at 45 degrees around the stage and 30 degrees downward; grid cell size `(2, 1, 2)`; mirror movement in 1-unit steps; 90-degree turns; movement and rotation animations of 0.1 and 0.2 seconds. These are test starting points, not fixed design rules.
 
 ## Agreed world rules
 
@@ -105,13 +121,13 @@ The workshop concept is one loss-and-acceptance candidate: the protagonist retur
 
 First build and play the three hand-made levels. Check whether players can predict reflection, identify safe support, understand restored geometry, climb across the boundary, and plan a useful fall. Observe whether mirror adjustments create decisions or repeated searches for a working position.
 
-Test the same layouts with simple visual treatments. Check small-screen readability, horizontal-plane boundaries, key visibility during a fall, and recognition of absolutes. Compare preview information with what players actually need.
+Test the same layouts with simple visual treatments. Check small-screen readability, horizontal-plane boundaries, key visibility during a fall, and recognition of absolutes. Compare preview information with what players actually need. Repeat input and layout checks on iPhone, iPad, and Android; check desktop resizing and mouse/keyboard actions during development.
 
 Proposed generation process: represent a small level and its legal actions as data, generate candidate layouts, search for solutions, and present candidates with solution replays for review. The game and solver should share the same rules. Include ladders, falls, keys, and mirror changes when those mechanics enter the generator. Solvability and solution length help select candidates; human playtests decide clarity and enjoyment.
 
 ## Open decisions and next work
 
-- Select the engine, language, renderer, and first test device; then initialise a new project.
+- Confirm the language and renderer, select representative iPhone, iPad, and Android test devices, and initialise the new Godot project.
 - Choose movement controls, mirror placement controls, position snapping, and allowed plane orientations. Horizontal planes are required for the third test level.
 - Define partial-object collision and ladder connections so visible and playable geometry agree.
 - Decide safe landing limits, key pickup behaviour, and undo behaviour during falls. Keep undo consistent across mirror, character, and key state.
