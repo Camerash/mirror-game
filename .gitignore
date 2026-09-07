@@ -1,3 +1,6 @@
 # Godot imports and local editor state.
 .godot/
 .DS_Store
+build/
+test-output/
+.local/

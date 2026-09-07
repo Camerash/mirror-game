@@ -1,0 +1,64 @@
+class_name MirrorWalker
+extends CharacterBody3D
+
+const Geometry := preload("res://core/world_geometry.gd")
+const SPEED := 2.0
+const GRAVITY := 9.8
+var paused := false
+var route := PackedVector3Array()
+
+func _ready() -> void:
+	var shape := CapsuleShape3D.new()
+	shape.radius = Geometry.RADIUS
+	shape.height = Geometry.HEIGHT
+	var collider := CollisionShape3D.new()
+	collider.shape = shape
+	collider.position.y = Geometry.HEIGHT * 0.5
+	add_child(collider)
+	var mesh := MeshInstance3D.new()
+	var capsule := CapsuleMesh.new()
+	capsule.radius = Geometry.RADIUS
+	capsule.height = Geometry.HEIGHT
+	mesh.mesh = capsule
+	mesh.position = collider.position
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("f8f1dd")
+	material.roughness = 0.9
+	mesh.material_override = material
+	add_child(mesh)
+	collision_layer = 2
+	collision_mask = 1
+	floor_snap_length = 0.12
+	safe_margin = 0.001
+	set_meta("visual", mesh)
+
+func _physics_process(delta: float) -> void:
+	if paused:
+		return
+	if not is_on_floor():
+		velocity.y -= GRAVITY * delta
+	else:
+		velocity.y = 0.0
+	velocity.x = 0.0
+	velocity.z = 0.0
+	while not route.is_empty() and Vector2(position.x, position.z).distance_to(Vector2(route[0].x, route[0].z)) < 0.025:
+		route.remove_at(0)
+	if not route.is_empty():
+		var offset := route[0] - position
+		offset.y = 0.0
+		var movement := offset.normalized() * minf(SPEED, offset.length() / delta)
+		velocity.x = movement.x
+		velocity.z = movement.z
+	move_and_slide()
+
+func stop() -> void:
+	route.clear()
+	velocity.x = 0.0
+	velocity.z = 0.0
+
+func restore(feet: Vector3, saved_velocity: Vector3) -> void:
+	position = feet
+	velocity = saved_velocity
+	route.clear()
+	visible = true
+	scale = Vector3.ONE

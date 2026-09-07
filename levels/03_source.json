@@ -1,0 +1,82 @@
+{
+  "originals": [
+    {
+      "id": "floor",
+      "center": [
+        -1.75,
+        -0.5,
+        0
+      ],
+      "size": [
+        2.5,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "obstacle",
+      "center": [
+        1,
+        1,
+        0
+      ],
+      "size": [
+        1,
+        2,
+        1
+      ]
+    }
+  ],
+  "absolutes": [
+    {
+      "id": "seam",
+      "center": [
+        0,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "start": [
+    -2,
+    0,
+    0
+  ],
+  "goal": [
+    2,
+    0,
+    0
+  ],
+  "mirror": {
+    "enabled": false,
+    "axis": 0,
+    "source": 1,
+    "offset": 0
+  },
+  "limits": {
+    "axes": [
+      0,
+      1,
+      2
+    ],
+    "min": [
+      -1,
+      0,
+      -1
+    ],
+    "max": [
+      2,
+      2,
+      1
+    ]
+  },
+  "kill_y": -5,
+  "title": "Test room · Source side",
+  "objective": "Activate the mirror. The tall obstacle on its far side must disappear.",
+  "is_test": true
+}
