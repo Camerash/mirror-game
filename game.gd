@@ -7,17 +7,28 @@ const Navigation := preload("res://core/walk_graph.gd")
 const View := preload("res://world/world_view.gd")
 const Walker := preload("res://world/walker.gd")
 const HUD := preload("res://ui/mirror_hud.gd")
+const Predictor := preload("res://world/fall_predictor.gd")
+const PreviewView := preload("res://world/preview_view.gd")
+const Atmosphere := preload("res://world/atmosphere.gd")
 const Handle := preload("res://world/mirror_handle.gd")
 const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
 	"res://levels/03_source.json", "res://levels/04_absolute.json", "res://levels/05_restore.json",
-	"res://levels/06_wall.json", "res://levels/07_horizontal.json"]
+	"res://levels/06_wall.json", "res://levels/07_horizontal.json", "res://levels/09_movement.json"]
 
 var level: Dictionary = {}
 var level_index := 0
 var mirror: Dictionary = {}
 var preview: Dictionary = {}
 var preview_origin: Dictionary = {}
+var preview_offsets: Dictionary = {}
+var prediction: Dictionary = {"status": "idle"}
+var prediction_revision := 0
+var standing_only := false
+var edit_available := false
+var predictor := Predictor.new()
+var preview_view := PreviewView.new()
+var atmosphere := Atmosphere.new()
 var solids: Array[Dictionary] = []
 var history: Array[Dictionary] = []
 var phase := "play"
@@ -61,6 +72,11 @@ func _ready() -> void:
 
 func _setup_scene() -> void:
 	add_child(world)
+	add_child(predictor)
+	add_child(preview_view)
+	add_child(atmosphere)
+	predictor.ready_result.connect(_prediction_ready)
+	walker.route_finished.connect(_route_finished)
 	add_child(goal_root)
 	add_child(walker)
 	add_child(camera)
@@ -102,6 +118,10 @@ func load_level(index: int) -> bool:
 	mirror = level["mirror"].duplicate(true)
 	preview.clear()
 	preview_origin.clear()
+	preview_offsets.clear()
+	predictor.cancel()
+	prediction = {"status": "idle"}
+	preview_view.clear()
 	history.clear()
 	pending.clear()
 	phase = "play"
@@ -112,7 +132,7 @@ func load_level(index: int) -> bool:
 	for child: Node in goal_root.get_children():
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
-	status = "Tap a platform to walk. Select Edit mirror to explore."
+	status = "Tap a platform to walk. Enable the mirror to find another path."
 	_refresh()
 	_fit_camera(hud.get_play_rect())
 	return true
@@ -124,11 +144,15 @@ func _physics_process(_delta: float) -> void:
 		_execute_pending()
 	if settle_frames > 0:
 		settle_frames -= 1
+		if settle_frames == 0:
+			_refresh()
 		walker.paused = true
 		return
 	walker.paused = phase != "play"
 	if phase != "play":
 		return
+	if can_edit() != edit_available:
+		_refresh()
 	if walker.position.y < float(level["kill_y"]):
 		_fail()
 	elif not level.get("is_test", false) and walker.position.distance_to(Geometry.vector(level["goal"])) < 0.22:
@@ -160,34 +184,53 @@ func advance_level() -> bool:
 func _can_advance() -> bool:
 	return phase == "complete" and pending.is_empty() and level_index + 1 < PUZZLE_PATHS.size()
 
+func can_edit() -> bool:
+	if phase not in ["play", "complete"] or not pending.is_empty() or settle_frames > 0:
+		return false
+	return not standing_only or (walker.route.is_empty() and walker.is_on_floor() and walker.velocity.length() < 0.05)
+
 func begin_preview() -> void:
-	if phase == "preview" or phase == "failure" or not pending.is_empty():
+	if not can_edit():
 		return
-	preview = mirror.duplicate(true)
 	preview_origin = _snapshot()
-	walker.stop()
+	preview = mirror.duplicate(true)
+	preview["enabled"] = true
+	preview_offsets = {int(preview["axis"]): float(preview["offset"])}
 	walker.paused = true
 	phase = "preview"
 	world.draw_route(PackedVector3Array())
 	_update_preview()
 
 func change_preview(key: String, value: Variant) -> void:
-	if phase != "preview":
+	if phase != "preview" or not pending.is_empty():
 		return
-	if key == "axis" and not int(value) in level["limits"]["axes"]:
+	var previous := preview.duplicate()
+	if key not in ["axis", "source", "offset", "enabled"]:
 		return
-	if not key in ["axis", "source", "offset", "enabled"]:
-		return
-	preview[key] = value
+	if key == "axis":
+		if not int(value) in level["limits"]["axes"] or int(value) == int(preview["axis"]):
+			return
+		preview_offsets[int(preview["axis"])] = float(preview["offset"])
+		var anchor := _handle_world_position()
+		preview["axis"] = int(value)
+		preview["offset"] = preview_offsets.get(int(value), anchor[int(value)])
+	else:
+		if preview.get(key) == value:
+			return
+		preview[key] = value
 	var axis: int = preview["axis"]
 	preview["offset"] = clampf(snappedf(float(preview["offset"]), 0.5),
 		float(level["limits"]["min"][axis]), float(level["limits"]["max"][axis]))
-	_update_preview()
+	preview_offsets[axis] = preview["offset"]
+	if preview != previous:
+		_update_preview()
 
 func apply_preview() -> bool:
 	if phase != "preview" or not pending.is_empty():
 		return false
-	if Geometry.embedded(walker.position, Geometry.generate(level, preview)):
+	if prediction["status"] in ["pending", "idle", "unresolved"]:
+		return false
+	if prediction["status"] == "blocked":
 		status = "A solid wall would occupy this position. Move the mirror or cancel."
 		_refresh()
 		return false
@@ -198,9 +241,16 @@ func cancel_preview() -> void:
 	if phase != "preview" or not pending.is_empty():
 		return
 	preview.clear()
+	predictor.cancel()
+	prediction = {"status": "idle"}
+	preview_view.clear()
 	phase = "complete" if preview_origin.get("complete", false) else "play"
+	walker.restore(preview_origin["position"], preview_origin["velocity"])
+	walker.route = preview_origin["route"].duplicate()
+	walker.paused = phase != "play"
 	world.draw_world(solids)
-	status = "Preview cancelled."
+	world.draw_route(walker.route)
+	status = "Walking." if not walker.route.is_empty() else "Preview cancelled."
 	_refresh()
 
 func undo() -> bool:
@@ -212,7 +262,7 @@ func undo() -> bool:
 
 func _snapshot() -> Dictionary:
 	return {"mirror": mirror.duplicate(true), "position": walker.position,
-		"velocity": walker.velocity, "complete": phase == "complete"}
+		"velocity": walker.velocity, "route": walker.route.duplicate(), "complete": phase == "complete"}
 
 func _execute_pending() -> void:
 	var command := pending
@@ -220,6 +270,7 @@ func _execute_pending() -> void:
 	if command["action"] == "apply":
 		history.append(preview_origin.duplicate(true))
 		mirror = command["mirror"]
+		walker.restore(preview_origin["position"], preview_origin["velocity"])
 		phase = "play"
 		status = "Mirror changed. Find your next path."
 	else:
@@ -229,11 +280,15 @@ func _execute_pending() -> void:
 		phase = "complete" if snapshot["complete"] else "play"
 		status = "Last action undone."
 	preview.clear()
+	predictor.cancel()
+	prediction = {"status": "idle"}
+	preview_view.clear()
 	_commit_world()
 	_refresh()
 
 func _commit_world() -> void:
 	walker.stop()
+	walker.grounded = false
 	walker.paused = true
 	solids = Geometry.generate(level, mirror)
 	world.commit(solids)
@@ -244,13 +299,30 @@ func _commit_world() -> void:
 func _update_preview() -> void:
 	var proposed := Geometry.generate(level, preview)
 	world.draw_world(proposed)
-	if Geometry.embedded(walker.position, proposed):
-		status = "Blocked · A solid wall would occupy the character's position."
-	elif Geometry.supported(walker.position, proposed):
-		status = "Supported · The character stays in place."
-	else:
-		status = "Will fall · Look for a safe landing below."
+	preview_view.clear()
+	prediction = {"status": "pending"}
+	prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
+	status = "Checking the landing…"
 	_refresh()
+
+func _prediction_ready(result: Dictionary) -> void:
+	if phase != "preview" or int(result["revision"]) != prediction_revision:
+		return
+	prediction = result
+	match result["status"]:
+		"blocked": status = "Blocked · A solid wall would occupy the character's position."
+		"supported": status = "Supported · The character stays in place."
+		"landing": status = "Will fall · The ghost shows a safe landing."
+		"failure": status = "Will fall · No landing before the lower boundary."
+		_: status = "This landing could not be checked. Move the mirror or cancel."
+	preview_view.show_result(result, world)
+	_refresh()
+
+func _route_finished() -> void:
+	if phase == "play":
+		world.draw_route(PackedVector3Array())
+		status = "Arrived. Choose the next path."
+		_refresh()
 
 func _fail() -> void:
 	phase = "failure"
@@ -269,24 +341,29 @@ func _refresh() -> void:
 	var selected := preview if phase == "preview" else mirror
 	var axis: int = selected["axis"]
 	handle.movable = not is_equal_approx(float(level["limits"]["min"][axis]), float(level["limits"]["max"][axis]))
+	edit_available = can_edit()
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
 		"level_index": level_index, "can_advance": _can_advance(),
+		"can_edit": can_edit(), "standing_only": standing_only,
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
 		"offset": selected["offset"], "axis": axis, "source": selected["source"],
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
-		"can_apply": phase == "preview" and not Geometry.embedded(walker.position, Geometry.generate(level, selected)),
+		"can_apply": phase == "preview" and pending.is_empty() and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "style": style, "collision": world.debug_collision})
 	world.show_boundary(selected, envelope, style, phase == "preview")
+	world.show_contacts(Geometry.reflection_contacts(level, selected) if phase == "preview" else [])
+	atmosphere.set_mirror(selected, phase == "preview", style)
 	_position_handle()
 
 func _action(action: String, value: Variant) -> void:
 	match action:
 		"select_level": load_level(int(value))
 		"next_level": advance_level()
-		"edit":
-			if phase == "preview": cancel_preview()
-			else: begin_preview()
+		"edit": begin_preview()
+		"standing_only":
+			standing_only = bool(value)
+			_refresh()
 		"enabled": change_preview("enabled", bool(value))
 		"step": change_preview("offset", float(preview.get("offset", 0)) + float(value))
 		"axis": change_preview("axis", int(value))
@@ -309,6 +386,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_M: _action("edit", null)
 			KEY_ENTER: apply_preview()
 			KEY_ESCAPE: cancel_preview()
+			KEY_D: change_preview("enabled", not bool(preview.get("enabled", true)))
+			KEY_1: change_preview("axis", 0)
+			KEY_2: change_preview("axis", 1)
+			KEY_3: change_preview("axis", 2)
 			KEY_Z: undo()
 			KEY_R: load_level(level_index)
 			KEY_BRACKETLEFT: _action("step", -0.5)
@@ -348,7 +429,7 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 		return
 	if dragging or not play_rect.has_point(point):
 		return
-	if point.distance_to(handle.position + Vector2(28, 28)) <= 30:
+	if handle.visible and point.distance_to(handle.position + Vector2(28, 28)) <= 30:
 		begin_preview()
 		if phase != "preview":
 			return
@@ -383,7 +464,7 @@ func _level_envelope() -> AABB:
 	var bounds := Geometry.total_bounds(solids)
 	for axis: int in level["limits"]["axes"]:
 		for offset: float in [float(level["limits"]["min"][axis]), float(level["limits"]["max"][axis])]:
-			for source: int in [1, -1]:
+			for source: int in ([1, -1] if level.get("is_test", false) else [int(mirror["source"])]):
 				var configuration := {"enabled": true, "axis": axis, "offset": offset, "source": source}
 				bounds = bounds.merge(Geometry.total_bounds(Geometry.generate(level, configuration)))
 	bounds = bounds.expand(Geometry.vector(level["start"]) + Vector3.UP)
@@ -412,6 +493,7 @@ func _fit_camera(rect: Rect2) -> void:
 	camera.position += camera.global_basis.y * offset.y / pixels_per_unit
 	failure_veil.position = rect.position
 	failure_veil.size = rect.size
+	atmosphere.update_view(camera, envelope.get_center())
 	_position_handle()
 
 func _handle_world_position() -> Vector3:
@@ -428,5 +510,11 @@ func _position_handle() -> void:
 	projected = projected.clamp(play_rect.position + Vector2(32, 32), play_rect.end - Vector2(32, 32))
 	handle.position = projected - Vector2(28, 28)
 	handle.editing = phase == "preview"
-	handle.visible = phase in ["play", "preview", "complete"]
+	handle.visible = phase == "preview" and handle.movable
 	handle.queue_redraw()
+	hud.set_failure_marker(camera.unproject_position(prediction.get("position", walker.position)), phase == "preview" and prediction["status"] == "failure")
+	var avoid := PackedVector2Array([projected, camera.unproject_position(walker.position + Vector3.UP * 0.4), camera.unproject_position(Geometry.vector(level["goal"]))])
+	for solid: Dictionary in world.drawn_solids:
+		var bounds: AABB = solid["bounds"]
+		avoid.append(camera.unproject_position(Vector3(bounds.get_center().x, bounds.end.y, bounds.get_center().z)))
+	hud.set_mirror_anchor(projected, avoid)

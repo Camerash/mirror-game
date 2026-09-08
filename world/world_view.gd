@@ -7,17 +7,21 @@ var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
 var boundary_root := Node3D.new()
 var path_root := Node3D.new()
+var contact_root := Node3D.new()
+var trace_root := Node3D.new()
+var contact_signature := ""
+var trace_time := 0.0
 var materials: Dictionary = {}
 var drawn_solids: Array[Dictionary] = []
 var debug_collision := false
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, collision_root, overlay_root, boundary_root, path_root]:
+	for node: Node3D in [visual_root, collision_root, overlay_root, boundary_root, path_root, contact_root, trace_root]:
 		add_child(node)
 	for kind: String in ["original", "reflected", "absolute"]:
 		var material := ShaderMaterial.new()
 		material.shader = Paint
-		material.set_shader_parameter("pigment", {"original": Color("c4b59b"), "reflected": Color("809fa9"), "absolute": Color("d7b579")}[kind])
+		material.set_shader_parameter("pigment", {"original": Color("c4b59b"), "reflected": Color("7099bd"), "absolute": Color("d7b579")}[kind])
 		material.set_shader_parameter("absolute_surface", kind == "absolute")
 		materials[kind] = material
 
@@ -51,41 +55,56 @@ func draw_world(solids: Array[Dictionary]) -> void:
 
 func update_debug() -> void:
 	_clear(overlay_root)
-	if not debug_collision:
-		return
 	for solid: Dictionary in drawn_solids:
-		var bounds: AABB = solid["bounds"]
-		var points := PackedVector3Array()
-		for edge: Vector2i in [Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 4), Vector2i(1, 3),
-				Vector2i(1, 5), Vector2i(2, 3), Vector2i(2, 6), Vector2i(3, 7),
-				Vector2i(4, 5), Vector2i(4, 6), Vector2i(5, 7), Vector2i(6, 7)]:
-			points.append(bounds.get_endpoint(edge.x))
-			points.append(bounds.get_endpoint(edge.y))
-		_lines(overlay_root, points, Color("a44836"))
+		if debug_collision or solid["kind"] == "absolute":
+			_outline_box(overlay_root, solid["bounds"], Color("a44836") if debug_collision else Color("715732"))
 
-func show_boundary(mirror: Dictionary, bounds: AABB, style: int, editing: bool) -> void:
-	_clear(boundary_root)
-	if not mirror["enabled"] and not editing:
+func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -> void:
+	var points := PackedVector3Array()
+	for edge: Vector2i in [Vector2i(0, 1), Vector2i(0, 2), Vector2i(0, 4), Vector2i(1, 3),
+			Vector2i(1, 5), Vector2i(2, 3), Vector2i(2, 6), Vector2i(3, 7),
+			Vector2i(4, 5), Vector2i(4, 6), Vector2i(5, 7), Vector2i(6, 7)]:
+		var start := bounds.get_endpoint(edge.x)
+		var finish := bounds.get_endpoint(edge.y)
+		var count := maxi(1, ceili(start.distance_to(finish) / 0.12)) if dashed else 1
+		for index: int in range(0, count, 2 if dashed else 1):
+			points.append(start.lerp(finish, float(index) / count))
+			points.append(start.lerp(finish, float(index + 1) / count))
+	_lines(parent, points, color)
+
+func show_contacts(contacts: Array) -> void:
+	var signature := str(contacts)
+	if signature == contact_signature:
 		return
-	var axis: int = mirror["axis"]
-	var corners := _plane_corners(axis, float(mirror["offset"]), bounds.grow(0.25))
-	var color := Color("487078") if not editing else Color("b0654a")
-	var outline := PackedVector3Array()
-	for index: int in range(4):
-		outline.append(corners[index])
-		outline.append(corners[(index + 1) % 4])
-	_lines(boundary_root, outline, color)
-	if style == 1:
-		var mesh := ImmediateMesh.new()
-		mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-		for index: int in [0, 1, 2, 0, 2, 3]:
-			mesh.surface_add_vertex(corners[index])
-		mesh.surface_end()
-		var face := MeshInstance3D.new()
-		face.mesh = mesh
-		face.material_override = _plain(Color(color, 0.13))
-		face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		boundary_root.add_child(face)
+	contact_signature = signature
+	_clear(contact_root)
+	_clear(trace_root)
+	trace_time = 1.6
+	trace_root.visible = true
+	for contact: Dictionary in contacts:
+		_outline_box(contact_root, contact["bounds"].grow(0.006), Color("fff1ac"))
+		_outline_box(trace_root, contact["reflected"].grow(0.008), Color("aadbec"), true)
+
+func _process(delta: float) -> void:
+	trace_time = maxf(0.0, trace_time - delta)
+	trace_root.visible = trace_time > 0.0
+
+func show_boundary(mirror: Dictionary, bounds: AABB, _style: int, _editing: bool) -> void:
+	_clear(boundary_root)
+	if not mirror["enabled"]:
+		return
+	# No outer frame: the sheet extends beyond the full camera frustum.
+	var corners := _plane_corners(int(mirror["axis"]), float(mirror["offset"]), bounds.grow(150.0))
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index: int in [0, 1, 2, 0, 2, 3]:
+		mesh.surface_add_vertex(corners[index])
+	mesh.surface_end()
+	var face := MeshInstance3D.new()
+	face.mesh = mesh
+	face.material_override = _plain(Color(0.62, 0.80, 0.91, 0.055))
+	face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	boundary_root.add_child(face)
 
 func draw_route(path: PackedVector3Array) -> void:
 	_clear(path_root)

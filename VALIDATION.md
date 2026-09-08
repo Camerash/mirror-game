@@ -1,5 +1,16 @@
 # Prototype validation
 
+## Direct mirror controls and world feedback — 2026-09-08
+
+- The automated suite passed **336 checks with 0 failures**. It covers direct diagonal routes, obstacle detours, gaps and narrow passages, full-footprint support, and absolute contact highlights.
+- Prediction tests use a separate collision world and compare predicted endpoints with actual capsule motion. Safe landings, failure, restored support, wall rejection, mid-fall velocity, stale result rejection, Cancel resumption, and Undo passed.
+- Mac layout checks passed at 390×844, 844×390, 768×1024, 1024×768, and 1152×800. Touch targets and menu rows meet the 48-unit minimum. Edit options have a visible scroll area. Test options leaves Confirm and Cancel visible at every checked size.
+- Native Mac captures show the split atmosphere and boundary-only comparison, Level 2 reflection and restoration, all three plane orientations with both source directions, and the falling ghost. The fixed camera keeps the stage readable; failures below the view use a No landing edge marker.
+- Godot MCP Runtime replayed both puzzle routes through actual control and world clicks, including Enable → Confirm, Modify → Confirm, and Modify → Disable → Confirm. Both goals completed. The runtime stopped with no errors and removed its temporary bridge.
+- All nine level JSON files parse. The Mac export completed without errors or warnings and passed a graphical startup check for 180 frames on this Apple M2 Pro Mac.
+- Local evidence: `.local/current-tests.log`, `.local/play-levels.log`, `.local/export-macos.log`, `.local/mac-startup.log`, `test-output/`, and `.mcp/screenshots/`. These generated files stay outside Git.
+- No Simulator or physical-device checks were run. This pass uses native controls, existing character physics, and simple Compatibility shaders. No new native plugin or export architecture requires a focused Simulator pass. Touch feel, safe areas, and performance on physical devices remain unverified.
+
 ## Level 2 and level flow — 2026-09-08
 
 - The final automated suite passed **272 checks with 0 failures**. It covers both puzzle routes, restoration on ordinary support, early deactivation and failure recovery, Cancel, Undo, Reset, and progression through the HUD.
@@ -41,5 +52,5 @@ After the rapid-prototype policy change, Godot MCP Runtime 3.3.0 passed a Mac co
 - Routine Simulator checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; state the concrete risk first. The unresolved blank-background restart remains deferred under this policy.
 - This is an agent-operated technical check. No user playtest observations have been collected.
 - Test whether a new player sees the goal, predicts a useful mirror position, recognises the striped resting platform, and uses Undo after an experiment. In Level 2, check whether the player remembers the hidden original approach and understands that it can replace reflected support. Record confusion and safe alternative solutions. Do not add a score or time limit.
-- Compare the two boundary styles on a physical phone. The control panel scrolls on short screens; check whether players find the lower options.
+- Compare split atmosphere with Boundary only on a physical phone. Check whether players find the scrolling edit options, understand the fall ghost and absolute contact highlights, and prefer moving edits or Standing still only.
 - Navigation currently covers clear, connected flat surfaces. Ladders, keys, stepped routes, multiple mirrors, generation, sound, and final art are later milestones.

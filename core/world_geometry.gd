@@ -108,12 +108,21 @@ static func supported(feet: Vector3, solids: Array[Dictionary], inset := 0.0) ->
 static func walkable(feet: Vector3, solids: Array[Dictionary]) -> bool:
 	if embedded(feet, solids):
 		return false
-	# Sample the footprint against the union, including across block seams.
-	for offset: Vector3 in [Vector3.ZERO, Vector3(RADIUS, 0, 0), Vector3(-RADIUS, 0, 0),
-			Vector3(0, 0, RADIUS), Vector3(0, 0, -RADIUS)]:
-		if not supported(feet + offset, solids):
-			return false
-	return true
+	# Cover a conservative square footprint with the union of floor rectangles.
+	# Unlike four probes, this rejects diagonal corner-only connections and holes.
+	var remaining: Array[AABB] = [AABB(feet + Vector3(-RADIUS, -0.01, -RADIUS), Vector3(RADIUS * 2, 0.02, RADIUS * 2))]
+	for solid: Dictionary in solids:
+		var bounds: AABB = solid["bounds"]
+		if absf(bounds.end.y - feet.y) > 0.035:
+			continue
+		var floor_rect := AABB(Vector3(bounds.position.x, feet.y - 0.02, bounds.position.z), Vector3(bounds.size.x, 0.04, bounds.size.z))
+		var next: Array[AABB] = []
+		for piece: AABB in remaining:
+			next.append_array(subtract(piece, floor_rect))
+		remaining = next
+		if remaining.is_empty():
+			return true
+	return false
 
 static func clear_segment(start: Vector3, finish: Vector3, solids: Array[Dictionary]) -> bool:
 	if absf(start.y - finish.y) > 0.035:
@@ -129,3 +138,18 @@ static func total_bounds(solids: Array[Dictionary]) -> AABB:
 	for solid: Dictionary in solids:
 		bounds = bounds.merge(solid["bounds"])
 	return bounds
+
+static func reflection_contacts(level: Dictionary, mirror: Dictionary) -> Array[Dictionary]:
+	var contacts: Array[Dictionary] = []
+	if not mirror["enabled"]:
+		return contacts
+	for item: Dictionary in level["originals"]:
+		var clipped := source_part(box(item), mirror)
+		if not has_volume(clipped):
+			continue
+		var reflected := reflect(clipped, mirror)
+		for absolute: Dictionary in level["absolutes"]:
+			var overlap := reflected.intersection(box(absolute))
+			if has_volume(overlap):
+				contacts.append({"bounds": overlap, "reflected": reflected, "absolute_id": absolute["id"]})
+	return contacts

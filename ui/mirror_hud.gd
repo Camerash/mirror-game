@@ -10,50 +10,91 @@ const IVORY_DARK := Color("e7d8c3")
 const TERRACOTTA := Color("b85f4b")
 const MUTED := Color("78645f")
 const MIN_TOUCH_SIZE := 48.0
-const HEADER_HEIGHT := 66.0
-const PANEL_WIDTH := 312.0
-const PANEL_GAP := 12.0
+const HEADER_HEIGHT := 72.0
+const FOOTER_HEIGHT := 60.0
+const GAP := 12.0
+const TOOLBAR_WIDTH := 288.0
+
+class AxisChoiceButton extends Button:
+	var axis := 0
+
+	func _draw() -> void:
+		var center := Vector2(size.x * 0.5, 13.0)
+		var plane: PackedVector2Array
+		match axis:
+			0:
+				plane = PackedVector2Array([center + Vector2(-12, 4), center + Vector2(3, -7), center + Vector2(12, -3), center + Vector2(-3, 8)])
+			1:
+				plane = PackedVector2Array([center + Vector2(-13, 0), center + Vector2(0, -5), center + Vector2(13, 0), center + Vector2(0, 5)])
+			_:
+				plane = PackedVector2Array([center + Vector2(-12, -3), center + Vector2(3, 8), center + Vector2(12, 4), center + Vector2(-3, -7)])
+		draw_colored_polygon(plane, Color("8c786f"))
+		draw_polyline(plane + PackedVector2Array([plane[0]]), INK, 1.0, true)
 
 var _state: Dictionary = {}
+var _failure_marker: Label
 var _syncing := false
 var _last_play_rect := Rect2()
-var _header: HBoxContainer
-var _panel: PanelContainer
-var _scroll: ScrollContainer
-var _content: VBoxContainer
+var _mirror_anchor := Vector2.ZERO
+var _avoid_points := PackedVector2Array()
+var _locked_toolbar_position := Vector2.INF
+var _toolbar_needs_anchor := false
+var _header: PanelContainer
+var _footer: PanelContainer
+var _footer_root: Control
+var _footer_actions: HBoxContainer
+var _toolbar: PanelContainer
+var _toolbar_scroll: ScrollContainer
+var _toolbar_actions: VBoxContainer
+var _toolbar_content: VBoxContainer
 var _level_picker: OptionButton
-var _panel_title_label: Label
+var _title_label: Label
 var _objective_label: Label
 var _phase_label: Label
 var _status_label: Label
-var _edit_button: Button
-var _next_level_button: Button
-var _action_row: GridContainer
-var _enabled_button: CheckButton
+var _primary_button: Button
+var _apply_button: Button
+var _cancel_button: Button
+var _enabled_button: Button
+var _axis_buttons: Array[Button] = []
+var _axis_hint: Label
 var _step_row: HBoxContainer
 var _offset_label: Label
 var _step_down_button: Button
 var _step_up_button: Button
-var _axis_picker: OptionButton
-var _source_label: Label
-var _flip_button: Button
 var _undo_button: Button
-var _apply_button: Button
+var _reset_button: Button
+var _next_level_button: Button
+var _test_options_button: Button
+var _test_panel: PanelContainer
+var _test_options: VBoxContainer
 var _style_picker: OptionButton
 var _collision_button: CheckButton
+var _flip_button: Button
+var _standing_only_button: CheckButton
 var _touch_controls: Dictionary = {}
-var _preview_controls: Array[Control] = []
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_ui()
+	_failure_marker = _make_label("↓ No landing", 16)
+	_failure_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_failure_marker.add_theme_color_override("font_color", Color("ffdfa8"))
+	_failure_marker.add_theme_color_override("font_outline_color", Color("342b2a"))
+	_failure_marker.add_theme_constant_override("outline_size", 5)
+	_failure_marker.visible = false
+	add_child(_failure_marker)
+	_toolbar_content.minimum_size_changed.connect(_responsive_layout.call_deferred)
 	_responsive_layout()
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_inside_tree():
+		if bool(_state.get("editing", false)):
+			_locked_toolbar_position = Vector2.INF
+			_toolbar_needs_anchor = false
 		_responsive_layout()
 
 
@@ -70,46 +111,71 @@ func configure_levels(titles: Array[String], selected: int) -> void:
 
 
 func display_state(state: Dictionary) -> void:
+	var editing_before := bool(_state.get("editing", false))
 	_state = state.duplicate(true)
-	if not is_instance_valid(_panel_title_label):
+	if not is_instance_valid(_toolbar):
 		return
+	var editing := bool(_state.get("editing", false))
+	if editing and not editing_before:
+		_locked_toolbar_position = Vector2.INF
+		_toolbar_needs_anchor = true
+		_test_options_button.set_pressed_no_signal(false)
+		_test_panel.visible = false
+	elif not editing:
+		_locked_toolbar_position = Vector2.INF
+		_toolbar_needs_anchor = false
 	_syncing = true
 	if _level_picker.item_count > 0:
 		var selected_level := clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1)
 		if _level_picker.selected != selected_level:
 			_level_picker.select(selected_level)
-	_panel_title_label.text = str(_state.get("title", "Mirror"))
+	_title_label.text = str(_state.get("title", "Mirror"))
 	_objective_label.text = str(_state.get("objective", ""))
+	_objective_label.tooltip_text = _objective_label.text
 	var phase := str(_state.get("phase", "play"))
 	_phase_label.text = _phase_text(phase)
 	_status_label.text = str(_state.get("status", ""))
-	_edit_button.text = "Close edit" if bool(_state.get("editing", false)) else "Edit mirror"
-	_next_level_button.visible = bool(_state.get("can_advance", false)) and phase == "complete"
-	var preview_active := bool(_state.get("editing", false)) or phase == "preview"
-	for control in _preview_controls:
-		control.visible = preview_active
-	_enabled_button.set_pressed_no_signal(bool(_state.get("enabled", true)))
+	var can_edit := bool(_state.get("can_edit", true))
+	var enabled := bool(_state.get("enabled", true))
+	_primary_button.visible = not editing
+	_primary_button.text = "Modify" if enabled else "Enable"
+	_primary_button.disabled = not can_edit
+	_apply_button.visible = editing
+	_cancel_button.visible = editing
+	_apply_button.disabled = not bool(_state.get("can_apply", false))
+	_enabled_button.visible = editing
+	_enabled_button.text = "Disable" if enabled else "Enable"
 	var offset := float(_state.get("offset", 0.0))
 	var min_offset := float(_state.get("min_offset", -INF))
 	var max_offset := float(_state.get("max_offset", INF))
-	_offset_label.text = "Offset  %.1f" % offset
+	_offset_label.text = "Offset %.1f" % offset
 	_step_down_button.disabled = offset <= min_offset
 	_step_up_button.disabled = offset >= max_offset
-	_step_row.visible = preview_active and not is_equal_approx(min_offset, max_offset)
-	_axis_picker.select(clampi(int(_state.get("axis", 0)), 0, 2))
+	_step_row.visible = editing and not is_equal_approx(min_offset, max_offset)
+	var selected_axis := clampi(int(_state.get("axis", 0)), 0, 2)
 	var allowed_axes: Array = _state.get("allowed_axes", [0, 1, 2])
 	for index in 3:
-		_axis_picker.set_item_disabled(index, not allowed_axes.has(index))
-	var test_editing := bool(_state.get("editing", false)) and bool(_state.get("is_test", false))
-	_axis_picker.visible = test_editing
-	_source_label.text = "Reflect lower coordinates" if int(_state.get("source", 1)) >= 0 else "Reflect higher coordinates"
-	_source_label.visible = test_editing
-	_flip_button.visible = test_editing
-	_undo_button.disabled = not bool(_state.get("can_undo", false))
-	_apply_button.disabled = not bool(_state.get("can_apply", false))
+		_axis_buttons[index].set_pressed_no_signal(index == selected_axis)
+		_axis_buttons[index].disabled = not allowed_axes.has(index)
+		_axis_buttons[index].visible = editing
+	_axis_hint.visible = editing and allowed_axes.size() <= 1
+	_axis_hint.text = "Orientation fixed in this level" if _axis_hint.visible else ""
+	_test_panel.visible = _test_options_button.button_pressed
+	_flip_button.visible = editing and bool(_state.get("is_test", false))
 	_style_picker.select(clampi(int(_state.get("style", 0)), 0, 1))
 	_collision_button.set_pressed_no_signal(bool(_state.get("collision", false)))
+	_standing_only_button.set_pressed_no_signal(bool(_state.get("standing_only", false)))
+	_undo_button.disabled = not bool(_state.get("can_undo", false))
+	_next_level_button.visible = bool(_state.get("can_advance", false)) and phase == "complete"
 	_syncing = false
+	_responsive_layout()
+
+
+func set_mirror_anchor(point: Vector2, avoid_points: PackedVector2Array = PackedVector2Array()) -> void:
+	_mirror_anchor = point
+	_avoid_points = avoid_points
+	if _toolbar_needs_anchor:
+		_toolbar_needs_anchor = false
 	_responsive_layout()
 
 
@@ -127,106 +193,170 @@ func get_touch_control_bounds() -> Dictionary:
 
 
 func _build_ui() -> void:
-	_header = HBoxContainer.new()
+	_header = PanelContainer.new()
 	_header.name = "Header"
 	_header.mouse_filter = Control.MOUSE_FILTER_STOP
-	_header.add_theme_constant_override("separation", 10)
+	_header.add_theme_stylebox_override("panel", _panel_style())
 	add_child(_header)
-	var header_title := _make_label("Mirror", 20)
-	header_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_header.add_child(header_title)
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 10)
+	_header.add_child(header_row)
+	var text_column := VBoxContainer.new()
+	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_column.add_theme_constant_override("separation", 0)
+	header_row.add_child(text_column)
+	_title_label = _make_label("Mirror", 18)
+	_title_label.clip_text = true
+	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	text_column.add_child(_title_label)
+	_objective_label = _make_label("", 13)
+	_objective_label.clip_text = false
+	_objective_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	_objective_label.max_lines_visible = 2
+	_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text_column.add_child(_objective_label)
+	_phase_label = _make_label("Playing", 13)
+	_phase_label.add_theme_color_override("font_color", TERRACOTTA)
+	text_column.add_child(_phase_label)
 	_level_picker = OptionButton.new()
 	_level_picker.tooltip_text = "Choose level"
 	_level_picker.fit_to_longest_item = false
 	_level_picker.clip_text = true
-	_level_picker.custom_minimum_size = Vector2(144, MIN_TOUCH_SIZE)
+	_level_picker.custom_minimum_size = Vector2(120, MIN_TOUCH_SIZE)
 	_style_control(_level_picker)
 	_level_picker.item_selected.connect(_on_level_selected)
-	_header.add_child(_level_picker)
+	header_row.add_child(_level_picker)
 	_register("level_picker", _level_picker)
 
-	_panel = PanelContainer.new()
-	_panel.name = "MirrorControls"
-	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	_panel.add_theme_stylebox_override("panel", _panel_style())
-	add_child(_panel)
-	_scroll = ScrollContainer.new()
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_panel.add_child(_scroll)
-	_content = VBoxContainer.new()
-	_content.add_theme_constant_override("separation", 8)
-	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_scroll.add_child(_content)
-	_add_text_block()
-	_add_main_actions()
-	_add_history_actions()
-	_add_preview_actions()
-	_add_options()
-
-
-func _add_text_block() -> void:
-	_panel_title_label = _make_label("Mirror", 18)
-	_panel_title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_content.add_child(_panel_title_label)
-	_objective_label = _make_label("", 15)
-	_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_content.add_child(_objective_label)
-	_phase_label = _make_label("Playing", 14)
-	_phase_label.add_theme_color_override("font_color", TERRACOTTA)
-	_content.add_child(_phase_label)
-	_status_label = _make_label("", 14)
+	_footer = PanelContainer.new()
+	_footer.name = "Footer"
+	_footer.mouse_filter = Control.MOUSE_FILTER_STOP
+	_footer.add_theme_stylebox_override("panel", _panel_style())
+	add_child(_footer)
+	_footer_root = Control.new()
+	_footer.add_child(_footer_root)
+	_status_label = _make_label("", 13)
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label.add_theme_color_override("font_color", MUTED)
-	_content.add_child(_status_label)
-
-
-func _add_main_actions() -> void:
-	_edit_button = _make_button("Edit mirror")
-	_edit_button.pressed.connect(func() -> void: _emit_action("edit"))
-	_content.add_child(_edit_button)
-	_register("edit", _edit_button)
-	_next_level_button = _make_button("Next level")
+	_footer_root.add_child(_status_label)
+	_footer_actions = HBoxContainer.new()
+	_footer_actions.add_theme_constant_override("separation", 8)
+	_footer_root.add_child(_footer_actions)
+	_undo_button = _make_button("Undo")
+	_undo_button.pressed.connect(func() -> void: _emit_action("undo"))
+	_footer_actions.add_child(_undo_button)
+	_register("undo", _undo_button)
+	_reset_button = _make_button("Reset")
+	_reset_button.pressed.connect(func() -> void: _emit_action("reset"))
+	_footer_actions.add_child(_reset_button)
+	_register("reset", _reset_button)
+	_next_level_button = _make_button("Next")
 	_next_level_button.visible = false
 	_next_level_button.pressed.connect(func() -> void: _emit_action("next_level"))
-	_content.add_child(_next_level_button)
+	_footer_actions.add_child(_next_level_button)
 	_register("next_level", _next_level_button)
-	_action_row = GridContainer.new()
-	_action_row.columns = 2
-	_action_row.add_theme_constant_override("h_separation", 8)
-	_action_row.add_theme_constant_override("v_separation", 8)
-	_apply_button = _make_button("Apply")
+	_test_options_button = _make_button("Test options")
+	_test_options_button.toggle_mode = true
+	_test_options_button.toggled.connect(func(shown: bool) -> void:
+		_test_panel.visible = shown
+		_responsive_layout())
+	_footer_actions.add_child(_test_options_button)
+	_register("test_options", _test_options_button)
+
+	_toolbar = PanelContainer.new()
+	_toolbar.name = "MirrorToolbar"
+	_toolbar.mouse_filter = Control.MOUSE_FILTER_STOP
+	_toolbar.add_theme_stylebox_override("panel", _panel_style())
+	add_child(_toolbar)
+	var toolbar_root := VBoxContainer.new()
+	toolbar_root.add_theme_constant_override("separation", 8)
+	_toolbar.add_child(toolbar_root)
+	_toolbar_actions = VBoxContainer.new()
+	_toolbar_actions.add_theme_constant_override("separation", 8)
+	toolbar_root.add_child(_toolbar_actions)
+	_toolbar_scroll = ScrollContainer.new()
+	_toolbar_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_toolbar_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	toolbar_root.add_child(_toolbar_scroll)
+	_toolbar_content = VBoxContainer.new()
+	_toolbar_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_toolbar_content.add_theme_constant_override("separation", 8)
+	_toolbar_scroll.add_child(_toolbar_content)
+	_add_toolbar_controls()
+
+	_test_panel = PanelContainer.new()
+	_test_panel.name = "TestOptions"
+	_test_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_test_panel.add_theme_stylebox_override("panel", _panel_style())
+	_test_panel.visible = false
+	add_child(_test_panel)
+	var test_scroll := ScrollContainer.new()
+	test_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_test_panel.add_child(test_scroll)
+	_test_options = VBoxContainer.new()
+	_test_options.add_theme_constant_override("separation", 6)
+	test_scroll.add_child(_test_options)
+	_add_test_options()
+
+
+func _add_toolbar_controls() -> void:
+	_primary_button = _make_button("Modify")
+	_primary_button.pressed.connect(func() -> void: _emit_action("edit"))
+	_toolbar_actions.add_child(_primary_button)
+	_register("edit", _primary_button)
+	var confirm_row := HBoxContainer.new()
+	confirm_row.add_theme_constant_override("separation", 8)
+	_toolbar_actions.add_child(confirm_row)
+	_apply_button = _make_button("Confirm")
 	_apply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_button.pressed.connect(func() -> void: _emit_action("apply"))
-	_action_row.add_child(_apply_button)
-	var cancel := _make_button("Cancel")
-	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cancel.pressed.connect(func() -> void: _emit_action("cancel"))
-	_action_row.add_child(cancel)
-	_content.add_child(_action_row)
+	confirm_row.add_child(_apply_button)
 	_register("apply", _apply_button)
-	_register("cancel", cancel)
-	_preview_controls.append(_apply_button)
-	_preview_controls.append(cancel)
-
-
-func _add_preview_actions() -> void:
-	_enabled_button = CheckButton.new()
-	_enabled_button.text = "Mirror enabled"
-	_style_control(_enabled_button)
-	_enabled_button.toggled.connect(func(value: bool) -> void: _emit_action("enabled", value))
-	_content.add_child(_enabled_button)
+	_cancel_button = _make_button("Cancel")
+	_cancel_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_cancel_button.pressed.connect(func() -> void: _emit_action("cancel"))
+	confirm_row.add_child(_cancel_button)
+	_register("cancel", _cancel_button)
+	_enabled_button = _make_button("Disable")
+	_enabled_button.pressed.connect(_toggle_enabled)
+	_toolbar_content.add_child(_enabled_button)
 	_register("enabled", _enabled_button)
-	_preview_controls.append(_enabled_button)
-
+	var axis_row := HBoxContainer.new()
+	axis_row.add_theme_constant_override("separation", 6)
+	_toolbar_content.add_child(axis_row)
+	var axis_group := ButtonGroup.new()
+	for axis in 3:
+		var axis_button := AxisChoiceButton.new()
+		axis_button.axis = axis
+		axis_button.text = "\n" + ["Vertical", "Horizontal", "Vertical"][axis]
+		axis_button.custom_minimum_size = Vector2(0, MIN_TOUCH_SIZE)
+		axis_button.add_theme_font_size_override("font_size", 12)
+		_style_control(axis_button)
+		axis_button.add_theme_stylebox_override("normal", _control_style(IVORY_DARK, 6))
+		axis_button.add_theme_stylebox_override("hover", _control_style(Color("eadcc8"), 6))
+		axis_button.add_theme_stylebox_override("pressed", _control_style(TERRACOTTA, 6))
+		axis_button.add_theme_stylebox_override("focus", _focus_style(6))
+		axis_button.add_theme_stylebox_override("disabled", _control_style(Color("d9cbb9"), 6))
+		axis_button.toggle_mode = true
+		axis_button.button_group = axis_group
+		axis_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		axis_button.pressed.connect(_emit_action.bind("axis", axis))
+		axis_row.add_child(axis_button)
+		_axis_buttons.append(axis_button)
+		_register("axis_%d" % axis, axis_button)
+	_axis_hint = _make_label("", 13)
+	_axis_hint.add_theme_color_override("font_color", MUTED)
+	_axis_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_toolbar_content.add_child(_axis_hint)
 	_step_row = HBoxContainer.new()
 	_step_row.add_theme_constant_override("separation", 8)
-	_content.add_child(_step_row)
+	_toolbar_content.add_child(_step_row)
 	_step_down_button = _make_button("− 0.5")
 	_step_down_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_down_button.pressed.connect(func() -> void: _emit_action("step", -0.5))
 	_step_row.add_child(_step_down_button)
-	_offset_label = _make_label("Offset  0.0", 15)
+	_register("step_down", _step_down_button)
+	_offset_label = _make_label("Offset 0.0", 14)
 	_offset_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_offset_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_row.add_child(_offset_label)
@@ -234,74 +364,138 @@ func _add_preview_actions() -> void:
 	_step_up_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_up_button.pressed.connect(func() -> void: _emit_action("step", 0.5))
 	_step_row.add_child(_step_up_button)
-	_register("step_down", _step_down_button)
 	_register("step_up", _step_up_button)
-	_preview_controls.append(_step_row)
-
-	_axis_picker = OptionButton.new()
-	_axis_picker.add_item("Axis X", 0)
-	_axis_picker.add_item("Axis Y", 1)
-	_axis_picker.add_item("Axis Z", 2)
-	_style_control(_axis_picker)
-	_axis_picker.item_selected.connect(func(index: int) -> void: _emit_action("axis", index))
-	_content.add_child(_axis_picker)
-	_register("axis", _axis_picker)
-	_preview_controls.append(_axis_picker)
-
-	_source_label = _make_label("Reflect lower coordinates", 14)
-	_source_label.add_theme_color_override("font_color", MUTED)
-	_content.add_child(_source_label)
-	_flip_button = _make_button("Flip source")
-	_flip_button.pressed.connect(func() -> void: _emit_action("flip"))
-	_content.add_child(_flip_button)
-	_register("flip", _flip_button)
 
 
-func _add_history_actions() -> void:
-	_undo_button = _make_button("Undo")
-	_undo_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_undo_button.pressed.connect(func() -> void: _emit_action("undo"))
-	_action_row.add_child(_undo_button)
-	var reset := _make_button("Reset")
-	reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	reset.pressed.connect(func() -> void: _emit_action("reset"))
-	_action_row.add_child(reset)
-	_register("undo", _undo_button)
-	_register("reset", reset)
-
-
-func _add_options() -> void:
+func _add_test_options() -> void:
 	_style_picker = OptionButton.new()
-	_style_picker.add_item("Outline view", 0)
-	_style_picker.add_item("Translucent view", 1)
+	_style_picker.add_item("World atmosphere", 0)
+	_style_picker.add_item("Boundary only", 1)
 	_style_control(_style_picker)
 	_style_picker.item_selected.connect(func(index: int) -> void: _emit_action("style", index))
-	_content.add_child(_style_picker)
+	_test_options.add_child(_style_picker)
 	_register("style", _style_picker)
 	_collision_button = CheckButton.new()
 	_collision_button.text = "Show collision"
 	_style_control(_collision_button)
 	_collision_button.toggled.connect(func(value: bool) -> void: _emit_action("collision", value))
-	_content.add_child(_collision_button)
+	_test_options.add_child(_collision_button)
 	_register("collision", _collision_button)
+	_flip_button = _make_button("Flip source")
+	_flip_button.pressed.connect(func() -> void: _emit_action("flip"))
+	_test_options.add_child(_flip_button)
+	_register("flip", _flip_button)
+	_standing_only_button = CheckButton.new()
+	_standing_only_button.text = "Standing still only"
+	_style_control(_standing_only_button)
+	_standing_only_button.toggled.connect(func(value: bool) -> void: _emit_action("standing_only", value))
+	_test_options.add_child(_standing_only_button)
+	_register("standing_only", _standing_only_button)
 
 
 func _responsive_layout() -> void:
-	if not is_instance_valid(_panel):
+	if not is_instance_valid(_toolbar):
 		return
 	var safe_rect := _safe_rect()
-	var side_layout := safe_rect.size.x >= 700.0 and safe_rect.size.x >= safe_rect.size.y
-	_header.position = safe_rect.position + Vector2(PANEL_GAP, PANEL_GAP)
-	_header.size = Vector2(safe_rect.size.x - PANEL_GAP * 2.0, HEADER_HEIGHT)
-	if side_layout:
-		_panel.position = Vector2(safe_rect.end.x - PANEL_WIDTH - PANEL_GAP, safe_rect.position.y + HEADER_HEIGHT + PANEL_GAP * 2.0)
-		_panel.size = Vector2(PANEL_WIDTH, maxf(0.0, safe_rect.size.y - HEADER_HEIGHT - PANEL_GAP * 3.0))
-		_set_play_rect(Rect2(Vector2(safe_rect.position.x, safe_rect.position.y + HEADER_HEIGHT + PANEL_GAP * 2.0), Vector2(maxf(0.0, safe_rect.size.x - PANEL_WIDTH - PANEL_GAP), maxf(0.0, safe_rect.size.y - HEADER_HEIGHT - PANEL_GAP * 2.0))))
-	else:
-		var panel_height := minf(maxf(300.0, safe_rect.size.y * 0.52), maxf(0.0, safe_rect.size.y - HEADER_HEIGHT - PANEL_GAP * 3.0))
-		_panel.position = Vector2(safe_rect.position.x + PANEL_GAP, safe_rect.end.y - panel_height - PANEL_GAP)
-		_panel.size = Vector2(maxf(0.0, safe_rect.size.x - PANEL_GAP * 2.0), panel_height)
-		_set_play_rect(Rect2(Vector2(safe_rect.position.x, safe_rect.position.y + HEADER_HEIGHT + PANEL_GAP * 2.0), Vector2(safe_rect.size.x, maxf(0.0, _panel.position.y - safe_rect.position.y - HEADER_HEIGHT - PANEL_GAP * 3.0))))
+	var narrow := safe_rect.size.x < 600.0
+	var header_height := 96.0 if narrow else HEADER_HEIGHT
+	var footer_height := 104.0 if narrow else FOOTER_HEIGHT
+	_objective_label.custom_minimum_size.y = 32.0 if narrow else 16.0
+	_header.position = safe_rect.position + Vector2(GAP, GAP)
+	_header.size = Vector2(maxf(0.0, safe_rect.size.x - GAP * 2.0), header_height)
+	_footer.position = Vector2(safe_rect.position.x + GAP, safe_rect.end.y - footer_height - GAP)
+	_footer.size = Vector2(maxf(0.0, safe_rect.size.x - GAP * 2.0), footer_height)
+	_layout_footer(narrow)
+	_set_play_rect(Rect2(
+		safe_rect.position + Vector2(GAP, header_height + GAP * 2.0),
+		Vector2(maxf(0.0, safe_rect.size.x - GAP * 2.0), maxf(0.0, safe_rect.size.y - header_height - footer_height - GAP * 4.0))
+	))
+	_place_toolbar(_last_play_rect)
+	_place_test_options(_last_play_rect)
+
+
+func _layout_footer(narrow: bool) -> void:
+	var content_size := _footer.get_size() - Vector2(24.0, 16.0)
+	if narrow:
+		_status_label.position = Vector2.ZERO
+		_status_label.size = Vector2(content_size.x, 32.0)
+		_footer_actions.position = Vector2(0, 40)
+		_footer_actions.size = Vector2(content_size.x, MIN_TOUCH_SIZE)
+		return
+	var actions_width := _footer_actions.get_combined_minimum_size().x
+	_status_label.position = Vector2.ZERO
+	_status_label.size = Vector2(maxf(0.0, content_size.x - actions_width - 8.0), content_size.y)
+	_footer_actions.position = Vector2(maxf(0.0, content_size.x - actions_width), 0)
+	_footer_actions.size = Vector2(actions_width, MIN_TOUCH_SIZE)
+
+
+func _place_toolbar(play_rect: Rect2) -> void:
+	var previous_size := _toolbar.size
+	var preferred_width := TOOLBAR_WIDTH if bool(_state.get("editing", false)) else 128.0
+	var toolbar_width := minf(preferred_width, maxf(MIN_TOUCH_SIZE, play_rect.size.x))
+	_toolbar.size = Vector2(toolbar_width, MIN_TOUCH_SIZE)
+	var content_height := _toolbar_content.get_combined_minimum_size().y if bool(_state.get("editing", false)) else 0.0
+	var desired_height := 16.0 + _toolbar_actions.get_combined_minimum_size().y + (8.0 + content_height if content_height > 0 else 0.0)
+	var toolbar_height := minf(play_rect.size.y, desired_height)
+	_toolbar.size.y = maxf(MIN_TOUCH_SIZE, toolbar_height)
+	if not _toolbar.size.is_equal_approx(previous_size):
+		_locked_toolbar_position = Vector2.INF
+	if bool(_state.get("editing", false)) and _locked_toolbar_position != Vector2.INF:
+		_toolbar.position = _clamp_toolbar_position(_locked_toolbar_position, play_rect)
+		return
+	var candidates := [
+		_mirror_anchor + Vector2(20, -_toolbar.size.y - 20),
+		_mirror_anchor + Vector2(20, 20),
+		_mirror_anchor + Vector2(-_toolbar.size.x - 20, -_toolbar.size.y - 20),
+		_mirror_anchor + Vector2(-_toolbar.size.x - 20, 20),
+		play_rect.position,
+		Vector2(play_rect.end.x - _toolbar.size.x, play_rect.position.y),
+		Vector2(play_rect.position.x, play_rect.end.y - _toolbar.size.y),
+		play_rect.end - _toolbar.size,
+	]
+	var best_position := _clamp_toolbar_position(candidates[0], play_rect)
+	var best_penalty := INF
+	for candidate in candidates:
+		var position := _clamp_toolbar_position(candidate, play_rect)
+		var rect := Rect2(position, _toolbar.size)
+		var penalty := rect.get_center().distance_squared_to(_mirror_anchor) * 0.02
+		for point in _avoid_points:
+			if rect.grow(8.0).has_point(point):
+				penalty += 1000000.0
+			elif rect.grow(32.0).has_point(point):
+				penalty += 10000.0
+		if penalty < best_penalty:
+			best_penalty = penalty
+			best_position = position
+	_toolbar.position = best_position
+	if bool(_state.get("editing", false)) and not _toolbar_needs_anchor:
+		_locked_toolbar_position = best_position
+
+
+func _place_test_options(safe_rect: Rect2) -> void:
+	if not _test_panel.visible:
+		return
+	var panel_size := Vector2(
+		minf(TOOLBAR_WIDTH, maxf(MIN_TOUCH_SIZE, safe_rect.size.x)),
+		minf(260.0, maxf(MIN_TOUCH_SIZE, safe_rect.size.y))
+	)
+	_test_panel.size = panel_size
+	var candidates := [safe_rect.end - panel_size, safe_rect.position,
+		Vector2(safe_rect.end.x - panel_size.x, safe_rect.position.y),
+		Vector2(safe_rect.position.x, safe_rect.end.y - panel_size.y)]
+	var best_overlap := INF
+	for candidate: Vector2 in candidates:
+		var overlap := Rect2(candidate, panel_size).intersection(_toolbar_actions.get_global_rect().grow(8.0)).get_area()
+		if overlap < best_overlap:
+			best_overlap = overlap
+			_test_panel.position = candidate
+
+
+func _clamp_toolbar_position(position: Vector2, bounds: Rect2) -> Vector2:
+	return Vector2(
+		clampf(position.x, bounds.position.x, maxf(bounds.position.x, bounds.end.x - _toolbar.size.x)),
+		clampf(position.y, bounds.position.y, maxf(bounds.position.y, bounds.end.y - _toolbar.size.y))
+	)
 
 
 func _safe_rect() -> Rect2:
@@ -322,6 +516,10 @@ func _set_play_rect(rect: Rect2) -> void:
 	if not rect.is_equal_approx(_last_play_rect):
 		_last_play_rect = rect
 		play_rect_changed.emit(rect)
+
+
+func _toggle_enabled() -> void:
+	_emit_action("enabled", not bool(_state.get("enabled", true)))
 
 
 func _emit_action(action: String, value: Variant = null) -> void:
@@ -373,7 +571,7 @@ func _style_control(control: Control) -> void:
 	control.add_theme_stylebox_override("normal", _control_style(IVORY_DARK))
 	control.add_theme_stylebox_override("hover", _control_style(Color("eadcc8")))
 	control.add_theme_stylebox_override("pressed", _control_style(TERRACOTTA))
-	control.add_theme_stylebox_override("focus", _control_style(TERRACOTTA))
+	control.add_theme_stylebox_override("focus", _focus_style())
 	control.add_theme_stylebox_override("disabled", _control_style(Color("d9cbb9")))
 
 
@@ -386,24 +584,36 @@ func _panel_style() -> StyleBoxFlat:
 	style.corner_radius_top_right = 12
 	style.corner_radius_bottom_left = 12
 	style.corner_radius_bottom_right = 12
-	style.content_margin_left = 14
-	style.content_margin_right = 14
-	style.content_margin_top = 12
-	style.content_margin_bottom = 12
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
 	return style
 
 
-func _control_style(color: Color) -> StyleBoxFlat:
+func _control_style(color: Color, horizontal_padding: float = 12.0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
 	style.corner_radius_top_left = 7
 	style.corner_radius_top_right = 7
 	style.corner_radius_bottom_left = 7
 	style.corner_radius_bottom_right = 7
-	style.content_margin_left = 12
-	style.content_margin_right = 12
+	style.content_margin_left = horizontal_padding
+	style.content_margin_right = horizontal_padding
 	return style
 
 
 func _register(key: String, control: Control) -> void:
 	_touch_controls[key] = control
+
+func set_failure_marker(point: Vector2, active: bool) -> void:
+	if not is_instance_valid(_failure_marker):
+		return
+	_failure_marker.visible = active and not _last_play_rect.has_point(point)
+	_failure_marker.position = point.clamp(_last_play_rect.position + Vector2(8, 8), _last_play_rect.end - _failure_marker.size - Vector2(8, 8))
+
+func _focus_style(padding := 12.0) -> StyleBoxFlat:
+	var style := _control_style(Color(0, 0, 0, 0), padding)
+	style.border_color = TERRACOTTA
+	style.set_border_width_all(2)
+	return style

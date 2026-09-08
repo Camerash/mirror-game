@@ -15,6 +15,7 @@ func _capture() -> void:
 		root.size = dimensions
 		for style: int in [0, 1]:
 			game.load_level(0)
+			await create_timer(0.1).timeout
 			game.style = style
 			game.begin_preview()
 			game.change_preview("enabled", true)
@@ -36,15 +37,21 @@ func _capture() -> void:
 	if not await _capture_reveal(game):
 		quit(1)
 		return
+	if not await _capture_technical(game):
+		quit(1)
+		return
 	print("Rendered layout captures saved to test-output/.")
 	game.queue_free()
 	await process_frame
 	quit()
 
 func _capture_reveal(game: Node3D) -> bool:
+	game.style = 0
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/08_reveal.json"))
+	await create_timer(0.1).timeout
 	game.begin_preview()
 	game.change_preview("enabled", true)
+	await create_timer(0.1).timeout
 	game.apply_preview()
 	for tick: int in range(5):
 		await physics_frame
@@ -70,3 +77,32 @@ func _capture_reveal(game: Node3D) -> bool:
 				push_error("Screenshot failed: " + path)
 				return false
 	return true
+
+func _capture_technical(game: Node3D) -> bool:
+	root.size = Vector2i(1152, 800)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/02_partial_cut.json"))
+	game.style = 0
+	await create_timer(0.1).timeout
+	game.begin_preview()
+	for axis: int in [0, 1, 2]:
+		game.change_preview("axis", axis)
+		for source: int in [1, -1]:
+			game.change_preview("source", source)
+			if not await _save("plane-%d-source-%d" % [axis, source]):
+				return false
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/07_horizontal.json"))
+	await create_timer(0.1).timeout
+	if not game.request_walk(Vector3(0, 4, 0)):
+		return false
+	for tick: int in range(300):
+		await physics_frame
+		if game.walker.route.is_empty():
+			break
+	game.begin_preview()
+	game.change_preview("enabled", false)
+	return await _save("fall-preview")
+
+func _save(name: String) -> bool:
+	await create_timer(0.25).timeout
+	await RenderingServer.frame_post_draw
+	return root.get_texture().get_image().save_png("res://test-output/%s.png" % name) == OK

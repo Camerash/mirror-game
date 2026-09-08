@@ -4,6 +4,10 @@ extends CharacterBody3D
 const Geometry := preload("res://core/world_geometry.gd")
 const SPEED := 2.0
 const GRAVITY := 9.8
+signal route_finished
+
+var build_visuals := true
+var grounded := false
 var paused := false
 var route := PackedVector3Array()
 
@@ -15,27 +19,36 @@ func _ready() -> void:
 	collider.shape = shape
 	collider.position.y = Geometry.HEIGHT * 0.5
 	add_child(collider)
+	collision_layer = 2
+	collision_mask = 1
+	floor_snap_length = 0.12
+	safe_margin = 0.001
+	if build_visuals:
+		_build_visual(collider.position)
+
+func _build_visual(centre: Vector3) -> void:
 	var mesh := MeshInstance3D.new()
 	var capsule := CapsuleMesh.new()
 	capsule.radius = Geometry.RADIUS
 	capsule.height = Geometry.HEIGHT
 	mesh.mesh = capsule
-	mesh.position = collider.position
+	mesh.position = centre
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color("f8f1dd")
 	material.roughness = 0.9
 	mesh.material_override = material
 	add_child(mesh)
-	collision_layer = 2
-	collision_mask = 1
-	floor_snap_length = 0.12
-	safe_margin = 0.001
 	set_meta("visual", mesh)
 
 func _physics_process(delta: float) -> void:
 	if paused:
 		return
-	if not is_on_floor():
+	advance_motion(delta)
+
+func advance_motion(delta: float) -> void:
+	# Also used by the isolated fall predictor at the same physics tick rate.
+	var was_walking := not route.is_empty()
+	if not grounded:
 		velocity.y -= GRAVITY * delta
 	else:
 		velocity.y = 0.0
@@ -50,6 +63,9 @@ func _physics_process(delta: float) -> void:
 		velocity.x = movement.x
 		velocity.z = movement.z
 	move_and_slide()
+	grounded = is_on_floor()
+	if was_walking and route.is_empty():
+		route_finished.emit()
 
 func stop() -> void:
 	route.clear()
@@ -57,6 +73,7 @@ func stop() -> void:
 	velocity.z = 0.0
 
 func restore(feet: Vector3, saved_velocity: Vector3) -> void:
+	grounded = false
 	position = feet
 	velocity = saved_velocity
 	route.clear()
