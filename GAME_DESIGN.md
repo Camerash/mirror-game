@@ -10,14 +10,14 @@ This is the current design record. Agreed rules are separate from later mileston
 - Players change reflected structures to reach places that ordinary paths cannot reach.
 - Previews, short failure feedback, undo, cancel, and reset make experiments inexpensive.
 - The game view and controls support iPhone, iPad, Android, and desktop development. Touch uses large reachable targets; mouse and keyboard provide equivalent desktop input. Camera framing and controls adapt to safe areas and aspect ratio.
-- The prototype uses Mac builds and automated rule, physics, input, and layout checks. Earlier evidence includes an iPhone touch Level 1 pass and iPad rendering. A later Simulator restart stalled on a blank background, so final Simulator validation is unresolved and deferred. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
+- During prototype exploration, use the smallest useful check on Mac. Run the relevant full checks after design decisions are confirmed, as regression guardrails; do not repeat full suites or layout matrices for each idea. Earlier evidence includes an iPhone touch Level 1 pass and iPad rendering. A later Simulator restart stalled on a blank background, so final Simulator validation is unresolved and deferred. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
 
 ## Technical baseline
 
 - Godot **4.7.2 stable**, typed GDScript, Compatibility renderer.
 - Procedural 3D geometry is the current prototype approach. Blender assets come later.
 - Level data is JSON and separate from scenes.
-- Touch targets are at least 48 logical units. A compact header and footer surround the stage. Mirror controls sit on the canvas, respect safe areas, and stay in place while the mirror is dragged. Short windows scroll edit options while Confirm and Cancel stay visible.
+- Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The current prototype still uses the older header, footer, and edit panel. Gesture details below remain proposals.
 - The orthographic camera uses four views at 45°, 135°, 225°, and 315°, with 30° downward elevation. Buttons and Q/E turn it in quarter steps. It fits committed geometry during play and permitted reflections for the selected orientation on entering editing or turning the mirror; zoom stays steady during mirror dragging. Off-screen failure outcomes use an edge marker.
 
 ## Agreed world rules
@@ -33,7 +33,7 @@ This is the current design record. Agreed rules are separate from later mileston
 
 ### Movement and changes
 
-- The character is a `CharacterBody3D` with downward gravity.
+- The character is a `CharacterBody3D` with downward gravity. Its visible face turns toward horizontal movement.
 - Flat-surface navigation uses direct clear paths or an eight-direction `AStar3D` search with unnecessary turns removed. Every segment checks character clearance and support across the full footprint. Ladders are not implemented yet.
 - Enable opens an active mirror preview; Modify edits an active mirror. Confirm applies the preview. Enable/Disable within editing changes only the proposal. Turn left/right rotates vertical mirrors by 90°. Lay flat/Stand up changes between horizontal and the previous vertical direction. Reverse sides swaps the source. The whole visible sheet is draggable during editing; hidden portions and UI do not receive sheet input. There is no separate drag handle.
 - Editing freezes character position and velocity. Cancel resumes saved movement in the unchanged world. Confirm preserves position and vertical velocity, clears the walking route, and rejects embedding in solid geometry.
@@ -73,7 +73,7 @@ Later level:
 
 - Use clear 3D forms, soft colour and lighting differences between original and reflected space, and a consistent absolute material that does not rely on colour alone.
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.
-- The world uses a neutral distant background, warm original surfaces, cool reflected surfaces, and local world-space haze. A translucent sheet with subtle ripples spans the stage and permitted reflections. Its visible edges lie outside playable geometry and do not limit reflection. Sun/moon marks identify its sides. **Boundary only** in Test options removes local haze for comparison. Walking surfaces remain solid and readable.
+- The world uses a neutral distant background, warm original surfaces, cool reflected surfaces, and local world-space haze. A translucent sheet with subtle ripples spans the stage and permitted reflections. Its visible edges lie outside playable geometry and do not limit reflection. The two sides have no assigned sun/moon meaning, and those symbols are removed. Directional light from the sheet edge is a proposal under review. **Boundary only** in Test options removes local haze for comparison. Walking surfaces remain solid and readable.
 - Absolutes retain their material and stripe pattern with clear edges. During editing, reflected contact regions are highlighted and a brief dashed outline shows incoming reflected structures. Collision and overlap rules are unchanged.
 - Watercolour-like modular forms, soft piano, muffled percussion, and subtle boundary changes remain candidates. Validate readability before adding effects.
 
@@ -81,7 +81,15 @@ Later level:
 
 - **Panel A, Stage-spanning sheet**, is the approved initial art direction. The saved reference is [docs/art/visual-trial-01.png](docs/art/visual-trial-01.png); the trial record is [docs/art/README.md](docs/art/README.md).
 - After the mechanics pass, Level 1 receives the first polished trial: procedural soft stone, restrained seams and wear, warm original and cool night surfaces, local haze, a thin sheet, and a simple dark character. The reference guides composition and materials; its added pillars and cubes do not change level geometry.
-- Keep other levels as simple fixtures until this trial is reviewed. Extend the art kit after that review. Story work remains open.
+- Review feedback: the current trial does not yet reach the reference. Improve depth fog, flowing mirror shading, material detail, objective detail, and lighting together. Keep other levels as simple fixtures. Story work remains open.
+
+### Pending immersive control and art trial
+
+- Proposed input: long press empty space to open a mirror preview; long press the sheet to edit it; drag the sheet to translate; a separate short tap on its outline confirms. Releasing a drag must not confirm. Show a brief hold-progress cue.
+- Proposed camera input: horizontal swipes on mobile; dim curved arrow buttons at the desktop bottom-left, with Q/E retained. A swipe must cancel a pending long press and must not move the character.
+- Proposed edit controls: a bottom removal action and two distinct curved grips for quarter-turn and tilt, instead of two identical spheres. Retain an accessible way to Cancel and Undo; placement remains open.
+- Compare solid and holographic reflections, and edge light toward original or reflected space, in [visual-trial-02.png](docs/art/visual-trial-02.png). These are concepts, not an approved treatment or runtime screenshots. Holographic sides must still have clear walking tops; absolutes stay solid.
+- The comparison image adds decorative pillars and cubes. It does not change level geometry or objectives.
 
 ## Pending story directions
 
@@ -105,7 +113,7 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 
 ## Next work
 
-- Keep routine validation on Mac with headless checks and window-size checks. Use one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework; record the concrete risk first.
+- Use focused Mac checks while exploring. After a design decision is confirmed, run the relevant full checks as regression guardrails. Use one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework; record the concrete risk first.
 - Test representative physical iOS and Android devices later, when that work is scheduled.
 - Play the seven fixtures and both puzzle routes; use observations to tune clarity and safe boundaries.
 - Use Level 2 observations to refine restoration feedback. Add ladders and the key-and-fall level after these rules are stable.

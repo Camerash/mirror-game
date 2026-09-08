@@ -8,7 +8,6 @@ const SheetShader := preload("res://world/mirror_sheet.gdshader")
 var sheet := MeshInstance3D.new()
 var edges := MeshInstance3D.new()
 var cue := MeshInstance3D.new()
-var labels := Node3D.new()
 var sheet_material := ShaderMaterial.new()
 var edge_material := StandardMaterial3D.new()
 var state: Dictionary = {}
@@ -37,9 +36,6 @@ func _ready() -> void:
 	add_child(sheet)
 	add_child(edges)
 	add_child(cue)
-	add_child(labels)
-	_make_label("SUN", 1.0)
-	_make_label("MOON", -1.0)
 
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if has_geometry and next_state == state and bounds == drawn_bounds and editing == is_editing:
@@ -70,7 +66,6 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	visible = bool(state.get("enabled", false)) or editing
 	sheet.visible = visible
 	edges.visible = visible
-	labels.visible = visible
 
 func get_corners() -> PackedVector3Array:
 	return corners
@@ -106,7 +101,6 @@ func _set_geometry(axis: int, offset: float, normal: Vector3, bounds: AABB, pivo
 	var marker_centre := centre
 	marker_centre.y = bounds.position.y + minf(bounds.size.y * 0.30, 0.45)
 	_draw_cue(marker_centre, normal, second, maxf(first_size, second_size), pivot)
-	_position_labels(marker_centre, normal, maxf(first_size, second_size), pivot)
 
 func _draw_edges(width: float, height: float) -> void:
 	var points := PackedVector3Array()
@@ -124,24 +118,6 @@ func _draw_edges(width: float, height: float) -> void:
 		mesh.surface_add_vertex(point)
 	mesh.surface_end()
 	edges.mesh = mesh
-
-func _make_label(text: String, side: float) -> void:
-	var label := Label3D.new()
-	label.name = text
-	label.text = ("☀" if side > 0.0 else "☾")
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.pixel_size = 0.006
-	label.font_size = 48
-	label.outline_size = 8
-	label.no_depth_test = true
-	label.render_priority = 100
-	label.modulate = Color("fff5d6") if side > 0.0 else Color("c8eaf3")
-	labels.add_child(label)
-
-func _position_labels(centre: Vector3, normal: Vector3, extent: float, pivot: Vector3) -> void:
-	for side: float in [1.0, -1.0]:
-		var label := labels.get_node("SUN" if side > 0.0 else "MOON") as Label3D
-		label.position = centre - pivot + normal * -side * (0.32 + extent * 0.04) + Vector3.UP * 0.18
 
 func _draw_cue(centre: Vector3, normal: Vector3, tangent: Vector3, extent: float, pivot: Vector3) -> void:
 	var start := centre - normal * (0.22 + extent * 0.06)

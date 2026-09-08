@@ -86,6 +86,8 @@ func advance_motion(delta: float) -> void:
 		var movement := offset.normalized() * minf(SPEED, offset.length() / delta)
 		velocity.x = movement.x
 		velocity.z = movement.z
+	if face != null and Vector2(velocity.x, velocity.z).length_squared() > 0.0:
+		face.rotation.y = lerp_angle(face.rotation.y, atan2(velocity.x, velocity.z), minf(delta * 12.0, 1.0))
 	move_and_slide()
 	grounded = is_on_floor()
 	if was_walking and route.is_empty():

@@ -37,6 +37,8 @@ Level 1 uses the first stone and atmosphere trial. Other puzzles and fixtures re
 
 ## Checks
 
+During prototype exploration, choose only the smallest useful check for the change. Do not run all commands below for each visual or interaction idea. Once a design decision is confirmed, run the relevant full checks as regression guardrails. Repeat them only for changed behavior, failures, or a concrete risk.
+
 ```sh
 rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --editor --quit
 rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script tests/run_tests.gd
@@ -47,7 +49,7 @@ The first command imports and parses the project. The second checks geometry, re
 
 ## Exports
 
-Mac runtime, headless checks, and Mac window-size checks are the default rapid-prototype validation. Routine Simulator and physical-device checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; record the concrete risk before that pass.
+Prototype exploration uses focused checks on Mac. Full suites, layout matrices, captures, and exports are reserved for confirmed decisions or a concrete risk. Routine Simulator and physical-device checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; record the concrete risk before that pass.
 
 Install templates through Godot's **Manage Export Templates** window. Use version **4.7.2.stable**. Build output and local captures are excluded from Git and resource imports.
 

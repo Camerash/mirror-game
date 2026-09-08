@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Exploration policy and visual concepts — 2026-09-08
+
+- Applied the new policy: focused checks during exploration; full regression checks after design confirmation. Earlier broad runs below are historical evidence, not the required workflow for each idea.
+- Removed the sheet sun/moon labels and added smooth movement-facing eyes to the character. Godot headless editor import/parse passed; the main review checked the code diff. No runtime visual check, full suite, layout matrix, export, or Simulator run was performed for this pass. Movement-facing appearance remains to be reviewed in the next play session.
+- Saved the generated material and edge-light comparison as `docs/art/visual-trial-02.png`. It is a concept for user review, not runtime evidence. Minimal gesture controls and holographic rendering remain proposals.
+
 ## Visual trial 01 — 2026-09-08
 
 - The combined suite passed **498 checks with 0 failures**, including unchanged visible/collision bounds in every level, both puzzle routes, camera/sheet input, prediction, and responsive controls.
