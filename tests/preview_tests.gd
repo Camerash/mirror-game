@@ -33,7 +33,7 @@ static func _movement(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	check.call(not game.apply_preview(), "Confirm rejects a pending prediction")
 	await _frames(tree, 10)
 	check.call(game.walker.position == feet and game.walker.velocity == velocity, "Editing freezes real position and velocity")
-	check.call(Engine.time_scale == 1.0 and game.preview_view.elapsed > 0, "Presentation keeps running while gameplay is frozen")
+	check.call(Engine.time_scale == 1.0 and not game.preview_view.ghost.visible, "Supported preview needs no ghost or time-scale change")
 	game.cancel_preview()
 	check.call(game.walker.route == route and game.walker.velocity == velocity, "Cancel restores saved movement")
 	check.call(game.history.size() == history_size, "Cancel does not add history")

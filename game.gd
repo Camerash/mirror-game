@@ -10,6 +10,7 @@ const HUD := preload("res://ui/mirror_hud.gd")
 const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
 const Atmosphere := preload("res://world/atmosphere.gd")
+const Rings := preload("res://world/mirror_rings.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
 const WorldGesture := preload("res://ui/world_gesture.gd")
@@ -17,7 +18,7 @@ const StageCameraView := preload("res://world/stage_camera.gd")
 const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
 	"res://levels/03_source.json", "res://levels/04_absolute.json", "res://levels/05_restore.json",
-	"res://levels/06_wall.json", "res://levels/07_horizontal.json", "res://levels/09_movement.json"]
+	"res://levels/06_wall.json", "res://levels/07_horizontal.json", "res://levels/09_movement.json", "res://levels/10_extent.json"]
 
 var level: Dictionary = {}
 var level_index := 0
@@ -25,6 +26,8 @@ var mirror: Dictionary = {}
 var preview: Dictionary = {}
 var preview_origin: Dictionary = {}
 var sheet := Sheet.new()
+var rings := Rings.new()
+var extent_mode := "full"
 var prediction: Dictionary = {"status": "idle"}
 var prediction_revision := 0
 var standing_only := false
@@ -55,6 +58,15 @@ var drag_axis := Vector2.ZERO
 var drag_touch := -1
 var gesture := WorldGesture.new()
 var outline_accessible := false
+var display_preview: Dictionary = {}
+var translation_motion: Tween
+var translating_settle := false
+var rotation_active := false
+var rotation_queue: Array[Dictionary] = []
+var rotation_target: Dictionary = {}
+var cancelling_gesture := false
+var limit_hint_shown := false
+var viewport_size := Vector2.ZERO
 
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
@@ -83,7 +95,10 @@ func _setup_scene() -> void:
 	add_child(preview_view)
 	add_child(atmosphere)
 	add_child(sheet)
-	sheet.transition_finished.connect(_refresh)
+	add_child(rings)
+	rings.action_requested.connect(_action)
+	rings.is_obstructed = _ring_obstructed
+	sheet.transition_finished.connect(_rotation_finished)
 	camera.view_changed.connect(_camera_changed)
 	camera.motion_finished.connect(_refresh)
 	predictor.ready_result.connect(_prediction_ready)
@@ -123,9 +138,13 @@ func load_level(index: int) -> bool:
 	if loaded.is_empty():
 		status = "This level could not be loaded."
 		return false
+	_cancel_manipulation()
 	level = loaded
+	level["mirror"]["extent"] = extent_mode
+	level["mirror"]["width"] = 3.0
+	level["mirror"]["height"] = 3.0
 	level_index = index
-	world.set_art_trial(index == 0)
+	world.set_art_trial(index == 0 or index == LEVEL_PATHS.size() - 1)
 	atmosphere.set_art_trial(index == 0)
 	walker.set_art_trial(index == 0)
 	gesture.cancel()
@@ -142,6 +161,7 @@ func load_level(index: int) -> bool:
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
 	_commit_world()
 	envelope = _level_envelope()
+	sheet.configure_level(envelope, AABB(Geometry.vector(level["limits"]["min"]), Geometry.vector(level["limits"]["max"]) - Geometry.vector(level["limits"]["min"])))
 	atmosphere.set_bounds(Geometry.total_bounds(solids))
 	for child: Node in goal_root.get_children():
 		child.free()
@@ -246,17 +266,22 @@ func _open_preview(proposal: Dictionary) -> void:
 	world.draw_route(PackedVector3Array())
 	_update_preview()
 	_fit_camera(hud.get_play_rect())
-	hud.show_hint("Drag the sheet. Tap its edge to place it.")
+	hud.show_hint("Drag the sheet. Tap the sheet to place it.")
 
 func change_preview(key: String, value: Variant) -> void:
-	if phase != "preview" or not pending.is_empty():
+	if phase != "preview" or not pending.is_empty() or _manipulating():
 		return
 	var previous := preview.duplicate(true)
-	if key not in ["axis", "source", "offset", "enabled"]:
+	if key not in ["axis", "source", "offset", "enabled", "width", "height"]:
 		return
+	if key in ["width", "height"]:
+		if extent_mode != "bounded":
+			return
+		value = clampf(snappedf(float(value), 0.5), 0.5, 6.0)
 	if key == "axis":
 		if int(value) not in [0, 1, 2] or int(value) == int(preview["axis"]):
 			return
+		preview.erase("frame_up")
 		preview["axis"] = int(value)
 		preview["offset"] = preview["pivot"][int(value)]
 	else:
@@ -272,25 +297,73 @@ func change_preview(key: String, value: Variant) -> void:
 		preview["vertical_source"] = preview["source"]
 	if preview != previous:
 		_update_preview()
-		if key == "axis":
-			_fit_camera(hud.get_play_rect())
+		_fit_camera(hud.get_play_rect())
+
+func _manipulating() -> bool:
+	return dragging or translating_settle or rotation_active or not rotation_queue.is_empty() or not rotation_target.is_empty()
+
+func _invalidate_prediction() -> void:
+	predictor.cancel()
+	prediction_revision = -1
+	prediction = {"status": "pending"}
+	preview_view.clear()
 
 func rotate_mirror(direction: int) -> void:
-	if phase != "preview" or sheet.is_transitioning() or not pending.is_empty():
-		return
-	preview = MirrorRules.turn(preview, direction)
-	_update_preview()
-	_fit_camera(hud.get_play_rect())
+	_queue_rotation("turn", direction)
 
-func tilt_mirror() -> void:
-	if phase != "preview" or sheet.is_transitioning() or not pending.is_empty():
+func tilt_mirror(direction := 1) -> void:
+	_queue_rotation("tilt", direction)
+
+func _queue_rotation(kind: String, direction: int) -> void:
+	if phase != "preview" or not pending.is_empty() or dragging or translating_settle or camera.busy or not preview["enabled"]:
 		return
-	preview = MirrorRules.tilt(preview)
+	rotation_queue.append({"kind": kind, "direction": signi(direction)})
+	_invalidate_prediction()
+	_advance_rotation()
+
+func _advance_rotation() -> void:
+	if not rotation_target.is_empty():
+		return
+	while not rotation_queue.is_empty():
+		var step: Dictionary = rotation_queue.pop_front()
+		var next := MirrorRules.turn(preview, step["direction"]) if step["kind"] == "turn" else MirrorRules.tilt(preview, step["direction"])
+		if next == preview:
+			continue
+		rotation_target = next
+		sheet.animate_to(next, _sheet_bounds())
+		_refresh()
+		return
+	if not rotation_active and phase == "preview":
+		_update_preview()
+		_fit_camera(hud.get_play_rect())
+
+func _rotation_finished() -> void:
+	if rotation_target.is_empty() or phase != "preview":
+		return
+	preview = rotation_target
+	rotation_target = {}
 	_update_preview()
-	_fit_camera(hud.get_play_rect())
+	_advance_rotation()
+
+func _cancel_manipulation() -> void:
+	cancelling_gesture = true
+	gesture.cancel()
+	if rings.is_inside_tree():
+		rings.cancel()
+	if translation_motion and translation_motion.is_valid():
+		translation_motion.kill()
+	dragging = false
+	translating_settle = false
+	rotation_active = false
+	rotation_queue.clear()
+	rotation_target.clear()
+	display_preview.clear()
+	if sheet.is_inside_tree():
+		sheet.cancel_transition()
+	cancelling_gesture = false
 
 func apply_preview() -> bool:
-	if phase != "preview" or not pending.is_empty() or sheet.is_transitioning() or camera.busy:
+	if phase != "preview" or not pending.is_empty() or _manipulating() or sheet.is_transitioning() or camera.busy:
 		return false
 	if prediction["status"] in ["pending", "idle", "unresolved"]:
 		return false
@@ -304,7 +377,7 @@ func apply_preview() -> bool:
 func cancel_preview() -> void:
 	if phase != "preview" or not pending.is_empty():
 		return
-	gesture.cancel()
+	_cancel_manipulation()
 	preview.clear()
 	predictor.cancel()
 	prediction = {"status": "idle"}
@@ -333,6 +406,7 @@ func _snapshot() -> Dictionary:
 		"velocity": walker.velocity, "route": walker.route.duplicate(), "complete": phase == "complete"}
 
 func _execute_pending() -> void:
+	_cancel_manipulation()
 	var command := pending
 	pending = {}
 	if command["action"] == "apply":
@@ -368,13 +442,16 @@ func _commit_world() -> void:
 	world.draw_route(PackedVector3Array())
 	settle_frames = 2
 
+func _display_state() -> Dictionary:
+	return display_preview if not display_preview.is_empty() else (preview if phase == "preview" else mirror)
+
 func _update_preview() -> void:
-	var proposed := Geometry.generate(level, preview)
+	var proposed := Geometry.generate(level, _display_state())
 	world.draw_world(proposed)
 	atmosphere.set_bounds(Geometry.total_bounds(proposed))
-	preview_view.clear()
-	prediction = {"status": "pending"}
-	prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
+	_invalidate_prediction()
+	if not _manipulating():
+		prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
 	status = "Checking the landing…"
 	_refresh()
 
@@ -411,20 +488,24 @@ func _fail() -> void:
 func _refresh() -> void:
 	if level.is_empty():
 		return
-	var selected := preview if phase == "preview" else mirror
+	var selected := _display_state()
 	var axis: int = selected.get("axis", level["mirror"]["axis"])
-	sheet.set_state(selected, _sheet_bounds(), phase == "preview")
+	if not sheet.is_transitioning():
+		sheet.set_state(selected, _sheet_bounds(), phase == "preview")
 	edit_available = can_edit()
+	rings.set_state(selected, phase == "preview", camera.busy or dragging or translating_settle or not pending.is_empty())
+	rings.update_view(camera)
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
 		"level_index": level_index, "art_trial": level_index == 0, "can_advance": _can_advance(),
 		"can_edit": can_edit(), "standing_only": standing_only,
-		"camera_busy": camera.busy or dragging, "mirror_busy": sheet.is_transitioning(), "pending": not pending.is_empty(),
+		"camera_busy": camera.busy or dragging or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
+		"extent": extent_mode, "width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
 		"offset": selected.get("offset", 0.0), "axis": axis, "source": selected.get("source", 1),
 		"outline_accessible": outline_accessible,
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
-		"can_apply": phase == "preview" and pending.is_empty() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
+		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "style": style, "collision": world.debug_collision})
 	world.show_contacts(Geometry.reflection_contacts(level, selected) if phase == "preview" else [])
 	atmosphere.set_mirror(selected, phase == "preview", style)
@@ -433,6 +514,11 @@ func _refresh() -> void:
 func _action(action: String, value: Variant) -> void:
 	match action:
 		"select_level": load_level(int(value))
+		"extent":
+			if value in ["full", "bounded"] and value != extent_mode:
+				extent_mode = value
+				load_level(level_index)
+		"width", "height": change_preview(action, float(value))
 		"next_level": advance_level()
 		"edit": begin_preview()
 		"create": create_mirror(value)
@@ -444,7 +530,15 @@ func _action(action: String, value: Variant) -> void:
 		"step": change_preview("offset", float(preview.get("offset", 0)) + float(value))
 		"axis": change_preview("axis", int(value))
 		"turn": rotate_mirror(int(value))
-		"tilt": tilt_mirror()
+		"tilt": tilt_mirror(1 if value == null else int(value))
+		"rotation_begin":
+			rotation_active = true
+			_invalidate_prediction()
+			_refresh()
+		"rotation_end":
+			rotation_active = false
+			if not cancelling_gesture:
+				_advance_rotation()
 		"camera_turn": turn_camera(int(value))
 		"flip": change_preview("source", -int(preview.get("source", 1)))
 		"apply": apply_preview()
@@ -471,6 +565,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_1: change_preview("axis", 0)
 			KEY_2: change_preview("axis", 1)
 			KEY_3: change_preview("axis", 2)
+			KEY_LEFT: rotate_mirror(-1)
+			KEY_RIGHT: rotate_mirror(1)
+			KEY_UP: tilt_mirror(-1)
+			KEY_DOWN: tilt_mirror(1)
 			KEY_Z: undo()
 			KEY_R: load_level(level_index)
 			KEY_BRACKETLEFT: _action("step", -0.5)
@@ -483,39 +581,56 @@ func _process(delta: float) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		gesture.cancel()
+		_cancel_manipulation()
+		if phase == "preview":
+			_update_preview()
+			_fit_camera(hud.get_play_rect())
 
 func _input(event: InputEvent) -> void:
-	var owned := gesture.active
+	if rings.is_active():
+		var pointer_index := -2
+		if event is InputEventScreenTouch or event is InputEventScreenDrag:
+			pointer_index = event.index
+		elif event is InputEventMouse:
+			pointer_index = -1
+		if pointer_index != -2 and not rings.owns_pointer(pointer_index):
+			get_viewport().set_input_as_handled()
+			return
+	var owned := gesture.active or rings.is_active()
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.device != InputEvent.DEVICE_ID_EMULATION:
 			_pointer(event.position, event.pressed, -1)
 	elif event is InputEventScreenTouch:
 		if event.canceled:
+			if rings.owns_pointer(event.index):
+				rings.cancel()
 			if gesture.active and gesture.pointer == event.index:
 				gesture.cancel()
 		else:
 			_pointer(event.position, event.pressed, event.index)
-	elif event is InputEventMouseMotion and gesture.active and gesture.pointer == -1:
-		gesture.move(event.position, -1)
+	elif event is InputEventMouseMotion:
+		if not rings.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
+			gesture.move(event.position, -1)
 	elif event is InputEventScreenDrag:
-		gesture.move(event.position, event.index)
+		if not rings.motion(event.position, event.index):
+			gesture.move(event.position, event.index)
 	if owned and (event is InputEventMouseButton or event is InputEventMouseMotion or event is InputEventScreenTouch or event is InputEventScreenDrag):
 		get_viewport().set_input_as_handled()
 
 func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
+	if not gesture.active and rings.pointer(point, pressed, touch):
+		get_viewport().set_input_as_handled()
+		return
 	if not pressed:
 		gesture.release(point, touch)
 		return
-	if gesture.active or hud.is_grip_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
+	if gesture.active or rings.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
 		return
-	if camera.busy or sheet.is_transitioning() or not pending.is_empty() or phase == "failure":
+	if camera.busy or _manipulating() or sheet.is_transitioning() or not pending.is_empty() or phase == "failure":
 		return
 	var target := "surface" if _solid_hit(point) else "empty"
 	if phase == "preview":
-		if outline_hit(point):
-			target = "outline"
-		elif sheet_hit(point):
+		if sheet_hit(point):
 			target = "sheet"
 	elif mirror.get("enabled", false) and sheet_hit(point):
 		target = "sheet"
@@ -533,8 +648,8 @@ func _gesture_action(action: String, value: Variant) -> void:
 			if dragging:
 				_drag(value)
 		"drag_end":
-			dragging = false
-			_refresh()
+			if not cancelling_gesture:
+				_finish_drag()
 		"apply":
 			if not apply_preview():
 				hud.show_hint("Wait for the preview." if prediction["status"] == "pending" else "This placement is blocked. Move the mirror or cancel.")
@@ -554,6 +669,9 @@ func _start_drag(point: Vector2) -> void:
 	if phase != "preview" or sheet.is_transitioning() or not preview["enabled"]:
 		return
 	dragging = true
+	limit_hint_shown = false
+	display_preview = preview.duplicate(true)
+	_invalidate_prediction()
 	drag_touch = gesture.pointer
 	drag_origin = point
 	drag_offset = float(preview["offset"])
@@ -563,8 +681,36 @@ func _start_drag(point: Vector2) -> void:
 	drag_axis = camera.unproject_position(anchor + direction) - camera.unproject_position(anchor)
 
 func _drag(point: Vector2) -> void:
-	if drag_axis.length_squared() > 0.01:
-		change_preview("offset", drag_offset + (point - drag_origin).dot(drag_axis) / drag_axis.length_squared())
+	if dragging and drag_axis.length_squared() > 0.01:
+		var offset := drag_offset + (point - drag_origin).dot(drag_axis) / drag_axis.length_squared()
+		var axis: int = preview["axis"]
+		var limited := clampf(offset, level["limits"]["min"][axis], level["limits"]["max"][axis])
+		if not is_equal_approx(limited, offset) and not limit_hint_shown:
+			hud.show_hint("Edge of the placement area.")
+			limit_hint_shown = true
+		_set_display_offset(limited)
+
+func _set_display_offset(offset: float) -> void:
+	display_preview["offset"] = offset
+	var pivot: Vector3 = display_preview["pivot"]
+	pivot[int(display_preview["axis"])] = offset
+	display_preview["pivot"] = pivot
+	_update_preview()
+
+func _finish_drag() -> void:
+	if not dragging:
+		return
+	dragging = false
+	translating_settle = true
+	var target := snappedf(float(display_preview["offset"]), 0.5)
+	translation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	translation_motion.tween_method(_set_display_offset, float(display_preview["offset"]), target, 0.15)
+	translation_motion.tween_callback(func() -> void:
+		preview = display_preview.duplicate(true)
+		display_preview.clear()
+		translating_settle = false
+		_update_preview()
+		_fit_camera(hud.get_play_rect()))
 
 func _level_envelope(axes: Array = [0, 1, 2]) -> AABB:
 	var bounds := Geometry.total_bounds(Geometry.generate(level, level["mirror"]))
@@ -577,19 +723,26 @@ func _level_envelope(axes: Array = [0, 1, 2]) -> AABB:
 	return bounds.expand(Geometry.vector(level["goal"]) + Vector3.UP).grow(0.3)
 
 func _sheet_bounds() -> AABB:
-	var selected := preview if phase == "preview" else mirror
-	var bounds := _level_envelope([int(selected.get("axis", level["mirror"]["axis"]))]).grow(0.5)
-	if int(selected.get("axis", 0)) != 1:
-		bounds.size.y += 1.0
-	return bounds
+	return Geometry.total_bounds(world.drawn_solids).grow(0.5)
 
 func _fit_camera(rect: Rect2, instant := false) -> void:
-	if dragging and rect.is_equal_approx(play_rect):
-		return
+	var current_size := get_viewport().get_visible_rect().size
+	var resized := viewport_size != Vector2.ZERO and not viewport_size.is_equal_approx(current_size)
+	viewport_size = current_size
 	play_rect = rect
 	if level.is_empty() or rect.size.x < 10 or rect.size.y < 10:
 		return
-	var framing := _sheet_bounds() if phase == "preview" or mirror["enabled"] else Geometry.total_bounds(solids).grow(0.3)
+	if resized and _manipulating():
+		_cancel_manipulation()
+		_update_preview()
+	if _manipulating():
+		return
+	var framing := Geometry.total_bounds(world.drawn_solids).grow(0.3)
+	if _display_state().get("extent", "full") == "bounded" and (phase == "preview" or mirror["enabled"]):
+		for corner: Vector3 in sheet.get_corners():
+			framing = framing.expand(corner)
+	for point: Vector3 in rings.get_fit_points():
+		framing = framing.expand(point)
 	framing = framing.expand(Geometry.vector(level["goal"]) + Vector3.UP)
 	framing = framing.expand(walker.position).expand(walker.position + Vector3.UP)
 	camera.fit(framing, hud.get_camera_rect(), instant)
@@ -597,7 +750,7 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 	failure_veil.size = rect.size
 
 func turn_camera(direction: int) -> void:
-	if dragging or hud.is_grip_active():
+	if _manipulating() or rings.is_active():
 		return
 	camera.turn(direction)
 	_refresh()
@@ -607,6 +760,7 @@ func _camera_changed() -> void:
 		return
 	atmosphere.update_view(camera, envelope.get_center())
 	preview_view.update_view(camera)
+	rings.update_view(camera)
 	_position_controls()
 
 func _solid_hit(point: Vector2, before := INF) -> bool:
@@ -618,62 +772,35 @@ func _solid_hit(point: Vector2, before := INF) -> bool:
 			return true
 	return false
 
+func _ring_obstructed(point: Vector2, location: Vector3) -> bool:
+	return not play_rect.has_point(point) or hud.blocks_world_input(point) or _solid_hit(point, camera.project_ray_origin(point).distance_to(location))
+
 func sheet_hit(point: Vector2, selected: Dictionary = {}) -> bool:
 	if selected.is_empty():
-		selected = preview if phase == "preview" else mirror
+		selected = _display_state()
 	if not selected.has("axis") or hud.blocks_world_input(point):
 		return false
-	var ray_origin := camera.project_ray_origin(point)
-	var ray_direction := camera.project_ray_normal(point)
+	var origin := camera.project_ray_origin(point)
+	var direction := camera.project_ray_normal(point)
 	var axis: int = selected["axis"]
-	if absf(ray_direction[axis]) < 0.0001:
+	if absf(direction[axis]) < 0.0001:
 		return false
-	var distance := (float(selected["offset"]) - ray_origin[axis]) / ray_direction[axis]
+	var distance := (float(selected["offset"]) - origin[axis]) / direction[axis]
 	if distance < 0:
 		return false
-	var intersection := ray_origin + ray_direction * distance
-	for tangent: int in range(3):
-		if tangent != axis and (intersection[tangent] < sheet.drawn_bounds.position[tangent] or intersection[tangent] > sheet.drawn_bounds.end[tangent]):
-			return false
-	return not _solid_hit(point, distance)
-
-func _visible_edge_samples() -> PackedVector2Array:
-	var result := PackedVector2Array()
-	if phase != "preview":
-		return result
-	var corners := sheet.get_corners()
-	for index: int in corners.size():
-		var start := corners[index]
-		var finish := corners[(index + 1) % corners.size()]
-		var count := maxi(1, ceili(camera.unproject_position(start).distance_to(camera.unproject_position(finish)) / 16.0))
-		for step: int in range(count + 1):
-			var location := start.lerp(finish, float(step) / count)
-			var point := camera.unproject_position(location)
-			if play_rect.grow(-24).has_point(point) and not hud.blocks_world_input(point) and not _solid_hit(point, camera.project_ray_origin(point).distance_to(location)):
-				result.append(point)
-	return result
-
-func outline_hit(point: Vector2) -> bool:
-	if hud.blocks_world_input(point):
-		return false
-	for sample: Vector2 in _visible_edge_samples():
-		if sample.distance_to(point) <= 24.0:
-			return true
-	return false
+	var intersection := origin + direction * distance
+	return sheet.contains_visible_point(intersection, selected) and not _solid_hit(point, distance)
 
 func _position_controls() -> void:
-	if level.is_empty() or play_rect.size.x < 64:
+	if level.is_empty() or play_rect.size.x < 64 or camera.busy:
 		return
-	hud.set_failure_marker(camera.unproject_position(prediction.get("position", walker.position)), phase == "preview" and prediction["status"] == "failure")
-	var avoid := PackedVector2Array([camera.unproject_position(walker.position + Vector3.UP * 0.4), camera.unproject_position(Geometry.vector(level["goal"]))])
-	if phase == "preview" and prediction.has("position"):
-		avoid.append(camera.unproject_position(prediction["position"] + Vector3.UP * 0.4))
-	hud.set_mirror_anchor(Vector2.ZERO, avoid)
-	var visible_corners := PackedVector2Array()
-	if phase == "preview":
-		for corner: Vector3 in sheet.get_corners():
-			var point := camera.unproject_position(corner)
-			if play_rect.has_point(point) and not _solid_hit(point, camera.project_ray_origin(point).distance_to(corner)):
-				visible_corners.append(point)
-	outline_accessible = not _visible_edge_samples().is_empty()
-	hud.set_sheet_controls(visible_corners, outline_accessible)
+	hud.set_failure_marker(Vector2.ZERO, false)
+	outline_accessible = false
+	if phase == "preview" and preview.get("enabled", false):
+		# Sample the play area rather than distant full-plane corners.
+		for y: int in 9:
+			for x: int in 9:
+				var point := play_rect.position + play_rect.size * Vector2(float(x) / 8.0, float(y) / 8.0)
+				if sheet_hit(point):
+					outline_accessible = true
+	hud.set_sheet_controls(PackedVector2Array(), outline_accessible)

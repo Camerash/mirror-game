@@ -3,9 +3,16 @@ extends Node3D
 
 signal transition_finished
 
+const Rules := preload("res://core/mirror_state.gd")
 const SheetShader := preload("res://world/mirror_sheet.gdshader")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
 
+var guides := MeshInstance3D.new()
+var guide_material := StandardMaterial3D.new()
+var full_size := 60.0
+var full_fade_bounds := AABB()
+var panel_size := Vector2(3, 3)
+var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
 var edges := MeshInstance3D.new()
 var ribbons := MeshInstance3D.new()
@@ -13,13 +20,10 @@ var sheet_material := ShaderMaterial.new()
 var edge_material := StandardMaterial3D.new()
 var ribbon_material := ShaderMaterial.new()
 var state: Dictionary = {}
-var corners := PackedVector3Array()
 var editing := false
 var transitioning := false
 var elapsed := 0.0
 var settle_time := 0.0
-var old_normal := Vector3.FORWARD
-var target_normal := Vector3.FORWARD
 var drawn_bounds := AABB()
 var has_geometry := false
 
@@ -41,88 +45,117 @@ func _ready() -> void:
 	ribbon_material.shader = RibbonShader
 	ribbon_material.render_priority = 72
 	ribbons.material_override = ribbon_material
+	guide_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	guide_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	guide_material.albedo_color = Color(0.65, 0.86, 0.92, 0.23)
+	guides.material_override = guide_material
+	guides.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(guides)
 	add_child(sheet)
 	add_child(edges)
 	add_child(ribbons)
 
+func configure_level(envelope: AABB, pivots: AABB) -> void:
+	var radius := 3.0
+	for first: int in 8:
+		for second: int in 8:
+			radius = maxf(radius, pivots.get_endpoint(first).distance_to(envelope.get_endpoint(second)))
+	full_size = radius * 2.0 + 2.0
+	full_fade_bounds = envelope.grow(1.0)
+	state = {}
+
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
-	if has_geometry and next_state == state and bounds == drawn_bounds and editing == is_editing:
+	if next_state == state and bounds == drawn_bounds and editing == is_editing:
 		return
-	# An absent mirror has no stable axis, offset, or pivot to render from.
-	if not next_state.has("axis"):
-		state = next_state.duplicate()
-		editing = is_editing
-		corners = PackedVector3Array()
-		transitioning = false
-		has_geometry = false
-		global_basis = Basis.IDENTITY
-		visible = false
-		sheet.visible = false
-		edges.visible = false
-		ribbons.visible = false
-		return
-	var axis := int(next_state.get("axis", 0))
-	var source := int(next_state.get("source", 1))
-	var normal := Vector3.ZERO
-	normal[axis] = float(source)
-	var changed := not state.is_empty() and (axis != int(state.get("axis", axis)) or source != int(state.get("source", source)))
-	var visual_change := next_state != state or bounds != drawn_bounds or editing != is_editing
-	state = next_state.duplicate()
+	var full_plane: bool = next_state.get("extent", "full") == "full"
+	var dimensions := Vector2.ONE * full_size if full_plane else Vector2(float(next_state.get("width", 3.0)), float(next_state.get("height", 3.0)))
+	var rebuild := editing != is_editing or not has_geometry or dimensions != panel_size
+	panel_size = dimensions
+	state = next_state.duplicate(true)
 	editing = is_editing
-	var pivot: Vector3 = state.get("pivot", bounds.get_center())
-	_set_geometry(axis, float(state.get("offset", 0.0)), normal, bounds, pivot)
-	if changed:
-		old_normal = target_normal
-		target_normal = normal
-		global_basis = Basis(_rotation_from_to(target_normal, old_normal))
-		transitioning = true
-		elapsed = 0.0
-	elif not transitioning:
-		target_normal = normal
-		global_basis = Basis.IDENTITY
-		transitioning = false
 	drawn_bounds = bounds
-	has_geometry = true
-	settle_time = 0.18 if visual_change and not editing else 0.0
-	visible = bool(state.get("enabled", false)) or editing
-	sheet.visible = visible and bool(state.get("enabled", false))
-	edges.visible = visible
-	ribbons.visible = visible and bool(state.get("enabled", false))
+	has_geometry = state.has("axis")
+	visible = has_geometry
+	if not has_geometry:
+		cancel_transition()
+		return
+	global_position = state["pivot"]
+	global_basis = Rules.frame(state)
+	if rebuild:
+		var quad := QuadMesh.new()
+		quad.size = panel_size
+		sheet.mesh = quad
+		_draw_edges(panel_size.x, panel_size.y)
+		_draw_ribbons(panel_size.x, panel_size.y)
+	var enabled: bool = state.get("enabled", false)
+	sheet.visible = enabled or (editing and full_plane)
+	ribbons.visible = enabled and not full_plane
+	edges.visible = not full_plane and (enabled or editing)
+	guides.visible = editing and enabled and not full_plane
+	if guides.visible:
+		_update_guides(bounds)
+	sheet_material.set_shader_parameter("full_plane", full_plane)
+	sheet_material.set_shader_parameter("removal", not enabled)
+	sheet_material.set_shader_parameter("fade_low", full_fade_bounds.position)
+	sheet_material.set_shader_parameter("fade_high", full_fade_bounds.end)
+	settle_time = 0.18 if not editing else 0.0
+
+func contains_visible_point(point: Vector3, selected: Dictionary) -> bool:
+	var pivot: Vector3 = selected["pivot"]
+	var local := Rules.frame(selected).inverse() * (point - pivot)
+	if selected.get("extent", "full") == "bounded":
+		return absf(local.x) <= float(selected.get("width", 3.0)) * 0.5 and absf(local.y) <= float(selected.get("height", 3.0)) * 0.5
+	var outside := (full_fade_bounds.position - point).max(point - full_fade_bounds.end).max(Vector3.ZERO)
+	return absf(local.x) <= full_size * 0.5 and absf(local.y) <= full_size * 0.5 and outside.length() < 2.5
+
+func animate_to(next_state: Dictionary, bounds: AABB) -> void:
+	var previous := global_basis
+	set_state(next_state, bounds, true)
+	var target := global_basis
+	global_basis = previous
+	transitioning = true
+	rotation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rotation_motion.tween_method(func(weight: float) -> void:
+		global_basis = previous.slerp(target, weight), 0.0, 1.0, 0.22)
+	rotation_motion.tween_callback(func() -> void:
+		global_basis = target
+		transitioning = false
+		transition_finished.emit())
+
+func cancel_transition() -> void:
+	if rotation_motion and rotation_motion.is_valid():
+		rotation_motion.kill()
+	transitioning = false
+	# Force the next state refresh to restore its exact pose.
+	state = {}
 
 func get_corners() -> PackedVector3Array:
-	return corners
+	var result := PackedVector3Array()
+	if not has_geometry:
+		return result
+	for point: Vector2 in [Vector2(-1,-1), Vector2(1,-1), Vector2(1,1), Vector2(-1,1)]:
+		result.append(to_global(Vector3(point.x * panel_size.x, point.y * panel_size.y, 0) * 0.5))
+	return result
 
 func is_transitioning() -> bool:
 	return transitioning
 
-func _set_geometry(axis: int, offset: float, normal: Vector3, bounds: AABB, pivot: Vector3) -> void:
-	var dimensions: Array[int] = [0, 1, 2]
-	dimensions.erase(axis)
-	var first := Vector3.ZERO
-	var second := Vector3.ZERO
-	first[dimensions[0]] = 1.0
-	second[dimensions[1]] = 1.0
-	var centre := bounds.get_center()
-	centre[axis] = offset
-	var first_size := bounds.size[dimensions[0]]
-	var second_size := bounds.size[dimensions[1]]
-	corners = PackedVector3Array([
-		centre - first * first_size * 0.5 - second * second_size * 0.5,
-		centre + first * first_size * 0.5 - second * second_size * 0.5,
-		centre + first * first_size * 0.5 + second * second_size * 0.5,
-		centre - first * first_size * 0.5 + second * second_size * 0.5,
-	])
-	global_position = pivot
-	sheet.mesh = QuadMesh.new()
-	(sheet.mesh as QuadMesh).size = Vector2(first_size, second_size)
-	sheet.position = centre - pivot
-	sheet.basis = Basis(first, second, normal).orthonormalized()
-	_draw_edges(first_size, second_size)
-	_draw_ribbons(first_size, second_size)
-	edges.position = sheet.position
-	edges.basis = sheet.basis
-	ribbons.position = sheet.position
-	ribbons.basis = sheet.basis
+func _update_guides(bounds: AABB) -> void:
+	var low := -2.0
+	var high := 2.0
+	for index: int in 8:
+		var point := to_local(bounds.get_endpoint(index))
+		low = minf(low, point.z - 0.5)
+		high = maxf(high, point.z + 0.5)
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	for corner: Vector2 in [Vector2(-1,-1), Vector2(1,-1), Vector2(1,1), Vector2(-1,1)]:
+		var first := Vector3(corner.x * panel_size.x * 0.5, corner.y * panel_size.y * 0.5, low)
+		var last := Vector3(first.x, first.y, high)
+		mesh.surface_add_vertex(first)
+		mesh.surface_add_vertex(last)
+	mesh.surface_end()
+	guides.mesh = mesh
 
 func _draw_edges(width: float, height: float) -> void:
 	var points := PackedVector3Array()
@@ -178,17 +211,3 @@ func _process(delta: float) -> void:
 	sheet_material.set_shader_parameter("sheet_alpha", 0.07 if editing else 0.11 + settle_time * 0.12)
 	ribbon_material.set_shader_parameter("ribbon_time", elapsed)
 	ribbon_material.set_shader_parameter("ribbon_alpha", 0.62 if editing else 1.0)
-	if not transitioning:
-		return
-	var fraction := minf(elapsed / 0.22, 1.0)
-	global_basis = Basis(_rotation_from_to(target_normal, old_normal).slerp(Quaternion.IDENTITY, fraction))
-	if fraction >= 1.0:
-		global_basis = Basis.IDENTITY
-		transitioning = false
-		transition_finished.emit()
-
-func _rotation_from_to(from: Vector3, to: Vector3) -> Quaternion:
-	if from.dot(to) < -0.999:
-		var turn_axis := Vector3.UP if absf(from.y) < 0.9 else Vector3.RIGHT
-		return Quaternion(turn_axis, PI)
-	return Quaternion(from, to)

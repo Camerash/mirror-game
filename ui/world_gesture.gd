@@ -72,7 +72,7 @@ func release(point: Vector2, index: int) -> void:
 	if translating:
 		action_requested.emit("drag_end", null)
 	elif short_tap:
-		if editing and target == "outline":
+		if editing and target in ["sheet", "outline"]:
 			action_requested.emit("apply", null)
 		elif not editing:
 			action_requested.emit("walk", point)

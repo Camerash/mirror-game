@@ -18,40 +18,41 @@ This is the current design record. Agreed rules are separate from later mileston
 - Procedural 3D geometry is the current prototype approach. Blender assets come later.
 - Level data is JSON and separate from scenes.
 - Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The world fills the window. Gameplay uses direct gestures and small contextual actions; diagnostic controls stay in the gear panel.
-- The orthographic camera uses four views at 45°, 135°, 225°, and 315°, with 30° downward elevation. Empty-space swipes turn it in quarter steps on mobile; dim curved buttons and Q/E do this on desktop. It fits committed geometry during play and permitted reflections for the selected orientation on entering editing or turning the mirror; zoom stays steady during mirror dragging. Off-screen failure outcomes use an edge marker.
+- The orthographic camera uses four views at 45°, 135°, 225°, and 315°, with 30° downward elevation. Empty-space swipes turn it in quarter steps on mobile; dim curved buttons and Q/E do this on desktop. It fits the current geometry, character, goal, and selected extent sheet while distant Full plane edges stay excluded. Centre and scale stay fixed during mirror gestures, then fit smoothly after release. A camera turn uses one fixed centre and scale for the orbit, with a smooth fit before and after if needed. Resizing cancels active mirror gestures and refits.
 
 ## Agreed world rules
 
 ### Mirror and geometry
 
-- The character starts in the original world. A mirror keeps original geometry on its source side and replaces the entire opposite side with reflections. Original geometry is clipped at the plane, including partial objects.
-- The prototype supports one axis-aligned mirror: a vertical X/Z plane or a horizontal Y plane. All levels permit every orientation and both source directions. Positions use half-unit offsets and level-defined ranges. A stable world-space pivot determines rotation; a half turn exchanges the source and reflected sides.
+- The character starts in the original world. The experimental session selector compares **Full plane** (default) and **Bounded column**. Full plane keeps original geometry on its source side and replaces the entire opposite side with reflections. It displays a large fading sheet with a fixed per-level size through rotations; distant edges are excluded from camera fit. Bounded column selects source geometry within a rectangular aperture and replaces only the destination column; outside originals remain. Both modes clip original geometry at the plane, including partial objects.
+- The prototype supports one axis-aligned mirror: a vertical X/Z plane or a horizontal Y plane. All levels permit every orientation and both source directions. Final positions use half-unit offsets. Each level permits its original and absolute bounds plus a two-unit margin, including previous ranges and initial pivots. These broad limits do not prescribe the solution. A stable world-space pivot determines rotation; a half turn exchanges the source and reflected sides.
 - Reflected structures are real interactive geometry. An absolute is one shared object across worlds; mirrors cannot copy, move, or cut it away.
 - The character crosses the plane wherever supported surfaces connect. Mirror changes leave the character at the same world position. Absolute platforms provide stable resting points.
-- Pure AABB source clipping and reflection are shared by preview and collision. Absolute geometry has priority.
+- Pure AABB source clipping and reflection are shared by preview and collision. Absolute geometry has priority. Each fragment keeps its original source ID and material coordinates. Native transforms compose the reflected mapping, so textures are cut without compression. Edge detail uses fixed world-unit widths.
 - Deactivating a mirror removes its reflections and restores the original geometry it replaced. Gravity always points downward; reflection does not reverse it.
+- The extent selector resets the current level and Undo history, then persists across level changes. Both extent alternatives are experimental. A fresh bounded panel is 3×3 units. Debug width and height controls use 0.5-unit steps from 0.5 to 6, centred on the pivot. Undo and Cancel restore dimensions; confirmed removal discards them. There are no direct resize grips yet. The character can cross any connected side surface.
 
 ### Movement and changes
 
 - The character is a `CharacterBody3D` with downward gravity. Its visible face turns toward horizontal movement.
 - Flat-surface navigation uses direct clear paths or an eight-direction `AStar3D` search with unnecessary turns removed. Every segment checks character clearance and support across the full footprint. Ladders are not implemented yet.
-- Create opens a fresh mirror preview near the press; Edit changes an existing mirror. Remove previews an absent mirror. Confirm applies the proposal. Cancel restores the committed state. After removal there is no saved mirror placement; Undo alone can restore it from history. Turn left/right rotates vertical mirrors by 90°. Lay flat/Stand up changes between horizontal and the previous vertical direction. Reverse sides swaps the source. The whole visible sheet is draggable during editing; hidden portions and UI do not receive sheet input. There is no separate drag handle.
+- Create opens a fresh mirror preview near the press; Edit changes an existing mirror. Remove previews an absent mirror. Confirm applies the proposal. Cancel restores the committed state. After removal there is no saved mirror placement; Undo alone can restore it from history. Turn left/right rotates vertical mirrors by 90°. Signed tilt turns cycle through upright, horizontal, opposite upright, and opposite horizontal. Reversing a tilt restores the previous orientation. Reverse sides swaps the source. The whole visible sheet is draggable during editing; hidden portions and UI do not receive sheet input. There is no separate drag handle.
 - Editing freezes character position and velocity. Cancel resumes saved movement in the unchanged world. Confirm preserves position and vertical velocity, clears the walking route, and rejects embedding in solid geometry.
 - Editing during walking and falling is allowed by default. A session-level **Standing still only** test option provides the stricter comparison. Decorative atmosphere runs at 20% speed while editing; the UI and ghost stay responsive. Editing has a subtle tint, contextual controls, and a dashed pulsing sheet. Confirm settles the sheet into its steady placed appearance. A disabled proposal keeps a removal outline until Confirm.
-- A separate collision world predicts the result with the same capsule and gravity step as the character. A bright ghost with a dark outline, a trajectory with contrasting strokes and arrows, and labelled landing/failure markers show the outcome. A supported character gets a stationary support ring. Pending or blocked predictions cannot be confirmed; predicted failure can be confirmed and undone.
+- A separate collision world predicts the result with the same capsule and gravity step as the character. A translucent, fog-filled holographic character with two fading afterimages shows a predicted fall. Safe landings pause then fade; failure fades near the lower boundary. There are no trajectory lines, arrows, rings, or gameplay outcome labels. Supported proposals need no ghost. Diagnostic text remains in debug mode. Pending or blocked predictions cannot be confirmed; predicted failure can be confirmed and undone.
 - Applying a physics-boundary change rebuilds navigation and clears the current route.
 - Losing support starts a fall. Original, reflected, or absolute geometry can provide support, including original geometry restored on deactivation. Landing is safe at any height in this milestone; passing the level's lower boundary causes failure.
 - Undo stores the pre-action mirror, character, and goal state for each accepted walk or confirmation, then stops navigation when restored. Opening or cancelling a preview adds no history. Reset clears history.
 
 ## Current playable prototype
 
-Level 1, “Rest, then rebuild the route” (shown as “A place to stand” in the game), uses unit-width original platforms at 0, 1, and 2, an absolute resting platform at 5, and an absolute goal at 8. Mirror offsets run from 2.5 to 4.0. At 2.5, walk to the rest platform. At 4.0, walk from it to the goal. Safe alternative routes, including successive overlapping reflections, are valid. Completion depends only on reaching the goal.
+Level 1, “Rest, then rebuild the route” (shown as “A place to stand” in the game), uses unit-width original platforms at 0, 1, and 2, an absolute resting platform at 5, and an absolute goal at 8. The intended route uses offsets 2.5 and 4.0 within the wider placement area. At 2.5, walk to the rest platform. At 4.0, walk from it to the goal. Safe alternative routes, including successive overlapping reflections, are valid. Completion depends only on reaching the goal.
 
-Seven selectable test fixtures cover natural diagonal walking, obstacle detours, gaps, narrow passages, partial cut, source selection, absolute support, deactivation, wall conflict, and horizontal reflection. The horizontal fixture starts beside reflected high ground, then disables the mirror so the character falls to safe original ground.
+Eight selectable test fixtures cover natural diagonal walking, obstacle detours, gaps, narrow passages, partial cut, source selection, absolute support, deactivation, wall conflict, and horizontal reflection. The horizontal fixture starts beside reflected high ground, then disables the mirror so the character falls to safe original ground.
 
-Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe restoration on ordinary ground. Original platforms occupy 0–2 and 5–7; the absolute goal is at 8. The initial X orientation stays at offset 2.5. Enable it, walk to 5, then disable it: the original platform replaces reflected support and the final approach returns. The goal stays visible throughout. This layout is a playtest candidate; no new object or goal rules are needed.
+Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe restoration on ordinary ground. Original platforms occupy 0–2 and 5–7; the absolute goal is at 8. The intended route starts with the X orientation at offset 2.5; its position is freely adjustable within the broad level area. Enable it, walk to 5, then disable it: the original platform replaces reflected support and the final approach returns. The goal stays visible throughout. This layout is a playtest candidate; no new object or goal rules are needed.
 
-Completing Level 1 shows **Next**. Level 2 ends the current puzzle sequence. The menu also gives direct access to both puzzles and the seven fixtures. Entering a level clears previous movement and Undo history.
+Completing Level 1 shows **Next**. Level 2 ends the current puzzle sequence. The menu also gives direct access to both puzzles and the eight fixtures. Entering a level clears previous movement and Undo history.
 
 Later level:
 
@@ -61,7 +62,7 @@ Later level:
 
 - Check whether players understand which source side is selected, what partial clipping does, and why absolutes remain.
 - Check whether preview support, final-position support, wall rejection, route clearing, and fall feedback are clear.
-- Check whether tap/click navigation and half-unit mirror movement feel predictable on phone, tablet, and desktop.
+- Check whether tap/click navigation, smooth mirror dragging, and release snapping feel predictable on phone, tablet, and desktop.
 - Check whether all four camera views keep original, reflected, absolute, and goal geometry readable in both portrait and landscape safe areas.
 - Check horizontal reflection with unchanged downward gravity and a safe landing. No scores or timers are planned.
 - Compare edits during walking/falling with the standing-only option. Check Cancel resumption and whether the ghost makes safe and unsafe outcomes clear.
@@ -73,7 +74,7 @@ Later level:
 
 - Use clear 3D forms, soft colour and lighting differences between original and reflected space, and a consistent absolute material that does not rely on colour alone.
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.
-- The world uses a neutral distant background, warm original surfaces, cool reflected surfaces, and local world-space haze. A translucent sheet with subtle ripples spans the stage and permitted reflections. Its visible edges lie outside playable geometry and do not limit reflection. The two sides have no assigned sun/moon meaning. An even, softly feathered band of light extends along the entire mirror perimeter toward the reflected side. It has no point spikes or bright corner overlaps. **Boundary only** in Test options removes local haze for comparison. Walking surfaces remain solid and readable.
+- The world uses a neutral distant background, warm original surfaces, cool reflected surfaces, and local world-space haze. Full plane uses a large fading sheet with fixed per-level size through rotations; Bounded column uses its rectangular aperture. The bounded aperture limits width and height, but depth along the normal stays unlimited. Full plane has no aperture limit. The two sides have no assigned sun/moon meaning. In bounded mode, an even, softly feathered band of light extends along the entire mirror perimeter toward the reflected side. Full plane has no nearby hard perimeter. It has no point spikes or bright corner overlaps. **Boundary only** in Test options removes local haze for comparison. Walking surfaces remain solid and readable.
 - Absolutes retain their material and stripe pattern with clear edges. During editing, reflected contact regions are highlighted and a brief dashed outline shows incoming reflected structures. Collision and overlap rules are unchanged.
 - Watercolour-like modular forms, soft piano, muffled percussion, and subtle boundary changes remain candidates. Validate readability before adding effects.
 
@@ -86,9 +87,9 @@ Later level:
 ### Immersive controls and visual trial 02
 
 - Hold empty space for 450 ms to create a mirror, or hold its visible sheet to edit. Movement under 12 logical units counts as a hold. A short release on a platform walks; a hold or swipe never also walks.
-- A new pivot comes from projecting the press onto a horizontal plane at the character's feet, then snapping and clamping each coordinate. The level supplies a fresh starting axis and source direction. One mirror is supported now; holding empty space while it exists does not create another.
-- During editing, drag the sheet to translate. A separate short tap within 24 logical units of a visible outline confirms. Releasing a drag never confirms. A small Confirm action appears if no outline is accessible.
-- Two curved grips near the sheet corners turn and tilt it. A 24-unit drag produces one quarter turn; the directional ends also accept taps. The turn grip is hidden when horizontal. Reverse sides remains available in editing.
+- A new pivot comes from projecting the press onto a horizontal plane at the character's feet, then snapping and clamping each coordinate to the broad placement area. The level supplies a fresh starting axis and source direction. One mirror is supported now; holding empty space while it exists does not create another.
+- During editing, drag the visible sheet surface to translate continuously along its normal. Displayed geometry follows the continuous offset; committed collision stays unchanged. Release settles smoothly to the nearest half unit in about 0.15 seconds, then predicts the result. Stale ghosts are hidden and confirmation is blocked during manipulation, settling, and prediction. A separate short tap on the visible sheet confirms; releasing a drag never confirms. A small Confirm action appears when the sheet is inaccessible or removal is proposed.
+- World-space rotation rings replace screen arcs. A horizontal yaw ring and a pitch ring normal to local width at the pivot use radius 1.8. Dragging the orb starts rotation without a hold delay; the captured axis, centre, and radius stay fixed during the gesture. Each 90° of travel requests an animated 90° turn; a held gesture can queue successive turns or reverse direction. Geometry changes at completed quarter turns; prediction runs when the gesture and queue finish. Turning is hidden while horizontal. Reverse sides remains available during editing.
 - A horizontal mobile swipe of at least 48 units, with horizontal movement over 1.5 times vertical movement, turns the camera. Mirror gestures take priority. Desktop has dim bottom-left curved arrows and Q/E.
 - Cancel, Remove/Keep mirror, and Reverse sides appear only during editing. Undo appears when available outside editing. Failure offers Undo and Reset; completion offers Next. Gear opens debug controls and Reset. Targets stay at least 48 units and respect safe areas.
 - **D** in [visual-trial-02.png](docs/art/visual-trial-02.png) is the approved visual direction, with a correction: light is even along all four edges rather than concentrated in spikes. The generated image is an approximate reference, not an in-game capture.
@@ -112,13 +113,14 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 ## Later exploration
 
 - Generate candidate levels from data, search for solutions with shared world rules, and replay solutions for review. Human playtests decide clarity and enjoyment.
-- Multiple mirrors and recursive reflections need rules for order, depth, and overlap. An apparently infinite corridor remains a possible special scene.
+- Multiple mirrors and recursive reflections need rules for order, depth, overlap, dependencies, parent removal, and recursion. No current multi-mirror implementation is agreed. An apparently infinite corridor remains a possible special scene.
 - Decide how reflected interactive objects share state when switches, keys, and doors enter the game.
 
 ## Next work
 
 - Use focused Mac checks while exploring. After a design decision is confirmed, run the relevant full checks as regression guardrails. Use one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework; record the concrete risk first.
 - Test representative physical iOS and Android devices later, when that work is scheduled.
-- Play the seven fixtures and both puzzle routes; use observations to tune clarity and safe boundaries.
+- Play the eight fixtures and both puzzle routes; use observations to tune clarity and safe boundaries. The new eighth fixture, **Mirror extent comparison**, is in `levels/10_extent.json`: three ledges, side obstacles, and absolute start/goal objects compare both extent modes. Its detailed materials check texture cuts; other fixtures remain simple.
+- Keep focused command checks in `tests/extent_tests.gd` and `tests/ring_tests.gd`; do not treat them as full-suite or Simulator validation.
 - Use Level 2 observations to refine restoration feedback. Add ladders and the key-and-fall level after these rules are stable.
 - Choose a visual treatment and develop story scenes after concrete playtests.

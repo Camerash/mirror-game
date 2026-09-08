@@ -4,7 +4,6 @@ class_name MirrorHUD
 signal action_requested(action: String, value: Variant)
 signal play_rect_changed(rect: Rect2)
 
-const Grip := preload("res://ui/rotation_grip.gd")
 const TOUCH := 48.0
 const GAP := 12.0
 const INK := Color("342b2a")
@@ -18,8 +17,6 @@ var _last_camera_rect := Rect2()
 var _last_emitted_play_rect := Rect2()
 var _bottom_reserved := TOUCH + GAP
 var _touch_controls := {}
-var _sheet_corners := PackedVector2Array()
-var _avoid_points := PackedVector2Array()
 var _outline_accessible := true
 var _gear: Button
 var _camera_left: Button
@@ -31,8 +28,6 @@ var _cancel: Button
 var _enabled: Button
 var _flip: Button
 var _apply: Button
-var _turn_grip: Grip
-var _tilt_grip: Grip
 var _debug_panel: PanelContainer
 var _level_picker: OptionButton
 var _failure: Label
@@ -40,6 +35,9 @@ var _hint: Label
 var _hold: Control
 var _edit_border: Control
 var _debug_controls := {}
+var _extent_picker: OptionButton
+var _panel_width: SpinBox
+var _panel_height: SpinBox
 var _debug_status: Label
 var _hint_tween: Tween
 
@@ -51,9 +49,6 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_inside_tree(): _responsive_layout()
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_instance_valid(_turn_grip):
-		_turn_grip.cancel()
-		_tilt_grip.cancel()
 
 func configure_levels(titles: Array[String], selected: int) -> void:
 	_syncing = true
@@ -72,8 +67,8 @@ func display_state(state: Dictionary) -> void:
 	var enabled := bool(_state.get("enabled", false))
 	_camera_left.visible = _desktop()
 	_camera_right.visible = _desktop()
-	_camera_left.disabled = camera_busy
-	_camera_right.disabled = camera_busy
+	_camera_left.disabled = camera_busy or mirror_busy
+	_camera_right.disabled = camera_busy or mirror_busy
 	_undo.visible = not editing and bool(_state.get("can_undo", false))
 	_undo.disabled = not bool(_state.get("can_undo", false))
 	_reset.visible = phase == "failure"
@@ -84,20 +79,15 @@ func display_state(state: Dictionary) -> void:
 	_enabled.disabled = mirror_busy
 	_flip.visible = editing
 	_flip.disabled = mirror_busy
-	_apply.visible = editing and not _outline_accessible
+	_apply.visible = editing and (not _outline_accessible or not enabled)
 	_apply.disabled = not bool(_state.get("can_apply", false))
 	_edit_border.visible = editing
-	_turn_grip.visible = editing and int(_state.get("axis", 0)) != 1
-	_turn_grip.disabled = mirror_busy or camera_busy or bool(_state.get("pending", false))
-	_tilt_grip.visible = editing
-	_tilt_grip.disabled = mirror_busy or camera_busy or bool(_state.get("pending", false))
 	_update_debug(editing, mirror_busy)
 	_responsive_layout()
 
-func set_sheet_controls(corners: PackedVector2Array, outline_accessible: bool) -> void:
-	_sheet_corners = corners
+func set_sheet_controls(_corners: PackedVector2Array, outline_accessible: bool) -> void:
 	_outline_accessible = outline_accessible
-	_apply.visible = bool(_state.get("editing", false)) and not _outline_accessible
+	_apply.visible = bool(_state.get("editing", false)) and (not _outline_accessible or not bool(_state.get("enabled", false)))
 	_responsive_layout()
 
 func set_hold_progress(point: Vector2, progress: float) -> void:
@@ -118,18 +108,11 @@ func show_hint(text: String) -> void:
 		_hint_tween.tween_property(_hint, "modulate:a", 0.0, 0.35)
 		_hint_tween.tween_callback(func() -> void: _hint.visible = false; _hint.modulate.a = 1.0)
 
-func is_grip_active() -> bool:
-	return _turn_grip.is_active() or _tilt_grip.is_active()
-
-func set_mirror_anchor(_point: Vector2, avoid_points := PackedVector2Array()) -> void:
-	_avoid_points = avoid_points
 func get_play_rect() -> Rect2: return _last_play_rect
 func get_camera_rect() -> Rect2:
 	return Rect2(_last_play_rect.position + Vector2(GAP, TOUCH + GAP), _last_play_rect.size - Vector2(GAP * 2, _bottom_reserved + TOUCH + GAP))
-func set_failure_marker(point: Vector2, active: bool) -> void:
-	_failure.visible = active
-	var bounds := get_camera_rect()
-	_failure.position = point.clamp(bounds.position + Vector2(8, 8), bounds.end - _failure.size - Vector2(8, 8))
+func set_failure_marker(_point: Vector2, _active: bool) -> void:
+	_failure.visible = false
 func get_touch_control_bounds() -> Dictionary:
 	var result := {}
 	for key: String in _touch_controls:
@@ -160,8 +143,6 @@ func _build() -> void:
 	_flip = _add_action("Reverse sides", "flip", null, "flip")
 	_apply = _add_action("Confirm", "apply", null, "apply")
 	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset, _next]: _style_edit(control)
-	_turn_grip = Grip.new(); _turn_grip.mode = Grip.Mode.TURN; _turn_grip.action_requested.connect(func(value: int) -> void: _emit("turn", value)); add_child(_turn_grip); _register("turn_grip", _turn_grip)
-	_tilt_grip = Grip.new(); _tilt_grip.mode = Grip.Mode.TILT; _tilt_grip.action_requested.connect(func(_value: int) -> void: _emit("tilt")); add_child(_tilt_grip); _register("tilt_grip", _tilt_grip)
 	_build_debug()
 
 func _add_action(text_value: String, action: String, value: Variant, key: String) -> Button:
@@ -171,6 +152,15 @@ func _build_debug() -> void:
 	_debug_panel = PanelContainer.new(); _debug_panel.visible = false; _debug_panel.mouse_filter = MOUSE_FILTER_STOP; _debug_panel.add_theme_stylebox_override("panel", _box()); add_child(_debug_panel)
 	var scroll := ScrollContainer.new(); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; _debug_panel.add_child(scroll)
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
+	_extent_picker = OptionButton.new()
+	_extent_picker.add_item("Full plane", 0)
+	_extent_picker.add_item("Bounded column", 1)
+	_style(_extent_picker)
+	_extent_picker.item_selected.connect(func(value: int) -> void: _emit("extent", "full" if value == 0 else "bounded"))
+	box.add_child(_label("Mirror extent (resets level)", 13))
+	box.add_child(_extent_picker)
+	_panel_width = _size_control(box, "Width", "width")
+	_panel_height = _size_control(box, "Height", "height")
 	_level_picker = OptionButton.new(); _style(_level_picker); _level_picker.item_selected.connect(func(value: int) -> void: _emit("select_level", value)); box.add_child(_level_picker); _register("level_picker", _level_picker)
 	for item in [["Edit/Create", "edit", null], ["Offset −", "step", -0.5], ["Offset +", "step", 0.5], ["Axis 1", "axis", 0], ["Axis 2", "axis", 1], ["Axis 3", "axis", 2], ["Turn left", "turn", -1], ["Turn right", "turn", 1], ["Tilt", "tilt", null], ["Reverse sides", "flip", null], ["Reset", "reset", null]]:
 		var button := _button(str(item[0])); button.pressed.connect(func() -> void: _emit(str(item[1]), item[2])); box.add_child(button); _debug_controls[str(item[1]) + str(item[0])] = button
@@ -179,7 +169,25 @@ func _build_debug() -> void:
 	var picker := OptionButton.new(); picker.add_item("World atmosphere", 0); picker.add_item("Boundary only", 1); _style(picker); picker.item_selected.connect(func(value: int) -> void: _emit("style", value)); box.add_child(picker); _debug_controls["style"] = picker
 	_debug_status = _label("", 13); _debug_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(_debug_status)
 
+func _size_control(parent: VBoxContainer, label: String, key: String) -> SpinBox:
+	var control := SpinBox.new()
+	control.prefix = label
+	control.min_value = 0.5
+	control.max_value = 6.0
+	control.step = 0.5
+	control.value = 3.0
+	control.custom_minimum_size.y = TOUCH
+	control.value_changed.connect(func(value: float) -> void: _emit(key, value))
+	parent.add_child(control)
+	return control
+
 func _update_debug(editing: bool, mirror_busy: bool) -> void:
+	_extent_picker.select(1 if _state.get("extent", "full") == "bounded" else 0)
+	for spec: Array in [[_panel_width, "width"], [_panel_height, "height"]]:
+		var control := spec[0] as SpinBox
+		control.visible = _state.get("extent", "full") == "bounded"
+		control.editable = editing and not mirror_busy and bool(_state.get("enabled", false))
+		control.set_value_no_signal(float(_state.get(spec[1], 3.0)))
 	if _level_picker.item_count > 0: _level_picker.select(clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1))
 	(_debug_controls["collision"] as CheckButton).set_pressed_no_signal(bool(_state.get("collision", false)))
 	(_debug_controls["standing_only"] as CheckButton).set_pressed_no_signal(bool(_state.get("standing_only", false)))
@@ -216,7 +224,6 @@ func _responsive_layout() -> void:
 			control.size = Vector2(slot, TOUCH)
 			control.position = Vector2(start + (index % columns) * (slot + row_gap), safe.end.y - TOUCH * 2 - GAP * 2 - (index / columns) * (TOUCH + row_gap))
 			index += 1
-	if not is_grip_active(): _place_grips(safe)
 	_debug_panel.position = safe.position + Vector2(GAP, GAP); _debug_panel.size = Vector2(minf(260.0, safe.size.x - GAP * 2.0), minf(420.0, safe.size.y - GAP * 2.0))
 	_hint.size = Vector2(minf(360.0, safe.size.x - TOUCH - GAP * 3.0), TOUCH); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
 	var camera_rect := get_camera_rect()
@@ -224,34 +231,6 @@ func _responsive_layout() -> void:
 		_last_emitted_play_rect = _last_play_rect
 		_last_camera_rect = camera_rect
 		play_rect_changed.emit(_last_play_rect)
-
-func _place_grips(safe: Rect2) -> void:
-	var first := safe.get_center() + Vector2(-96, 0); var second := safe.get_center() + Vector2(96, 0)
-	if not _sheet_corners.is_empty():
-		first = _sheet_corners[0]
-		var farthest := -1.0
-		for point in _sheet_corners:
-			var distance := point.distance_squared_to(first)
-			if distance > farthest: farthest = distance; second = point
-	_turn_grip.position = _safe_grip_position(first, _turn_grip, safe)
-	_tilt_grip.position = _safe_grip_position(second, _tilt_grip, safe)
-
-func _safe_grip_position(anchor: Vector2, grip: Control, safe: Rect2) -> Vector2:
-	var best := _clamp_grip(anchor - grip.size * .5, safe)
-	var best_penalty := INF
-	for offset in [Vector2.ZERO, Vector2(0, -52), Vector2(52, 0), Vector2(0, 52), Vector2(-52, 0)]:
-		var position := _clamp_grip(anchor + offset - grip.size * .5, safe)
-		var rect := Rect2(position, grip.size)
-		var penalty := position.distance_squared_to(anchor) * .02
-		for point in _avoid_points:
-			if rect.grow(20).has_point(point): penalty += 100000.0
-		for control: Control in _touch_controls.values():
-			if control != grip and control.is_visible_in_tree() and rect.grow(8).intersects(control.get_global_rect()): penalty += 100000.0
-		if penalty < best_penalty: best_penalty = penalty; best = position
-	return best
-
-func _clamp_grip(position: Vector2, safe: Rect2) -> Vector2:
-	return position.clamp(safe.position + Vector2(GAP, GAP), safe.end - Vector2(84 + GAP, 84 + GAP))
 
 func _safe_rect() -> Rect2:
 	var visible := get_viewport_rect()

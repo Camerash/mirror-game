@@ -27,10 +27,27 @@ This is the first procedural material trial, not the final Blender art kit. The 
 | C | Holographic stone | Original space |
 | D | Holographic stone | Reflected space |
 
-The target is an immersive world with depth fog, detailed stone, a flowing translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Directional light is an art cue, not a change to reflection rules.
+The target is an immersive world with depth fog, detailed stone, a flowing translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Directional light is an art cue, not a change to reflection rules. Both Full plane and Bounded column extent modes remain experimental; defer new art-direction mockups until the mechanics review. Existing mockups are approximate references.
 
 ## Second in-game result
 
 ![Level 1 with holographic reflections](trial-02-in-game.png)
 
-Native Mac capture of the current procedural trial. The mirror emits a continuous ribbon along its perimeter toward reflected space. Walking tops remain clear while sides are transparent. Mist is made from world-space layers; this is not volumetric fog. The stage keeps its original geometry.
+Native Mac capture of the earlier procedural trial. The mirror emits a continuous ribbon along its perimeter toward reflected space. Walking tops remain clear while sides are transparent. Mist is made from world-space layers; this is not volumetric fog. The stage keeps its original geometry.
+
+## Earlier compact-frame trial
+
+![Level 1 with the compact mirror frame](smooth-controls-in-game.png)
+
+Native Mac capture on 2026-09-08. This is an earlier approximate trial. The fixed three-unit square frame and faint extension do not define the current extent selector. Current mechanics use Full plane or Bounded column, world-space yaw and pitch rings, smooth translation with release snapping, and a translucent fog ghost with two fading afterimages. The D material and uniform reflected-side edge-light direction remain approximate art references.
+
+
+## Mirror extent comparison
+
+These native Mac captures show the same fixture and camera view. They are mechanics references, not a new art target.
+
+![Full plane comparison](extent-full-in-game.png)
+
+![Bounded column comparison](extent-bounded-in-game.png)
+
+Full plane affects the entire far side. Bounded column keeps the side obstacles and reflects only the selected aperture. The world-space rings have fixed radius; the panel dimensions are separate controls. Stone detail keeps its source coordinates through cuts. New art-style mockups follow the mechanics review.

@@ -42,26 +42,40 @@ func turn(direction: int) -> void:
 	var start := yaw
 	var target := yaw + signi(direction) * PI * 0.5
 	target_yaw = target
+	var safe_size := size
+	# Sample the short arc once, with extra framing margin between samples.
+	for step: int in 33:
+		safe_size = maxf(safe_size, _pose(lerpf(start, target, float(step) / 32.0))["size"] * 1.01)
+	var end_size: float = _pose(target)["size"]
 	motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	motion.tween_method(func(weight: float) -> void:
-		yaw = lerpf(start, target, weight)
-		var pose := _pose(yaw)
-		_apply(pose["position"], pose["basis"], pose["size"]), 0.0, 1.0, 0.35)
+	if safe_size > size + 0.01:
+		motion.tween_method(func(height: float) -> void: _apply_pose(start, height), size, safe_size, 0.18)
+	motion.tween_method(func(angle: float) -> void:
+		yaw = angle
+		_apply_pose(angle, safe_size), start, target, 0.38)
+	if safe_size > end_size + 0.01:
+		motion.tween_method(func(height: float) -> void: _apply_pose(target, height), safe_size, end_size, 0.18)
 	motion.tween_callback(_finish)
 
-func _pose(angle: float) -> Dictionary:
+func _apply_pose(angle: float, height: float) -> void:
+	var pose := _pose(angle, height)
+	_apply(pose["position"], pose["basis"], pose["size"])
+
+func _pose(angle: float, fixed_size := 0.0) -> Dictionary:
 	var direction := Vector3(cos(angle) * cos(PI / 6.0), sin(PI / 6.0), sin(angle) * cos(PI / 6.0))
 	var centre := bounds.get_center()
 	var view_basis := Basis.looking_at(-direction, Vector3.UP)
-	var low := Vector2(INF, INF)
-	var high := Vector2(-INF, -INF)
-	for index: int in range(8):
-		var corner := view_basis.inverse() * (bounds.get_endpoint(index) - centre)
-		low = low.min(Vector2(corner.x, corner.y))
-		high = high.max(Vector2(corner.x, corner.y))
-	var extent := (high - low).max(Vector2.ONE)
-	var pixels := minf(maxf(10, play_rect.size.x - 48) / extent.x, maxf(10, play_rect.size.y - 48) / extent.y)
 	var viewport_size := get_viewport().get_visible_rect().size
+	var pixels := viewport_size.y / fixed_size if fixed_size > 0.0 else 1.0
+	if fixed_size <= 0.0:
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for index: int in range(8):
+			var corner := view_basis.inverse() * (bounds.get_endpoint(index) - centre)
+			low = low.min(Vector2(corner.x, corner.y))
+			high = high.max(Vector2(corner.x, corner.y))
+		var extent := (high - low).max(Vector2.ONE)
+		pixels = minf(maxf(10, play_rect.size.x - 48) / extent.x, maxf(10, play_rect.size.y - 48) / extent.y)
 	var offset := play_rect.get_center() - viewport_size * 0.5
 	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}

@@ -1,3 +1,30 @@
+# Latest check: mirror extent and world-space rings — 2026-09-08
+
+- Godot 4.7.2 on this Mac with Compatibility rendering. The final headless editor import/parse passed.
+- `tests/extent_tests.gd`: **50 checks, 0 failures**. Covers full/column replacement, aperture cuts, side entry, absolute priority, source material mapping, mode reset, dimensions, removal/fresh creation, horizontal placement, source reversal, Cancel, and Undo.
+- `tests/ring_tests.gd`: focused ring checks passed. Covers angle wrapping, signed quarter turns, captured axes, orb picking, dead-centre input, repeated turns, and pointer release outside the ring.
+- `tests/extent_review.gd`: one completed native Mac review at 1152×800 and 390×844. Inspected both modes, all four camera views, a partial cut, horizontal placement, and Level 1. Its held yaw-orb revolution completed four turns through the real controller. Final runtime log has no script or shader errors.
+- The first focused geometry run found an untyped fallback array in bounded subtraction; it was removed. Native review setup initially attempted editing before level physics settled; the capture script now waits. These failed attempts are not counted as successful checks.
+- Full plane covers much of the view; bounded mode shows the selected column and retains side obstacles. Ring visibility and placement were inspected in all four views; physical drag feel still needs a user playtest. Source stone seams remain at their source coordinates after cutting. Detailed materials are enabled in the comparison fixture for this check.
+- This comparison remains experimental. No full regression suite, puzzle replay matrix, export, Simulator, or physical-device pass was run for it. Previous smooth-control evidence is recorded below. Physical touch feel and mobile GPU performance remain unverified.
+- Logs: `.local/extent-tests.log`, `.local/ring-tests.log`, `.local/extent-native.log`, `.local/extent-parse.log`. Captures: ignored `test-output/extent-*.png`; two retained examples are in `docs/art/extent-*-in-game.png`. The temporary MCP bridge is absent. The native review exits after capture.
+
+---
+
+# Earlier check: smooth mirror controls — 2026-09-08
+
+- Godot 4.7.2 Compatibility renderer on this Mac. Headless import/parse passed.
+- Focused smooth-control run: **83 checks, 0 failures**. Covered continuous display versus committed state, snap settling, queued quarter turns, signed tilt cycles, fixed frame dimensions, stable orbit scale, and resize cancellation.
+- Integrated regression run: **512 checks, 6 failures**. Both puzzle solutions, movement, support restoration, clipping, absolute priority, wall rejection, prediction, Undo, Reset, failure recovery, gesture tests, and layout checks passed. The six failures were in an older sheet-drag test that reused screen coordinates after the camera refitted.
+- Corrected that test to reacquire visible sheet points before each gesture. Reran only the affected interaction group: **132 checks, 0 failures**. No game-code change was needed for those six failures. The full suite was not repeated.
+- An earlier worker invocation ran the legacy full runner during incomplete integration. It is not counted as final validation; later visual tuning used only targeted checks.
+- One native Mac session inspected Level 1 in all four camera views, editing and placed states, removal/fall preview, and 390×844 portrait. A targeted follow-up checked two fixes found there: hiding grips on removal and keeping the portrait grip pair together. Native logs had no script or shader errors.
+- Visual result: compact frame remains readable; reflected platforms stay visible through it. The falling ghost has a translucent fog fill and fading afterimages, without a trajectory or outcome label. Material detail remains procedural prototype art.
+- Logs: `.local/smooth-focused.log`, `.local/smooth-regression.log`, `.local/smooth-interaction.log`, `.local/smooth-visual.log`, and `.local/smooth-visual-fixes.log`. Native captures are in ignored `test-output/smooth-*.png`.
+- No export, Simulator, or physical-device pass was run. Physical touch feel remains unverified. Wider placement is permitted, but alternative puzzle solutions still need user playtesting.
+
+---
+
 # Prototype validation
 
 ## Immersive controls and holographic trial — 2026-09-08

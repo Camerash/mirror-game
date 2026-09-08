@@ -1,9 +1,103 @@
 {
-  "title": "The path beneath",
-  "objective": "Reach the ring. A path can return when its reflection goes away.",
+  "title": "Mirror extent comparison",
+  "objective": "Compare the side ledges and obstacles. Try width and height in the gear panel.",
+  "is_test": true,
   "originals": [
     {
-      "id": "source_0",
+      "id": "ledge_-2",
+      "center": [
+        1,
+        -0.5,
+        -2
+      ],
+      "size": [
+        3,
+        1,
+        0.8
+      ]
+    },
+    {
+      "id": "ledge_0",
+      "center": [
+        1,
+        -0.5,
+        0
+      ],
+      "size": [
+        3,
+        1,
+        0.8
+      ]
+    },
+    {
+      "id": "ledge_2",
+      "center": [
+        1,
+        -0.5,
+        2
+      ],
+      "size": [
+        3,
+        1,
+        0.8
+      ]
+    },
+    {
+      "id": "source_join",
+      "center": [
+        -1,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        4.8
+      ]
+    },
+    {
+      "id": "side_wall",
+      "center": [
+        4,
+        0,
+        2
+      ],
+      "size": [
+        1,
+        2,
+        0.8
+      ]
+    },
+    {
+      "id": "side_step",
+      "center": [
+        4,
+        -0.25,
+        -2
+      ],
+      "size": [
+        1,
+        1.5,
+        0.8
+      ]
+    },
+    {
+      "id": "side_exit",
+      "center": [
+        5,
+        -0.5,
+        1.5
+      ],
+      "size": [
+        1,
+        1,
+        2
+      ]
+    }
+  ],
+  "absolutes": [
+    {
+      "id": "start",
       "center": [
         0,
         -0.5,
@@ -16,76 +110,9 @@
       ]
     },
     {
-      "id": "source_1",
-      "center": [
-        1,
-        -0.5,
-        0
-      ],
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "id": "source_2",
-      "center": [
-        2,
-        -0.5,
-        0
-      ],
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "id": "return_5",
-      "center": [
-        5,
-        -0.5,
-        0
-      ],
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "id": "return_6",
-      "center": [
-        6,
-        -0.5,
-        0
-      ],
-      "size": [
-        1,
-        1,
-        1
-      ]
-    },
-    {
-      "id": "return_7",
-      "center": [
-        7,
-        -0.5,
-        0
-      ],
-      "size": [
-        1,
-        1,
-        1
-      ]
-    }
-  ],
-  "absolutes": [
-    {
       "id": "goal",
       "center": [
-        8,
+        5,
         -0.5,
         0
       ],
@@ -102,12 +129,12 @@
     0
   ],
   "goal": [
-    8,
+    5,
     0,
     0
   ],
   "mirror": {
-    "enabled": false,
+    "enabled": true,
     "axis": 0,
     "source": 1,
     "offset": 2.5,
@@ -124,14 +151,14 @@
       2
     ],
     "min": [
-      -2.5,
-      -3.0,
-      -2.5
+      -3.5,
+      -3,
+      -4.5
     ],
     "max": [
-      10.5,
+      7.5,
       3,
-      2.5
+      4.5
     ]
   },
   "kill_y": -5

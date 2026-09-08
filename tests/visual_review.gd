@@ -1,5 +1,5 @@
 extends SceneTree
-## One native desktop/portrait review session for the immersive art trial.
+## One native desktop/portrait review session for the smooth art trial.
 const Game := preload("res://game.gd")
 var game: Node3D
 
@@ -11,28 +11,29 @@ func _run() -> void:
 	game = Game.new()
 	root.add_child(game)
 	await _settle()
-	await _capture("immersive-play")
+	await _capture("smooth-play")
 	game.begin_preview()
 	await _settle()
 	for view: int in range(4):
-		await _capture("immersive-edit-%d" % view)
+		await _capture("smooth-edit-%d" % view)
 		game.turn_camera(1)
 		await _settle()
 	game.apply_preview()
 	await _settle()
-	await _capture("immersive-placed")
+	await _capture("smooth-placed")
 	game.walker.restore(Vector3(3.5, 0, 0), Vector3.ZERO)
 	game.edit_mirror()
 	game.remove_mirror()
 	await _settle()
-	await _capture("immersive-fall")
+	game.preview_view.elapsed = game.preview_view.duration * 0.45
+	await _capture("smooth-fall")
 	game.cancel_preview()
 	game.walker.restore(Vector3.ZERO, Vector3.ZERO)
 	root.size = Vector2i(390, 844)
 	game.edit_mirror()
 	await _settle()
-	await _capture("immersive-portrait")
-	print("Immersive native review captured desktop, four views, fall and portrait.")
+	await _capture("smooth-portrait")
+	print("Smooth native review captured desktop, four views, fall and portrait.")
 	game.queue_free()
 	await process_frame
 	quit()

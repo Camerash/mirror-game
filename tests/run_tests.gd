@@ -5,6 +5,7 @@ const Levels := preload("res://core/level_loader.gd")
 const NavigationTests := preload("res://tests/navigation_tests.gd")
 const InteractionTests := preload("res://tests/mirror_interaction_tests.gd")
 const GestureTests := preload("res://tests/gesture_tests.gd")
+const SmoothTests := preload("res://tests/smooth_controls_tests.gd")
 const PreviewTests := preload("res://tests/preview_tests.gd")
 const Game := preload("res://game.gd")
 var failures: Array[String] = []
@@ -40,6 +41,7 @@ func _run() -> void:
 	await _test_fixtures_and_layout()
 	await PreviewTests.run(game, _check, self)
 	await InteractionTests.run(game, _check, self)
+	await SmoothTests.run(game, _check, self)
 	print("Mirror tests: %d checks, %d failures" % [checks, failures.size()])
 	game.queue_free()
 	await process_frame
@@ -179,11 +181,12 @@ func _test_reveal() -> void:
 	_check(not game.request_walk(Vector3(8, 0, 0)), "Level 2 goal is blocked by the original gap")
 	game.begin_preview()
 	await _preview_ready()
-	_check(game.phase == "preview" and not game.dragging, "Fixed X placement opens preview without starting a drag")
-	_check(not game.hud.get_touch_control_bounds().has("step_up"), "Fixed mirror has no offset controls")
+	_check(game.phase == "preview" and not game.dragging, "Level 2 opens preview without starting a drag")
 	game.change_preview("offset", 4.0)
 	await _preview_ready()
-	_check(game.preview["offset"] == 2.5, "Level 2 mirror stays at its fixed offset")
+	_check(game.preview["offset"] == 4.0, "Level 2 allows placements beyond the old fixed offset")
+	game.change_preview("offset", 2.5)
+	await _preview_ready()
 	game.change_preview("enabled", true)
 	await _preview_ready()
 	_check(game.apply_preview(), "Level 2 reflection can be enabled")
@@ -355,7 +358,7 @@ func _test_pointer_input() -> void:
 	var original_offset: float = game.preview["offset"]
 	motion.position = touch.position + screen_axis
 	root.push_input(motion)
-	_check(game.preview["offset"] == minf(original_offset + 1.0, 4.0), "Touch drag snaps by world offset")
+	_check(game.preview["offset"] == original_offset and is_equal_approx(game.display_preview["offset"], minf(original_offset + 1.0, game.level["limits"]["max"][0])), "Touch drag changes only the continuous display state")
 	touch.position = game.hud.get_touch_control_bounds()["cancel"].get_center()
 	touch.pressed = false
 	root.push_input(touch)

@@ -1,32 +1,34 @@
 class_name MirrorState
 extends RefCounted
-## Axis-aligned geometry uses offset; pivot keeps rotations at one world point.
+## Discrete frame orientation accompanies the axis-aligned collision plane.
 
 static func normal(state: Dictionary) -> Vector3:
 	var result := Vector3.ZERO
 	result[int(state["axis"])] = float(state["source"])
 	return result
 
-static func turn(state: Dictionary, direction: int) -> Dictionary:
+static func frame(state: Dictionary) -> Basis:
+	var facing := normal(state)
+	var up: Vector3 = state.get("frame_up", Vector3.UP if absf(facing.y) < 0.5 else Vector3.BACK)
+	if absf(up.dot(facing)) > 0.5:
+		up = Vector3.UP if absf(facing.y) < 0.5 else Vector3.BACK
+	return Basis(up.cross(facing), up, facing)
+
+static func _rotate(state: Dictionary, axis: Vector3, direction: int) -> Dictionary:
 	var result := state.duplicate(true)
-	if int(state["axis"]) == 1:
-		return result
-	var turned := normal(state).rotated(Vector3.UP, direction * PI * 0.5).round()
-	result["axis"] = 0 if absf(turned.x) > 0.5 else 2
-	result["source"] = int(turned[int(result["axis"])])
-	result["vertical_axis"] = result["axis"]
-	result["vertical_source"] = result["source"]
+	var rotation := Basis(axis, signi(direction) * PI * 0.5)
+	var facing := (rotation * normal(state)).round()
+	result["frame_up"] = (rotation * frame(state).y).round()
+	result["axis"] = facing.abs().max_axis_index()
+	result["source"] = int(facing[int(result["axis"])])
 	result["offset"] = result["pivot"][int(result["axis"])]
+	if result["axis"] != 1:
+		result["vertical_axis"] = result["axis"]
+		result["vertical_source"] = result["source"]
 	return result
 
-static func tilt(state: Dictionary) -> Dictionary:
-	var result := state.duplicate(true)
-	if int(state["axis"]) == 1:
-		result["axis"] = int(state.get("vertical_axis", 0))
-		result["source"] = int(state.get("vertical_source", 1))
-	else:
-		result["vertical_axis"] = state["axis"]
-		result["vertical_source"] = state["source"]
-		result["axis"] = 1
-	result["offset"] = result["pivot"][int(result["axis"])]
-	return result
+static func turn(state: Dictionary, direction: int) -> Dictionary:
+	return state.duplicate(true) if int(state["axis"]) == 1 else _rotate(state, Vector3.UP, direction)
+
+static func tilt(state: Dictionary, direction := 1) -> Dictionary:
+	return _rotate(state, frame(state).x, direction)

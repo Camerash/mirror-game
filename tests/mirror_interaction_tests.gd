@@ -22,7 +22,7 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	game.tilt_mirror()
 	await _settle(game, tree)
 	check.call(game.preview["axis"] == 1 and game.preview["pivot"] == initial["pivot"], "Lay flat uses the same pivot")
-	game.tilt_mirror()
+	game.tilt_mirror(-1)
 	await _settle(game, tree)
 	check.call(Rules.normal(game.preview) == vertical, "Stand up restores the previous vertical direction")
 	game.cancel_preview()
@@ -38,10 +38,12 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 			var points := _sheet_points(game)
 			check.call(points.size() >= 2, "Sheet has multiple touch points in axis %d view %d" % [orientation, view])
 			if points.size() >= 2:
-				for point: Vector2 in [points[0], points[-1]]:
+				for sample_index: int in [0, -1]:
+					# Refit after the previous gesture changes screen coordinates.
+					var point: Vector2 = _sheet_points(game)[sample_index]
 					game._pointer(point, true, 0)
 					game.gesture.move(point + Vector2(14, 0), 0)
-					check.call(game.dragging, "Motion on an unobstructed sheet point begins dragging")
+					check.call(game.dragging, "Visible sheet starts dragging at axis %d view %d (hit=%s busy=%s target=%s)" % [orientation, view, game.sheet_hit(point), game.camera.busy, game.gesture.target])
 					var size_before: float = game.camera.size
 					game._drag(point + game.drag_axis * 0.5)
 					check.call(is_equal_approx(game.camera.size, size_before), "Mirror dragging keeps zoom steady")
@@ -51,6 +53,7 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 					release.position = Vector2(-20, -20)
 					game._input(release)
 					check.call(not game.dragging, "Release outside the sheet ends dragging")
+					await _settle(game, tree)
 					game.change_preview("offset", before["offset"])
 					await _settle(game, tree)
 			var ui_point: Vector2 = game.hud.get_touch_control_bounds()["cancel"].get_center()

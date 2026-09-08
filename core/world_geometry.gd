@@ -2,6 +2,7 @@ class_name WorldGeometry
 extends RefCounted
 ## Pure axis-aligned world rules. Feet positions use the bottom of the capsule.
 
+const MirrorRules := preload("res://core/mirror_state.gd")
 const EPS := 0.0001
 const RADIUS := 0.18
 const HEIGHT := 0.8
@@ -17,19 +18,59 @@ static func generate(level: Dictionary, mirror: Dictionary) -> Array[Dictionary]
 	var result: Array[Dictionary] = []
 	var absolute_bounds: Array[AABB] = []
 	for item: Dictionary in level["absolutes"]:
-		absolute_bounds.append(box(item))
-		result.append({"bounds": box(item), "kind": "absolute", "id": item["id"]})
+		var bounds := box(item)
+		absolute_bounds.append(bounds)
+		var metadata := _source_metadata(item)
+		metadata.merge({"bounds": bounds, "kind": "absolute", "id": item["id"]})
+		result.append(metadata)
 	for item: Dictionary in level["originals"]:
 		var original := box(item)
+		var metadata := _source_metadata(item)
 		if not mirror["enabled"]:
-			_append_pieces(result, original, absolute_bounds, "original", item["id"])
+			_append_pieces(result, original, absolute_bounds, "original", item["id"], metadata)
 			continue
-		var clipped := source_part(original, mirror)
-		if not has_volume(clipped):
-			continue
-		_append_pieces(result, clipped, absolute_bounds, "original", item["id"])
-		_append_pieces(result, reflect(clipped, mirror), absolute_bounds, "reflected", item["id"])
+		var clipped := selected_source(original, mirror)
+		if mirror.get("extent", "full") == "bounded":
+			var opposite := mirror.duplicate()
+			opposite["source"] = -int(mirror["source"])
+			var replaced := selected_source(original, opposite)
+			var retained := subtract(original, replaced)
+			for piece: AABB in retained:
+				_append_pieces(result, piece, absolute_bounds, "original", item["id"], metadata)
+		elif has_volume(clipped):
+			_append_pieces(result, clipped, absolute_bounds, "original", item["id"], metadata)
+		if has_volume(clipped):
+			var reflected_metadata := metadata.duplicate()
+			reflected_metadata["material_to_world"] = reflection_transform(mirror) * metadata["material_to_world"]
+			_append_pieces(result, reflect(clipped, mirror), absolute_bounds, "reflected", item["id"], reflected_metadata)
 	return result
+
+static func _source_metadata(item: Dictionary) -> Dictionary:
+	var bounds := box(item)
+	return {"source_id": item["id"], "source_bounds": bounds,
+		"material_to_world": Transform3D(Basis.IDENTITY, bounds.get_center())}
+
+static func reflection_transform(mirror: Dictionary) -> Transform3D:
+	var normal := MirrorRules.normal(mirror)
+	var axes := Vector3.ONE - normal.abs() * 2.0
+	var origin := normal.abs() * float(mirror["offset"]) * 2.0
+	return Transform3D(Basis.from_scale(axes), origin)
+
+static func selected_source(bounds: AABB, mirror: Dictionary) -> AABB:
+	var clipped := source_part(bounds, mirror)
+	if mirror.get("extent", "full") != "bounded":
+		return clipped
+	var frame := MirrorRules.frame(mirror)
+	var pivot: Vector3 = mirror["pivot"]
+	var low := clipped.position
+	var high := clipped.end
+	var tangent_axes: Array[int] = [frame.x.abs().max_axis_index(), frame.y.abs().max_axis_index()]
+	var lengths: Array[float] = [float(mirror.get("width", 3.0)), float(mirror.get("height", 3.0))]
+	for index: int in 2:
+		var axis := tangent_axes[index]
+		low[axis] = maxf(low[axis], pivot[axis] - lengths[index] * 0.5)
+		high[axis] = minf(high[axis], pivot[axis] + lengths[index] * 0.5)
+	return AABB(low, (high - low).max(Vector3.ZERO))
 
 static func source_part(bounds: AABB, mirror: Dictionary) -> AABB:
 	var axis: int = mirror["axis"]
@@ -71,7 +112,7 @@ static func subtract(bounds: AABB, obstacle: AABB) -> Array[AABB]:
 	return pieces
 
 static func _append_pieces(result: Array[Dictionary], bounds: AABB,
-		absolutes: Array[AABB], kind: String, id: String) -> void:
+		absolutes: Array[AABB], kind: String, id: String, metadata: Dictionary = {}) -> void:
 	var pieces: Array[AABB] = [bounds]
 	for absolute: AABB in absolutes:
 		var next: Array[AABB] = []
@@ -80,7 +121,9 @@ static func _append_pieces(result: Array[Dictionary], bounds: AABB,
 		pieces = next
 	for piece: AABB in pieces:
 		if has_volume(piece):
-			result.append({"bounds": piece, "kind": kind, "id": id})
+			var generated := metadata.duplicate()
+			generated.merge({"bounds": piece, "kind": kind, "id": id})
+			result.append(generated)
 
 static func embedded(feet: Vector3, solids: Array[Dictionary]) -> bool:
 	# Capsule/box distance permits floor contact but rejects actual penetration.
@@ -144,7 +187,7 @@ static func reflection_contacts(level: Dictionary, mirror: Dictionary) -> Array[
 	if not mirror["enabled"]:
 		return contacts
 	for item: Dictionary in level["originals"]:
-		var clipped := source_part(box(item), mirror)
+		var clipped := selected_source(box(item), mirror)
 		if not has_volume(clipped):
 			continue
 		var reflected := reflect(clipped, mirror)

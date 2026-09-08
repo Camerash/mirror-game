@@ -69,21 +69,31 @@ func draw_world(solids: Array[Dictionary]) -> void:
 func _solid_material(solid: Dictionary, bounds: AABB) -> ShaderMaterial:
 	var material: ShaderMaterial = materials[solid["kind"]]
 	if not art_trial:
-		return material
+		var painted := material.duplicate() as ShaderMaterial
+		_apply_source_mapping(painted, solid, bounds)
+		return painted
 	if solid["kind"] == "reflected":
 		var hologram := hologram_material.duplicate() as ShaderMaterial
 		hologram.set_shader_parameter("box_centre", bounds.get_center())
 		hologram.set_shader_parameter("box_size", bounds.size)
+		_apply_source_mapping(hologram, solid, bounds)
 		return hologram
 	var stone := material.duplicate() as ShaderMaterial
 	stone.set_shader_parameter("stone_trial", true)
 	stone.set_shader_parameter("box_centre", bounds.get_center())
 	stone.set_shader_parameter("box_size", bounds.size)
+	_apply_source_mapping(stone, solid, bounds)
 	if solid["kind"] == "original":
 		stone.set_shader_parameter("pigment", Color("b9ad98"))
 	elif solid["kind"] == "reflected":
 		stone.set_shader_parameter("pigment", Color("405877"))
 	return stone
+
+func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: AABB) -> void:
+	var material_to_world := Transform3D(Basis.IDENTITY, bounds.get_center())
+	if solid.has("material_to_world") and solid["material_to_world"] is Transform3D:
+		material_to_world = solid["material_to_world"]
+	material.set_shader_parameter("world_to_material", material_to_world.affine_inverse())
 
 func update_debug() -> void:
 	_clear(overlay_root)
