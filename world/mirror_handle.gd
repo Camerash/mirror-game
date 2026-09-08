@@ -2,6 +2,7 @@ extends Control
 ## Drawn in canvas coordinates. World input owns dragging and snapping.
 
 var editing := false
+var movable := true
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -11,6 +12,9 @@ func _draw() -> void:
 	var ink := Color("a75f45") if editing else Color("46666b")
 	draw_circle(Vector2(28, 28), 26, Color("f4eddf"))
 	draw_arc(Vector2(28, 28), 25, 0, TAU, 48, ink, 2.0, true)
+	if not movable:
+		draw_rect(Rect2(20, 14, 16, 28), ink, false, 2.0)
+		return
 	draw_line(Vector2(28, 14), Vector2(28, 42), ink, 2.0, true)
 	draw_line(Vector2(13, 28), Vector2(23, 28), ink, 2.0, true)
 	draw_line(Vector2(33, 28), Vector2(43, 28), ink, 2.0, true)

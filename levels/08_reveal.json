@@ -1,0 +1,18 @@
+{
+  "title": "The path beneath",
+  "objective": "Reach the ring. A path can return when its reflection goes away.",
+  "originals": [
+    {"id": "source_0", "center": [0, -0.5, 0], "size": [1, 1, 1]},
+    {"id": "source_1", "center": [1, -0.5, 0], "size": [1, 1, 1]},
+    {"id": "source_2", "center": [2, -0.5, 0], "size": [1, 1, 1]},
+    {"id": "return_5", "center": [5, -0.5, 0], "size": [1, 1, 1]},
+    {"id": "return_6", "center": [6, -0.5, 0], "size": [1, 1, 1]},
+    {"id": "return_7", "center": [7, -0.5, 0], "size": [1, 1, 1]}
+  ],
+  "absolutes": [{"id": "goal", "center": [8, -0.5, 0], "size": [1, 1, 1]}],
+  "start": [0, 0, 0],
+  "goal": [8, 0, 0],
+  "mirror": {"enabled": false, "axis": 0, "source": 1, "offset": 2.5},
+  "limits": {"axes": [0], "min": [2.5, 0, 0], "max": [2.5, 0, 0]},
+  "kill_y": -5
+}

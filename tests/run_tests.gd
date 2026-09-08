@@ -22,6 +22,8 @@ func _run() -> void:
 	root.add_child(game)
 	await _frames(5)
 	await _test_route()
+	await _test_progression()
+	await _test_reveal()
 	await _test_support()
 	await _test_wall()
 	await _test_horizontal()
@@ -97,8 +99,80 @@ func _test_route() -> void:
 	await _frames(5)
 	_check(game.phase == "play" and game.walker.position.x < 5.1, "Undo restores the pre-walk position and goal state")
 
+func _test_progression() -> void:
+	_check(not game.advance_level(), "Next level cannot skip an unfinished puzzle")
+	_check(game.request_walk(Vector3(8, 0, 0)), "Level 1 can be completed again after Undo")
+	await _walk_finished()
+	for dimensions: Vector2i in [Vector2i(390, 844), Vector2i(844, 390), Vector2i(768, 1024), Vector2i(1024, 768), Vector2i(1152, 800)]:
+		root.size = dimensions
+		await _frames(3)
+		var controls: Dictionary = game.hud.get_touch_control_bounds()
+		_check(controls.has("next_level"), "Completed Level 1 offers Next level at " + str(dimensions))
+		if controls.has("next_level"):
+			var bounds: Rect2 = controls["next_level"]
+			_check(bounds.size.x >= 48 and bounds.size.y >= 48 and Rect2(Vector2.ZERO, Vector2(dimensions)).encloses(bounds), "Next level fits the window and meets touch size")
+	var next_button: Rect2 = game.hud.get_touch_control_bounds()["next_level"]
+	_mouse(next_button.get_center(), true)
+	_mouse(next_button.get_center(), false)
+	await _frames(5)
+	_check(game.level_index == 1 and game.phase == "play", "Next level click loads the second puzzle")
+	_check(game.history.is_empty() and game.walker.route.is_empty(), "Next level clears old history and movement")
+	_check(game.hud._level_picker.selected == 1, "Level picker follows progression")
+	_check(not game.hud.get_touch_control_bounds().has("next_level"), "Next level is hidden during play")
+
+func _test_reveal() -> void:
+	_check(not game.request_walk(Vector3(8, 0, 0)), "Level 2 goal is blocked by the original gap")
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = game.handle.position + Vector2(28, 28)
+	touch.pressed = true
+	root.push_input(touch)
+	_check(game.phase == "preview" and not game.dragging and not game.handle.movable, "Fixed mirror touch opens preview without starting a drag")
+	touch.pressed = false
+	root.push_input(touch)
+	_check(not game.hud.get_touch_control_bounds().has("step_up"), "Fixed mirror has no offset controls")
+	game.change_preview("offset", 4.0)
+	_check(game.preview["offset"] == 2.5, "Level 2 mirror stays at its fixed offset")
+	game.change_preview("enabled", true)
+	_check(game.apply_preview(), "Level 2 reflection can be enabled")
+	await _frames(5)
+	_check(not Geometry.supported(Vector3(6, 0, 0), game.solids), "Reflection removes the original final approach")
+	_check(not game.request_walk(Vector3(8, 0, 0)), "Reflection alone cannot reach the goal")
+	_check(game.request_walk(Vector3(3.5, 0, 0)), "Player can try an unsafe point above the original gap")
+	await _walk_finished()
+	game.begin_preview()
+	game.change_preview("enabled", false)
+	_check(game.status.begins_with("Will fall"), "Unsafe restoration gives a fall preview")
+	game.apply_preview()
+	await _frames(100)
+	_check(game.phase == "failure" and game.undo(), "Unsafe Level 2 experiment can be undone after failure")
+	await _frames(5)
+	_check(game.request_walk(Vector3(5, 0, 0)), "Reflection reaches the safe replacement point")
+	await _walk_finished()
+	var before: Vector3 = game.walker.position
+	game.begin_preview()
+	game.change_preview("enabled", false)
+	_check(game.status.begins_with("Supported"), "Original ground gives a supported preview without an absolute")
+	game.cancel_preview()
+	_check(game.mirror["enabled"] and not Geometry.supported(Vector3(6, 0, 0), game.solids), "Cancel keeps the final approach replaced")
+	game.begin_preview()
+	game.change_preview("enabled", false)
+	_check(game.apply_preview(), "Restoration on an original platform is accepted")
+	await _frames(20)
+	_check(game.walker.position.distance_to(before) < 0.01 and game.walker.is_on_floor(), "Support returns without moving or dropping the character")
+	_check(game.request_walk(Vector3(8, 0, 0)), "Restored approach connects to the visible absolute goal")
+	await _walk_finished()
+	_check(game.phase == "complete", "Shared player commands complete Level 2")
+	_check(not game.advance_level() and not game.hud.get_touch_control_bounds().has("next_level"), "Final puzzle does not advance into test fixtures")
+	_check(game.undo(), "Level 2 completion can be undone")
+	await _frames(5)
+	_check(game.phase == "play" and not game.mirror["enabled"] and game.walker.position.distance_to(before) < 0.01, "Undo restores the pre-goal state")
+	game._action("reset", null)
+	await _frames(5)
+	_check(game.history.is_empty() and not game.mirror["enabled"] and game.walker.position.distance_to(Vector3.ZERO) < 0.01, "Level 2 reset restores its initial state")
+
 func _test_support() -> void:
-	game.load_level(4)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/05_restore.json"))
 	await _frames(5)
 	_check(game.request_walk(Vector3(4, 0, 0)), "Restoration fixture target is reachable")
 	await _walk_finished()
@@ -113,7 +187,7 @@ func _test_support() -> void:
 	_check(not game.mirror["enabled"] and game.mirror["offset"] == 2.0, "Cancel leaves committed state unchanged")
 
 func _test_wall() -> void:
-	game.load_level(5)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/06_wall.json"))
 	await _frames(5)
 	_check(game.request_walk(Vector3(3, 0, 0)), "Reflected route replaces the original wall")
 	await _walk_finished()
@@ -124,7 +198,7 @@ func _test_wall() -> void:
 	game.cancel_preview()
 
 func _test_horizontal() -> void:
-	game.load_level(6)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/07_horizontal.json"))
 	await _frames(5)
 	_check(game.request_walk(Vector3(0, 4, 0)), "Character can enter reflected high ground")
 	await _walk_finished()
@@ -177,6 +251,7 @@ func _test_fixtures_and_layout() -> void:
 		for key: String in game.hud.get_touch_control_bounds():
 			var bounds: Rect2 = game.hud.get_touch_control_bounds()[key]
 			_check(bounds.size.x >= 48 and bounds.size.y >= 48, "Touch target is at least 48 units: " + key)
+			_check(bounds.position.x >= 0 and bounds.end.x <= dimensions.x, "Control fits the window width: " + key)
 		var popup: PopupMenu = game.hud._level_picker.get_popup()
 		var row_height := popup.get_theme_font("font").get_height(popup.get_theme_font_size("font_size")) + popup.get_theme_constant("v_separation")
 		_check(row_height >= 48, "Menu rows also meet the touch target size")

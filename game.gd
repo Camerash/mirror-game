@@ -8,7 +8,8 @@ const View := preload("res://world/world_view.gd")
 const Walker := preload("res://world/walker.gd")
 const HUD := preload("res://ui/mirror_hud.gd")
 const Handle := preload("res://world/mirror_handle.gd")
-const LEVEL_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/02_partial_cut.json",
+const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json"]
+const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
 	"res://levels/03_source.json", "res://levels/04_absolute.json", "res://levels/05_restore.json",
 	"res://levels/06_wall.json", "res://levels/07_horizontal.json"]
 
@@ -111,7 +112,7 @@ func load_level(index: int) -> bool:
 	for child: Node in goal_root.get_children():
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
-	status = "Tap a platform to walk. Drag the mirror handle to explore."
+	status = "Tap a platform to walk. Select Edit mirror to explore."
 	_refresh()
 	_fit_camera(hud.get_play_rect())
 	return true
@@ -150,6 +151,14 @@ func request_walk(target: Vector3) -> bool:
 	status = "Walking."
 	_refresh()
 	return true
+
+func advance_level() -> bool:
+	if not _can_advance():
+		return false
+	return load_level(level_index + 1)
+
+func _can_advance() -> bool:
+	return phase == "complete" and pending.is_empty() and level_index + 1 < PUZZLE_PATHS.size()
 
 func begin_preview() -> void:
 	if phase == "preview" or phase == "failure" or not pending.is_empty():
@@ -259,7 +268,9 @@ func _refresh() -> void:
 		return
 	var selected := preview if phase == "preview" else mirror
 	var axis: int = selected["axis"]
+	handle.movable = not is_equal_approx(float(level["limits"]["min"][axis]), float(level["limits"]["max"][axis]))
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
+		"level_index": level_index, "can_advance": _can_advance(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
 		"offset": selected["offset"], "axis": axis, "source": selected["source"],
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
@@ -272,6 +283,7 @@ func _refresh() -> void:
 func _action(action: String, value: Variant) -> void:
 	match action:
 		"select_level": load_level(int(value))
+		"next_level": advance_level()
 		"edit":
 			if phase == "preview": cancel_preview()
 			else: begin_preview()
@@ -339,6 +351,9 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 	if point.distance_to(handle.position + Vector2(28, 28)) <= 30:
 		begin_preview()
 		if phase != "preview":
+			return
+		if not handle.movable:
+			get_viewport().set_input_as_handled()
 			return
 		dragging = true
 		drag_touch = touch

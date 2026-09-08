@@ -27,8 +27,10 @@ var _objective_label: Label
 var _phase_label: Label
 var _status_label: Label
 var _edit_button: Button
-var _action_row: HBoxContainer
+var _next_level_button: Button
+var _action_row: GridContainer
 var _enabled_button: CheckButton
+var _step_row: HBoxContainer
 var _offset_label: Label
 var _step_down_button: Button
 var _step_up_button: Button
@@ -72,18 +74,28 @@ func display_state(state: Dictionary) -> void:
 	if not is_instance_valid(_panel_title_label):
 		return
 	_syncing = true
+	if _level_picker.item_count > 0:
+		var selected_level := clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1)
+		if _level_picker.selected != selected_level:
+			_level_picker.select(selected_level)
 	_panel_title_label.text = str(_state.get("title", "Mirror"))
 	_objective_label.text = str(_state.get("objective", ""))
-	_phase_label.text = _phase_text(str(_state.get("phase", "play")))
+	var phase := str(_state.get("phase", "play"))
+	_phase_label.text = _phase_text(phase)
 	_status_label.text = str(_state.get("status", ""))
 	_edit_button.text = "Close edit" if bool(_state.get("editing", false)) else "Edit mirror"
-	var preview_active := bool(_state.get("editing", false)) or str(_state.get("phase", "play")) == "preview"
+	_next_level_button.visible = bool(_state.get("can_advance", false)) and phase == "complete"
+	var preview_active := bool(_state.get("editing", false)) or phase == "preview"
 	for control in _preview_controls:
 		control.visible = preview_active
 	_enabled_button.set_pressed_no_signal(bool(_state.get("enabled", true)))
-	_offset_label.text = "Offset  %.1f" % float(_state.get("offset", 0.0))
-	_step_down_button.disabled = float(_state.get("offset", 0.0)) <= float(_state.get("min_offset", -INF))
-	_step_up_button.disabled = float(_state.get("offset", 0.0)) >= float(_state.get("max_offset", INF))
+	var offset := float(_state.get("offset", 0.0))
+	var min_offset := float(_state.get("min_offset", -INF))
+	var max_offset := float(_state.get("max_offset", INF))
+	_offset_label.text = "Offset  %.1f" % offset
+	_step_down_button.disabled = offset <= min_offset
+	_step_up_button.disabled = offset >= max_offset
+	_step_row.visible = preview_active and not is_equal_approx(min_offset, max_offset)
 	_axis_picker.select(clampi(int(_state.get("axis", 0)), 0, 2))
 	var allowed_axes: Array = _state.get("allowed_axes", [0, 1, 2])
 	for index in 3:
@@ -174,8 +186,15 @@ func _add_main_actions() -> void:
 	_edit_button.pressed.connect(func() -> void: _emit_action("edit"))
 	_content.add_child(_edit_button)
 	_register("edit", _edit_button)
-	_action_row = HBoxContainer.new()
-	_action_row.add_theme_constant_override("separation", 8)
+	_next_level_button = _make_button("Next level")
+	_next_level_button.visible = false
+	_next_level_button.pressed.connect(func() -> void: _emit_action("next_level"))
+	_content.add_child(_next_level_button)
+	_register("next_level", _next_level_button)
+	_action_row = GridContainer.new()
+	_action_row.columns = 2
+	_action_row.add_theme_constant_override("h_separation", 8)
+	_action_row.add_theme_constant_override("v_separation", 8)
 	_apply_button = _make_button("Apply")
 	_apply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_apply_button.pressed.connect(func() -> void: _emit_action("apply"))
@@ -200,24 +219,24 @@ func _add_preview_actions() -> void:
 	_register("enabled", _enabled_button)
 	_preview_controls.append(_enabled_button)
 
-	var step_row := HBoxContainer.new()
-	step_row.add_theme_constant_override("separation", 8)
-	_content.add_child(step_row)
+	_step_row = HBoxContainer.new()
+	_step_row.add_theme_constant_override("separation", 8)
+	_content.add_child(_step_row)
 	_step_down_button = _make_button("− 0.5")
 	_step_down_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_down_button.pressed.connect(func() -> void: _emit_action("step", -0.5))
-	step_row.add_child(_step_down_button)
+	_step_row.add_child(_step_down_button)
 	_offset_label = _make_label("Offset  0.0", 15)
 	_offset_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_offset_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	step_row.add_child(_offset_label)
+	_step_row.add_child(_offset_label)
 	_step_up_button = _make_button("+ 0.5")
 	_step_up_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_step_up_button.pressed.connect(func() -> void: _emit_action("step", 0.5))
-	step_row.add_child(_step_up_button)
+	_step_row.add_child(_step_up_button)
 	_register("step_down", _step_down_button)
 	_register("step_up", _step_up_button)
-	_preview_controls.append(step_row)
+	_preview_controls.append(_step_row)
 
 	_axis_picker = OptionButton.new()
 	_axis_picker.add_item("Axis X", 0)

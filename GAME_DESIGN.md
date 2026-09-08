@@ -10,7 +10,7 @@ This is the current design record. Agreed rules are separate from later mileston
 - Players change reflected structures to reach places that ordinary paths cannot reach.
 - Previews, short failure feedback, undo, cancel, and reset make experiments inexpensive.
 - The game view and controls support iPhone, iPad, Android, and desktop development. Touch uses large reachable targets; mouse and keyboard provide equivalent desktop input. Camera framing and controls adapt to safe areas and aspect ratio.
-- The current prototype has passed its Mac build and all 162 automated checks. Earlier evidence includes an iPhone touch Level 1 pass and iPad rendering. A later Simulator restart stalled on a blank background, so final Simulator validation is unresolved and deferred. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
+- The prototype uses Mac builds and automated rule, physics, input, and layout checks. Earlier evidence includes an iPhone touch Level 1 pass and iPad rendering. A later Simulator restart stalled on a blank background, so final Simulator validation is unresolved and deferred. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
 
 ## Technical baseline
 
@@ -40,15 +40,18 @@ This is the current design record. Agreed rules are separate from later mileston
 - Losing support starts a fall. Original, reflected, or absolute geometry can provide support, including original geometry restored on deactivation. Landing is safe at any height in this milestone; passing the level's lower boundary causes failure.
 - Undo stores the pre-action mirror, character, and goal state for each accepted walk or edit. Cancel discards the current preview. Reset clears history.
 
-## Delivered first prototype
+## Current playable prototype
 
 Level 1, “Rest, then rebuild the route” (shown as “A place to stand” in the game), uses unit-width original platforms at 0, 1, and 2, an absolute resting platform at 5, and an absolute goal at 8. Mirror offsets run from 2.5 to 4.0. At 2.5, walk to the rest platform. At 4.0, walk from it to the goal. Safe alternative routes, including successive overlapping reflections, are valid. Completion depends only on reaching the goal.
 
 Six selectable test fixtures cover partial cut, source selection, absolute support, deactivation, wall conflict, and horizontal reflection. The horizontal fixture starts beside reflected high ground, then disables the mirror so the character falls to safe original ground.
 
-Later levels:
+Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe restoration on ordinary ground. Original platforms occupy 0–2 and 5–7; the absolute goal is at 8. The mirror stays at 2.5. Enable it, walk to 5, then disable it: the original platform replaces reflected support and the final approach returns. The goal stays visible throughout. This layout is a playtest candidate; no new object or goal rules are needed.
 
-- **Reveal the exit:** Use a reflection to reach a position, then disable it. Original support returns and reveals the exit and its final approach.
+Completing Level 1 shows **Next level**. Level 2 ends the current puzzle sequence. The menu also gives direct access to both puzzles and the six fixtures. Entering a level clears previous movement and Undo history.
+
+Later level:
+
 - **The useful fall:** Reflect a ladder vertically to reach high ground. Remove support, collect an absolute key during the fall, and land beside a locked goal door. Ladder sections join across the plane. Test automatic pickup and forgiving alignment.
 
 ## First playtest observations and questions
@@ -58,6 +61,7 @@ Later levels:
 - Check whether tap/click navigation and half-unit mirror movement feel predictable on phone, tablet, and desktop.
 - Check whether the fixed camera keeps original, reflected, absolute, and goal geometry readable in both portrait and landscape safe areas.
 - Check horizontal reflection with unchanged downward gravity and a safe landing. No scores or timers are planned.
+- In Level 2, check whether players remember the hidden original approach and trust its support preview. Compare an early deactivation above the gap with a safe deactivation above platform 5.
 - Record goal recognition, useful placement predictions, stable-support recognition, recovery, confusion, and alternative solutions. Observe before explaining the intended route.
 
 ## Visual and sound direction
@@ -91,6 +95,6 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 
 - Keep routine validation on Mac with headless checks and window-size checks. Use one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework; record the concrete risk first.
 - Test representative physical iOS and Android devices later, when that work is scheduled.
-- Play the six fixtures and the Level 1 route; use observations to tune clarity and safe boundaries.
-- Build Level 2 and Level 3 after the current prototype rules are stable.
+- Play the six fixtures and both puzzle routes; use observations to tune clarity and safe boundaries.
+- Use Level 2 observations to refine restoration feedback. Add ladders and the key-and-fall level after these rules are stable.
 - Choose a visual treatment and develop story scenes after concrete playtests.

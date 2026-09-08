@@ -1,4 +1,17 @@
-# First prototype validation
+# Prototype validation
+
+## Level 2 and level flow — 2026-09-08
+
+- The final automated suite passed **272 checks with 0 failures**. It covers both puzzle routes, restoration on ordinary support, early deactivation and failure recovery, Cancel, Undo, Reset, and progression through the HUD.
+- Next level appears only after Level 1 completion. It opens Level 2, updates the picker, and clears old movement and history. The last puzzle does not advance into technical fixtures.
+- Fixed mirror touch opens preview without a drag. Offset controls and movement arrows are absent. The action buttons use two columns to fit the side panel.
+- Layout checks passed at 390×844, 844×390, 768×1024, 1024×768, and 1152×800. They check touch sizes, control widths, and the Next level button. Native Mac captures show both boundary styles and Level 2 with reflected support and the restoration preview. The panel still needs scrolling on short windows.
+- Godot MCP Runtime replayed both levels through control clicks and world clicks on Mac, including Next level and the supported restoration preview. Both goals completed. The final run stopped without runtime errors and removed its temporary bridge.
+- The updated Mac app exported without errors or warnings and passed a graphical startup check for 180 frames on this Apple M2 Pro Mac. All eight level JSON files parse.
+- Final local evidence: `test-output/level2-*.png`, updated Level 1 captures, and `.mcp/screenshots/`. `.local/play-levels.log` records the control replay.
+- No Simulator or physical-device check was run for this step. It changes level data and existing native controls; no new platform feature requires a focused Simulator pass.
+
+## First prototype and tool setup
 
 Checked on 2026-09-08 with Godot `4.7.2.stable.official.ed1daf0bf`.
 
@@ -27,6 +40,6 @@ After the rapid-prototype policy change, Godot MCP Runtime 3.3.0 passed a Mac co
 - Mac runtime, headless checks, and Mac window-size checks are the default rapid-prototype validation. Simulator timing is not a physical-device performance measurement. Physical iPhone, iPad, and Android tests are pending.
 - Routine Simulator checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; state the concrete risk first. The unresolved blank-background restart remains deferred under this policy.
 - This is an agent-operated technical check. No user playtest observations have been collected.
-- Test whether a new player sees the goal, predicts a useful mirror position, recognises the striped resting platform, and uses Undo after an experiment. Record confusion and safe alternative solutions. Do not add a score or time limit.
+- Test whether a new player sees the goal, predicts a useful mirror position, recognises the striped resting platform, and uses Undo after an experiment. In Level 2, check whether the player remembers the hidden original approach and understands that it can replace reflected support. Record confusion and safe alternative solutions. Do not add a score or time limit.
 - Compare the two boundary styles on a physical phone. The control panel scrolls on short screens; check whether players find the lower options.
 - Navigation currently covers clear, connected flat surfaces. Ladders, keys, stepped routes, multiple mirrors, generation, sound, and final art are later milestones.
