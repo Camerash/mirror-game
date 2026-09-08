@@ -119,6 +119,9 @@ func load_level(index: int) -> bool:
 		return false
 	level = loaded
 	level_index = index
+	world.set_art_trial(index == 0)
+	atmosphere.set_art_trial(index == 0)
+	walker.set_art_trial(index == 0)
 	mirror = level["mirror"].duplicate(true)
 	preview.clear()
 	preview_origin.clear()
@@ -371,7 +374,7 @@ func _refresh() -> void:
 	sheet.set_state(selected, _sheet_bounds(), phase == "preview")
 	edit_available = can_edit()
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
-		"level_index": level_index, "can_advance": _can_advance(),
+		"level_index": level_index, "art_trial": level_index == 0, "can_advance": _can_advance(),
 		"can_edit": can_edit(), "standing_only": standing_only,
 		"camera_busy": camera.busy or dragging, "mirror_busy": sheet.is_transitioning(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],

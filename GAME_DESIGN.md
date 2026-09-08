@@ -77,6 +77,12 @@ Later level:
 - Absolutes retain their material and stripe pattern with clear edges. During editing, reflected contact regions are highlighted and a brief dashed outline shows incoming reflected structures. Collision and overlap rules are unchanged.
 - Watercolour-like modular forms, soft piano, muffled percussion, and subtle boundary changes remain candidates. Validate readability before adding effects.
 
+### Visual trial 01
+
+- **Panel A, Stage-spanning sheet**, is the approved initial art direction. The saved reference is [docs/art/visual-trial-01.png](docs/art/visual-trial-01.png); the trial record is [docs/art/README.md](docs/art/README.md).
+- After the mechanics pass, Level 1 receives the first polished trial: procedural soft stone, restrained seams and wear, warm original and cool night surfaces, local haze, a thin sheet, and a simple dark character. The reference guides composition and materials; its added pillars and cubes do not change level geometry.
+- Keep other levels as simple fixtures until this trial is reviewed. Extend the art kit after that review. Story work remains open.
+
 ## Pending story directions
 
 All three directions remain open and may overlap:

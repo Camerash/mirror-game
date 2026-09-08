@@ -7,10 +7,12 @@ var clock := 0.0
 var haze_root := Node3D.new()
 var haze_materials: Array[ShaderMaterial] = []
 var bounds := AABB(Vector3(-3, -1, -3), Vector3(6, 3, 6))
+var art_trial := false
 
 func _ready() -> void:
 	material.shader = preload("res://world/atmosphere.gdshader")
 	material.render_priority = -128
+	material.set_shader_parameter("art_trial", art_trial)
 	backdrop.mesh = QuadMesh.new()
 	backdrop.material_override = material
 	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -18,6 +20,12 @@ func _ready() -> void:
 	add_child(backdrop)
 	add_child(haze_root)
 	set_bounds(bounds)
+
+func set_art_trial(enabled: bool) -> void:
+	art_trial = enabled
+	material.set_shader_parameter("art_trial", art_trial)
+	for haze: ShaderMaterial in haze_materials:
+		haze.set_shader_parameter("art_trial", art_trial)
 
 func update_view(camera: Camera3D, centre: Vector3) -> void:
 	var dimensions := camera.get_viewport().get_visible_rect().size
@@ -55,15 +63,17 @@ func set_bounds(next_bounds: AABB) -> void:
 	for index: int in 2:
 		var haze := MeshInstance3D.new()
 		var mesh := PlaneMesh.new()
-		mesh.size = Vector2(bounds.size.x * (0.82 - index * 0.16), bounds.size.z * (0.72 - index * 0.12))
+		var haze_depth := maxf(bounds.size.z, 4.0) if art_trial else bounds.size.z
+		mesh.size = Vector2(bounds.size.x * (0.82 - index * 0.16), haze_depth * (0.72 - index * 0.12))
 		haze.mesh = mesh
 		haze.position = Vector3(bounds.get_center().x, bounds.position.y - 0.25 - index * 0.35, bounds.get_center().z)
 		var haze_material := ShaderMaterial.new()
 		haze_material.shader = preload("res://world/atmosphere.gdshader")
 		haze_material.render_priority = -64
 		haze_material.set_shader_parameter("haze_mode", true)
+		haze_material.set_shader_parameter("art_trial", art_trial)
 		haze_material.set_shader_parameter("haze_centre", haze.position)
-		haze_material.set_shader_parameter("haze_extent", Vector3(bounds.size.x * 0.55, 1.0, maxf(bounds.size.z * 0.55, 1.0)))
+		haze_material.set_shader_parameter("haze_extent", Vector3(bounds.size.x * 0.55, 1.0, maxf(haze_depth * 0.55, 1.0)))
 		haze.material_override = haze_material
 		haze.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		haze_root.add_child(haze)

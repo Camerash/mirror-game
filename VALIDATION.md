@@ -1,5 +1,15 @@
 # Prototype validation
 
+## Visual trial 01 — 2026-09-08
+
+- The combined suite passed **498 checks with 0 failures**, including unchanged visible/collision bounds in every level, both puzzle routes, camera/sheet input, prediction, and responsive controls.
+- Native captures completed without shader errors or leaked-object warnings. Level 1 was inspected in all four camera views, during editing and play, and in phone/tablet layouts. Original stone stays warm and reflected stone stays cool as the camera turns; the material projection uses world normals.
+- The saved concept remains unchanged at `docs/art/visual-trial-01.png`. Panel A is the approved target. `docs/art/trial-01-in-game.png` records the first procedural result. The art trial is limited to Level 1; other levels retain their simple materials and cream interface.
+- Godot MCP Runtime replayed both routes after the art changes. Both goals completed; the runtime stopped without errors and removed its bridge. The final Mac export and 180-frame graphical startup passed.
+- Documentation images are excluded from Godot imports and export presets. No collision, goal, or reflection rules changed for the art trial.
+- Evidence: `.local/art-tests.log`, `.local/art-captures.log`, `.local/art-play.log`, `.local/art-export.log`, `.local/art-mac-startup.log`, and the `test-output/trial-*.png` captures.
+- This is a first material and lighting trial toward the reference, with simple box silhouettes. A finished modular stone kit and richer depth haze remain later art refinements. No Simulator or physical-device check was run.
+
 ## Camera and sheet interaction — 2026-09-08
 
 - The full mechanics suite passed **497 checks with 0 failures**. After the final camera-transition guard, a focused interaction run passed **132 checks with 0 failures**, including refitting during a camera turn.

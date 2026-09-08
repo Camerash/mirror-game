@@ -31,6 +31,10 @@ Level 1's intended route: enable the mirror at 2.5, walk to the striped platform
 
 Level 2’s intended route: enable the fixed mirror, walk to the end of the reflection at 5, then disable it. The original platform returns beneath the character and restores the approach to the goal at 8. Deactivating above the gap causes a fall; Undo lets you try again. The goal stays visible on its absolute platform. Its X offset stays fixed; the other orientations remain available for experiments.
 
+## First art trial
+
+Level 1 uses the first stone and atmosphere trial. Other puzzles and fixtures retain the simpler test materials. [Panel A of the saved reference](docs/art/visual-trial-01.png) is the visual target; [the trial record](docs/art/README.md) explains its limits. Documentation images are excluded from imports and game exports.
+
 ## Checks
 
 ```sh

@@ -10,6 +10,7 @@ var build_visuals := true
 var grounded := false
 var paused := false
 var route := PackedVector3Array()
+var face: Node3D
 
 func _ready() -> void:
 	var shape := CapsuleShape3D.new()
@@ -39,6 +40,29 @@ func _build_visual(centre: Vector3) -> void:
 	mesh.material_override = material
 	add_child(mesh)
 	set_meta("visual", mesh)
+	face = Node3D.new()
+	mesh.add_child(face)
+	for side: float in [-1.0, 1.0]:
+		var eye := MeshInstance3D.new()
+		var dot := SphereMesh.new()
+		dot.radius = 0.018
+		dot.height = 0.036
+		eye.mesh = dot
+		eye.position = Vector3(side * 0.055, 0.14, 0.164)
+		var eye_material := StandardMaterial3D.new()
+		eye_material.albedo_color = Color("fff3da")
+		eye.material_override = eye_material
+		face.add_child(eye)
+	face.visible = false
+
+func set_art_trial(enabled: bool) -> void:
+	if not has_meta("visual"):
+		return
+	var mesh := get_meta("visual") as MeshInstance3D
+	var material := mesh.material_override as StandardMaterial3D
+	material.albedo_color = Color("49394f") if enabled else Color("f8f1dd")
+	material.roughness = 0.66 if enabled else 0.9
+	face.visible = enabled
 
 func _physics_process(delta: float) -> void:
 	if paused:

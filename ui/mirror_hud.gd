@@ -14,8 +14,17 @@ const HEADER_HEIGHT := 72.0
 const FOOTER_HEIGHT := 60.0
 const GAP := 12.0
 const TOOLBAR_WIDTH := 288.0
+const TRIAL_PANEL := Color("202a43d9")
+const TRIAL_CONTROL := Color("2d3854e6")
+const TRIAL_CONTROL_HOVER := Color("3b4866f2")
+const TRIAL_CONTROL_PRESSED := Color("46536ff2")
+const TRIAL_BORDER := Color("c6d1ee99")
+const TRIAL_TEXT := Color("edf1fb")
+const TRIAL_MUTED := Color("b9c4db")
+const TRIAL_WARM := Color("f5ddb0")
 
 var _state: Dictionary = {}
+var _art_trial := false
 var _failure_marker: Label
 var _syncing := false
 var _last_play_rect := Rect2()
@@ -104,6 +113,10 @@ func display_state(state: Dictionary) -> void:
 	_state = state.duplicate(true)
 	if not is_instance_valid(_toolbar):
 		return
+	var art_trial := bool(_state.get("art_trial", false))
+	if art_trial != _art_trial:
+		_art_trial = art_trial
+		_apply_theme()
 	var editing := bool(_state.get("editing", false))
 	if editing and not editing_before:
 		_test_options_button.set_pressed_no_signal(false)
@@ -638,6 +651,47 @@ func _style_control(control: Control) -> void:
 	control.add_theme_stylebox_override("disabled", _control_style(Color("d9cbb9")))
 
 
+func _apply_theme() -> void:
+	var panel_style := _trial_panel_style() if _art_trial else _panel_style()
+	for panel: PanelContainer in [_header, _footer, _toolbar, _test_panel]:
+		panel.add_theme_stylebox_override("panel", panel_style)
+	_preview_border.add_theme_stylebox_override("panel", _trial_preview_border_style() if _art_trial else _preview_border_style())
+	for key: String in _touch_controls:
+		_apply_control_theme(_touch_controls[key] as Control)
+	_apply_control_theme(_apply_button, true)
+	_title_label.add_theme_color_override("font_color", TRIAL_TEXT if _art_trial else INK)
+	_objective_label.add_theme_color_override("font_color", TRIAL_TEXT if _art_trial else INK)
+	_phase_label.add_theme_color_override("font_color", TRIAL_TEXT if _art_trial else TERRACOTTA)
+	_status_label.add_theme_color_override("font_color", TRIAL_MUTED if _art_trial else MUTED)
+	_editing_label.add_theme_color_override("font_color", TRIAL_TEXT if _art_trial else TERRACOTTA)
+	_offset_label.add_theme_color_override("font_color", TRIAL_TEXT if _art_trial else INK)
+
+
+func _apply_control_theme(control: Control, confirm := false) -> void:
+	if not is_instance_valid(control):
+		return
+	if _art_trial:
+		var text_color := Color("2b3040") if confirm else TRIAL_TEXT
+		control.add_theme_color_override("font_color", text_color)
+		control.add_theme_color_override("font_hover_color", text_color)
+		control.add_theme_color_override("font_pressed_color", text_color)
+		control.add_theme_color_override("font_disabled_color", TRIAL_MUTED)
+		control.add_theme_stylebox_override("normal", _trial_control_style(TRIAL_WARM) if confirm else _trial_control_style(TRIAL_CONTROL))
+		control.add_theme_stylebox_override("hover", _trial_control_style(Color("ffe9c4")) if confirm else _trial_control_style(TRIAL_CONTROL_HOVER))
+		control.add_theme_stylebox_override("pressed", _trial_control_style(Color("e8ca98")) if confirm else _trial_control_style(TRIAL_CONTROL_PRESSED))
+		control.add_theme_stylebox_override("disabled", _trial_control_style(Color("202941cc")))
+		control.add_theme_stylebox_override("focus", _trial_focus_style())
+	else:
+		_style_control(control)
+		if confirm:
+			control.add_theme_stylebox_override("normal", _control_style(TERRACOTTA))
+			control.add_theme_stylebox_override("hover", _control_style(Color("c96e58")))
+	if control is OptionButton:
+		var popup := (control as OptionButton).get_popup()
+		popup.add_theme_color_override("font_color", TRIAL_TEXT if _art_trial else INK)
+		popup.add_theme_stylebox_override("panel", _trial_panel_style() if _art_trial else _panel_style())
+
+
 func _panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = IVORY
@@ -662,6 +716,19 @@ func _preview_border_style() -> StyleBoxFlat:
 	return style
 
 
+func _trial_panel_style() -> StyleBoxFlat:
+	var style := _panel_style()
+	style.bg_color = TRIAL_PANEL
+	style.border_color = TRIAL_BORDER
+	return style
+
+
+func _trial_preview_border_style() -> StyleBoxFlat:
+	var style := _preview_border_style()
+	style.border_color = Color("dbe4fa99")
+	return style
+
+
 func _control_style(color: Color, horizontal_padding: float = 12.0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
@@ -671,6 +738,13 @@ func _control_style(color: Color, horizontal_padding: float = 12.0) -> StyleBoxF
 	style.corner_radius_bottom_right = 7
 	style.content_margin_left = horizontal_padding
 	style.content_margin_right = horizontal_padding
+	return style
+
+
+func _trial_control_style(color: Color) -> StyleBoxFlat:
+	var style := _control_style(color)
+	style.border_color = TRIAL_BORDER
+	style.set_border_width_all(1)
 	return style
 
 
@@ -686,5 +760,12 @@ func set_failure_marker(point: Vector2, active: bool) -> void:
 func _focus_style(padding := 12.0) -> StyleBoxFlat:
 	var style := _control_style(Color(0, 0, 0, 0), padding)
 	style.border_color = TERRACOTTA
+	style.set_border_width_all(2)
+	return style
+
+
+func _trial_focus_style() -> StyleBoxFlat:
+	var style := _trial_control_style(Color(0, 0, 0, 0))
+	style.border_color = TRIAL_WARM
 	style.set_border_width_all(2)
 	return style

@@ -13,6 +13,7 @@ var trace_time := 0.0
 var materials: Dictionary = {}
 var drawn_solids: Array[Dictionary] = []
 var debug_collision := false
+var art_trial := false
 
 func _ready() -> void:
 	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, contact_root, trace_root]:
@@ -22,7 +23,15 @@ func _ready() -> void:
 		material.shader = Paint
 		material.set_shader_parameter("pigment", {"original": Color("c4b59b"), "reflected": Color("7099bd"), "absolute": Color("d7b579")}[kind])
 		material.set_shader_parameter("absolute_surface", kind == "absolute")
+		material.set_shader_parameter("stone_trial", false)
 		materials[kind] = material
+
+func set_art_trial(enabled: bool) -> void:
+	if art_trial == enabled:
+		return
+	art_trial = enabled
+	if not drawn_solids.is_empty():
+		draw_world(drawn_solids)
 
 func commit(solids: Array[Dictionary]) -> void:
 	_clear(collision_root)
@@ -48,9 +57,23 @@ func draw_world(solids: Array[Dictionary]) -> void:
 		mesh.size = bounds.size
 		instance.mesh = mesh
 		instance.position = bounds.get_center()
-		instance.material_override = materials[solid["kind"]]
+		instance.material_override = _solid_material(solid, bounds)
 		visual_root.add_child(instance)
 	update_debug()
+
+func _solid_material(solid: Dictionary, bounds: AABB) -> ShaderMaterial:
+	var material: ShaderMaterial = materials[solid["kind"]]
+	if not art_trial:
+		return material
+	var stone := material.duplicate() as ShaderMaterial
+	stone.set_shader_parameter("stone_trial", true)
+	stone.set_shader_parameter("box_centre", bounds.get_center())
+	stone.set_shader_parameter("box_size", bounds.size)
+	if solid["kind"] == "original":
+		stone.set_shader_parameter("pigment", Color("c89c69"))
+	elif solid["kind"] == "reflected":
+		stone.set_shader_parameter("pigment", Color("405877"))
+	return stone
 
 func update_debug() -> void:
 	_clear(overlay_root)
