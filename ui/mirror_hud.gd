@@ -35,7 +35,6 @@ var _hint: Label
 var _hold: Control
 var _edit_border: Control
 var _debug_controls := {}
-var _extent_picker: OptionButton
 var _panel_width: SpinBox
 var _panel_height: SpinBox
 var _debug_status: Label
@@ -131,7 +130,7 @@ func _build() -> void:
 	_failure.add_theme_constant_override("outline_size", 4)
 	_edit_border = Control.new(); _edit_border.mouse_filter = MOUSE_FILTER_IGNORE; _edit_border.set_anchors_and_offsets_preset(PRESET_FULL_RECT); _edit_border.draw.connect(func() -> void: _edit_border.draw_rect(_last_play_rect, Color(WARM, .45), false, 1.5)); _edit_border.visible = false; add_child(_edit_border)
 	_hold = Control.new(); _hold.size = Vector2(52, 52); _hold.mouse_filter = MOUSE_FILTER_IGNORE; _hold.visible = false; _hold.draw.connect(_draw_hold); add_child(_hold)
-	_hint = _label("", 14); _hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _hint.mouse_filter = MOUSE_FILTER_IGNORE; _hint.visible = false; _hint.add_theme_stylebox_override("normal", _box(Color(IVORY, .92))); add_child(_hint)
+	_hint = _label("", 14); _hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _hint.mouse_filter = MOUSE_FILTER_IGNORE; _hint.visible = false; _hint.add_theme_stylebox_override("normal", _box(Color(IVORY, .92))); add_child(_hint)
 	_gear = _button("⚙"); _style_icon(_gear); _gear.tooltip_text = "Debug controls"; _gear.pressed.connect(func() -> void: _debug = not _debug; _debug_panel.visible = _debug; _responsive_layout()); add_child(_gear); _register("debug", _gear)
 	_camera_left = _add_action("↶", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
 	_camera_right = _add_action("↷", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
@@ -152,13 +151,6 @@ func _build_debug() -> void:
 	_debug_panel = PanelContainer.new(); _debug_panel.visible = false; _debug_panel.mouse_filter = MOUSE_FILTER_STOP; _debug_panel.add_theme_stylebox_override("panel", _box()); add_child(_debug_panel)
 	var scroll := ScrollContainer.new(); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; _debug_panel.add_child(scroll)
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
-	_extent_picker = OptionButton.new()
-	_extent_picker.add_item("Full plane", 0)
-	_extent_picker.add_item("Bounded column", 1)
-	_style(_extent_picker)
-	_extent_picker.item_selected.connect(func(value: int) -> void: _emit("extent", "full" if value == 0 else "bounded"))
-	box.add_child(_label("Mirror extent (resets level)", 13))
-	box.add_child(_extent_picker)
 	_panel_width = _size_control(box, "Width", "width")
 	_panel_height = _size_control(box, "Height", "height")
 	_level_picker = OptionButton.new(); _style(_level_picker); _level_picker.item_selected.connect(func(value: int) -> void: _emit("select_level", value)); box.add_child(_level_picker); _register("level_picker", _level_picker)
@@ -172,9 +164,9 @@ func _build_debug() -> void:
 func _size_control(parent: VBoxContainer, label: String, key: String) -> SpinBox:
 	var control := SpinBox.new()
 	control.prefix = label
-	control.min_value = 0.5
+	control.min_value = 1.0
 	control.max_value = 6.0
-	control.step = 0.5
+	control.step = 1.0
 	control.value = 3.0
 	control.custom_minimum_size.y = TOUCH
 	control.value_changed.connect(func(value: float) -> void: _emit(key, value))
@@ -182,10 +174,9 @@ func _size_control(parent: VBoxContainer, label: String, key: String) -> SpinBox
 	return control
 
 func _update_debug(editing: bool, mirror_busy: bool) -> void:
-	_extent_picker.select(1 if _state.get("extent", "full") == "bounded" else 0)
 	for spec: Array in [[_panel_width, "width"], [_panel_height, "height"]]:
 		var control := spec[0] as SpinBox
-		control.visible = _state.get("extent", "full") == "bounded"
+		control.visible = true
 		control.editable = editing and not mirror_busy and bool(_state.get("enabled", false))
 		control.set_value_no_signal(float(_state.get(spec[1], 3.0)))
 	if _level_picker.item_count > 0: _level_picker.select(clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1))
@@ -264,3 +255,11 @@ func _register(key: String, control: Control) -> void: _touch_controls[key] = co
 func _emit(action: String, value: Variant = null) -> void:
 	if not _syncing: action_requested.emit(action, value)
 func _desktop() -> bool: return OS.get_name() not in ["iOS", "Android"]
+
+func get_blocking_rects() -> Array[Rect2]:
+	var result: Array[Rect2] = []
+	for bounds: Rect2 in get_touch_control_bounds().values():
+		result.append(bounds)
+	if _debug_panel.visible:
+		result.append(_debug_panel.get_global_rect())
+	return result

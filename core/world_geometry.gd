@@ -30,15 +30,11 @@ static func generate(level: Dictionary, mirror: Dictionary) -> Array[Dictionary]
 			_append_pieces(result, original, absolute_bounds, "original", item["id"], metadata)
 			continue
 		var clipped := selected_source(original, mirror)
-		if mirror.get("extent", "full") == "bounded":
-			var opposite := mirror.duplicate()
-			opposite["source"] = -int(mirror["source"])
-			var replaced := selected_source(original, opposite)
-			var retained := subtract(original, replaced)
-			for piece: AABB in retained:
-				_append_pieces(result, piece, absolute_bounds, "original", item["id"], metadata)
-		elif has_volume(clipped):
-			_append_pieces(result, clipped, absolute_bounds, "original", item["id"], metadata)
+		var opposite := mirror.duplicate()
+		opposite["source"] = -int(mirror["source"])
+		var replaced := selected_source(original, opposite)
+		for piece: AABB in subtract(original, replaced):
+			_append_pieces(result, piece, absolute_bounds, "original", item["id"], metadata)
 		if has_volume(clipped):
 			var reflected_metadata := metadata.duplicate()
 			reflected_metadata["material_to_world"] = reflection_transform(mirror) * metadata["material_to_world"]
@@ -58,8 +54,6 @@ static func reflection_transform(mirror: Dictionary) -> Transform3D:
 
 static func selected_source(bounds: AABB, mirror: Dictionary) -> AABB:
 	var clipped := source_part(bounds, mirror)
-	if mirror.get("extent", "full") != "bounded":
-		return clipped
 	var frame := MirrorRules.frame(mirror)
 	var pivot: Vector3 = mirror["pivot"]
 	var low := clipped.position

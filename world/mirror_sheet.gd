@@ -2,6 +2,7 @@ class_name MirrorSheet
 extends Node3D
 
 signal transition_finished
+signal pose_changed
 
 const Rules := preload("res://core/mirror_state.gd")
 const SheetShader := preload("res://world/mirror_sheet.gdshader")
@@ -9,8 +10,6 @@ const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
 
 var guides := MeshInstance3D.new()
 var guide_material := StandardMaterial3D.new()
-var full_size := 60.0
-var full_fade_bounds := AABB()
 var panel_size := Vector2(3, 3)
 var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
@@ -55,20 +54,10 @@ func _ready() -> void:
 	add_child(edges)
 	add_child(ribbons)
 
-func configure_level(envelope: AABB, pivots: AABB) -> void:
-	var radius := 3.0
-	for first: int in 8:
-		for second: int in 8:
-			radius = maxf(radius, pivots.get_endpoint(first).distance_to(envelope.get_endpoint(second)))
-	full_size = radius * 2.0 + 2.0
-	full_fade_bounds = envelope.grow(1.0)
-	state = {}
-
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if next_state == state and bounds == drawn_bounds and editing == is_editing:
 		return
-	var full_plane: bool = next_state.get("extent", "full") == "full"
-	var dimensions := Vector2.ONE * full_size if full_plane else Vector2(float(next_state.get("width", 3.0)), float(next_state.get("height", 3.0)))
+	var dimensions := Vector2(clampf(float(next_state.get("width", 3.0)), 1.0, 6.0), clampf(float(next_state.get("height", 3.0)), 1.0, 6.0))
 	var rebuild := editing != is_editing or not has_geometry or dimensions != panel_size
 	panel_size = dimensions
 	state = next_state.duplicate(true)
@@ -88,25 +77,22 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		_draw_edges(panel_size.x, panel_size.y)
 		_draw_ribbons(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
-	sheet.visible = enabled or (editing and full_plane)
-	ribbons.visible = enabled and not full_plane
-	edges.visible = not full_plane and (enabled or editing)
-	guides.visible = editing and enabled and not full_plane
+	sheet.visible = enabled
+	ribbons.visible = enabled
+	edges.visible = enabled or editing
+	guides.visible = editing and enabled
 	if guides.visible:
 		_update_guides(bounds)
-	sheet_material.set_shader_parameter("full_plane", full_plane)
+	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
-	sheet_material.set_shader_parameter("fade_low", full_fade_bounds.position)
-	sheet_material.set_shader_parameter("fade_high", full_fade_bounds.end)
 	settle_time = 0.18 if not editing else 0.0
 
 func contains_visible_point(point: Vector3, selected: Dictionary) -> bool:
 	var pivot: Vector3 = selected["pivot"]
 	var local := Rules.frame(selected).inverse() * (point - pivot)
-	if selected.get("extent", "full") == "bounded":
-		return absf(local.x) <= float(selected.get("width", 3.0)) * 0.5 and absf(local.y) <= float(selected.get("height", 3.0)) * 0.5
-	var outside := (full_fade_bounds.position - point).max(point - full_fade_bounds.end).max(Vector3.ZERO)
-	return absf(local.x) <= full_size * 0.5 and absf(local.y) <= full_size * 0.5 and outside.length() < 2.5
+	var width := clampf(float(selected.get("width", 3.0)), 1.0, 6.0)
+	var height := clampf(float(selected.get("height", 3.0)), 1.0, 6.0)
+	return absf(local.x) <= width * 0.5 and absf(local.y) <= height * 0.5
 
 func animate_to(next_state: Dictionary, bounds: AABB) -> void:
 	var previous := global_basis
@@ -116,7 +102,8 @@ func animate_to(next_state: Dictionary, bounds: AABB) -> void:
 	transitioning = true
 	rotation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	rotation_motion.tween_method(func(weight: float) -> void:
-		global_basis = previous.slerp(target, weight), 0.0, 1.0, 0.22)
+		global_basis = previous.slerp(target, weight)
+		pose_changed.emit(), 0.0, 1.0, 0.22)
 	rotation_motion.tween_callback(func() -> void:
 		global_basis = target
 		transitioning = false
@@ -175,7 +162,7 @@ func _draw_edges(width: float, height: float) -> void:
 	edges.mesh = mesh
 
 func _draw_ribbons(width: float, height: float) -> void:
-	var extent := clampf(maxf(width, height) * 0.16, 0.42, 1.0)
+	const RIBBON_LENGTH := 0.45
 	var corners_2d := [Vector2(-width, -height), Vector2(width, -height), Vector2(width, height), Vector2(-width, height)]
 	var mesh := ImmediateMesh.new()
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -184,8 +171,8 @@ func _draw_ribbons(width: float, height: float) -> void:
 		var finish: Vector2 = corners_2d[(side + 1) % 4] * 0.5
 		var plane_start := Vector3(start.x, start.y, 0.0)
 		var plane_finish := Vector3(finish.x, finish.y, 0.0)
-		var far_start := plane_start + Vector3.BACK * extent
-		var far_finish := plane_finish + Vector3.BACK * extent
+		var far_start := plane_start + Vector3.BACK * RIBBON_LENGTH
+		var far_finish := plane_finish + Vector3.BACK * RIBBON_LENGTH
 		mesh.surface_set_uv(Vector2(0.0, 0.0))
 		mesh.surface_add_vertex(plane_start)
 		mesh.surface_set_uv(Vector2(0.0, 1.0))

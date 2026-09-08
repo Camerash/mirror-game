@@ -1,5 +1,5 @@
 extends SceneTree
-## One Mac review of the two candidate mirror extents and world-space rings.
+## One Mac review of bounded resizing, edge-attached orbs and edge-light material.
 const Game := preload("res://game.gd")
 var game: Node3D
 
@@ -14,18 +14,14 @@ func _run() -> void:
 	await _settle()
 	game.edit_mirror()
 	await _settle()
-	await _capture("extent-full")
-	game._action("extent", "bounded")
-	await _settle()
-	game.edit_mirror()
-	await _settle()
 	for view: int in 4:
-		await _capture("extent-bounded-%d" % view)
+		await _capture("bounded-view-%d" % view)
 		game.turn_camera(1)
 		await _settle()
 	# Exercise the real ring/controller contract with one held revolution.
 	var ring: Dictionary = game.rings._yaw.duplicate(true)
-	var start: float = ring["orb_angle"]
+	var edge: Vector3 = ring["edge"] * ring["edge_sign"]
+	var start := atan2(edge.dot(ring["v"]), edge.dot(ring["u"]))
 	var original: Dictionary = game.preview.duplicate(true)
 	var first: Vector2 = game.camera.unproject_position(game.rings._ring_point(ring, start))
 	assert(game.rings.pointer(first, true, 0), "Visible yaw orb accepts input")
@@ -35,6 +31,12 @@ func _run() -> void:
 	game.rings.pointer(Vector2(-50, -50), false, 0)
 	await _settle()
 	assert(game.preview["axis"] == original["axis"] and game.preview["source"] == original["source"], "Held revolution completes four turns")
+	var tab: Rect2 = game.resize_controls.get_control_rects()["height"]
+	game._pointer(tab.get_center(), true, 0)
+	game.resize_controls.motion(tab.get_center() + game.resize_screen_axis * 1.2, 0)
+	game._pointer(Vector2(-50,-50), false, 0)
+	await _settle()
+	await _capture("bounded-resized")
 	game.change_preview("offset", 1.5)
 	await _settle()
 	await _capture("extent-cut")
@@ -50,12 +52,26 @@ func _run() -> void:
 	await _settle()
 	await _capture("extent-level1-portrait")
 	root.size = Vector2i(1152, 800)
-	game._action("extent", "full")
 	await _settle()
+	game.change_preview("width", 1)
+	await _settle()
+	game.change_preview("height", 1)
+	await _settle()
+	await _capture("bounded-small")
+	game.change_preview("width", 6)
+	await _settle()
+	game.change_preview("height", 6)
+	await _settle()
+	await _capture("bounded-large")
+	game.cancel_preview()
+	await _settle()
+	game.walker.restore(Vector3(3.5,0,0),Vector3.ZERO)
 	game.begin_preview()
 	await _settle()
-	await _capture("extent-level1-full")
-	print("Extent native review: both modes, four views, held ring cycle, cut, horizontal and portrait complete.")
+	game.remove_mirror()
+	await _settle()
+	await _capture("bounded-fall")
+	print("Bounded native review: four views, held ring cycle, resize, small/large, horizontal, fall and portrait complete.")
 	game.queue_free()
 	await process_frame
 	quit()

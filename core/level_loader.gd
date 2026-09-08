@@ -16,6 +16,8 @@ static func load_level(path: String) -> Dictionary:
 		push_error(path + ": " + error)
 		return {}
 	# JSON numbers are floats. Normalize discrete fields once at the boundary.
+	for dimension: String in ["width", "height"]:
+		data["mirror"][dimension] = int(data["mirror"].get(dimension, 3))
 	data["mirror"]["axis"] = int(data["mirror"]["axis"])
 	data["mirror"]["source"] = int(data["mirror"]["source"])
 	data["mirror"]["pivot"] = Vector3(data["mirror"]["pivot"][0], data["mirror"]["pivot"][1], data["mirror"]["pivot"][2])
@@ -53,6 +55,12 @@ static func validate(data: Dictionary) -> String:
 		return "Invalid mirror state."
 	if not _vector_valid(mirror.get("pivot")) or not is_equal_approx(float(mirror["pivot"][int(mirror["axis"])]), float(mirror["offset"])):
 		return "Mirror pivot must lie on the initial plane."
+	for dimension: String in ["width", "height"]:
+		if not _integer_in(mirror.get(dimension, 3), [1, 2, 3, 4, 5, 6]):
+			return "Mirror dimensions must be whole units from 1 to 6."
+	for coordinate: float in mirror["pivot"]:
+		if not is_equal_approx(coordinate, snappedf(coordinate, 0.5)):
+			return "Mirror pivot must use the half-unit grid."
 	var limits: Dictionary = data["limits"]
 	if not limits.get("axes") is Array or limits["axes"].is_empty() \
 			or not _vector_valid(limits.get("min")) or not _vector_valid(limits.get("max")):

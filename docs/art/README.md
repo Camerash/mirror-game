@@ -1,6 +1,6 @@
-# Visual trial 01 — A stage-spanning sheet
+# Visual trial 01 — Earlier stage-spanning sheet
 
-Approved reference: **panel A** of [visual-trial-01.png](visual-trial-01.png), generated during the design discussion on 2026-09-08. Panel B is a comparison only.
+This is an earlier composition reference: **panel A** of [visual-trial-01.png](visual-trial-01.png), generated during the design discussion on 2026-09-08. Panel B is a comparison only.
 
 ![Approved art reference, panel A on the left](visual-trial-01.png)
 
@@ -16,9 +16,9 @@ Review the running level before extending the full treatment to the other puzzle
 
 This is the first procedural material trial, not the final Blender art kit. The reference remains the target for later refinement of stone shapes and depth haze.
 
-## Visual trial 02 — Reflection and edge-light concepts
+## Visual trial 02 — Earlier reflection concepts
 
-[Comparison image](visual-trial-02.png), generated on 2026-09-08. Panel D is approved, with a correction: emit light evenly along all four perimeter edges toward reflected space. Do not copy the image’s concentrated spikes. This remains an approximate reference, not an in-game capture.
+[Comparison image](visual-trial-02.png), generated on 2026-09-08. Its Panel D remains an earlier approximate material reference. Its light-direction cue is not the current shader decision.
 
 | Panel | Reflected material | Edge light points toward |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ This is the first procedural material trial, not the final Blender art kit. The 
 | C | Holographic stone | Original space |
 | D | Holographic stone | Reflected space |
 
-The target is an immersive world with depth fog, detailed stone, a flowing translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Directional light is an art cue, not a change to reflection rules. Both Full plane and Bounded column extent modes remain experimental; defer new art-direction mockups until the mechanics review. Existing mockups are approximate references.
+The target is an immersive world with depth fog, detailed stone, a bounded translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Existing mockups are approximate references.
 
 ## Second in-game result
 
@@ -39,15 +39,25 @@ Native Mac capture of the earlier procedural trial. The mirror emits a continuou
 
 ![Level 1 with the compact mirror frame](smooth-controls-in-game.png)
 
-Native Mac capture on 2026-09-08. This is an earlier approximate trial. The fixed three-unit square frame and faint extension do not define the current extent selector. Current mechanics use Full plane or Bounded column, world-space yaw and pitch rings, smooth translation with release snapping, and a translucent fog ghost with two fading afterimages. The D material and uniform reflected-side edge-light direction remain approximate art references.
+Native Mac capture on 2026-09-08. This is an earlier approximate trial. Its fixed three-unit square frame and faint extension do not define the current bounded panel. Current mechanics use local edge resizing, world-space yaw and pitch orbs, smooth translation with release snapping, and a translucent fog ghost with two fading afterimages.
 
 
-## Mirror extent comparison
+## Bounded mirror workshop
 
-These native Mac captures show the same fixture and camera view. They are mechanics references, not a new art target.
-
-![Full plane comparison](extent-full-in-game.png)
+These native Mac captures are older mechanics references for the bounded workshop, not new art targets.
 
 ![Bounded column comparison](extent-bounded-in-game.png)
 
-Full plane affects the entire far side. Bounded column keeps the side obstacles and reflects only the selected aperture. The world-space rings have fixed radius; the panel dimensions are separate controls. Stone detail keeps its source coordinates through cuts. New art-style mockups follow the mechanics review.
+The bounded panel keeps side obstacles and reflects only its selected aperture. The world-space orbs follow its animated edge. Stone detail keeps its source coordinates through cuts.
+
+## Mirror shader board 03 — Current edge light
+
+[Panel D](mirror-shader-03.png) is the current shader target. It replaces the earlier flowing-wave treatment and is a visual reference only, not an in-game capture.
+
+Use an almost-clear panel centre with a fixed world-unit soft perimeter. Keep rare slow particles at the edge only. Short ribbons point uniformly into reflected space. Measure perimeter light with an edge-distance field so corners do not brighten through additive overlap. Do not add bloom, volumetrics, scene distortion, or contour bands.
+
+## Current bounded controls in game
+
+![Bounded panel with resize tabs](bounded-controls-in-game.png)
+
+Native Mac portrait capture on 2026-09-09. The tabs resize from fixed opposite edges; the round rotation orbs stay on the panel. This records the procedural edge-light implementation, not the generated target.

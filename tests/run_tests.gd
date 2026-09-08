@@ -396,7 +396,7 @@ func _sheet_point() -> Vector2:
 	for y: int in range(int(rect.position.y + 10), int(rect.end.y - 10), 10):
 		for x: int in range(int(rect.position.x + 10), int(rect.end.x - 10), 10):
 			var point := Vector2(x, y)
-			if game.sheet_hit(point):
+			if game.sheet_hit(point) and not Array(game.rings.get_orb_points()).any(func(orb: Vector2) -> bool: return orb.distance_to(point) <= 24):
 				return point
 	_check(false, "Visible sheet has a touchable point")
 	return Vector2.ZERO

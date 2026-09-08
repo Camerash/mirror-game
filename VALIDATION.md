@@ -1,4 +1,17 @@
-# Latest check: mirror extent and world-space rings — 2026-09-08
+# Latest check: bounded mirrors and edge light — 2026-09-09
+
+- Godot 4.7.2, Compatibility renderer, on this Apple M2 Pro Mac. Final headless editor import/parse passed; `.local/bounded-parse.log` has no errors. The temporary MCP bridge and autoload are absent.
+- Focused `tests/extent_tests.gd`: **67 checks, 0 failures**. Covers bounded clipping, source material coordinates, fixed opposite edges, whole-unit sizes, half-unit centres, repeated grow/shrink cycles, placement limits, rotation after resizing, collision and camera stability, pointer capture, settling, Cancel, Undo, and fresh creation after removal.
+- Focused `tests/ring_tests.gd` passed. Covers attached orbs during animated poses after resizing, captured gesture axes, repeated signed turns, outside release, resize target separation, and stable orb selection when both intersections are blocked.
+- One integrated `tests/run_tests.gd` pass: **503 checks, 0 failures**, with no script errors. Both puzzle solutions, bounded collision, support restoration, wall rejection, removal, Cancel, Undo, Reset, failure recovery, movement, prediction, and responsive layouts passed. The sheet-input tests now avoid rotation-orb touch regions when selecting a translation point.
+- One native Mac review used 1152×800 and 390×844 windows. Inspected all four views, a held four-turn yaw gesture, direct resizing, horizontal placement, partial cuts, 1×1 and 6×6 panels, and the holographic fall preview. No script or shader errors were logged. A focused portrait follow-up checked the corrected guidance wrapping and resize-arrow symbols; it passed.
+- Visual result: clear panel centre, fixed-width soft edge light, short reflected-side ribbons, and sparse edge particles. Rotation orbs follow the panel edges. Resize tabs are distinct square controls with drag-direction arrows and separate 48-unit touch regions. The shader board is an approximate reference; this is a procedural prototype, not final art.
+- Logs: `.local/bounded-focused.log`, `.local/bounded-rings.log`, `.local/bounded-regression.log`, `.local/bounded-native.log`, and `.local/bounded-ui-review.log`. Captures remain in ignored `test-output/`; `docs/art/bounded-controls-in-game.png` retains the final portrait example. Documentation images remain excluded from game exports.
+- No exports, Simulator checks, or physical-device checks were run. Physical touch feel and mobile GPU performance remain unverified. The native review closed the game after capture.
+
+---
+
+# Earlier check: mirror extent and world-space rings — 2026-09-08
 
 - Godot 4.7.2 on this Mac with Compatibility rendering. The final headless editor import/parse passed.
 - `tests/extent_tests.gd`: **50 checks, 0 failures**. Covers full/column replacement, aperture cuts, side entry, absolute priority, source material mapping, mode reset, dimensions, removal/fresh creation, horizontal placement, source reversal, Cancel, and Undo.
@@ -115,5 +128,5 @@ After the rapid-prototype policy change, Godot MCP Runtime 3.3.0 passed a Mac co
 - Routine Simulator checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; state the concrete risk first. The unresolved blank-background restart remains deferred under this policy.
 - This is an agent-operated technical check. No user playtest observations have been collected.
 - Test whether a new player sees the goal, predicts a useful mirror position, recognises the striped resting platform, and uses Undo after an experiment. In Level 2, check whether the player remembers the hidden original approach and understands that it can replace reflected support. Record confusion and safe alternative solutions. Do not add a score or time limit.
-- Compare split atmosphere with Boundary only on a physical phone. Check whether players find the scrolling edit options, understand the fall ghost and absolute contact highlights, and prefer moving edits or Standing still only.
+- On a physical phone, check direct resize and rotation input, edge-light direction, the fall ghost, and absolute contact highlights. Record whether players understand the bounded column and fixed opposite edge without opening debug controls.
 - Navigation currently covers clear, connected flat surfaces. Ladders, keys, stepped routes, multiple mirrors, generation, sound, and final art are later milestones.

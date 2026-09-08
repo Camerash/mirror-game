@@ -5,7 +5,6 @@ extends Node3D
 signal action_requested(action: String, value: Variant)
 
 const Rules := preload("res://core/mirror_state.gd")
-const RADIUS := 1.8
 const SAMPLES := 96
 const PICK_RADIUS := 24.0
 const QUARTER_TURN := PI * 0.5
@@ -19,6 +18,7 @@ var _busy := false
 var _camera: Camera3D
 var _camera_transform := Transform3D.IDENTITY
 var _camera_size := 0.0
+var _pose := Transform3D.IDENTITY
 var _yaw := {}
 var _pitch := {}
 var _active := false
@@ -40,6 +40,8 @@ func _ready() -> void:
 	_refresh()
 
 func set_state(state: Dictionary, editing: bool, busy: bool) -> void:
+	var previous_yaw_sign := int(_yaw.get("edge_sign", 0))
+	var previous_pitch_sign := int(_pitch.get("edge_sign", 0))
 	_state = state.duplicate(true)
 	_editing = editing
 	_busy = busy
@@ -49,9 +51,20 @@ func set_state(state: Dictionary, editing: bool, busy: bool) -> void:
 		return
 	visible = true
 	if not _active:
-		_build_rings()
-		_choose_orbs()
-	_refresh()
+		_build_rings(previous_yaw_sign, previous_pitch_sign)
+		if not _busy:
+			_choose_inaccessible_edges()
+		_refresh()
+
+func set_pose(pose: Transform3D) -> void:
+	if _pose.is_equal_approx(pose):
+		return
+	_pose = pose
+	if _available():
+		var yaw_sign := int(_yaw.get("edge_sign", 0))
+		var pitch_sign := int(_pitch.get("edge_sign", 0))
+		_build_rings(yaw_sign, pitch_sign)
+		_refresh()
 
 func update_view(camera: Camera3D) -> void:
 	var changed := _camera != camera or not _camera_transform.is_equal_approx(camera.global_transform) or not is_equal_approx(_camera_size, camera.size)
@@ -60,8 +73,15 @@ func update_view(camera: Camera3D) -> void:
 	_camera_size = camera.size
 	if _available() and not _active:
 		if changed:
-			_build_rings()
-			_choose_orbs()
+			_build_rings(int(_yaw.get("edge_sign", 0)), int(_pitch.get("edge_sign", 0)))
+	_refresh()
+
+func choose_edge_ends() -> void:
+	if _active or not _available():
+		return
+	for ring: Dictionary in [_yaw, _pitch]:
+		if bool(ring.get("visible", false)):
+			ring["edge_sign"] = _choose_edge_sign(ring)
 	_refresh()
 
 func pointer(point: Vector2, pressed: bool, index: int) -> bool:
@@ -77,7 +97,7 @@ func pointer(point: Vector2, pressed: bool, index: int) -> bool:
 	for ring: Dictionary in [_yaw, _pitch]:
 		if not bool(ring.get("visible", false)):
 			continue
-		var location: Vector3 = _ring_point(ring, float(ring["orb_angle"]))
+		var location := _orb_point(ring)
 		var distance := _camera.unproject_position(location).distance_to(point)
 		if distance <= PICK_RADIUS and distance < selected_distance and not _blocked(point, location):
 			selected = ring
@@ -100,11 +120,6 @@ func motion(point: Vector2, index: int) -> bool:
 		var delta := wrapf(_last_angle - _drag_ring["previous_angle"], -PI, PI)
 		_travel += delta
 		_drag_ring["previous_angle"] = _last_angle
-		_drag_ring["orb_angle"] = _last_angle
-		if _drag_ring["action"] == "turn":
-			_yaw["orb_angle"] = _last_angle
-		else:
-			_pitch["orb_angle"] = _last_angle
 		while absf(_travel) >= QUARTER_TURN - EPSILON:
 			var direction := 1 if _travel > 0.0 else -1
 			action_requested.emit(str(_drag_ring["action"]), direction)
@@ -131,6 +146,15 @@ func get_fit_points() -> PackedVector3Array:
 			continue
 		for step: int in 8:
 			points.append(_ring_point(ring, TAU * float(step) / 8.0))
+	return points
+
+func get_orb_points() -> PackedVector2Array:
+	var points := PackedVector2Array()
+	if _camera == null or not _available():
+		return points
+	for ring: Dictionary in [_yaw, _pitch]:
+		if bool(ring.get("visible", false)):
+			points.append(_camera.unproject_position(_orb_point(ring)))
 	return points
 
 static func angular_delta(from: float, to: float) -> float:
@@ -185,48 +209,40 @@ func _setup_orb(instance: MeshInstance3D, color: Color) -> void:
 func _available() -> bool:
 	return _editing and bool(_state.get("enabled", false)) and _state.has("pivot") and _state.has("axis")
 
-func _build_rings() -> void:
+func _build_rings(yaw_sign := 0, pitch_sign := 0) -> void:
 	if not _available():
 		return
-	var frame := Rules.frame(_state)
-	_yaw = _make_ring("turn", Vector3.UP, Vector3.RIGHT, Vector3.FORWARD, int(_state["axis"]) != 1)
-	_pitch = _make_ring("tilt", frame.x, frame.y, frame.z, true)
+	var pose := _resolved_pose()
+	var width := float(_state.get("width", 3.0))
+	var height := float(_state.get("height", 3.0))
+	_yaw = _make_ring("turn", Vector3.UP, Vector3.RIGHT, Vector3.FORWARD, width * 0.5, pose.basis.x, yaw_sign, int(_state["axis"]) != 1)
+	_pitch = _make_ring("tilt", pose.basis.x, pose.basis.y, pose.basis.z, height * 0.5, pose.basis.y, pitch_sign, true)
 
-func _make_ring(action: String, axis: Vector3, vector_u: Vector3, vector_v: Vector3, shown: bool) -> Dictionary:
-	return {"action": action, "center": _state["pivot"], "axis": axis.normalized(), "u": vector_u.normalized(), "v": vector_v.normalized(), "radius": RADIUS, "orb_angle": 0.0, "visible": shown}
+func _make_ring(action: String, axis: Vector3, vector_u: Vector3, vector_v: Vector3, radius: float, edge: Vector3, edge_sign: int, shown: bool) -> Dictionary:
+	return {"action": action, "center": _resolved_pose().origin, "axis": axis.normalized(), "u": vector_u.normalized(), "v": vector_v.normalized(), "radius": radius, "edge": edge.normalized(), "edge_sign": edge_sign if edge_sign != 0 else 1, "visible": shown}
 
-func _choose_orbs() -> void:
-	if bool(_yaw.get("visible", false)):
-		_yaw["orb_angle"] = _best_orb_angle(_yaw)
-	if bool(_pitch.get("visible", false)):
-		var yaw_point := _camera.unproject_position(_ring_point(_yaw, float(_yaw["orb_angle"]))) if _camera and bool(_yaw.get("visible", false)) else Vector2.INF
-		_pitch["orb_angle"] = _best_orb_angle(_pitch, yaw_point)
+func _choose_inaccessible_edges() -> void:
+	for ring: Dictionary in [_yaw, _pitch]:
+		if bool(ring.get("visible", false)) and not _edge_accessible(ring, int(ring["edge_sign"])):
+			ring["edge_sign"] = _choose_edge_sign(ring)
 
-func _best_orb_angle(ring: Dictionary, avoid := Vector2.INF) -> float:
+func _choose_edge_sign(ring: Dictionary) -> int:
+	if _edge_accessible(ring, int(ring["edge_sign"])):
+		return int(ring["edge_sign"])
+	var opposite := -int(ring["edge_sign"])
+	return opposite if _edge_accessible(ring, opposite) else int(ring["edge_sign"])
+
+func _edge_accessible(ring: Dictionary, edge_sign: int) -> bool:
 	if _camera == null:
-		return 0.0
-	var best := 0.0
-	var score := -INF
-	var fallback := 0.0
-	var fallback_score := -INF
-	for sample: int in 24:
-		var angle := TAU * float(sample) / 24.0
-		var location := _ring_point(ring, angle)
-		if _camera.is_position_behind(location):
-			continue
-		var point := _camera.unproject_position(location)
-		if not _camera.get_viewport().get_visible_rect().has_point(point) or _blocked(point, location):
-			continue
-		var facing: float = (location - ring["center"]).normalized().dot((_camera.global_position - ring["center"]).normalized())
-		if facing > fallback_score:
-			fallback_score = facing
-			fallback = angle
-		if avoid != Vector2.INF and point.distance_to(avoid) < PICK_RADIUS * 2.0:
-			continue
-		if facing > score:
-			score = facing
-			best = angle
-	return best if score > -INF else fallback
+		return true
+	var location: Vector3 = ring["center"] + ring["edge"] * float(ring["radius"]) * edge_sign
+	var point := _camera.unproject_position(location)
+	return not _camera.is_position_behind(location) and _camera.get_viewport().get_visible_rect().has_point(point) and not _blocked(point, location)
+
+func _resolved_pose() -> Transform3D:
+	if _pose != Transform3D.IDENTITY or not _state.has("pivot"):
+		return _pose
+	return Transform3D(Rules.frame(_state), _state["pivot"])
 
 func _refresh() -> void:
 	if not _yaw_near.get_parent():
@@ -272,7 +288,7 @@ func _update_orb(ring: Dictionary, orb: MeshInstance3D) -> void:
 	orb.visible = visible and bool(ring.get("visible", false))
 	if not orb.visible:
 		return
-	orb.global_position = _ring_point(ring, float(ring["orb_angle"]))
+	orb.global_position = _orb_point(ring)
 	var radius := 0.06
 	if _camera:
 		var viewport_height := maxf(1.0, _camera.get_viewport().get_visible_rect().size.y)
@@ -284,6 +300,9 @@ func _is_near(ring: Dictionary, location: Vector3) -> bool:
 
 func _ring_point(ring: Dictionary, angle: float) -> Vector3:
 	return ring["center"] + (ring["u"] * cos(angle) + ring["v"] * sin(angle)) * float(ring["radius"])
+
+func _orb_point(ring: Dictionary) -> Vector3:
+	return ring["center"] + ring["edge"] * float(ring["radius"]) * int(ring["edge_sign"])
 
 func _read_angle(point: Vector2, ring: Dictionary) -> bool:
 	var ray := _camera.project_ray_normal(point)
@@ -331,6 +350,5 @@ func _finish() -> void:
 	_has_angle = false
 	action_requested.emit("rotation_end", null)
 	if _available():
-		_build_rings()
-		_choose_orbs()
+		_build_rings(int(_yaw.get("edge_sign", 0)), int(_pitch.get("edge_sign", 0)))
 	_refresh()

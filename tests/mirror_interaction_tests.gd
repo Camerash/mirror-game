@@ -83,6 +83,6 @@ static func _sheet_points(game: Node3D) -> PackedVector2Array:
 	var rect: Rect2 = game.hud.get_play_rect()
 	for y: int in range(int(rect.position.y + 8), int(rect.end.y - 8), 18):
 		for x: int in range(int(rect.position.x + 8), int(rect.end.x - 8), 18):
-			if game.sheet_hit(Vector2(x, y)):
+			if game.sheet_hit(Vector2(x, y)) and not Array(game.rings.get_orb_points()).any(func(orb: Vector2) -> bool: return orb.distance_to(Vector2(x,y)) <= 24):
 				points.append(Vector2(x, y))
 	return points

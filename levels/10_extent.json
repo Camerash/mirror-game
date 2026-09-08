@@ -1,6 +1,6 @@
 {
-  "title": "Mirror extent comparison",
-  "objective": "Compare the side ledges and obstacles. Try width and height in the gear panel.",
+  "title": "Bounded mirror workshop",
+  "objective": "Resize the mirror to select ledges. Keep the side obstacles in view.",
   "is_test": true,
   "originals": [
     {

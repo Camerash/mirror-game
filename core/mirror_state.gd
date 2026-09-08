@@ -32,3 +32,25 @@ static func turn(state: Dictionary, direction: int) -> Dictionary:
 
 static func tilt(state: Dictionary, direction := 1) -> Dictionary:
 	return _rotate(state, frame(state).x, direction)
+
+static func resized(state: Dictionary, dimension: String, length: float) -> Dictionary:
+	# Derive from the gesture's initial state: the negative edge stays fixed.
+	var result := state.duplicate(true)
+	var direction := frame(state).x if dimension == "width" else frame(state).y
+	result["pivot"] = state["pivot"] + direction * (length - float(state.get(dimension, 3))) * 0.5
+	result[dimension] = length
+	result["offset"] = result["pivot"][int(result["axis"])]
+	return result
+
+static func resize_range(state: Dictionary, dimension: String, limits: Dictionary) -> Vector2:
+	var low := INF
+	var high := -INF
+	for length: int in range(1, 7):
+		var pivot: Vector3 = resized(state, dimension, length)["pivot"]
+		var valid := true
+		for axis: int in 3:
+			valid = valid and pivot[axis] >= float(limits["min"][axis]) - 0.0001 and pivot[axis] <= float(limits["max"][axis]) + 0.0001
+		if valid:
+			low = minf(low, length)
+			high = maxf(high, length)
+	return Vector2(low, high)

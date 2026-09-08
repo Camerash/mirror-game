@@ -10,6 +10,7 @@ const HUD := preload("res://ui/mirror_hud.gd")
 const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
 const Atmosphere := preload("res://world/atmosphere.gd")
+const Resize := preload("res://ui/mirror_resize.gd")
 const Rings := preload("res://world/mirror_rings.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
@@ -27,7 +28,13 @@ var preview: Dictionary = {}
 var preview_origin: Dictionary = {}
 var sheet := Sheet.new()
 var rings := Rings.new()
-var extent_mode := "full"
+var resize_controls := Resize.new()
+var resizing := false
+var resize_origin: Dictionary = {}
+var resize_key := ""
+var resize_pointer_origin := Vector2.ZERO
+var resize_screen_axis := Vector2.ZERO
+var resize_limits := Vector2(1, 6)
 var prediction: Dictionary = {"status": "idle"}
 var prediction_revision := 0
 var standing_only := false
@@ -99,8 +106,9 @@ func _setup_scene() -> void:
 	rings.action_requested.connect(_action)
 	rings.is_obstructed = _ring_obstructed
 	sheet.transition_finished.connect(_rotation_finished)
+	sheet.pose_changed.connect(func() -> void: rings.set_pose(sheet.global_transform))
 	camera.view_changed.connect(_camera_changed)
-	camera.motion_finished.connect(_refresh)
+	camera.motion_finished.connect(_camera_motion_finished)
 	predictor.ready_result.connect(_prediction_ready)
 	walker.route_finished.connect(_route_finished)
 	add_child(goal_root)
@@ -127,6 +135,9 @@ func _setup_scene() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 	canvas.add_child(hud)
+	canvas.add_child(resize_controls)
+	resize_controls.action_requested.connect(_action)
+	resize_controls.is_obstructed = _resize_obstructed
 	canvas.add_child(failure_veil)
 	failure_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	failure_veil.color = Color(0.8, 0.67, 0.57, 0)
@@ -140,9 +151,6 @@ func load_level(index: int) -> bool:
 		return false
 	_cancel_manipulation()
 	level = loaded
-	level["mirror"]["extent"] = extent_mode
-	level["mirror"]["width"] = 3.0
-	level["mirror"]["height"] = 3.0
 	level_index = index
 	world.set_art_trial(index == 0 or index == LEVEL_PATHS.size() - 1)
 	atmosphere.set_art_trial(index == 0)
@@ -160,8 +168,7 @@ func load_level(index: int) -> bool:
 	dragging = false
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
 	_commit_world()
-	envelope = _level_envelope()
-	sheet.configure_level(envelope, AABB(Geometry.vector(level["limits"]["min"]), Geometry.vector(level["limits"]["max"]) - Geometry.vector(level["limits"]["min"])))
+	envelope = Geometry.total_bounds(solids)
 	atmosphere.set_bounds(Geometry.total_bounds(solids))
 	for child: Node in goal_root.get_children():
 		child.free()
@@ -244,6 +251,8 @@ func _new_mirror(location: Vector3) -> Dictionary:
 	var fresh: Dictionary = level["mirror"].duplicate(true)
 	for axis: int in range(3):
 		location[axis] = clampf(snappedf(location[axis], 0.5), level["limits"]["min"][axis], level["limits"]["max"][axis])
+	fresh["width"] = 3.0
+	fresh["height"] = 3.0
 	fresh["enabled"] = true
 	fresh["pivot"] = location
 	fresh["offset"] = location[int(fresh["axis"])]
@@ -266,7 +275,8 @@ func _open_preview(proposal: Dictionary) -> void:
 	world.draw_route(PackedVector3Array())
 	_update_preview()
 	_fit_camera(hud.get_play_rect())
-	hud.show_hint("Drag the sheet. Tap the sheet to place it.")
+	rings.choose_edge_ends()
+	hud.show_hint("Drag the sheet. Use edge tabs to resize. Tap the sheet to place it.")
 
 func change_preview(key: String, value: Variant) -> void:
 	if phase != "preview" or not pending.is_empty() or _manipulating():
@@ -275,9 +285,8 @@ func change_preview(key: String, value: Variant) -> void:
 	if key not in ["axis", "source", "offset", "enabled", "width", "height"]:
 		return
 	if key in ["width", "height"]:
-		if extent_mode != "bounded":
-			return
-		value = clampf(snappedf(float(value), 0.5), 0.5, 6.0)
+		_resize_to(key, float(value))
+		return
 	if key == "axis":
 		if int(value) not in [0, 1, 2] or int(value) == int(preview["axis"]):
 			return
@@ -300,7 +309,7 @@ func change_preview(key: String, value: Variant) -> void:
 		_fit_camera(hud.get_play_rect())
 
 func _manipulating() -> bool:
-	return dragging or translating_settle or rotation_active or not rotation_queue.is_empty() or not rotation_target.is_empty()
+	return dragging or resizing or translating_settle or rotation_active or not rotation_queue.is_empty() or not rotation_target.is_empty()
 
 func _invalidate_prediction() -> void:
 	predictor.cancel()
@@ -315,7 +324,7 @@ func tilt_mirror(direction := 1) -> void:
 	_queue_rotation("tilt", direction)
 
 func _queue_rotation(kind: String, direction: int) -> void:
-	if phase != "preview" or not pending.is_empty() or dragging or translating_settle or camera.busy or not preview["enabled"]:
+	if phase != "preview" or not pending.is_empty() or dragging or resizing or translating_settle or camera.busy or not preview["enabled"]:
 		return
 	rotation_queue.append({"kind": kind, "direction": signi(direction)})
 	_invalidate_prediction()
@@ -350,6 +359,10 @@ func _cancel_manipulation() -> void:
 	gesture.cancel()
 	if rings.is_inside_tree():
 		rings.cancel()
+	if resize_controls.is_inside_tree():
+		resize_controls.cancel()
+	resizing = false
+	resize_origin.clear()
 	if translation_motion and translation_motion.is_valid():
 		translation_motion.kill()
 	dragging = false
@@ -493,14 +506,16 @@ func _refresh() -> void:
 	if not sheet.is_transitioning():
 		sheet.set_state(selected, _sheet_bounds(), phase == "preview")
 	edit_available = can_edit()
-	rings.set_state(selected, phase == "preview", camera.busy or dragging or translating_settle or not pending.is_empty())
+	rings.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty())
+	rings.set_pose(sheet.global_transform)
 	rings.update_view(camera)
+	resize_controls.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty())
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
 		"level_index": level_index, "art_trial": level_index == 0, "can_advance": _can_advance(),
 		"can_edit": can_edit(), "standing_only": standing_only,
-		"camera_busy": camera.busy or dragging or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
+		"camera_busy": camera.busy or dragging or resizing or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
-		"extent": extent_mode, "width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
+		"width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
 		"offset": selected.get("offset", 0.0), "axis": axis, "source": selected.get("source", 1),
 		"outline_accessible": outline_accessible,
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
@@ -514,11 +529,12 @@ func _refresh() -> void:
 func _action(action: String, value: Variant) -> void:
 	match action:
 		"select_level": load_level(int(value))
-		"extent":
-			if value in ["full", "bounded"] and value != extent_mode:
-				extent_mode = value
-				load_level(level_index)
 		"width", "height": change_preview(action, float(value))
+		"resize_begin": _start_resize(value)
+		"resize_move": _resize_drag(value)
+		"resize_end":
+			if not cancelling_gesture:
+				_finish_resize()
 		"next_level": advance_level()
 		"edit": begin_preview()
 		"create": create_mirror(value)
@@ -578,6 +594,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	gesture.advance(delta)
+	if sheet.has_geometry:
+		rings.set_pose(sheet.global_transform)
+		_position_resize_controls()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -587,21 +606,23 @@ func _notification(what: int) -> void:
 			_fit_camera(hud.get_play_rect())
 
 func _input(event: InputEvent) -> void:
-	if rings.is_active():
+	if rings.is_active() or resize_controls.is_active():
 		var pointer_index := -2
 		if event is InputEventScreenTouch or event is InputEventScreenDrag:
 			pointer_index = event.index
 		elif event is InputEventMouse:
 			pointer_index = -1
-		if pointer_index != -2 and not rings.owns_pointer(pointer_index):
+		if pointer_index != -2 and not rings.owns_pointer(pointer_index) and not resize_controls.owns_pointer(pointer_index):
 			get_viewport().set_input_as_handled()
 			return
-	var owned := gesture.active or rings.is_active()
+	var owned := gesture.active or rings.is_active() or resize_controls.is_active()
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.device != InputEvent.DEVICE_ID_EMULATION:
 			_pointer(event.position, event.pressed, -1)
 	elif event is InputEventScreenTouch:
 		if event.canceled:
+			if resize_controls.owns_pointer(event.index):
+				resize_controls.cancel()
 			if rings.owns_pointer(event.index):
 				rings.cancel()
 			if gesture.active and gesture.pointer == event.index:
@@ -609,22 +630,25 @@ func _input(event: InputEvent) -> void:
 		else:
 			_pointer(event.position, event.pressed, event.index)
 	elif event is InputEventMouseMotion:
-		if not rings.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
+		if not resize_controls.motion(event.position, -1) and not rings.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
 			gesture.move(event.position, -1)
 	elif event is InputEventScreenDrag:
-		if not rings.motion(event.position, event.index):
+		if not resize_controls.motion(event.position, event.index) and not rings.motion(event.position, event.index):
 			gesture.move(event.position, event.index)
 	if owned and (event is InputEventMouseButton or event is InputEventMouseMotion or event is InputEventScreenTouch or event is InputEventScreenDrag):
 		get_viewport().set_input_as_handled()
 
 func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
-	if not gesture.active and rings.pointer(point, pressed, touch):
+	if not gesture.active and not rings.is_active() and resize_controls.pointer(point, pressed, touch):
+		get_viewport().set_input_as_handled()
+		return
+	if not gesture.active and not resize_controls.is_active() and rings.pointer(point, pressed, touch):
 		get_viewport().set_input_as_handled()
 		return
 	if not pressed:
 		gesture.release(point, touch)
 		return
-	if gesture.active or rings.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
+	if gesture.active or rings.is_active() or resize_controls.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
 		return
 	if camera.busy or _manipulating() or sheet.is_transitioning() or not pending.is_empty() or phase == "failure":
 		return
@@ -712,16 +736,6 @@ func _finish_drag() -> void:
 		_update_preview()
 		_fit_camera(hud.get_play_rect()))
 
-func _level_envelope(axes: Array = [0, 1, 2]) -> AABB:
-	var bounds := Geometry.total_bounds(Geometry.generate(level, level["mirror"]))
-	for axis: int in axes:
-		for offset: float in [float(level["limits"]["min"][axis]), float(level["limits"]["max"][axis])]:
-			for source: int in [1, -1]:
-				var configuration := {"enabled": true, "axis": axis, "offset": offset, "source": source}
-				bounds = bounds.merge(Geometry.total_bounds(Geometry.generate(level, configuration)))
-	bounds = bounds.expand(Geometry.vector(level["start"]) + Vector3.UP)
-	return bounds.expand(Geometry.vector(level["goal"]) + Vector3.UP).grow(0.3)
-
 func _sheet_bounds() -> AABB:
 	return Geometry.total_bounds(world.drawn_solids).grow(0.5)
 
@@ -738,7 +752,7 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 	if _manipulating():
 		return
 	var framing := Geometry.total_bounds(world.drawn_solids).grow(0.3)
-	if _display_state().get("extent", "full") == "bounded" and (phase == "preview" or mirror["enabled"]):
+	if phase == "preview" or mirror["enabled"]:
 		for corner: Vector3 in sheet.get_corners():
 			framing = framing.expand(corner)
 	for point: Vector3 in rings.get_fit_points():
@@ -773,12 +787,15 @@ func _solid_hit(point: Vector2, before := INF) -> bool:
 	return false
 
 func _ring_obstructed(point: Vector2, location: Vector3) -> bool:
+	return resize_controls.blocks_point(point) or _resize_obstructed(point, location)
+
+func _resize_obstructed(point: Vector2, location: Vector3) -> bool:
 	return not play_rect.has_point(point) or hud.blocks_world_input(point) or _solid_hit(point, camera.project_ray_origin(point).distance_to(location))
 
 func sheet_hit(point: Vector2, selected: Dictionary = {}) -> bool:
 	if selected.is_empty():
 		selected = _display_state()
-	if not selected.has("axis") or hud.blocks_world_input(point):
+	if not selected.has("axis") or hud.blocks_world_input(point) or resize_controls.blocks_point(point):
 		return false
 	var origin := camera.project_ray_origin(point)
 	var direction := camera.project_ray_normal(point)
@@ -797,10 +814,80 @@ func _position_controls() -> void:
 	hud.set_failure_marker(Vector2.ZERO, false)
 	outline_accessible = false
 	if phase == "preview" and preview.get("enabled", false):
-		# Sample the play area rather than distant full-plane corners.
+		# Test whether a visible panel area is available for confirmation.
 		for y: int in 9:
 			for x: int in 9:
 				var point := play_rect.position + play_rect.size * Vector2(float(x) / 8.0, float(y) / 8.0)
 				if sheet_hit(point):
 					outline_accessible = true
 	hud.set_sheet_controls(PackedVector2Array(), outline_accessible)
+	_position_resize_controls()
+
+func _position_resize_controls() -> void:
+	if resize_controls.is_inside_tree() and not level.is_empty():
+		resize_controls.update_view(camera, play_rect, hud.get_blocking_rects(), rings.get_orb_points())
+
+func _start_resize(value: Dictionary) -> void:
+	if phase != "preview" or _manipulating() or camera.busy or not pending.is_empty() or not preview["enabled"]:
+		return
+	resize_key = str(value["key"])
+	if resize_key not in ["width", "height"]:
+		return
+	resizing = true
+	resize_origin = preview.duplicate(true)
+	display_preview = preview.duplicate(true)
+	resize_limits = MirrorRules.resize_range(resize_origin, resize_key, level["limits"])
+	resize_pointer_origin = value["point"]
+	var direction := MirrorRules.frame(preview).x if resize_key == "width" else MirrorRules.frame(preview).y
+	var pivot: Vector3 = preview["pivot"]
+	resize_screen_axis = camera.unproject_position(pivot + direction) - camera.unproject_position(pivot)
+	limit_hint_shown = false
+	_invalidate_prediction()
+	_refresh()
+
+func _resize_drag(point: Vector2) -> void:
+	if not resizing or resize_screen_axis.length_squared() < 0.01:
+		return
+	var length := float(resize_origin[resize_key]) + (point - resize_pointer_origin).dot(resize_screen_axis) / resize_screen_axis.length_squared()
+	var limited := clampf(length, resize_limits.x, resize_limits.y)
+	if not is_equal_approx(length, limited) and not limit_hint_shown:
+		hud.show_hint("Edge of the resize area.")
+		limit_hint_shown = true
+	_set_resize_length(limited)
+
+func _set_resize_length(length: float) -> void:
+	display_preview = MirrorRules.resized(resize_origin, resize_key, length)
+	_update_preview()
+
+func _finish_resize() -> void:
+	if not resizing:
+		return
+	resizing = false
+	translating_settle = true
+	var start := float(display_preview[resize_key])
+	var target := clampf(roundf(start), resize_limits.x, resize_limits.y)
+	translation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	translation_motion.tween_method(_set_resize_length, start, target, 0.15)
+	translation_motion.tween_callback(func() -> void:
+		preview = display_preview.duplicate(true)
+		display_preview.clear()
+		resize_origin.clear()
+		translating_settle = false
+		_update_preview()
+		_fit_camera(hud.get_play_rect()))
+
+func _resize_to(key: String, length: float) -> void:
+	if not is_finite(length) or camera.busy:
+		return
+	var allowed := MirrorRules.resize_range(preview, key, level["limits"])
+	var limited := clampf(roundf(length), allowed.x, allowed.y)
+	if not is_equal_approx(length, limited):
+		hud.show_hint("Size is limited by the placement area.")
+	preview = MirrorRules.resized(preview, key, limited)
+	_update_preview()
+	_fit_camera(hud.get_play_rect())
+
+func _camera_motion_finished() -> void:
+	_refresh()
+	rings.choose_edge_ends()
+	_position_resize_controls()

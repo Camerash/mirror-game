@@ -4,7 +4,6 @@ const Geometry := preload("res://core/world_geometry.gd")
 
 static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	game.load_level(0)
-	game._action("extent", "bounded")
 	await _settle(game, tree)
 	check.call(game.level["limits"]["min"][0] < 0 and game.level["limits"]["max"][0] > 8, "Placement spans both ends of the stage")
 	game.begin_preview()
