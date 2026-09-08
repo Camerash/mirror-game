@@ -18,7 +18,7 @@ This is the first procedural material trial, not the final Blender art kit. The 
 
 ## Visual trial 02 — Reflection and edge-light concepts
 
-[Comparison image](visual-trial-02.png), generated on 2026-09-08. This is a proposal for review, not an approved treatment or an in-game capture.
+[Comparison image](visual-trial-02.png), generated on 2026-09-08. Panel D is approved, with a correction: emit light evenly along all four perimeter edges toward reflected space. Do not copy the image’s concentrated spikes. This remains an approximate reference, not an in-game capture.
 
 | Panel | Reflected material | Edge light points toward |
 | --- | --- | --- |
@@ -28,3 +28,9 @@ This is the first procedural material trial, not the final Blender art kit. The 
 | D | Holographic stone | Reflected space |
 
 The target is an immersive world with depth fog, detailed stone, a flowing translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Directional light is an art cue, not a change to reflection rules.
+
+## Second in-game result
+
+![Level 1 with holographic reflections](trial-02-in-game.png)
+
+Native Mac capture of the current procedural trial. The mirror emits a continuous ribbon along its perimeter toward reflected space. Walking tops remain clear while sides are transparent. Mist is made from world-space layers; this is not volumetric fog. The stage keeps its original geometry.

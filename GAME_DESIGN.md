@@ -17,8 +17,8 @@ This is the current design record. Agreed rules are separate from later mileston
 - Godot **4.7.2 stable**, typed GDScript, Compatibility renderer.
 - Procedural 3D geometry is the current prototype approach. Blender assets come later.
 - Level data is JSON and separate from scenes.
-- Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The current prototype still uses the older header, footer, and edit panel. Gesture details below remain proposals.
-- The orthographic camera uses four views at 45°, 135°, 225°, and 315°, with 30° downward elevation. Buttons and Q/E turn it in quarter steps. It fits committed geometry during play and permitted reflections for the selected orientation on entering editing or turning the mirror; zoom stays steady during mirror dragging. Off-screen failure outcomes use an edge marker.
+- Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The world fills the window. Gameplay uses direct gestures and small contextual actions; diagnostic controls stay in the gear panel.
+- The orthographic camera uses four views at 45°, 135°, 225°, and 315°, with 30° downward elevation. Empty-space swipes turn it in quarter steps on mobile; dim curved buttons and Q/E do this on desktop. It fits committed geometry during play and permitted reflections for the selected orientation on entering editing or turning the mirror; zoom stays steady during mirror dragging. Off-screen failure outcomes use an edge marker.
 
 ## Agreed world rules
 
@@ -35,9 +35,9 @@ This is the current design record. Agreed rules are separate from later mileston
 
 - The character is a `CharacterBody3D` with downward gravity. Its visible face turns toward horizontal movement.
 - Flat-surface navigation uses direct clear paths or an eight-direction `AStar3D` search with unnecessary turns removed. Every segment checks character clearance and support across the full footprint. Ladders are not implemented yet.
-- Enable opens an active mirror preview; Modify edits an active mirror. Confirm applies the preview. Enable/Disable within editing changes only the proposal. Turn left/right rotates vertical mirrors by 90°. Lay flat/Stand up changes between horizontal and the previous vertical direction. Reverse sides swaps the source. The whole visible sheet is draggable during editing; hidden portions and UI do not receive sheet input. There is no separate drag handle.
+- Create opens a fresh mirror preview near the press; Edit changes an existing mirror. Remove previews an absent mirror. Confirm applies the proposal. Cancel restores the committed state. After removal there is no saved mirror placement; Undo alone can restore it from history. Turn left/right rotates vertical mirrors by 90°. Lay flat/Stand up changes between horizontal and the previous vertical direction. Reverse sides swaps the source. The whole visible sheet is draggable during editing; hidden portions and UI do not receive sheet input. There is no separate drag handle.
 - Editing freezes character position and velocity. Cancel resumes saved movement in the unchanged world. Confirm preserves position and vertical velocity, clears the walking route, and rejects embedding in solid geometry.
-- Editing during walking and falling is allowed by default. A session-level **Standing still only** test option provides the stricter comparison. Decorative atmosphere runs at 20% speed while editing; the UI and ghost stay responsive. Editing has a persistent label, screen border, and dashed pulsing sheet. Confirm settles the sheet into its steady placed appearance. A disabled proposal keeps a removal outline until Confirm.
+- Editing during walking and falling is allowed by default. A session-level **Standing still only** test option provides the stricter comparison. Decorative atmosphere runs at 20% speed while editing; the UI and ghost stay responsive. Editing has a subtle tint, contextual controls, and a dashed pulsing sheet. Confirm settles the sheet into its steady placed appearance. A disabled proposal keeps a removal outline until Confirm.
 - A separate collision world predicts the result with the same capsule and gravity step as the character. A bright ghost with a dark outline, a trajectory with contrasting strokes and arrows, and labelled landing/failure markers show the outcome. A supported character gets a stationary support ring. Pending or blocked predictions cannot be confirmed; predicted failure can be confirmed and undone.
 - Applying a physics-boundary change rebuilds navigation and clears the current route.
 - Losing support starts a fall. Original, reflected, or absolute geometry can provide support, including original geometry restored on deactivation. Landing is safe at any height in this milestone; passing the level's lower boundary causes failure.
@@ -73,7 +73,7 @@ Later level:
 
 - Use clear 3D forms, soft colour and lighting differences between original and reflected space, and a consistent absolute material that does not rely on colour alone.
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.
-- The world uses a neutral distant background, warm original surfaces, cool reflected surfaces, and local world-space haze. A translucent sheet with subtle ripples spans the stage and permitted reflections. Its visible edges lie outside playable geometry and do not limit reflection. The two sides have no assigned sun/moon meaning, and those symbols are removed. Directional light from the sheet edge is a proposal under review. **Boundary only** in Test options removes local haze for comparison. Walking surfaces remain solid and readable.
+- The world uses a neutral distant background, warm original surfaces, cool reflected surfaces, and local world-space haze. A translucent sheet with subtle ripples spans the stage and permitted reflections. Its visible edges lie outside playable geometry and do not limit reflection. The two sides have no assigned sun/moon meaning. An even, softly feathered band of light extends along the entire mirror perimeter toward the reflected side. It has no point spikes or bright corner overlaps. **Boundary only** in Test options removes local haze for comparison. Walking surfaces remain solid and readable.
 - Absolutes retain their material and stripe pattern with clear edges. During editing, reflected contact regions are highlighted and a brief dashed outline shows incoming reflected structures. Collision and overlap rules are unchanged.
 - Watercolour-like modular forms, soft piano, muffled percussion, and subtle boundary changes remain candidates. Validate readability before adding effects.
 
@@ -83,13 +83,17 @@ Later level:
 - After the mechanics pass, Level 1 receives the first polished trial: procedural soft stone, restrained seams and wear, warm original and cool night surfaces, local haze, a thin sheet, and a simple dark character. The reference guides composition and materials; its added pillars and cubes do not change level geometry.
 - Review feedback: the current trial does not yet reach the reference. Improve depth fog, flowing mirror shading, material detail, objective detail, and lighting together. Keep other levels as simple fixtures. Story work remains open.
 
-### Pending immersive control and art trial
+### Immersive controls and visual trial 02
 
-- Proposed input: long press empty space to open a mirror preview; long press the sheet to edit it; drag the sheet to translate; a separate short tap on its outline confirms. Releasing a drag must not confirm. Show a brief hold-progress cue.
-- Proposed camera input: horizontal swipes on mobile; dim curved arrow buttons at the desktop bottom-left, with Q/E retained. A swipe must cancel a pending long press and must not move the character.
-- Proposed edit controls: a bottom removal action and two distinct curved grips for quarter-turn and tilt, instead of two identical spheres. Retain an accessible way to Cancel and Undo; placement remains open.
-- Compare solid and holographic reflections, and edge light toward original or reflected space, in [visual-trial-02.png](docs/art/visual-trial-02.png). These are concepts, not an approved treatment or runtime screenshots. Holographic sides must still have clear walking tops; absolutes stay solid.
-- The comparison image adds decorative pillars and cubes. It does not change level geometry or objectives.
+- Hold empty space for 450 ms to create a mirror, or hold its visible sheet to edit. Movement under 12 logical units counts as a hold. A short release on a platform walks; a hold or swipe never also walks.
+- A new pivot comes from projecting the press onto a horizontal plane at the character's feet, then snapping and clamping each coordinate. The level supplies a fresh starting axis and source direction. One mirror is supported now; holding empty space while it exists does not create another.
+- During editing, drag the sheet to translate. A separate short tap within 24 logical units of a visible outline confirms. Releasing a drag never confirms. A small Confirm action appears if no outline is accessible.
+- Two curved grips near the sheet corners turn and tilt it. A 24-unit drag produces one quarter turn; the directional ends also accept taps. The turn grip is hidden when horizontal. Reverse sides remains available in editing.
+- A horizontal mobile swipe of at least 48 units, with horizontal movement over 1.5 times vertical movement, turns the camera. Mirror gestures take priority. Desktop has dim bottom-left curved arrows and Q/E.
+- Cancel, Remove/Keep mirror, and Reverse sides appear only during editing. Undo appears when available outside editing. Failure offers Undo and Reset; completion offers Next. Gear opens debug controls and Reset. Targets stay at least 48 units and respect safe areas.
+- **D** in [visual-trial-02.png](docs/art/visual-trial-02.png) is the approved visual direction, with a correction: light is even along all four edges rather than concentrated in spikes. The generated image is an approximate reference, not an in-game capture.
+- Level 1 uses holographic pearl-blue reflections with clear near-opaque walking tops, translucent sides, and soft contours. Original stone and patterned absolutes remain solid. Layered mist, detailed stone, and a carved goal ring supply the first art trial. Other levels retain simple platform materials.
+- The image's extra pillars and cubes do not change level geometry or objectives.
 
 ## Pending story directions
 

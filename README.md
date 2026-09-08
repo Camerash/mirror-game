@@ -14,16 +14,20 @@ Open `project.godot` in Godot to edit the project. The exported local app is `bu
 
 | Action | Touch or mouse | Keyboard |
 | --- | --- | --- |
-| Walk | Tap a platform's top surface | — |
-| Open mirror preview | Enable / Modify on the canvas | M |
-| Adjust position | Drag any visible part of the sheet while editing, or use −0.5 / +0.5 | [ / ] |
-| Change orientation | Turn left/right, Lay flat/Stand up, Reverse sides | 1 / 2 / 3 (X / Y / Z) |
-| Turn camera | Camera left/right buttons | Q / E |
-| Enable / disable in preview | Enable / Disable | D |
-| Commit / cancel | Confirm / Cancel | Enter / Escape |
-| Recover | Undo / Reset | Z / R |
+| Walk | Short tap on a platform top | — |
+| Create mirror | Hold empty space for 450 ms | M uses fresh level defaults |
+| Edit mirror | Hold its visible sheet | M |
+| Adjust position | Drag the sheet while editing | [ / ] |
+| Turn / tilt | Drag a curved grip or tap its directional end | 1 / 2 / 3 selects X / Y / Z |
+| Turn camera | Mobile swipe on empty space; desktop curved arrows | Q / E |
+| Remove / keep in preview | Contextual bottom action | D |
+| Confirm / cancel | Short tap on the outline / Cancel | Enter / Escape |
+| Recover | Contextual Undo; Reset after failure or in gear panel | Z / R |
+| Debug controls | Top-right gear | — |
 
-Every level permits all mirror orientations and both source directions. Fixed offsets hide the step buttons for that axis. A quarter turn preserves the mirror pivot; a half turn swaps the source side. Confirm and Cancel stay visible while other edit options can scroll on short windows. Test options includes the atmosphere comparison, collision outlines, and **Standing still only** mode; source reversal is available in every level while editing.
+Debug panels start hidden. They contain level selection, numeric controls, collision outlines, atmosphere options, and **Standing only** mode. The prototype supports one mirror. After removal, creation uses the new press and fresh level defaults; it never restores a saved placement. Undo can restore a removed mirror from history.
+
+Every level permits all orientations and both source directions. A quarter turn preserves the pivot; a half turn swaps the source side. Reverse sides is available during editing. Long presses and swipes cannot also issue walking commands. Releasing a mirror drag does not confirm it.
 
 Editing freezes the real character, including during a walk or fall. The ghost shows the predicted result in a separate physics world. Confirm clears the previous walking route and resumes gravity; Cancel resumes the saved movement. A pending prediction cannot be confirmed. Unsafe falls remain valid experiments, and Undo restores the prior state. A failure below the view has a **No landing** edge marker.
 
@@ -33,7 +37,7 @@ Level 2’s intended route: enable the fixed mirror, walk to the end of the refl
 
 ## First art trial
 
-Level 1 uses the first stone and atmosphere trial. Other puzzles and fixtures retain the simpler test materials. [Panel A of the saved reference](docs/art/visual-trial-01.png) is the visual target; [the trial record](docs/art/README.md) explains its limits. Documentation images are excluded from imports and game exports.
+Level 1 uses the holographic stone and atmosphere trial. Other puzzles and fixtures retain the simpler test materials. [Panel D of the comparison](docs/art/visual-trial-02.png) is the current visual target, with even light along the full mirror perimeter rather than spikes; [the trial record](docs/art/README.md) explains its limits. Documentation images are excluded from imports and game exports.
 
 ## Checks
 
@@ -45,7 +49,7 @@ rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --scr
 rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --path . --script tests/capture.gd
 ```
 
-The first command imports and parses the project. The second checks geometry, real physics, shared player commands, pointer input, and responsive layouts. It exits with a nonzero status on failure. The third captures both atmosphere settings, plane orientations, a fall ghost, and phone/tablet layouts in `test-output/`. Run it with a graphical desktop session.
+The first command imports and parses the project. The second checks geometry, real physics, shared player commands, pointer input, and responsive layouts. It exits with a nonzero status on failure. For the immersive trial, `rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --path . --script tests/visual_review.gd` performs one desktop/portrait review session. The third command above is the older broad capture matrix and is not routine prototype work. It captures both atmosphere settings, plane orientations, a fall ghost, and phone/tablet layouts in `test-output/`. Run it with a graphical desktop session.
 
 ## Exports
 

@@ -1,5 +1,15 @@
 # Prototype validation
 
+## Immersive controls and holographic trial — 2026-09-08
+
+- The integrated regression pass completed **439 checks with 0 failures and no script errors**. This includes both puzzle solutions, fresh creation after removal, Undo, support restoration, preview physics, camera turns, sheet dragging, and responsive control bounds. A focused gesture/grip pass also passed after adding four grip cases.
+- Development used focused checks. An initial integration attempt exposed HUD parse errors; the next run exposed a new test using the headless default 64 × 64 viewport. Both were fixed before the successful regression pass. Full-suite runs were not used to tune each visual change.
+- Native Mac Compatibility rendering was inspected in a 1152 × 800 desktop window and a 390 × 844 portrait window. One session captured all four camera views, editing, committed placement, and removal/fall feedback. Targeted captures then checked the corrected goal detail and failure label. No shader errors were logged.
+- Review corrected overlapping narrow controls, low-contrast grips, faint haze, ribbon direction, and a failure label behind controls. Light ribbons use the same distance fade on all four edges and extend along the reflected normal. The approved reference is approximate; the trial retains simple box geometry and procedural surface detail.
+- The final outline-only removal surface and recovery-button colour changes received a diff review; they do not alter interaction or physics. Physical touch feel, mobile GPU performance, and physical safe areas remain unverified. No Simulator or export pass was run.
+- Evidence: `.local/immersive-tests.log`, `.local/immersive-visual.log`, `.local/immersive-final-visual.log`, and `test-output/immersive-*.png`. The retained in-game image is `docs/art/trial-02-in-game.png`. The debug bridge is absent.
+
+
 ## Exploration policy and visual concepts — 2026-09-08
 
 - Applied the new policy: focused checks during exploration; full regression checks after design confirmation. Earlier broad runs below are historical evidence, not the required workflow for each idea.

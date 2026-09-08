@@ -2,6 +2,7 @@ class_name MirrorWorldView
 extends Node3D
 
 const Paint := preload("res://world/painted.gdshader")
+const Hologram := preload("res://world/hologram.gdshader")
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
@@ -11,11 +12,15 @@ var trace_root := Node3D.new()
 var contact_signature := ""
 var trace_time := 0.0
 var materials: Dictionary = {}
+var hologram_material := ShaderMaterial.new()
 var drawn_solids: Array[Dictionary] = []
 var debug_collision := false
 var art_trial := false
 
 func _ready() -> void:
+	hologram_material.shader = Hologram
+	hologram_material.set_shader_parameter("pigment", Color("7099bd"))
+	hologram_material.set_shader_parameter("hologram_enabled", true)
 	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, contact_root, trace_root]:
 		add_child(node)
 	for kind: String in ["original", "reflected", "absolute"]:
@@ -65,12 +70,17 @@ func _solid_material(solid: Dictionary, bounds: AABB) -> ShaderMaterial:
 	var material: ShaderMaterial = materials[solid["kind"]]
 	if not art_trial:
 		return material
+	if solid["kind"] == "reflected":
+		var hologram := hologram_material.duplicate() as ShaderMaterial
+		hologram.set_shader_parameter("box_centre", bounds.get_center())
+		hologram.set_shader_parameter("box_size", bounds.size)
+		return hologram
 	var stone := material.duplicate() as ShaderMaterial
 	stone.set_shader_parameter("stone_trial", true)
 	stone.set_shader_parameter("box_centre", bounds.get_center())
 	stone.set_shader_parameter("box_size", bounds.size)
 	if solid["kind"] == "original":
-		stone.set_shader_parameter("pigment", Color("c89c69"))
+		stone.set_shader_parameter("pigment", Color("b9ad98"))
 	elif solid["kind"] == "reflected":
 		stone.set_shader_parameter("pigment", Color("405877"))
 	return stone
@@ -132,6 +142,18 @@ func add_ring(parent: Node3D, feet: Vector3, color: Color, radius := 0.3) -> voi
 	node.position = feet + Vector3.UP * 0.055
 	node.material_override = _plain(color)
 	parent.add_child(node)
+	if art_trial and is_equal_approx(radius, 0.3):
+		_add_goal_carving(parent, feet, radius)
+
+func _add_goal_carving(parent: Node3D, feet: Vector3, radius: float) -> void:
+	var points := PackedVector3Array()
+	for index: int in 8:
+		var angle := TAU * float(index) / 8.0
+		var direction := Vector3(cos(angle), 0.0, sin(angle))
+		var centre := feet + Vector3.UP * 0.099 + direction * radius * 0.855
+		points.append(centre - direction * radius * 0.075)
+		points.append(centre + direction * radius * 0.075)
+	_lines(parent, points, Color("f3d89b"))
 
 
 func _lines(parent: Node3D, points: PackedVector3Array, color: Color) -> void:
