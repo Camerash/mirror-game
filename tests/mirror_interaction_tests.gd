@@ -27,7 +27,7 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	check.call(Rules.normal(game.preview) == vertical, "Stand up restores the previous vertical direction")
 	game.cancel_preview()
 	await _settle(game, tree)
-	check.call(game.mirror == initial or game.mirror["pivot"] == initial["pivot"], "Cancel keeps the committed pivot")
+	check.call(game.mirror == {"enabled": false}, "Cancel creation leaves no mirror")
 	game.begin_preview()
 	await _settle(game, tree)
 	for orientation: int in [0, 1, 2]:
@@ -40,7 +40,8 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 			if points.size() >= 2:
 				for point: Vector2 in [points[0], points[-1]]:
 					game._pointer(point, true, 0)
-					check.call(game.dragging, "Any unobstructed sheet point begins dragging")
+					game.gesture.move(point + Vector2(14, 0), 0)
+					check.call(game.dragging, "Motion on an unobstructed sheet point begins dragging")
 					var size_before: float = game.camera.size
 					game._drag(point + game.drag_axis * 0.5)
 					check.call(is_equal_approx(game.camera.size, size_before), "Mirror dragging keeps zoom steady")
@@ -52,7 +53,7 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 					check.call(not game.dragging, "Release outside the sheet ends dragging")
 					game.change_preview("offset", before["offset"])
 					await _settle(game, tree)
-			var ui_point: Vector2 = game.hud.get_touch_control_bounds()["apply"].get_center()
+			var ui_point: Vector2 = game.hud.get_touch_control_bounds()["cancel"].get_center()
 			check.call(not game.sheet_hit(ui_point), "Sheet picking ignores UI")
 			game.turn_camera(1)
 			await _settle(game, tree)

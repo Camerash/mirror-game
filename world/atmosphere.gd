@@ -42,38 +42,43 @@ func update_view(camera: Camera3D, centre: Vector3) -> void:
 
 func set_mirror(mirror: Dictionary, is_editing: bool, style: int) -> void:
 	editing = is_editing
+	var has_mirror := mirror.has("axis") and bool(mirror.get("enabled", false))
 	var normal := Vector3.ZERO
-	normal[int(mirror["axis"])] = 1.0
+	if has_mirror:
+		normal[int(mirror["axis"])] = 1.0
 	material.set_shader_parameter("plane_normal", normal)
-	material.set_shader_parameter("plane_offset", float(mirror["offset"]))
-	material.set_shader_parameter("source_direction", float(mirror["source"]))
-	material.set_shader_parameter("mirror_enabled", mirror["enabled"])
+	material.set_shader_parameter("plane_offset", float(mirror.get("offset", 0.0)))
+	material.set_shader_parameter("source_direction", float(mirror.get("source", 1)))
+	material.set_shader_parameter("mirror_enabled", bool(mirror.get("enabled", false)))
+	material.set_shader_parameter("has_mirror", has_mirror)
 	material.set_shader_parameter("atmosphere_enabled", style == 0)
 	for haze: ShaderMaterial in haze_materials:
 		haze.set_shader_parameter("plane_normal", normal)
-		haze.set_shader_parameter("plane_offset", float(mirror["offset"]))
-		haze.set_shader_parameter("source_direction", float(mirror["source"]))
-		haze.set_shader_parameter("atmosphere_enabled", style == 0 and mirror["enabled"])
+		haze.set_shader_parameter("plane_offset", float(mirror.get("offset", 0.0)))
+		haze.set_shader_parameter("source_direction", float(mirror.get("source", 1)))
+		haze.set_shader_parameter("has_mirror", has_mirror)
+		haze.set_shader_parameter("atmosphere_enabled", style == 0)
 
 func set_bounds(next_bounds: AABB) -> void:
 	bounds = next_bounds
 	for child: Node in haze_root.get_children():
 		child.queue_free()
 	haze_materials.clear()
-	for index: int in 2:
+	for index: int in 3:
 		var haze := MeshInstance3D.new()
 		var mesh := PlaneMesh.new()
-		var haze_depth := maxf(bounds.size.z, 4.0) if art_trial else bounds.size.z
-		mesh.size = Vector2(bounds.size.x * (0.82 - index * 0.16), haze_depth * (0.72 - index * 0.12))
+		var haze_depth := maxf(bounds.size.z * 2.0, 12.0) if art_trial else bounds.size.z
+		mesh.size = Vector2((maxf(bounds.size.x * 1.8, 14.0) if art_trial else bounds.size.x) * (1.0 - index * 0.08), haze_depth * (0.82 - index * 0.12))
 		haze.mesh = mesh
-		haze.position = Vector3(bounds.get_center().x, bounds.position.y - 0.25 - index * 0.35, bounds.get_center().z)
+		haze.position = Vector3(bounds.get_center().x + (index - 1) * 0.45, bounds.position.y - 0.10 - index * (0.8 if art_trial else 0.22), bounds.get_center().z + (index - 1) * 0.32)
 		var haze_material := ShaderMaterial.new()
 		haze_material.shader = preload("res://world/atmosphere.gdshader")
 		haze_material.render_priority = -64
 		haze_material.set_shader_parameter("haze_mode", true)
 		haze_material.set_shader_parameter("art_trial", art_trial)
 		haze_material.set_shader_parameter("haze_centre", haze.position)
-		haze_material.set_shader_parameter("haze_extent", Vector3(bounds.size.x * 0.55, 1.0, maxf(haze_depth * 0.55, 1.0)))
+		haze_material.set_shader_parameter("haze_extent", Vector3(mesh.size.x * 0.5, 1.0, mesh.size.y * 0.5))
+		haze_material.set_shader_parameter("haze_layer", float(index))
 		haze.material_override = haze_material
 		haze.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		haze_root.add_child(haze)

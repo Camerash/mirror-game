@@ -12,6 +12,7 @@ const PreviewView := preload("res://world/preview_view.gd")
 const Atmosphere := preload("res://world/atmosphere.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
+const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
 const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
@@ -52,6 +53,8 @@ var drag_origin := Vector2.ZERO
 var drag_offset := 0.0
 var drag_axis := Vector2.ZERO
 var drag_touch := -1
+var gesture := WorldGesture.new()
+var outline_accessible := false
 
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
@@ -68,8 +71,11 @@ func _ready() -> void:
 	hud.configure_levels(titles, 0)
 	hud.action_requested.connect(_action)
 	hud.play_rect_changed.connect(_fit_camera)
+	gesture.action_requested.connect(_gesture_action)
+	gesture.hold_progress.connect(hud.set_hold_progress)
 	load_level(0)
 	_fit_camera(hud.get_play_rect())
+	hud.show_hint("Tap to walk. Hold empty space to create a mirror.")
 
 func _setup_scene() -> void:
 	add_child(world)
@@ -122,7 +128,8 @@ func load_level(index: int) -> bool:
 	world.set_art_trial(index == 0)
 	atmosphere.set_art_trial(index == 0)
 	walker.set_art_trial(index == 0)
-	mirror = level["mirror"].duplicate(true)
+	gesture.cancel()
+	mirror = level["mirror"].duplicate(true) if level["mirror"]["enabled"] else {"enabled": false}
 	preview.clear()
 	preview_origin.clear()
 	predictor.cancel()
@@ -139,7 +146,7 @@ func load_level(index: int) -> bool:
 	for child: Node in goal_root.get_children():
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
-	status = "Tap a platform to walk. Enable the mirror to find another path."
+	status = "Tap a platform to walk. Hold empty space to create a mirror."
 	_refresh()
 	_fit_camera(hud.get_play_rect(), true)
 	return true
@@ -197,16 +204,49 @@ func can_edit() -> bool:
 	return not standing_only or (walker.route.is_empty() and walker.is_on_floor() and walker.velocity.length() < 0.05)
 
 func begin_preview() -> void:
+	# Keyboard and debug entry use fresh level defaults when no mirror exists.
+	if mirror.get("enabled", false):
+		edit_mirror()
+	else:
+		_open_preview(_new_mirror(level["mirror"]["pivot"]))
+
+func create_mirror(point: Vector2) -> void:
+	if mirror.get("enabled", false) or not can_edit():
+		return
+	var ray := camera.project_ray_normal(point)
+	var origin := camera.project_ray_origin(point)
+	if absf(ray.y) < 0.0001:
+		return
+	var location := origin + ray * ((walker.position.y - origin.y) / ray.y)
+	_open_preview(_new_mirror(location))
+
+func _new_mirror(location: Vector3) -> Dictionary:
+	var fresh: Dictionary = level["mirror"].duplicate(true)
+	for axis: int in range(3):
+		location[axis] = clampf(snappedf(location[axis], 0.5), level["limits"]["min"][axis], level["limits"]["max"][axis])
+	fresh["enabled"] = true
+	fresh["pivot"] = location
+	fresh["offset"] = location[int(fresh["axis"])]
+	return fresh
+
+func edit_mirror() -> void:
+	if mirror.get("enabled", false):
+		_open_preview(mirror.duplicate(true))
+
+func remove_mirror() -> void:
+	change_preview("enabled", false)
+
+func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():
 		return
 	preview_origin = _snapshot()
-	preview = mirror.duplicate(true)
-	preview["enabled"] = true
+	preview = proposal
 	walker.paused = true
 	phase = "preview"
 	world.draw_route(PackedVector3Array())
 	_update_preview()
 	_fit_camera(hud.get_play_rect())
+	hud.show_hint("Drag the sheet. Tap its edge to place it.")
 
 func change_preview(key: String, value: Variant) -> void:
 	if phase != "preview" or not pending.is_empty():
@@ -264,6 +304,7 @@ func apply_preview() -> bool:
 func cancel_preview() -> void:
 	if phase != "preview" or not pending.is_empty():
 		return
+	gesture.cancel()
 	preview.clear()
 	predictor.cancel()
 	prediction = {"status": "idle"}
@@ -296,7 +337,7 @@ func _execute_pending() -> void:
 	pending = {}
 	if command["action"] == "apply":
 		history.append(preview_origin.duplicate(true))
-		mirror = command["mirror"]
+		mirror = command["mirror"] if command["mirror"]["enabled"] else {"enabled": false}
 		walker.restore(preview_origin["position"], preview_origin["velocity"])
 		phase = "play"
 		status = "Mirror changed. Find your next path."
@@ -307,6 +348,7 @@ func _execute_pending() -> void:
 		phase = "complete" if snapshot["complete"] else "play"
 		status = "Last action undone."
 	preview.clear()
+	preview_origin.clear()
 	predictor.cancel()
 	prediction = {"status": "idle"}
 	preview_view.clear()
@@ -370,15 +412,16 @@ func _refresh() -> void:
 	if level.is_empty():
 		return
 	var selected := preview if phase == "preview" else mirror
-	var axis: int = selected["axis"]
+	var axis: int = selected.get("axis", level["mirror"]["axis"])
 	sheet.set_state(selected, _sheet_bounds(), phase == "preview")
 	edit_available = can_edit()
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
 		"level_index": level_index, "art_trial": level_index == 0, "can_advance": _can_advance(),
 		"can_edit": can_edit(), "standing_only": standing_only,
-		"camera_busy": camera.busy or dragging, "mirror_busy": sheet.is_transitioning(),
+		"camera_busy": camera.busy or dragging, "mirror_busy": sheet.is_transitioning(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
-		"offset": selected["offset"], "axis": axis, "source": selected["source"],
+		"offset": selected.get("offset", 0.0), "axis": axis, "source": selected.get("source", 1),
+		"outline_accessible": outline_accessible,
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
 		"can_apply": phase == "preview" and pending.is_empty() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
@@ -392,6 +435,8 @@ func _action(action: String, value: Variant) -> void:
 		"select_level": load_level(int(value))
 		"next_level": advance_level()
 		"edit": begin_preview()
+		"create": create_mirror(value)
+		"remove": remove_mirror()
 		"standing_only":
 			standing_only = bool(value)
 			_refresh()
@@ -432,67 +477,94 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_BRACKETRIGHT: _action("step", 0.5)
 			_: return
 		get_viewport().set_input_as_handled()
-	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_pointer(event.position, event.pressed, -1)
-	elif event is InputEventScreenTouch:
-		_pointer(event.position, event.pressed, event.index)
-	elif event is InputEventMouseMotion and dragging and drag_touch == -1:
-		_drag(event.position)
-	elif event is InputEventScreenDrag and dragging and event.index == drag_touch:
-		_drag(event.position)
+
+func _process(delta: float) -> void:
+	gesture.advance(delta)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		gesture.cancel()
 
 func _input(event: InputEvent) -> void:
-	# Keep ownership of a drag until release, even when it crosses the HUD.
-	if not dragging:
-		return
-	if event is InputEventMouseButton and drag_touch == -1 and event.button_index == MOUSE_BUTTON_LEFT:
-		if not event.pressed:
-			dragging = false
+	var owned := gesture.active
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.device != InputEvent.DEVICE_ID_EMULATION:
+			_pointer(event.position, event.pressed, -1)
+	elif event is InputEventScreenTouch:
+		if event.canceled:
+			if gesture.active and gesture.pointer == event.index:
+				gesture.cancel()
+		else:
+			_pointer(event.position, event.pressed, event.index)
+	elif event is InputEventMouseMotion and gesture.active and gesture.pointer == -1:
+		gesture.move(event.position, -1)
+	elif event is InputEventScreenDrag:
+		gesture.move(event.position, event.index)
+	if owned and (event is InputEventMouseButton or event is InputEventMouseMotion or event is InputEventScreenTouch or event is InputEventScreenDrag):
 		get_viewport().set_input_as_handled()
-	elif event is InputEventScreenTouch and event.index == drag_touch:
-		if not event.pressed:
-			dragging = false
-		get_viewport().set_input_as_handled()
-	elif event is InputEventMouseMotion and drag_touch == -1:
-		_drag(event.position)
-	elif event is InputEventScreenDrag and event.index == drag_touch:
-		_drag(event.position)
 
 func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 	if not pressed:
-		if drag_touch == touch:
-			dragging = false
+		gesture.release(point, touch)
 		return
-	if dragging or not play_rect.has_point(point):
+	if gesture.active or hud.is_grip_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
 		return
-	if hud.blocks_world_input(point) or camera.busy:
+	if camera.busy or sheet.is_transitioning() or not pending.is_empty() or phase == "failure":
 		return
+	var target := "surface" if _solid_hit(point) else "empty"
 	if phase == "preview":
-		if sheet.is_transitioning() or not sheet_hit(point) or is_equal_approx(float(level["limits"]["min"][int(preview["axis"])]), float(level["limits"]["max"][int(preview["axis"])])):
-			return
-		dragging = true
-		drag_touch = touch
-		drag_origin = point
-		drag_offset = float(preview["offset"])
-		var anchor: Vector3 = preview["pivot"]
-		var direction := Vector3.ZERO
-		direction[int(preview["axis"])] = 1.0
-		drag_axis = camera.unproject_position(anchor + direction) - camera.unproject_position(anchor)
-		get_viewport().set_input_as_handled()
-	elif phase == "play":
-		var query := PhysicsRayQueryParameters3D.create(camera.project_ray_origin(point),
-			camera.project_ray_origin(point) + camera.project_ray_normal(point) * 100, 1)
-		var hit := get_world_3d().direct_space_state.intersect_ray(query)
-		if not hit.is_empty() and (hit["normal"] as Vector3).y > 0.9:
-			request_walk(hit["position"])
-		else:
-			status = "Tap the top of a connected platform."
+		if outline_hit(point):
+			target = "outline"
+		elif sheet_hit(point):
+			target = "sheet"
+	elif mirror.get("enabled", false) and sheet_hit(point):
+		target = "sheet"
+	elif target == "empty" and not mirror.get("enabled", false):
+		target = "create"
+	gesture.begin(point, touch, target, phase == "preview")
+
+func _gesture_action(action: String, value: Variant) -> void:
+	match action:
+		"create": create_mirror(value)
+		"edit": edit_mirror()
+		"walk": _walk_at(value)
+		"drag_begin": _start_drag(value)
+		"drag_move":
+			if dragging:
+				_drag(value)
+		"drag_end":
+			dragging = false
 			_refresh()
+		"apply":
+			if not apply_preview():
+				hud.show_hint("Wait for the preview." if prediction["status"] == "pending" else "This placement is blocked. Move the mirror or cancel.")
+		"camera_turn": turn_camera(int(value))
+
+func _walk_at(point: Vector2) -> void:
+	var query := PhysicsRayQueryParameters3D.create(camera.project_ray_origin(point),
+		camera.project_ray_origin(point) + camera.project_ray_normal(point) * 100, 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if not hit.is_empty() and (hit["normal"] as Vector3).y > 0.9:
+		if not request_walk(hit["position"]):
+			hud.show_hint("There is no connected path.")
+	else:
+		hud.show_hint("Tap a platform top to walk.")
+
+func _start_drag(point: Vector2) -> void:
+	if phase != "preview" or sheet.is_transitioning() or not preview["enabled"]:
+		return
+	dragging = true
+	drag_touch = gesture.pointer
+	drag_origin = point
+	drag_offset = float(preview["offset"])
+	var anchor: Vector3 = preview["pivot"]
+	var direction := Vector3.ZERO
+	direction[int(preview["axis"])] = 1.0
+	drag_axis = camera.unproject_position(anchor + direction) - camera.unproject_position(anchor)
 
 func _drag(point: Vector2) -> void:
 	if drag_axis.length_squared() > 0.01:
 		change_preview("offset", drag_offset + (point - drag_origin).dot(drag_axis) / drag_axis.length_squared())
-	get_viewport().set_input_as_handled()
 
 func _level_envelope(axes: Array = [0, 1, 2]) -> AABB:
 	var bounds := Geometry.total_bounds(Geometry.generate(level, level["mirror"]))
@@ -506,12 +578,14 @@ func _level_envelope(axes: Array = [0, 1, 2]) -> AABB:
 
 func _sheet_bounds() -> AABB:
 	var selected := preview if phase == "preview" else mirror
-	var bounds := _level_envelope([int(selected["axis"])]).grow(0.5)
-	if int(selected["axis"]) != 1:
+	var bounds := _level_envelope([int(selected.get("axis", level["mirror"]["axis"]))]).grow(0.5)
+	if int(selected.get("axis", 0)) != 1:
 		bounds.size.y += 1.0
 	return bounds
 
 func _fit_camera(rect: Rect2, instant := false) -> void:
+	if dragging and rect.is_equal_approx(play_rect):
+		return
 	play_rect = rect
 	if level.is_empty() or rect.size.x < 10 or rect.size.y < 10:
 		return
@@ -523,7 +597,7 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 	failure_veil.size = rect.size
 
 func turn_camera(direction: int) -> void:
-	if dragging:
+	if dragging or hud.is_grip_active():
 		return
 	camera.turn(direction)
 	_refresh()
@@ -535,38 +609,71 @@ func _camera_changed() -> void:
 	preview_view.update_view(camera)
 	_position_controls()
 
-func sheet_hit(point: Vector2) -> bool:
-	if hud.blocks_world_input(point):
+func _solid_hit(point: Vector2, before := INF) -> bool:
+	var origin := camera.project_ray_origin(point)
+	var direction := camera.project_ray_normal(point)
+	for solid: Dictionary in world.drawn_solids:
+		var hit: Variant = (solid["bounds"] as AABB).intersects_ray(origin, direction)
+		if hit != null and origin.distance_to(hit) < before - 0.01:
+			return true
+	return false
+
+func sheet_hit(point: Vector2, selected: Dictionary = {}) -> bool:
+	if selected.is_empty():
+		selected = preview if phase == "preview" else mirror
+	if not selected.has("axis") or hud.blocks_world_input(point):
 		return false
 	var ray_origin := camera.project_ray_origin(point)
 	var ray_direction := camera.project_ray_normal(point)
-	var axis: int = preview["axis"]
+	var axis: int = selected["axis"]
 	if absf(ray_direction[axis]) < 0.0001:
 		return false
-	var distance := (float(preview["offset"]) - ray_origin[axis]) / ray_direction[axis]
+	var distance := (float(selected["offset"]) - ray_origin[axis]) / ray_direction[axis]
 	if distance < 0:
 		return false
 	var intersection := ray_origin + ray_direction * distance
-	var sheet_bounds: AABB = sheet.drawn_bounds
 	for tangent: int in range(3):
-		if tangent != axis and (intersection[tangent] < sheet_bounds.position[tangent] or intersection[tangent] > sheet_bounds.end[tangent]):
+		if tangent != axis and (intersection[tangent] < sheet.drawn_bounds.position[tangent] or intersection[tangent] > sheet.drawn_bounds.end[tangent]):
 			return false
-	# Preview meshes differ from committed collision. Test against drawn bounds.
-	for solid: Dictionary in world.drawn_solids:
-		var hit: Variant = (solid["bounds"] as AABB).intersects_ray(ray_origin, ray_direction)
-		if hit != null and ray_origin.distance_to(hit) < distance - 0.01:
-			return false
-	return true
+	return not _solid_hit(point, distance)
+
+func _visible_edge_samples() -> PackedVector2Array:
+	var result := PackedVector2Array()
+	if phase != "preview":
+		return result
+	var corners := sheet.get_corners()
+	for index: int in corners.size():
+		var start := corners[index]
+		var finish := corners[(index + 1) % corners.size()]
+		var count := maxi(1, ceili(camera.unproject_position(start).distance_to(camera.unproject_position(finish)) / 16.0))
+		for step: int in range(count + 1):
+			var location := start.lerp(finish, float(step) / count)
+			var point := camera.unproject_position(location)
+			if play_rect.grow(-24).has_point(point) and not hud.blocks_world_input(point) and not _solid_hit(point, camera.project_ray_origin(point).distance_to(location)):
+				result.append(point)
+	return result
+
+func outline_hit(point: Vector2) -> bool:
+	if hud.blocks_world_input(point):
+		return false
+	for sample: Vector2 in _visible_edge_samples():
+		if sample.distance_to(point) <= 24.0:
+			return true
+	return false
 
 func _position_controls() -> void:
-	if mirror.is_empty() or play_rect.size.x < 64:
+	if level.is_empty() or play_rect.size.x < 64:
 		return
-	var selected := preview if phase == "preview" else mirror
-	var projected := camera.unproject_position(selected["pivot"])
-	projected = projected.clamp(play_rect.position + Vector2(32, 32), play_rect.end - Vector2(32, 32))
 	hud.set_failure_marker(camera.unproject_position(prediction.get("position", walker.position)), phase == "preview" and prediction["status"] == "failure")
-	var avoid := PackedVector2Array([projected, camera.unproject_position(walker.position + Vector3.UP * 0.4), camera.unproject_position(Geometry.vector(level["goal"]))])
-	for solid: Dictionary in world.drawn_solids:
-		var bounds: AABB = solid["bounds"]
-		avoid.append(camera.unproject_position(Vector3(bounds.get_center().x, bounds.end.y, bounds.get_center().z)))
-	hud.set_mirror_anchor(projected, avoid)
+	var avoid := PackedVector2Array([camera.unproject_position(walker.position + Vector3.UP * 0.4), camera.unproject_position(Geometry.vector(level["goal"]))])
+	if phase == "preview" and prediction.has("position"):
+		avoid.append(camera.unproject_position(prediction["position"] + Vector3.UP * 0.4))
+	hud.set_mirror_anchor(Vector2.ZERO, avoid)
+	var visible_corners := PackedVector2Array()
+	if phase == "preview":
+		for corner: Vector3 in sheet.get_corners():
+			var point := camera.unproject_position(corner)
+			if play_rect.has_point(point) and not _solid_hit(point, camera.project_ray_origin(point).distance_to(corner)):
+				visible_corners.append(point)
+	outline_accessible = not _visible_edge_samples().is_empty()
+	hud.set_sheet_controls(visible_corners, outline_accessible)

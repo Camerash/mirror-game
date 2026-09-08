@@ -4,12 +4,14 @@ extends Node3D
 signal transition_finished
 
 const SheetShader := preload("res://world/mirror_sheet.gdshader")
+const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
 
 var sheet := MeshInstance3D.new()
 var edges := MeshInstance3D.new()
-var cue := MeshInstance3D.new()
+var ribbons := MeshInstance3D.new()
 var sheet_material := ShaderMaterial.new()
 var edge_material := StandardMaterial3D.new()
+var ribbon_material := ShaderMaterial.new()
 var state: Dictionary = {}
 var corners := PackedVector3Array()
 var editing := false
@@ -27,18 +29,37 @@ func _ready() -> void:
 	sheet.material_override = sheet_material
 	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	edges.material_override = edge_material
-	cue.material_override = edge_material
 	edges.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ribbons.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	edge_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	edge_material.render_priority = 80
 	edge_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	edge_material.albedo_color = Color("c3f1f2")
+	edge_material.emission_enabled = true
+	edge_material.emission = Color("9ee9f2")
+	edge_material.emission_energy_multiplier = 1.35
+	ribbon_material.shader = RibbonShader
+	ribbon_material.render_priority = 72
+	ribbons.material_override = ribbon_material
 	add_child(sheet)
 	add_child(edges)
-	add_child(cue)
+	add_child(ribbons)
 
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if has_geometry and next_state == state and bounds == drawn_bounds and editing == is_editing:
+		return
+	# An absent mirror has no stable axis, offset, or pivot to render from.
+	if not next_state.has("axis"):
+		state = next_state.duplicate()
+		editing = is_editing
+		corners = PackedVector3Array()
+		transitioning = false
+		has_geometry = false
+		global_basis = Basis.IDENTITY
+		visible = false
+		sheet.visible = false
+		edges.visible = false
+		ribbons.visible = false
 		return
 	var axis := int(next_state.get("axis", 0))
 	var source := int(next_state.get("source", 1))
@@ -64,8 +85,9 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	has_geometry = true
 	settle_time = 0.18 if visual_change and not editing else 0.0
 	visible = bool(state.get("enabled", false)) or editing
-	sheet.visible = visible
+	sheet.visible = visible and bool(state.get("enabled", false))
 	edges.visible = visible
+	ribbons.visible = visible and bool(state.get("enabled", false))
 
 func get_corners() -> PackedVector3Array:
 	return corners
@@ -96,11 +118,11 @@ func _set_geometry(axis: int, offset: float, normal: Vector3, bounds: AABB, pivo
 	sheet.position = centre - pivot
 	sheet.basis = Basis(first, second, normal).orthonormalized()
 	_draw_edges(first_size, second_size)
+	_draw_ribbons(first_size, second_size)
 	edges.position = sheet.position
 	edges.basis = sheet.basis
-	var marker_centre := centre
-	marker_centre.y = bounds.position.y + minf(bounds.size.y * 0.30, 0.45)
-	_draw_cue(marker_centre, normal, second, maxf(first_size, second_size), pivot)
+	ribbons.position = sheet.position
+	ribbons.basis = sheet.basis
 
 func _draw_edges(width: float, height: float) -> void:
 	var points := PackedVector3Array()
@@ -119,20 +141,32 @@ func _draw_edges(width: float, height: float) -> void:
 	mesh.surface_end()
 	edges.mesh = mesh
 
-func _draw_cue(centre: Vector3, normal: Vector3, tangent: Vector3, extent: float, pivot: Vector3) -> void:
-	var start := centre - normal * (0.22 + extent * 0.06)
-	var finish := centre - normal * 0.10
-	var points := PackedVector3Array([
-		start - pivot, finish - pivot,
-		finish - pivot, finish - normal * 0.12 + tangent * 0.08 - pivot,
-		finish - pivot, finish - normal * 0.12 - tangent * 0.08 - pivot,
-	])
+func _draw_ribbons(width: float, height: float) -> void:
+	var extent := clampf(maxf(width, height) * 0.16, 0.42, 1.0)
+	var corners_2d := [Vector2(-width, -height), Vector2(width, -height), Vector2(width, height), Vector2(-width, height)]
 	var mesh := ImmediateMesh.new()
-	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	for point: Vector3 in points:
-		mesh.surface_add_vertex(point)
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for side: int in 4:
+		var start: Vector2 = corners_2d[side] * 0.5
+		var finish: Vector2 = corners_2d[(side + 1) % 4] * 0.5
+		var plane_start := Vector3(start.x, start.y, 0.0)
+		var plane_finish := Vector3(finish.x, finish.y, 0.0)
+		var far_start := plane_start + Vector3.BACK * extent
+		var far_finish := plane_finish + Vector3.BACK * extent
+		mesh.surface_set_uv(Vector2(0.0, 0.0))
+		mesh.surface_add_vertex(plane_start)
+		mesh.surface_set_uv(Vector2(0.0, 1.0))
+		mesh.surface_add_vertex(plane_finish)
+		mesh.surface_set_uv(Vector2(1.0, 1.0))
+		mesh.surface_add_vertex(far_finish)
+		mesh.surface_set_uv(Vector2(0.0, 0.0))
+		mesh.surface_add_vertex(plane_start)
+		mesh.surface_set_uv(Vector2(1.0, 1.0))
+		mesh.surface_add_vertex(far_finish)
+		mesh.surface_set_uv(Vector2(1.0, 0.0))
+		mesh.surface_add_vertex(far_start)
 	mesh.surface_end()
-	cue.mesh = mesh
+	ribbons.mesh = mesh
 
 func _process(delta: float) -> void:
 	elapsed += delta
@@ -140,7 +174,10 @@ func _process(delta: float) -> void:
 	sheet_material.set_shader_parameter("sheet_time", elapsed)
 	var pulse := 0.70 + sin(elapsed * 2.2) * 0.20 if editing else 1.0
 	edge_material.albedo_color = Color(0.76, 0.95, 0.95, pulse)
+	edge_material.emission_energy_multiplier = 1.35 if not editing else 0.75 + pulse * 0.45
 	sheet_material.set_shader_parameter("sheet_alpha", 0.07 if editing else 0.11 + settle_time * 0.12)
+	ribbon_material.set_shader_parameter("ribbon_time", elapsed)
+	ribbon_material.set_shader_parameter("ribbon_alpha", 0.62 if editing else 1.0)
 	if not transitioning:
 		return
 	var fraction := minf(elapsed / 0.22, 1.0)

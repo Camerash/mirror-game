@@ -4,6 +4,7 @@ const Geometry := preload("res://core/world_geometry.gd")
 const Levels := preload("res://core/level_loader.gd")
 const NavigationTests := preload("res://tests/navigation_tests.gd")
 const InteractionTests := preload("res://tests/mirror_interaction_tests.gd")
+const GestureTests := preload("res://tests/gesture_tests.gd")
 const PreviewTests := preload("res://tests/preview_tests.gd")
 const Game := preload("res://game.gd")
 var failures: Array[String] = []
@@ -20,11 +21,14 @@ func _check(condition: bool, description: String) -> void:
 		push_error("FAIL: " + description)
 
 func _run() -> void:
+	root.size = Vector2i(1152, 800)
+	GestureTests.run(_check)
 	_test_geometry()
 	NavigationTests.run(_check)
 	game = Game.new()
 	root.add_child(game)
 	await _frames(5)
+	await _test_lifecycle()
 	await _test_route()
 	await _test_progression()
 	await _test_reveal()
@@ -77,6 +81,39 @@ func _test_geometry() -> void:
 	var invalid := level.duplicate(true)
 	invalid["originals"][0]["size"] = [0, 1, 1]
 	_check(not Levels.validate(invalid).is_empty(), "Zero-size geometry is rejected")
+
+func _test_lifecycle() -> void:
+	await _preview_ready()
+	_check(game.mirror == {"enabled": false}, "An initial absent mirror has no transform")
+	var point: Vector2 = game.camera.unproject_position(Vector3(4, 0, 1))
+	game.create_mirror(point)
+	await _preview_ready()
+	_check(game.preview.get("pivot", Vector3.INF).is_equal_approx(Vector3(4, 0, 1)), "Creation projects the press, snaps and clamps the pivot: " + str(game.preview.get("pivot")))
+	game.cancel_preview()
+	_check(game.mirror == {"enabled": false}, "Cancel creation keeps the mirror absent")
+	game.begin_preview()
+	await _preview_ready()
+	_check(game.apply_preview(), "Fresh default creation can be placed")
+	await _frames(5)
+	var placed: Dictionary = game.mirror.duplicate(true)
+	game.create_mirror(point)
+	_check(game.phase == "play" and game.mirror == placed, "Creation cannot add a second mirror")
+	game.edit_mirror()
+	game.remove_mirror()
+	await _preview_ready()
+	_check(game.preview.has("pivot") and not game.preview["enabled"], "Removal retains only its preview outline")
+	_check(game.apply_preview(), "Removal can be confirmed on original support")
+	await _frames(5)
+	_check(game.mirror == {"enabled": false} and game.preview_origin.is_empty(), "Confirmed removal discards the live transform")
+	game.create_mirror(point)
+	await _preview_ready()
+	_check(game.preview.get("pivot", Vector3.INF).is_equal_approx(Vector3(4, 0, 1)), "Creation after removal uses the new press: " + str(game.preview.get("pivot")))
+	game.cancel_preview()
+	_check(game.undo(), "Removal can be undone")
+	await _frames(5)
+	_check(game.mirror == placed, "Undo restores the removed mirror from history")
+	game.load_level(0)
+	await _frames(5)
 
 func _test_route() -> void:
 	_check(not game.request_walk(Vector3(8, 0, 0)), "Goal is unreachable before a reflection")
@@ -140,9 +177,7 @@ func _test_progression() -> void:
 
 func _test_reveal() -> void:
 	_check(not game.request_walk(Vector3(8, 0, 0)), "Level 2 goal is blocked by the original gap")
-	var button: Rect2 = game.hud.get_touch_control_bounds()["edit"]
-	_mouse(button.get_center(), true)
-	_mouse(button.get_center(), false)
+	game.begin_preview()
 	await _preview_ready()
 	_check(game.phase == "preview" and not game.dragging, "Fixed X placement opens preview without starting a drag")
 	_check(not game.hud.get_touch_control_bounds().has("step_up"), "Fixed mirror has no offset controls")
@@ -211,7 +246,7 @@ func _test_support() -> void:
 	game.change_preview("offset", 3.0)
 	await _preview_ready()
 	game.cancel_preview()
-	_check(not game.mirror["enabled"] and game.mirror["offset"] == 2.0, "Cancel leaves committed state unchanged")
+	_check(game.mirror == {"enabled": false}, "Cancel leaves no retained mirror transform")
 
 func _test_wall() -> void:
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/06_wall.json"))
@@ -282,20 +317,13 @@ func _test_fixtures_and_layout() -> void:
 		game.begin_preview()
 		await _preview_ready()
 		await _frames(3)
-		_check(game.hud._toolbar_scroll.size.y >= 48, "Mirror edit content has a visible scroll area")
+		_check(not game.hud.get_touch_control_bounds().has("level_picker"), "Debug panels are hidden during normal editing")
 		var rect: Rect2 = game.hud.get_play_rect()
 		_check(rect.size.x > 100 and rect.size.y > 100, "Layout retains a usable play area at " + str(dimensions))
 		for key: String in game.hud.get_touch_control_bounds():
 			var bounds: Rect2 = game.hud.get_touch_control_bounds()[key]
 			_check(bounds.size.x >= 48 and bounds.size.y >= 48, "Touch target is at least 48 units: " + key)
 			_check(bounds.position.x >= 0 and bounds.end.x <= dimensions.x, "Control fits the window width: " + key)
-		var popup: PopupMenu = game.hud._level_picker.get_popup()
-		var row_height := popup.get_theme_font("font").get_height(popup.get_theme_font_size("font_size")) + popup.get_theme_constant("v_separation")
-		_check(row_height >= 48, "Menu rows also meet the touch target size")
-		game.hud._test_options_button.button_pressed = true
-		await _frames(2)
-		_check(not game.hud._test_panel.get_global_rect().intersects(game.hud._toolbar_actions.get_global_rect()), "Test options leave Confirm and Cancel visible at " + str(dimensions))
-		game.hud._test_options_button.button_pressed = false
 		game.cancel_preview()
 
 func _test_pointer_input() -> void:
@@ -307,21 +335,27 @@ func _test_pointer_input() -> void:
 	_mouse(target, false)
 	await _walk_finished()
 	_check(absf(game.walker.position.x - 1.0) < 0.04, "Screen click resolves a top surface and walks there")
-	_mouse(game.hud.get_touch_control_bounds()["edit"].get_center(), true)
-	_mouse(game.hud.get_touch_control_bounds()["edit"].get_center(), false)
+	var empty_point := _empty_point()
+	game._pointer(empty_point, true, 0)
+	game.gesture.advance(0.46)
+	game._pointer(empty_point, false, 0)
 	await _preview_ready()
-	_check(game.phase == "preview", "HUD click enters preview without moving the character")
+	_check(game.phase == "preview", "Long press creates a mirror preview without a walk")
 	var touch := InputEventScreenTouch.new()
 	touch.index = 0
 	touch.position = _sheet_point()
 	touch.pressed = true
 	root.push_input(touch)
-	_check(game.dragging, "Touch starts a drag on the visible sheet")
+	_check(not game.dragging, "Touch press alone does not translate or confirm")
 	var motion := InputEventScreenDrag.new()
 	motion.index = 0
-	motion.position = touch.position + game.drag_axis
+	var drag_normal := Vector3.ZERO
+	drag_normal[int(game.preview["axis"])] = 1.0
+	var screen_axis: Vector2 = game.camera.unproject_position(game.preview["pivot"] + drag_normal) - game.camera.unproject_position(game.preview["pivot"])
+	var original_offset: float = game.preview["offset"]
+	motion.position = touch.position + screen_axis
 	root.push_input(motion)
-	_check(game.preview["offset"] == 3.5, "Touch drag snaps by world offset")
+	_check(game.preview["offset"] == minf(original_offset + 1.0, 4.0), "Touch drag snaps by world offset")
 	touch.position = game.hud.get_touch_control_bounds()["cancel"].get_center()
 	touch.pressed = false
 	root.push_input(touch)
@@ -363,3 +397,13 @@ func _sheet_point() -> Vector2:
 				return point
 	_check(false, "Visible sheet has a touchable point")
 	return Vector2.ZERO
+
+func _empty_point() -> Vector2:
+	var rect: Rect2 = game.hud.get_play_rect().grow(-30)
+	for y: int in range(int(rect.position.y), int(rect.end.y), 24):
+		for x: int in range(int(rect.position.x), int(rect.end.x), 24):
+			var point := Vector2(x, y)
+			if not game._solid_hit(point) and not game.hud.blocks_world_input(point):
+				return point
+	_check(false, "Empty space is available for mirror creation")
+	return rect.get_center()
