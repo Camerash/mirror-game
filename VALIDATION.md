@@ -8,21 +8,24 @@ Checked on 2026-09-08 with Godot `4.7.2.stable.official.ed1daf0bf`.
 | Automated suite | 162 checks, 0 failures |
 | Geometry | Partial cuts, reflected positions, source reversal, absolute overlap removal, support, and wall conflicts passed |
 | Real physics | Boundary crossing, unchanged position, restored support, downward falls, safe landing, failure, and Undo passed |
-| Level 1 | Intended route passed through shared commands; also completed with touch controls in iPhone Simulator |
+| Level 1 | Intended route passed through shared commands; earlier iPhone Simulator touch pass completed Level 1 |
 | Input | Screen ray selection, HUD click, snapped touch drag, and release over the HUD passed |
 | Layout | 390×844, 844×390, 768×1024, 1024×768, and 1152×800 checked; visible control targets are at least 48×48 logical units; menu rows also meet the minimum height |
 | Visuals | Outline and translucent boundaries rendered; original, reflected, and patterned absolute surfaces inspected; horizontal fixture inspected |
 | Mac export | Built and launched on this Apple M2 Pro Mac |
-| iOS Simulator export | Built unsigned with matching templates and installed on iPhone 17 and iPad Pro 11-inch (M5), iOS 26.3 |
+| iOS Simulator export | Earlier unsigned export built and installed on iPhone 17 and iPad Pro 11-inch (M5), iOS 26.3; final Simulator restart later stalled on a blank background |
 | Build helper and data | Python syntax and all seven JSON files passed |
 
-The first ARM Simulator link failed: the official library contains only `x86_64`, despite listing ARM support in its metadata. The build helper detects this and builds Intel code. Both Simulator apps launched through Rosetta. The first full-quality run had a long startup and slow software rendering. Simulator exports now disable shadows and use 35% 3D resolution while retaining full-resolution controls. iPhone touch preview, enable, apply, walking, adjustment from an absolute, and goal completion were checked. Portrait and landscape layouts were inspected. Apple runtime logs contain duplicate system-class notices; no game script errors were found in the captured iPhone log.
+The first ARM Simulator link failed: the official library contains only `x86_64`, despite listing ARM support in its metadata. The build helper detects this and builds Intel code. Both Simulator apps launched through Rosetta. The first full-quality run had a long startup and slow software rendering. Simulator exports now disable shadows and use 35% 3D resolution while retaining full-resolution controls. In the earlier pass, iPhone touch preview, enable, apply, walking, adjustment from an absolute, and goal completion were checked. iPad rendering and portrait and landscape layouts were inspected. A later final Simulator restart stalled on a blank background, so the Simulator result is unresolved and is not treated as final verification. Apple runtime logs contain duplicate system-class notices; no game script errors were found in the captured iPhone log.
 
 Local evidence is in the ignored `test-output/` folder: rendered layout comparisons, `horizontal.png`, `iphone-complete.png`, `iphone-landscape.png`, `ipad-simulator.png`, and `ipad-landscape.png`. Use the capture command in README to create new images after a change.
 
+After the rapid-prototype policy change, Godot MCP Runtime 3.3.0 passed a Mac connection and runtime check: project metadata, control discovery, a click that opened mirror preview, and a captured viewport. The server stopped with no runtime errors and removed its temporary bridge; `project.godot` was unchanged. The exported Mac app also passed a headless startup check. The screenshot is in `.mcp/screenshots/`. No further Simulator checks were run for this follow-up.
+
 ## Test limits and next playtest
 
-- Simulator timing is not a physical-device performance measurement. Physical iPhone, iPad, and Android tests are pending.
+- Mac runtime, headless checks, and Mac window-size checks are the default rapid-prototype validation. Simulator timing is not a physical-device performance measurement. Physical iPhone, iPad, and Android tests are pending.
+- Routine Simulator checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; state the concrete risk first. The unresolved blank-background restart remains deferred under this policy.
 - This is an agent-operated technical check. No user playtest observations have been collected.
 - Test whether a new player sees the goal, predicts a useful mirror position, recognises the striped resting platform, and uses Undo after an experiment. Record confusion and safe alternative solutions. Do not add a score or time limit.
 - Compare the two boundary styles on a physical phone. The control panel scrolls on short screens; check whether players find the lower options.

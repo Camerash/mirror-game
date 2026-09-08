@@ -10,7 +10,7 @@ This is the current design record. Agreed rules are separate from later mileston
 - Players change reflected structures to reach places that ordinary paths cannot reach.
 - Previews, short failure feedback, undo, cancel, and reset make experiments inexpensive.
 - The game view and controls support iPhone, iPad, Android, and desktop development. Touch uses large reachable targets; mouse and keyboard provide equivalent desktop input. Camera framing and controls adapt to safe areas and aspect ratio.
-- Native Mac and unsigned iPhone/iPad Simulator builds run. Level 1 has passed automated replay and an agent-operated iPhone touch test. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
+- The current prototype has passed its Mac build and all 162 automated checks. Earlier evidence includes an iPhone touch Level 1 pass and iPad rendering. A later Simulator restart stalled on a blank background, so final Simulator validation is unresolved and deferred. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
 
 ## Technical baseline
 
@@ -89,7 +89,8 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 
 ## Next work
 
-- Test representative physical iOS and Android devices. Compare performance and touch input with the Simulator checks.
+- Keep routine validation on Mac with headless checks and window-size checks. Use one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework; record the concrete risk first.
+- Test representative physical iOS and Android devices later, when that work is scheduled.
 - Play the six fixtures and the Level 1 route; use observations to tune clarity and safe boundaries.
 - Build Level 2 and Level 3 after the current prototype rules are stable.
 - Choose a visual treatment and develop story scenes after concrete playtests.

@@ -37,6 +37,8 @@ The first command imports and parses the project. The second checks geometry, re
 
 ## Exports
 
+Mac runtime, headless checks, and Mac window-size checks are the default rapid-prototype validation. Routine Simulator and physical-device checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; record the concrete risk before that pass.
+
 Install templates through Godot's **Manage Export Templates** window. Use version **4.7.2.stable**. Build output and local captures are excluded from Git and resource imports.
 
 For Mac:
@@ -48,7 +50,9 @@ rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --exp
 rtk proxy open build/macos/Mirror.app
 ```
 
-For iPhone and iPad Simulator, install Xcode and an iOS Simulator runtime, then run:
+### Optional focused iPhone and iPad Simulator check
+
+Use this only for a documented platform-specific risk, such as renderer or shader support, export architecture, or critical touch or safe-area behavior. Install Xcode and an iOS Simulator runtime, then run:
 
 ```sh
 rtk proxy python3 tools/build_simulator.py
@@ -61,7 +65,7 @@ rtk proxy open -a Simulator
 
 Skip `boot` for an already running device. Replace `<device-UDID>` with the selected iPhone or iPad ID. The script exports a new Xcode project and builds without signing or provisioning. Set the `GODOT` environment variable if the editor is in another location. The team ID in the preset is a placeholder for this unsigned build.
 
-The installed official template advertises an ARM Simulator library but contains only Intel code. The build script checks the actual library and selects its available architecture. On this Apple Silicon Mac, the Simulator app therefore runs through Rosetta. This matches a [reported Godot template issue](https://github.com/godotengine/godot/issues/118161). The `simulator` export feature turns off shadows and uses 35% 3D resolution; UI resolution stays unchanged. Simulator timing does not measure physical-device performance. Physical iOS signing and Android exports are later work.
+The installed official template advertises an ARM Simulator library but contains only Intel code. The build script checks the actual library and selects its available architecture. On this Apple Silicon Mac, the Simulator app therefore runs through Rosetta. This matches a [reported Godot template issue](https://github.com/godotengine/godot/issues/118161). The `simulator` export feature turns off shadows and uses 35% 3D resolution; UI resolution stays unchanged. Simulator timing does not measure physical-device performance. Physical iOS signing and Android exports are later work. Do not run a broad repeated Simulator matrix.
 
 ## Source layout
 
@@ -77,3 +81,9 @@ JSON boxes use `id`, `center: [x,y,z]`, and `size: [x,y,z]`. Character and goal 
 World generation returns bounds for both meshes and collision. Absolute bounds are subtracted from generated solids. Preview uses this same calculation with frozen physics. Apply replaces collision at a physics boundary, rebuilds navigation, and cancels the old route. Level 1 replay calls the same commands as the UI.
 
 See [VALIDATION.md](VALIDATION.md) for completed checks and test limits.
+
+## Agent tools
+
+Godot MCP Runtime **3.3.0** is installed outside this repository in `~/.local/share/mirror-tools` and registered in Codex as `godot-runtime`. It can inspect a running Mac scene, send input, and save screenshots. Use `get_project_info` to check the connection. Use `run_project`, then `get_ui_elements` before clicking controls. Call `stop_project` when done and confirm that the temporary bridge has been removed before export or commit. Local screenshots stay in the ignored `.mcp/` folder.
+
+The `i-have-adhd` skill is installed in `~/.codex/skills/i-have-adhd`. It is available on the next turn; use `$i-have-adhd` to activate it. If the new MCP server is not listed in the current session, reload Codex to load its saved configuration.
