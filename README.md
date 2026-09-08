@@ -16,19 +16,20 @@ Open `project.godot` in Godot to edit the project. The exported local app is `bu
 | --- | --- | --- |
 | Walk | Tap a platform's top surface | — |
 | Open mirror preview | Enable / Modify on the canvas | M |
-| Adjust position | Drag the handle, or use −0.5 / +0.5 | [ / ] |
-| Change orientation | Select a plane diagram | 1 / 2 / 3 (X / Y / Z) |
+| Adjust position | Drag any visible part of the sheet while editing, or use −0.5 / +0.5 | [ / ] |
+| Change orientation | Turn left/right, Lay flat/Stand up, Reverse sides | 1 / 2 / 3 (X / Y / Z) |
+| Turn camera | Camera left/right buttons | Q / E |
 | Enable / disable in preview | Enable / Disable | D |
 | Commit / cancel | Confirm / Cancel | Enter / Escape |
 | Recover | Undo / Reset | Z / R |
 
-The three plane choices show level restrictions. A fixed mirror has no position handle or step buttons. Confirm and Cancel stay visible while other edit options can scroll on short windows. Test options includes the atmosphere comparison, collision outlines, and **Standing still only** mode; fixtures also allow source reversal while editing.
+Every level permits all mirror orientations and both source directions. Fixed offsets hide the step buttons for that axis. A quarter turn preserves the mirror pivot; a half turn swaps the source side. Confirm and Cancel stay visible while other edit options can scroll on short windows. Test options includes the atmosphere comparison, collision outlines, and **Standing still only** mode; source reversal is available in every level while editing.
 
 Editing freezes the real character, including during a walk or fall. The ghost shows the predicted result in a separate physics world. Confirm clears the previous walking route and resumes gravity; Cancel resumes the saved movement. A pending prediction cannot be confirmed. Unsafe falls remain valid experiments, and Undo restores the prior state. A failure below the view has a **No landing** edge marker.
 
 Level 1's intended route: enable the mirror at 2.5, walk to the striped platform at 5, change the offset to 4.0, then walk to the goal ring. Other safe solutions count. Select **Next** after reaching the goal.
 
-Level 2’s intended route: enable the fixed mirror, walk to the end of the reflection at 5, then disable it. The original platform returns beneath the character and restores the approach to the goal at 8. Deactivating above the gap causes a fall; Undo lets you try again. The goal stays visible on its absolute platform. Its fixed mirror control opens preview with a tap; it has no movement arrows or offset buttons.
+Level 2’s intended route: enable the fixed mirror, walk to the end of the reflection at 5, then disable it. The original platform returns beneath the character and restores the approach to the goal at 8. Deactivating above the gap causes a fall; Undo lets you try again. The goal stays visible on its absolute platform. Its X offset stays fixed; the other orientations remain available for experiments.
 
 ## Checks
 
@@ -77,11 +78,11 @@ The installed official template advertises an ARM Simulator library but contains
 - `core/`: pure box geometry, level validation, and flat-surface walking graph with direct routes and obstacle detours.
 - `world/`: procedural meshes, matching collision, character physics, isolated fall prediction, atmosphere, boundary, and route visuals.
 - `ui/`: native responsive controls and action signals.
-- `game.gd`: state, shared commands, preview/apply/undo, pointer input, and fixed camera framing.
+- `game.gd`: state, shared commands, preview/apply/undo, pointer input, and camera fitting and quarter-turn views.
 - `levels/`: source JSON; no generated geometry is saved in scenes.
 - `tests/`: deterministic rule/physics/input checks and visual capture script.
 
-JSON boxes use `id`, `center: [x,y,z]`, and `size: [x,y,z]`. Character and goal positions are feet positions. `mirror` contains `enabled`, `axis` (0=X, 1=Y, 2=Z), `source` (+1 keeps coordinates below the offset; −1 keeps those above), and `offset`. `limits` contains permitted `axes`, `min`, and `max` vectors. `kill_y` is the lower failure boundary. Use half-unit offsets and small fixtures. The navigation graph samples flat surfaces every quarter unit, then returns direct or simplified routes with clearance checks. Ladders and stepped paths come later.
+JSON boxes use `id`, `center: [x,y,z]`, and `size: [x,y,z]`. Character and goal positions are feet positions. `mirror` contains `enabled`, `axis` (0=X, 1=Y, 2=Z), `source` (+1 keeps coordinates below the offset; −1 keeps those above), `offset`, and `pivot: [x,y,z]`. The pivot must lie on the initial plane and inside all offset ranges. `limits` contains permitted `axes`, `min`, and `max` vectors. `kill_y` is the lower failure boundary. Use half-unit offsets and small fixtures. The navigation graph samples flat surfaces every quarter unit, then returns direct or simplified routes with clearance checks. Ladders and stepped paths come later.
 
 World generation returns bounds for both meshes and collision. Absolute bounds are subtracted from generated solids. Preview uses this same calculation with frozen physics. Confirm replaces collision at a physics boundary, rebuilds navigation, and cancels the old route. Both puzzle replays call the same commands as the UI. Puzzle order is defined by `PUZZLE_PATHS` in `game.gd`; technical fixtures follow in `LEVEL_PATHS`. The last puzzle does not advance into the fixtures.
 

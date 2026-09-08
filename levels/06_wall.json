@@ -42,11 +42,18 @@
     "enabled": true,
     "axis": 0,
     "source": 1,
-    "offset": 2
+    "offset": 2,
+    "pivot": [
+      2,
+      0,
+      0
+    ]
   },
   "limits": {
     "axes": [
-      0
+      0,
+      1,
+      2
     ],
     "min": [
       1,
@@ -60,7 +67,7 @@
     ]
   },
   "kill_y": -5,
-  "title": "Test room · Wall conflict",
+  "title": "Test room \u00b7 Wall conflict",
   "objective": "Walk to the marker. Preview removing the reflection: the returning wall must block Apply.",
   "is_test": true
 }

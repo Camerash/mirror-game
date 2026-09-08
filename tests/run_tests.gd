@@ -3,6 +3,7 @@ extends SceneTree
 const Geometry := preload("res://core/world_geometry.gd")
 const Levels := preload("res://core/level_loader.gd")
 const NavigationTests := preload("res://tests/navigation_tests.gd")
+const InteractionTests := preload("res://tests/mirror_interaction_tests.gd")
 const PreviewTests := preload("res://tests/preview_tests.gd")
 const Game := preload("res://game.gd")
 var failures: Array[String] = []
@@ -34,6 +35,7 @@ func _run() -> void:
 	await _test_pointer_input()
 	await _test_fixtures_and_layout()
 	await PreviewTests.run(game, _check, self)
+	await InteractionTests.run(game, _check, self)
 	print("Mirror tests: %d checks, %d failures" % [checks, failures.size()])
 	game.queue_free()
 	await process_frame
@@ -142,7 +144,7 @@ func _test_reveal() -> void:
 	_mouse(button.get_center(), true)
 	_mouse(button.get_center(), false)
 	await _preview_ready()
-	_check(game.phase == "preview" and not game.dragging and not game.handle.movable, "Fixed mirror control opens preview without starting a drag")
+	_check(game.phase == "preview" and not game.dragging, "Fixed X placement opens preview without starting a drag")
 	_check(not game.hud.get_touch_control_bounds().has("step_up"), "Fixed mirror has no offset controls")
 	game.change_preview("offset", 4.0)
 	await _preview_ready()
@@ -307,14 +309,14 @@ func _test_pointer_input() -> void:
 	_check(absf(game.walker.position.x - 1.0) < 0.04, "Screen click resolves a top surface and walks there")
 	_mouse(game.hud.get_touch_control_bounds()["edit"].get_center(), true)
 	_mouse(game.hud.get_touch_control_bounds()["edit"].get_center(), false)
-	await _frames(3)
+	await _preview_ready()
 	_check(game.phase == "preview", "HUD click enters preview without moving the character")
 	var touch := InputEventScreenTouch.new()
 	touch.index = 0
-	touch.position = game.handle.position + Vector2(28, 28)
+	touch.position = _sheet_point()
 	touch.pressed = true
 	root.push_input(touch)
-	_check(game.dragging, "Touch starts a mirror handle drag")
+	_check(game.dragging, "Touch starts a drag on the visible sheet")
 	var motion := InputEventScreenDrag.new()
 	motion.index = 0
 	motion.position = touch.position + game.drag_axis
@@ -347,7 +349,17 @@ func _frames(count: int) -> void:
 
 func _preview_ready() -> void:
 	for tick: int in range(120):
-		if game.prediction["status"] != "pending":
+		if game.prediction["status"] != "pending" and not game.sheet.is_transitioning() and not game.camera.busy:
 			return
 		await physics_frame
 	_check(false, "Fall prediction finishes within two seconds")
+
+func _sheet_point() -> Vector2:
+	var rect: Rect2 = game.hud.get_play_rect()
+	for y: int in range(int(rect.position.y + 10), int(rect.end.y - 10), 10):
+		for x: int in range(int(rect.position.x + 10), int(rect.end.x - 10), 10):
+			var point := Vector2(x, y)
+			if game.sheet_hit(point):
+				return point
+	_check(false, "Visible sheet has a touchable point")
+	return Vector2.ZERO

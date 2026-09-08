@@ -1,5 +1,15 @@
 # Prototype validation
 
+## Camera and sheet interaction — 2026-09-08
+
+- The full mechanics suite passed **497 checks with 0 failures**. After the final camera-transition guard, a focused interaction run passed **132 checks with 0 failures**, including refitting during a camera turn.
+- Quarter turns, source reversal, horizontal placement, stable pivots, multi-point sheet dragging in all four views, release outside the sheet, UI blocking, and fixed zoom during dragging passed. Both puzzle solutions still complete with all axes available.
+- Responsive checks passed at the five existing phone/tablet/desktop sizes. Native captures exposed panel occlusion that numeric target checks missed; editing now reserves a stage area above the phone controls or beside the wide-screen controls.
+- Mac captures show the actual sheet, local haze, all orientations/source sides, four camera views, and the contrast-stroked fall preview. Transparent draw ordering was corrected so the backdrop cannot cover the sheet or labels.
+- Godot MCP Runtime replayed both puzzle routes through actual UI and world clicks. Both goals completed without runtime errors; the bridge was removed. The final native Compatibility startup passed without shader errors.
+- Evidence: `.local/mechanics-tests.log`, `.local/final-interactions.log`, `.local/mechanics-play.log`, `.local/mechanics-startup.log`, and `test-output/trial-*.png`.
+- No Simulator or physical-device pass was run. Physical touch feel, safe areas, and mobile performance remain pending under the Mac-first policy.
+
 ## Direct mirror controls and world feedback — 2026-09-08
 
 - The automated suite passed **336 checks with 0 failures**. It covers direct diagonal routes, obstacle detours, gaps and narrow passages, full-footprint support, and absolute contact highlights.

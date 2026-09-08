@@ -56,7 +56,12 @@
     "enabled": true,
     "axis": 0,
     "source": 1,
-    "offset": 2.5
+    "offset": 2.5,
+    "pivot": [
+      2.5,
+      0.5,
+      0
+    ]
   },
   "limits": {
     "axes": [
@@ -76,7 +81,7 @@
     ]
   },
   "kill_y": -5,
-  "title": "Test room · Absolute support",
+  "title": "Test room \u00b7 Absolute support",
   "objective": "This patterned platform stays still. Adjust or remove the reflection.",
   "is_test": true
 }

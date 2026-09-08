@@ -56,7 +56,12 @@
     "enabled": false,
     "axis": 0,
     "source": 1,
-    "offset": 0
+    "offset": 0,
+    "pivot": [
+      0,
+      0.5,
+      0
+    ]
   },
   "limits": {
     "axes": [
@@ -76,7 +81,7 @@
     ]
   },
   "kill_y": -5,
-  "title": "Test room · Source side",
+  "title": "Test room \u00b7 Source side",
   "objective": "Activate the mirror. The tall obstacle on its far side must disappear.",
   "is_test": true
 }

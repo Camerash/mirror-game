@@ -1,5 +1,5 @@
 shader_type spatial;
-render_mode unshaded, fog_disabled, cull_disabled, depth_draw_never;
+render_mode blend_mix, unshaded, fog_disabled, cull_disabled, depth_draw_never;
 
 uniform vec3 plane_normal = vec3(1.0, 0.0, 0.0);
 uniform float plane_offset = 0.0;
@@ -11,16 +11,27 @@ uniform vec3 camera_right;
 uniform vec3 camera_up;
 uniform vec2 view_size;
 uniform float atmosphere_time = 0.0;
+uniform bool haze_mode = false;
+uniform vec3 haze_centre;
+uniform vec3 haze_extent = vec3(1.0);
+varying vec3 world_position;
+
+void vertex() {
+	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
 
 void fragment() {
-    // A background cross-section through the level, in world coordinates.
-    // Solid surfaces and the unbounded 3D veil locate the boundary at other depths.
-    vec3 sample_position = section_centre + camera_right * (UV.x - 0.5) * view_size.x
-        + camera_up * (0.5 - UV.y) * view_size.y;
-    float distance_to_plane = (dot(sample_position, plane_normal) - plane_offset) * source_direction;
-    float alternate = mirror_enabled && atmosphere_enabled ? smoothstep(-0.16, 0.16, distance_to_plane) : 0.0;
-    vec3 daylight = mix(vec3(0.87, 0.80, 0.67), vec3(0.96, 0.92, 0.81), 1.0 - UV.y);
-    vec3 dusk = mix(vec3(0.19, 0.25, 0.36), vec3(0.38, 0.48, 0.61), 1.0 - UV.y);
-    float drift = sin(UV.x * 17.0 + UV.y * 10.0 + atmosphere_time * 0.15) * 0.006;
-    ALBEDO = mix(daylight, dusk, alternate) + drift;
+	if (haze_mode) {
+		float side = dot(world_position, plane_normal) - plane_offset;
+		float range = length((world_position - haze_centre) / max(haze_extent, vec3(0.1)));
+		float fade = (1.0 - smoothstep(0.35, 1.0, range)) * (0.5 + 0.5 * sin(atmosphere_time * 0.45 + world_position.x * 1.7));
+		ALBEDO = mix(vec3(0.94, 0.65, 0.39), vec3(0.40, 0.70, 0.78), smoothstep(-0.2, 0.2, side));
+		ALPHA = fade * 0.16 * (atmosphere_enabled ? 1.0 : 0.0);
+	} else {
+		vec3 neutral_low = vec3(0.74, 0.78, 0.76);
+		vec3 neutral_high = vec3(0.94, 0.91, 0.83);
+		float drift = sin(UV.x * 17.0 + UV.y * 10.0 + atmosphere_time * 0.15) * 0.004;
+		ALBEDO = mix(neutral_low, neutral_high, 1.0 - UV.y) + drift;
+		ALPHA = 1.0;
+	}
 }

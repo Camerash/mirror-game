@@ -11,7 +11,7 @@ static func _frames(tree: SceneTree, count := 5) -> void:
 
 static func _ready_preview(game: Node3D, tree: SceneTree) -> void:
 	for tick: int in range(120):
-		if game.prediction["status"] != "pending":
+		if game.prediction["status"] != "pending" and not game.sheet.is_transitioning() and not game.camera.busy:
 			return
 		await tree.physics_frame
 
@@ -108,7 +108,7 @@ static func _orientation(game: Node3D, check: Callable, tree: SceneTree) -> void
 	game.change_preview("offset", 1.0)
 	game.change_preview("axis", 2)
 	game.change_preview("axis", 0)
-	check.call(game.preview["offset"] == 1.5, "Returning to a plane restores its proposed offset")
+	check.call(game.preview["offset"] == 1.5, "Rotation uses the translated X pivot coordinate")
 	game.change_preview("axis", 1)
-	check.call(game.preview["offset"] == 1.0, "Horizontal offset is remembered during the edit")
+	check.call(game.preview["offset"] == 1.0, "Rotation uses the translated Y pivot coordinate")
 	game.cancel_preview()

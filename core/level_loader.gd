@@ -18,6 +18,9 @@ static func load_level(path: String) -> Dictionary:
 	# JSON numbers are floats. Normalize discrete fields once at the boundary.
 	data["mirror"]["axis"] = int(data["mirror"]["axis"])
 	data["mirror"]["source"] = int(data["mirror"]["source"])
+	data["mirror"]["pivot"] = Vector3(data["mirror"]["pivot"][0], data["mirror"]["pivot"][1], data["mirror"]["pivot"][2])
+	data["mirror"]["vertical_axis"] = data["mirror"]["axis"] if data["mirror"]["axis"] != 1 else 0
+	data["mirror"]["vertical_source"] = data["mirror"]["source"]
 	var axes: Array[int] = []
 	for axis: float in data["limits"]["axes"]:
 		axes.append(int(axis))
@@ -48,6 +51,8 @@ static func validate(data: Dictionary) -> String:
 	if not mirror.get("enabled") is bool or not _integer_in(mirror.get("axis"), [0, 1, 2]) \
 			or not _integer_in(mirror.get("source"), [-1, 1]) or not _number(mirror.get("offset")):
 		return "Invalid mirror state."
+	if not _vector_valid(mirror.get("pivot")) or not is_equal_approx(float(mirror["pivot"][int(mirror["axis"])]), float(mirror["offset"])):
+		return "Mirror pivot must lie on the initial plane."
 	var limits: Dictionary = data["limits"]
 	if not limits.get("axes") is Array or limits["axes"].is_empty() \
 			or not _vector_valid(limits.get("min")) or not _vector_valid(limits.get("max")):
@@ -58,6 +63,8 @@ static func validate(data: Dictionary) -> String:
 	for axis: int in range(3):
 		if limits["min"][axis] > limits["max"][axis]:
 			return "Minimum offset exceeds maximum."
+		if mirror["pivot"][axis] < limits["min"][axis] or mirror["pivot"][axis] > limits["max"][axis]:
+			return "Mirror pivot is outside the permitted area."
 	if not limits["axes"].any(func(axis: Variant) -> bool: return int(axis) == int(mirror["axis"])) or not _number(data["kill_y"]):
 		return "Invalid initial axis or fall boundary."
 	var axis := int(mirror["axis"])

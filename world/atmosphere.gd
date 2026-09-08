@@ -4,14 +4,20 @@ var backdrop := MeshInstance3D.new()
 var material := ShaderMaterial.new()
 var editing := false
 var clock := 0.0
+var haze_root := Node3D.new()
+var haze_materials: Array[ShaderMaterial] = []
+var bounds := AABB(Vector3(-3, -1, -3), Vector3(6, 3, 6))
 
 func _ready() -> void:
 	material.shader = preload("res://world/atmosphere.gdshader")
+	material.render_priority = -128
 	backdrop.mesh = QuadMesh.new()
 	backdrop.material_override = material
 	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	backdrop.extra_cull_margin = 200.0
 	add_child(backdrop)
+	add_child(haze_root)
+	set_bounds(bounds)
 
 func update_view(camera: Camera3D, centre: Vector3) -> void:
 	var dimensions := camera.get_viewport().get_visible_rect().size
@@ -35,7 +41,36 @@ func set_mirror(mirror: Dictionary, is_editing: bool, style: int) -> void:
 	material.set_shader_parameter("source_direction", float(mirror["source"]))
 	material.set_shader_parameter("mirror_enabled", mirror["enabled"])
 	material.set_shader_parameter("atmosphere_enabled", style == 0)
+	for haze: ShaderMaterial in haze_materials:
+		haze.set_shader_parameter("plane_normal", normal)
+		haze.set_shader_parameter("plane_offset", float(mirror["offset"]))
+		haze.set_shader_parameter("source_direction", float(mirror["source"]))
+		haze.set_shader_parameter("atmosphere_enabled", style == 0 and mirror["enabled"])
+
+func set_bounds(next_bounds: AABB) -> void:
+	bounds = next_bounds
+	for child: Node in haze_root.get_children():
+		child.queue_free()
+	haze_materials.clear()
+	for index: int in 2:
+		var haze := MeshInstance3D.new()
+		var mesh := PlaneMesh.new()
+		mesh.size = Vector2(bounds.size.x * (0.82 - index * 0.16), bounds.size.z * (0.72 - index * 0.12))
+		haze.mesh = mesh
+		haze.position = Vector3(bounds.get_center().x, bounds.position.y - 0.25 - index * 0.35, bounds.get_center().z)
+		var haze_material := ShaderMaterial.new()
+		haze_material.shader = preload("res://world/atmosphere.gdshader")
+		haze_material.render_priority = -64
+		haze_material.set_shader_parameter("haze_mode", true)
+		haze_material.set_shader_parameter("haze_centre", haze.position)
+		haze_material.set_shader_parameter("haze_extent", Vector3(bounds.size.x * 0.55, 1.0, maxf(bounds.size.z * 0.55, 1.0)))
+		haze.material_override = haze_material
+		haze.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		haze_root.add_child(haze)
+		haze_materials.append(haze_material)
 
 func _process(delta: float) -> void:
 	clock += delta * (0.2 if editing else 1.0)
 	material.set_shader_parameter("atmosphere_time", clock)
+	for haze: ShaderMaterial in haze_materials:
+		haze.set_shader_parameter("atmosphere_time", clock)

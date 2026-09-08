@@ -15,31 +15,16 @@ const FOOTER_HEIGHT := 60.0
 const GAP := 12.0
 const TOOLBAR_WIDTH := 288.0
 
-class AxisChoiceButton extends Button:
-	var axis := 0
-
-	func _draw() -> void:
-		var center := Vector2(size.x * 0.5, 13.0)
-		var plane: PackedVector2Array
-		match axis:
-			0:
-				plane = PackedVector2Array([center + Vector2(-12, 4), center + Vector2(3, -7), center + Vector2(12, -3), center + Vector2(-3, 8)])
-			1:
-				plane = PackedVector2Array([center + Vector2(-13, 0), center + Vector2(0, -5), center + Vector2(13, 0), center + Vector2(0, 5)])
-			_:
-				plane = PackedVector2Array([center + Vector2(-12, -3), center + Vector2(3, 8), center + Vector2(12, 4), center + Vector2(-3, -7)])
-		draw_colored_polygon(plane, Color("8c786f"))
-		draw_polyline(plane + PackedVector2Array([plane[0]]), INK, 1.0, true)
-
 var _state: Dictionary = {}
 var _failure_marker: Label
 var _syncing := false
 var _last_play_rect := Rect2()
+var _last_camera_rect := Rect2()
+var _last_emitted_play_rect := Rect2()
 var _mirror_anchor := Vector2.ZERO
 var _avoid_points := PackedVector2Array()
-var _locked_toolbar_position := Vector2.INF
-var _toolbar_needs_anchor := false
 var _header: PanelContainer
+var _preview_border: PanelContainer
 var _footer: PanelContainer
 var _footer_root: Control
 var _footer_actions: HBoxContainer
@@ -47,6 +32,9 @@ var _toolbar: PanelContainer
 var _toolbar_scroll: ScrollContainer
 var _toolbar_actions: VBoxContainer
 var _toolbar_content: VBoxContainer
+var _header_content: Control
+var _header_text: VBoxContainer
+var _navigation_row: HBoxContainer
 var _level_picker: OptionButton
 var _title_label: Label
 var _objective_label: Label
@@ -56,8 +44,12 @@ var _primary_button: Button
 var _apply_button: Button
 var _cancel_button: Button
 var _enabled_button: Button
-var _axis_buttons: Array[Button] = []
-var _axis_hint: Label
+var _editing_label: Label
+var _camera_left_button: Button
+var _camera_right_button: Button
+var _turn_left_button: Button
+var _turn_right_button: Button
+var _tilt_button: Button
 var _step_row: HBoxContainer
 var _offset_label: Label
 var _step_down_button: Button
@@ -92,9 +84,6 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_inside_tree():
-		if bool(_state.get("editing", false)):
-			_locked_toolbar_position = Vector2.INF
-			_toolbar_needs_anchor = false
 		_responsive_layout()
 
 
@@ -117,13 +106,8 @@ func display_state(state: Dictionary) -> void:
 		return
 	var editing := bool(_state.get("editing", false))
 	if editing and not editing_before:
-		_locked_toolbar_position = Vector2.INF
-		_toolbar_needs_anchor = true
 		_test_options_button.set_pressed_no_signal(false)
 		_test_panel.visible = false
-	elif not editing:
-		_locked_toolbar_position = Vector2.INF
-		_toolbar_needs_anchor = false
 	_syncing = true
 	if _level_picker.item_count > 0:
 		var selected_level := clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1)
@@ -145,6 +129,16 @@ func display_state(state: Dictionary) -> void:
 	_apply_button.disabled = not bool(_state.get("can_apply", false))
 	_enabled_button.visible = editing
 	_enabled_button.text = "Disable" if enabled else "Enable"
+	_editing_label.visible = editing
+	_camera_left_button.disabled = bool(_state.get("camera_busy", false))
+	_camera_right_button.disabled = bool(_state.get("camera_busy", false))
+	var horizontal := int(_state.get("axis", 0)) == 1
+	var mirror_busy := bool(_state.get("mirror_busy", false))
+	_turn_left_button.disabled = horizontal or mirror_busy
+	_turn_right_button.disabled = horizontal or mirror_busy
+	_tilt_button.disabled = mirror_busy
+	_flip_button.disabled = mirror_busy
+	_tilt_button.text = "Stand up" if horizontal else "Lay flat"
 	var offset := float(_state.get("offset", 0.0))
 	var min_offset := float(_state.get("min_offset", -INF))
 	var max_offset := float(_state.get("max_offset", INF))
@@ -152,21 +146,17 @@ func display_state(state: Dictionary) -> void:
 	_step_down_button.disabled = offset <= min_offset
 	_step_up_button.disabled = offset >= max_offset
 	_step_row.visible = editing and not is_equal_approx(min_offset, max_offset)
-	var selected_axis := clampi(int(_state.get("axis", 0)), 0, 2)
-	var allowed_axes: Array = _state.get("allowed_axes", [0, 1, 2])
-	for index in 3:
-		_axis_buttons[index].set_pressed_no_signal(index == selected_axis)
-		_axis_buttons[index].disabled = not allowed_axes.has(index)
-		_axis_buttons[index].visible = editing
-	_axis_hint.visible = editing and allowed_axes.size() <= 1
-	_axis_hint.text = "Orientation fixed in this level" if _axis_hint.visible else ""
+	_turn_left_button.visible = editing
+	_turn_right_button.visible = editing
+	_tilt_button.visible = editing
+	_flip_button.visible = editing
 	_test_panel.visible = _test_options_button.button_pressed
-	_flip_button.visible = editing and bool(_state.get("is_test", false))
 	_style_picker.select(clampi(int(_state.get("style", 0)), 0, 1))
 	_collision_button.set_pressed_no_signal(bool(_state.get("collision", false)))
 	_standing_only_button.set_pressed_no_signal(bool(_state.get("standing_only", false)))
 	_undo_button.disabled = not bool(_state.get("can_undo", false))
 	_next_level_button.visible = bool(_state.get("can_advance", false)) and phase == "complete"
+	_preview_border.visible = editing
 	_syncing = false
 	_responsive_layout()
 
@@ -174,13 +164,20 @@ func display_state(state: Dictionary) -> void:
 func set_mirror_anchor(point: Vector2, avoid_points: PackedVector2Array = PackedVector2Array()) -> void:
 	_mirror_anchor = point
 	_avoid_points = avoid_points
-	if _toolbar_needs_anchor:
-		_toolbar_needs_anchor = false
-	_responsive_layout()
 
 
 func get_play_rect() -> Rect2:
 	return _last_play_rect
+
+
+func get_camera_rect() -> Rect2:
+	if not bool(_state.get("editing", false)) or not is_instance_valid(_toolbar):
+		return _last_play_rect
+	if _is_narrow_portrait(_last_play_rect):
+		var bottom := maxf(_last_play_rect.position.y, _toolbar.position.y - GAP)
+		return Rect2(_last_play_rect.position, Vector2(_last_play_rect.size.x, maxf(0.0, bottom - _last_play_rect.position.y)))
+	var left := minf(_last_play_rect.end.x, _toolbar.get_global_rect().end.x + GAP)
+	return Rect2(Vector2(left, _last_play_rect.position.y), Vector2(maxf(0.0, _last_play_rect.end.x - left), _last_play_rect.size.y))
 
 
 func get_touch_control_bounds() -> Dictionary:
@@ -192,32 +189,61 @@ func get_touch_control_bounds() -> Dictionary:
 	return bounds
 
 
+func blocks_world_input(point: Vector2) -> bool:
+	for panel: Control in [_header, _footer, _toolbar, _test_panel]:
+		if is_instance_valid(panel) and panel.is_visible_in_tree() and panel.get_global_rect().has_point(point):
+			return true
+	return false
+
+
 func _build_ui() -> void:
+	_preview_border = PanelContainer.new()
+	_preview_border.name = "PreviewBorder"
+	_preview_border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_preview_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview_border.add_theme_stylebox_override("panel", _preview_border_style())
+	_preview_border.visible = false
+	add_child(_preview_border)
+
 	_header = PanelContainer.new()
 	_header.name = "Header"
 	_header.mouse_filter = Control.MOUSE_FILTER_STOP
 	_header.add_theme_stylebox_override("panel", _panel_style())
 	add_child(_header)
-	var header_row := HBoxContainer.new()
-	header_row.add_theme_constant_override("separation", 10)
-	_header.add_child(header_row)
-	var text_column := VBoxContainer.new()
-	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_column.add_theme_constant_override("separation", 0)
-	header_row.add_child(text_column)
+	_header_content = Control.new()
+	_header.add_child(_header_content)
+	_header_text = VBoxContainer.new()
+	_header_text.add_theme_constant_override("separation", 0)
+	_header_content.add_child(_header_text)
 	_title_label = _make_label("Mirror", 18)
 	_title_label.clip_text = true
 	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	text_column.add_child(_title_label)
+	_header_text.add_child(_title_label)
 	_objective_label = _make_label("", 13)
 	_objective_label.clip_text = false
 	_objective_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_objective_label.max_lines_visible = 2
 	_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	text_column.add_child(_objective_label)
+	_header_text.add_child(_objective_label)
 	_phase_label = _make_label("Playing", 13)
 	_phase_label.add_theme_color_override("font_color", TERRACOTTA)
-	text_column.add_child(_phase_label)
+	_header_text.add_child(_phase_label)
+	_navigation_row = HBoxContainer.new()
+	_navigation_row.alignment = BoxContainer.ALIGNMENT_END
+	_navigation_row.add_theme_constant_override("separation", 4)
+	_header_content.add_child(_navigation_row)
+	_camera_left_button = _make_button("◀")
+	_camera_left_button.tooltip_text = "Turn camera left (Q)"
+	_camera_left_button.custom_minimum_size.x = MIN_TOUCH_SIZE
+	_camera_left_button.pressed.connect(func() -> void: _emit_action("camera_turn", -1))
+	_navigation_row.add_child(_camera_left_button)
+	_register("camera_left", _camera_left_button)
+	_camera_right_button = _make_button("▶")
+	_camera_right_button.tooltip_text = "Turn camera right (E)"
+	_camera_right_button.custom_minimum_size.x = MIN_TOUCH_SIZE
+	_camera_right_button.pressed.connect(func() -> void: _emit_action("camera_turn", 1))
+	_navigation_row.add_child(_camera_right_button)
+	_register("camera_right", _camera_right_button)
 	_level_picker = OptionButton.new()
 	_level_picker.tooltip_text = "Choose level"
 	_level_picker.fit_to_longest_item = false
@@ -225,7 +251,7 @@ func _build_ui() -> void:
 	_level_picker.custom_minimum_size = Vector2(120, MIN_TOUCH_SIZE)
 	_style_control(_level_picker)
 	_level_picker.item_selected.connect(_on_level_selected)
-	header_row.add_child(_level_picker)
+	_navigation_row.add_child(_level_picker)
 	_register("level_picker", _level_picker)
 
 	_footer = PanelContainer.new()
@@ -300,6 +326,9 @@ func _build_ui() -> void:
 
 
 func _add_toolbar_controls() -> void:
+	_editing_label = _make_label("Editing mirror", 14)
+	_editing_label.add_theme_color_override("font_color", TERRACOTTA)
+	_toolbar_actions.add_child(_editing_label)
 	_primary_button = _make_button("Modify")
 	_primary_button.pressed.connect(func() -> void: _emit_action("edit"))
 	_toolbar_actions.add_child(_primary_button)
@@ -309,6 +338,8 @@ func _add_toolbar_controls() -> void:
 	_toolbar_actions.add_child(confirm_row)
 	_apply_button = _make_button("Confirm")
 	_apply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_button.add_theme_stylebox_override("normal", _control_style(TERRACOTTA))
+	_apply_button.add_theme_stylebox_override("hover", _control_style(Color("c96e58")))
 	_apply_button.pressed.connect(func() -> void: _emit_action("apply"))
 	confirm_row.add_child(_apply_button)
 	_register("apply", _apply_button)
@@ -321,33 +352,29 @@ func _add_toolbar_controls() -> void:
 	_enabled_button.pressed.connect(_toggle_enabled)
 	_toolbar_content.add_child(_enabled_button)
 	_register("enabled", _enabled_button)
-	var axis_row := HBoxContainer.new()
-	axis_row.add_theme_constant_override("separation", 6)
-	_toolbar_content.add_child(axis_row)
-	var axis_group := ButtonGroup.new()
-	for axis in 3:
-		var axis_button := AxisChoiceButton.new()
-		axis_button.axis = axis
-		axis_button.text = "\n" + ["Vertical", "Horizontal", "Vertical"][axis]
-		axis_button.custom_minimum_size = Vector2(0, MIN_TOUCH_SIZE)
-		axis_button.add_theme_font_size_override("font_size", 12)
-		_style_control(axis_button)
-		axis_button.add_theme_stylebox_override("normal", _control_style(IVORY_DARK, 6))
-		axis_button.add_theme_stylebox_override("hover", _control_style(Color("eadcc8"), 6))
-		axis_button.add_theme_stylebox_override("pressed", _control_style(TERRACOTTA, 6))
-		axis_button.add_theme_stylebox_override("focus", _focus_style(6))
-		axis_button.add_theme_stylebox_override("disabled", _control_style(Color("d9cbb9"), 6))
-		axis_button.toggle_mode = true
-		axis_button.button_group = axis_group
-		axis_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		axis_button.pressed.connect(_emit_action.bind("axis", axis))
-		axis_row.add_child(axis_button)
-		_axis_buttons.append(axis_button)
-		_register("axis_%d" % axis, axis_button)
-	_axis_hint = _make_label("", 13)
-	_axis_hint.add_theme_color_override("font_color", MUTED)
-	_axis_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_toolbar_content.add_child(_axis_hint)
+	var turn_row := HBoxContainer.new()
+	turn_row.add_theme_constant_override("separation", 8)
+	_toolbar_content.add_child(turn_row)
+	_turn_left_button = _make_button("Turn left")
+	_turn_left_button.tooltip_text = "Quarter-turn mirror left"
+	_turn_left_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_turn_left_button.pressed.connect(func() -> void: _emit_action("turn", -1))
+	turn_row.add_child(_turn_left_button)
+	_register("turn_left", _turn_left_button)
+	_turn_right_button = _make_button("Turn right")
+	_turn_right_button.tooltip_text = "Quarter-turn mirror right"
+	_turn_right_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_turn_right_button.pressed.connect(func() -> void: _emit_action("turn", 1))
+	turn_row.add_child(_turn_right_button)
+	_register("turn_right", _turn_right_button)
+	_tilt_button = _make_button("Lay flat")
+	_tilt_button.pressed.connect(func() -> void: _emit_action("tilt"))
+	_toolbar_content.add_child(_tilt_button)
+	_register("tilt", _tilt_button)
+	_flip_button = _make_button("Reverse sides")
+	_flip_button.pressed.connect(func() -> void: _emit_action("flip"))
+	_toolbar_content.add_child(_flip_button)
+	_register("flip", _flip_button)
 	_step_row = HBoxContainer.new()
 	_step_row.add_theme_constant_override("separation", 8)
 	_toolbar_content.add_child(_step_row)
@@ -381,10 +408,6 @@ func _add_test_options() -> void:
 	_collision_button.toggled.connect(func(value: bool) -> void: _emit_action("collision", value))
 	_test_options.add_child(_collision_button)
 	_register("collision", _collision_button)
-	_flip_button = _make_button("Flip source")
-	_flip_button.pressed.connect(func() -> void: _emit_action("flip"))
-	_test_options.add_child(_flip_button)
-	_register("flip", _flip_button)
 	_standing_only_button = CheckButton.new()
 	_standing_only_button.text = "Standing still only"
 	_style_control(_standing_only_button)
@@ -398,11 +421,12 @@ func _responsive_layout() -> void:
 		return
 	var safe_rect := _safe_rect()
 	var narrow := safe_rect.size.x < 600.0
-	var header_height := 96.0 if narrow else HEADER_HEIGHT
+	var header_height := 152.0 if narrow else 96.0
 	var footer_height := 104.0 if narrow else FOOTER_HEIGHT
 	_objective_label.custom_minimum_size.y = 32.0 if narrow else 16.0
 	_header.position = safe_rect.position + Vector2(GAP, GAP)
 	_header.size = Vector2(maxf(0.0, safe_rect.size.x - GAP * 2.0), header_height)
+	_layout_header(narrow)
 	_footer.position = Vector2(safe_rect.position.x + GAP, safe_rect.end.y - footer_height - GAP)
 	_footer.size = Vector2(maxf(0.0, safe_rect.size.x - GAP * 2.0), footer_height)
 	_layout_footer(narrow)
@@ -412,6 +436,22 @@ func _responsive_layout() -> void:
 	))
 	_place_toolbar(_last_play_rect)
 	_place_test_options(_last_play_rect)
+	_emit_camera_rect_changed()
+
+
+func _layout_header(narrow: bool) -> void:
+	var content_size := _header.size - Vector2(24.0, 16.0)
+	var navigation_width := _navigation_row.get_combined_minimum_size().x
+	if narrow:
+		_header_text.position = Vector2.ZERO
+		_header_text.size = Vector2(content_size.x, 72.0)
+		_navigation_row.position = Vector2(0, 80.0)
+		_navigation_row.size = Vector2(content_size.x, MIN_TOUCH_SIZE)
+		return
+	_header_text.position = Vector2.ZERO
+	_header_text.size = Vector2(maxf(0.0, content_size.x - navigation_width - 10.0), content_size.y)
+	_navigation_row.position = Vector2(maxf(0.0, content_size.x - navigation_width), (content_size.y - MIN_TOUCH_SIZE) * 0.5)
+	_navigation_row.size = Vector2(navigation_width, MIN_TOUCH_SIZE)
 
 
 func _layout_footer(narrow: bool) -> void:
@@ -430,18 +470,23 @@ func _layout_footer(narrow: bool) -> void:
 
 
 func _place_toolbar(play_rect: Rect2) -> void:
-	var previous_size := _toolbar.size
 	var preferred_width := TOOLBAR_WIDTH if bool(_state.get("editing", false)) else 128.0
 	var toolbar_width := minf(preferred_width, maxf(MIN_TOUCH_SIZE, play_rect.size.x))
 	_toolbar.size = Vector2(toolbar_width, MIN_TOUCH_SIZE)
 	var content_height := _toolbar_content.get_combined_minimum_size().y if bool(_state.get("editing", false)) else 0.0
 	var desired_height := 16.0 + _toolbar_actions.get_combined_minimum_size().y + (8.0 + content_height if content_height > 0 else 0.0)
 	var toolbar_height := minf(play_rect.size.y, desired_height)
+	if bool(_state.get("editing", false)) and _is_narrow_portrait(play_rect):
+		toolbar_height = minf(toolbar_height, 210.0)
 	_toolbar.size.y = maxf(MIN_TOUCH_SIZE, toolbar_height)
-	if not _toolbar.size.is_equal_approx(previous_size):
-		_locked_toolbar_position = Vector2.INF
-	if bool(_state.get("editing", false)) and _locked_toolbar_position != Vector2.INF:
-		_toolbar.position = _clamp_toolbar_position(_locked_toolbar_position, play_rect)
+	if bool(_state.get("editing", false)):
+		if _is_narrow_portrait(play_rect):
+			_toolbar.position = Vector2(
+				clampf(play_rect.get_center().x - _toolbar.size.x * 0.5, play_rect.position.x, play_rect.end.x - _toolbar.size.x),
+				play_rect.end.y - _toolbar.size.y
+			)
+		else:
+			_toolbar.position = play_rect.position
 		return
 	var candidates := [
 		_mirror_anchor + Vector2(20, -_toolbar.size.y - 20),
@@ -468,24 +513,31 @@ func _place_toolbar(play_rect: Rect2) -> void:
 			best_penalty = penalty
 			best_position = position
 	_toolbar.position = best_position
-	if bool(_state.get("editing", false)) and not _toolbar_needs_anchor:
-		_locked_toolbar_position = best_position
 
 
-func _place_test_options(safe_rect: Rect2) -> void:
+func _place_test_options(play_rect: Rect2) -> void:
 	if not _test_panel.visible:
 		return
 	var panel_size := Vector2(
-		minf(TOOLBAR_WIDTH, maxf(MIN_TOUCH_SIZE, safe_rect.size.x)),
-		minf(260.0, maxf(MIN_TOUCH_SIZE, safe_rect.size.y))
+		minf(TOOLBAR_WIDTH, maxf(MIN_TOUCH_SIZE, play_rect.size.x)),
+		minf(260.0, maxf(MIN_TOUCH_SIZE, play_rect.size.y))
 	)
 	_test_panel.size = panel_size
-	var candidates := [safe_rect.end - panel_size, safe_rect.position,
-		Vector2(safe_rect.end.x - panel_size.x, safe_rect.position.y),
-		Vector2(safe_rect.position.x, safe_rect.end.y - panel_size.y)]
+	var candidates := [play_rect.end - panel_size, play_rect.position,
+		Vector2(play_rect.end.x - panel_size.x, play_rect.position.y),
+		Vector2(play_rect.position.x, play_rect.end.y - panel_size.y)]
+	if _is_narrow_portrait(play_rect):
+		candidates.push_front(Vector2(
+			clampf(_toolbar.position.x, play_rect.position.x, play_rect.end.x - panel_size.x),
+			maxf(play_rect.position.y, _toolbar.position.y - panel_size.y - GAP)
+		))
 	var best_overlap := INF
 	for candidate: Vector2 in candidates:
-		var overlap := Rect2(candidate, panel_size).intersection(_toolbar_actions.get_global_rect().grow(8.0)).get_area()
+		var candidate_rect := Rect2(candidate, panel_size)
+		var overlap := candidate_rect.intersection(_toolbar_actions.get_global_rect().grow(8.0)).get_area() * 1000.0
+		overlap += candidate_rect.intersection(_toolbar.get_global_rect().grow(8.0)).get_area()
+		overlap += candidate_rect.intersection(_header.get_global_rect().grow(8.0)).get_area()
+		overlap += candidate_rect.intersection(_footer.get_global_rect().grow(8.0)).get_area()
 		if overlap < best_overlap:
 			best_overlap = overlap
 			_test_panel.position = candidate
@@ -513,9 +565,20 @@ func _safe_rect() -> Rect2:
 
 
 func _set_play_rect(rect: Rect2) -> void:
-	if not rect.is_equal_approx(_last_play_rect):
-		_last_play_rect = rect
-		play_rect_changed.emit(rect)
+	_last_play_rect = rect
+
+
+func _emit_camera_rect_changed() -> void:
+	var camera_rect := get_camera_rect()
+	if _last_play_rect.is_equal_approx(_last_emitted_play_rect) and camera_rect.is_equal_approx(_last_camera_rect):
+		return
+	_last_emitted_play_rect = _last_play_rect
+	_last_camera_rect = camera_rect
+	play_rect_changed.emit(_last_play_rect)
+
+
+func _is_narrow_portrait(rect: Rect2) -> bool:
+	return rect.size.x < 600.0 and rect.size.y > rect.size.x
 
 
 func _toggle_enabled() -> void:
@@ -588,6 +651,14 @@ func _panel_style() -> StyleBoxFlat:
 	style.content_margin_right = 12
 	style.content_margin_top = 8
 	style.content_margin_bottom = 8
+	return style
+
+
+func _preview_border_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0, 0, 0, 0)
+	style.border_color = Color(TERRACOTTA, 0.45)
+	style.set_border_width_all(2)
 	return style
 
 

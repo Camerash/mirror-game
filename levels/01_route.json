@@ -82,11 +82,18 @@
     "enabled": false,
     "axis": 0,
     "source": 1,
-    "offset": 2.5
+    "offset": 2.5,
+    "pivot": [
+      2.5,
+      0.5,
+      0
+    ]
   },
   "limits": {
     "axes": [
-      0
+      0,
+      1,
+      2
     ],
     "min": [
       2.5,

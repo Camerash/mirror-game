@@ -19,7 +19,7 @@ func _capture() -> void:
 			game.style = style
 			game.begin_preview()
 			game.change_preview("enabled", true)
-			await create_timer(0.2).timeout
+			await create_timer(0.45).timeout
 			await RenderingServer.frame_post_draw
 			var path := "res://test-output/level1-%dx%d-style%d.png" % [dimensions.x, dimensions.y, style]
 			var error := root.get_texture().get_image().save_png(path)
@@ -31,13 +31,16 @@ func _capture() -> void:
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/07_horizontal.json"))
 	game.style = 1
 	game._refresh()
-	await create_timer(0.2).timeout
+	await create_timer(0.45).timeout
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://test-output/horizontal.png")
 	if not await _capture_reveal(game):
 		quit(1)
 		return
 	if not await _capture_technical(game):
+		quit(1)
+		return
+	if not await _capture_views(game):
 		quit(1)
 		return
 	print("Rendered layout captures saved to test-output/.")
@@ -51,7 +54,7 @@ func _capture_reveal(game: Node3D) -> bool:
 	await create_timer(0.1).timeout
 	game.begin_preview()
 	game.change_preview("enabled", true)
-	await create_timer(0.1).timeout
+	await create_timer(0.45).timeout
 	game.apply_preview()
 	for tick: int in range(5):
 		await physics_frame
@@ -70,7 +73,7 @@ func _capture_reveal(game: Node3D) -> bool:
 		for enabled: bool in [true, false]:
 			game.begin_preview()
 			game.change_preview("enabled", enabled)
-			await create_timer(0.2).timeout
+			await create_timer(0.45).timeout
 			await RenderingServer.frame_post_draw
 			var path := "res://test-output/level2-%dx%d-mirror-%s.png" % [dimensions.x, dimensions.y, str(enabled)]
 			if root.get_texture().get_image().save_png(path) != OK:
@@ -103,6 +106,34 @@ func _capture_technical(game: Node3D) -> bool:
 	return await _save("fall-preview")
 
 func _save(name: String) -> bool:
-	await create_timer(0.25).timeout
+	await create_timer(0.45).timeout
 	await RenderingServer.frame_post_draw
 	return root.get_texture().get_image().save_png("res://test-output/%s.png" % name) == OK
+
+func _capture_views(game: Node3D) -> bool:
+	root.size = Vector2i(1152, 800)
+	game.style = 0
+	game.load_level(0)
+	await create_timer(0.4).timeout
+	game.begin_preview()
+	await create_timer(0.5).timeout
+	if not game.apply_preview():
+		return false
+	await create_timer(0.5).timeout
+	if not game.request_walk(Vector3(5, 0, 0)):
+		return false
+	for tick: int in range(600):
+		await physics_frame
+		if game.walker.route.is_empty():
+			break
+	for view: int in range(4):
+		if not await _save("trial-%d-play" % view):
+			return false
+		game.begin_preview()
+		if not await _save("trial-%d-edit" % view):
+			return false
+		game.cancel_preview()
+		await create_timer(0.4).timeout
+		game.turn_camera(1)
+		await create_timer(0.4).timeout
+	return true

@@ -43,7 +43,12 @@
     "enabled": false,
     "axis": 0,
     "source": 1,
-    "offset": 0.5
+    "offset": 0.5,
+    "pivot": [
+      0.5,
+      0.5,
+      0
+    ]
   },
   "limits": {
     "axes": [
@@ -63,7 +68,7 @@
     ]
   },
   "kill_y": -5,
-  "title": "Test room · Partial cut",
+  "title": "Test room \u00b7 Partial cut",
   "objective": "Move the plane through the wide block. Compare surfaces and collision outlines.",
   "is_test": true
 }

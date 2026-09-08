@@ -43,7 +43,12 @@
     "enabled": true,
     "axis": 1,
     "source": 1,
-    "offset": 1.5
+    "offset": 1.5,
+    "pivot": [
+      0,
+      1.5,
+      0
+    ]
   },
   "limits": {
     "axes": [
@@ -63,7 +68,7 @@
     ]
   },
   "kill_y": -5,
-  "title": "Test room · A useful fall",
+  "title": "Test room \u00b7 A useful fall",
   "objective": "Walk from the patterned ledge onto high ground. Remove the reflection and land below.",
   "is_test": true
 }

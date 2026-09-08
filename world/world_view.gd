@@ -5,7 +5,6 @@ const Paint := preload("res://world/painted.gdshader")
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
-var boundary_root := Node3D.new()
 var path_root := Node3D.new()
 var contact_root := Node3D.new()
 var trace_root := Node3D.new()
@@ -16,7 +15,7 @@ var drawn_solids: Array[Dictionary] = []
 var debug_collision := false
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, collision_root, overlay_root, boundary_root, path_root, contact_root, trace_root]:
+	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, contact_root, trace_root]:
 		add_child(node)
 	for kind: String in ["original", "reflected", "absolute"]:
 		var material := ShaderMaterial.new()
@@ -89,23 +88,6 @@ func _process(delta: float) -> void:
 	trace_time = maxf(0.0, trace_time - delta)
 	trace_root.visible = trace_time > 0.0
 
-func show_boundary(mirror: Dictionary, bounds: AABB, _style: int, _editing: bool) -> void:
-	_clear(boundary_root)
-	if not mirror["enabled"]:
-		return
-	# No outer frame: the sheet extends beyond the full camera frustum.
-	var corners := _plane_corners(int(mirror["axis"]), float(mirror["offset"]), bounds.grow(150.0))
-	var mesh := ImmediateMesh.new()
-	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
-	for index: int in [0, 1, 2, 0, 2, 3]:
-		mesh.surface_add_vertex(corners[index])
-	mesh.surface_end()
-	var face := MeshInstance3D.new()
-	face.mesh = mesh
-	face.material_override = _plain(Color(0.62, 0.80, 0.91, 0.055))
-	face.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	boundary_root.add_child(face)
-
 func draw_route(path: PackedVector3Array) -> void:
 	_clear(path_root)
 	var points := PackedVector3Array()
@@ -128,17 +110,6 @@ func add_ring(parent: Node3D, feet: Vector3, color: Color, radius := 0.3) -> voi
 	node.material_override = _plain(color)
 	parent.add_child(node)
 
-func _plane_corners(axis: int, offset: float, bounds: AABB) -> PackedVector3Array:
-	var dimensions: Array[int] = [0, 1, 2]
-	dimensions.erase(axis)
-	var result := PackedVector3Array()
-	for side: Vector2 in [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]:
-		var point := bounds.position
-		point[axis] = offset
-		point[dimensions[0]] += bounds.size[dimensions[0]] * side.x
-		point[dimensions[1]] += bounds.size[dimensions[1]] * side.y
-		result.append(point)
-	return result
 
 func _lines(parent: Node3D, points: PackedVector3Array, color: Color) -> void:
 	if points.is_empty():
