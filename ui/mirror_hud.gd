@@ -281,19 +281,12 @@ func _draw_mode_icon() -> void:
 	var ink := INK if not _mode_cycle.disabled else Color(INK, 0.45)
 	match _edit_mode():
 		"move":
-			_mode_cycle.draw_line(center + Vector2(-12, 0), center + Vector2(12, 0), ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(12, 0), center + Vector2(6, -6), ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(12, 0), center + Vector2(6, 6), ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(-12, 0), center + Vector2(-6, -6), ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(-12, 0), center + Vector2(-6, 6), ink, 2.0, true)
+			_mode_cycle.draw_line(center - Vector2(11, 0), center + Vector2(11, 0), ink, 1.5, true)
+			_mode_cycle.draw_line(center - Vector2(0, 11), center + Vector2(0, 11), ink, 1.5, true)
 		"rotate":
-			_mode_cycle.draw_arc(center, 12.0, -PI * 0.82, PI * 0.82, 18, ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(9, -8), center + Vector2(14, -8), ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(9, -8), center + Vector2(11, -3), ink, 2.0, true)
+			_mode_cycle.draw_arc(center, 11.0, 0.0, TAU, 48, ink, 1.5, true)
 		"resize":
-			_mode_cycle.draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), ink, false, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(2, 10), center + Vector2(10, 10), ink, 2.0, true)
-			_mode_cycle.draw_line(center + Vector2(10, 2), center + Vector2(10, 10), ink, 2.0, true)
+			_mode_cycle.draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), ink, false, 1.5, true)
 func _button(text_value: String) -> Button:
 	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button); return button
 func _label(text_value: String, font_size: int) -> Label:
