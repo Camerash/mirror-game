@@ -8,6 +8,7 @@ const MARKER_COLOR := Color(0.88, 0.67, 0.34, 0.62)
 const LINK_COLOR := Color(0.88, 0.67, 0.34, 0.34)
 
 var reference_y := 0.0
+var _grid_height := INF
 var _grid := MeshInstance3D.new()
 var _marker := MeshInstance3D.new()
 var _link := MeshInstance3D.new()
@@ -40,13 +41,17 @@ func configure(next_reference_y: float) -> void:
 	_set_opacity(1.0)
 	visible = false
 
-func show_position(pivot: Vector3, active: bool) -> void:
+func show_position(pivot: Vector3, active: bool, target := Vector3.INF, vertical := false, height_limits := Vector2(-100, 100)) -> void:
 	if active:
 		_cancel_fade()
 		visible = true
 		_set_opacity(1.0)
-		_update_grid(pivot)
-		_update_marker(pivot)
+		var selected := pivot if target == Vector3.INF else target
+		if vertical:
+			_update_height_guide(pivot, selected, height_limits)
+		else:
+			_update_grid(selected)
+		_update_marker(selected)
 		_update_link(pivot)
 		return
 	if not visible or _is_fading():
@@ -60,23 +65,36 @@ func show_position(pivot: Vector3, active: bool) -> void:
 
 func _update_grid(pivot: Vector3) -> void:
 	var origin := Vector2(snappedf(pivot.x, GRID_SPACING), snappedf(pivot.z, GRID_SPACING))
-	if origin == _grid_origin:
+	if origin == _grid_origin and is_equal_approx(pivot.y, _grid_height):
 		return
 	_grid_origin = origin
+	_grid_height = pivot.y
 	_grid_mesh.clear_surfaces()
 	_grid_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	var steps := roundi(RADIUS * 2.0 / GRID_SPACING)
 	for index: int in range(steps + 1):
 		var offset := -RADIUS + float(index) * GRID_SPACING
 		var fade := clampf(1.0 - absf(offset) / RADIUS, 0.0, 1.0)
-		_faded_line(_grid_mesh, Vector3(origin.x + offset, reference_y + 0.012, origin.y - RADIUS), Vector3(origin.x + offset, reference_y + 0.012, origin.y), Vector3(origin.x + offset, reference_y + 0.012, origin.y + RADIUS), fade)
-		_faded_line(_grid_mesh, Vector3(origin.x - RADIUS, reference_y + 0.012, origin.y + offset), Vector3(origin.x, reference_y + 0.012, origin.y + offset), Vector3(origin.x + RADIUS, reference_y + 0.012, origin.y + offset), fade)
+		_faded_line(_grid_mesh, Vector3(origin.x + offset, pivot.y + 0.012, origin.y - RADIUS), Vector3(origin.x + offset, pivot.y + 0.012, origin.y), Vector3(origin.x + offset, pivot.y + 0.012, origin.y + RADIUS), fade)
+		_faded_line(_grid_mesh, Vector3(origin.x - RADIUS, pivot.y + 0.012, origin.y + offset), Vector3(origin.x, pivot.y + 0.012, origin.y + offset), Vector3(origin.x + RADIUS, pivot.y + 0.012, origin.y + offset), fade)
+	_grid_mesh.surface_end()
+
+func _update_height_guide(pivot: Vector3, target: Vector3, limits: Vector2) -> void:
+	_grid_origin = Vector2(INF, INF)
+	var low := maxf(ceilf(limits.x * 2) * 0.5, target.y - RADIUS)
+	var high := minf(floorf(limits.y * 2) * 0.5, target.y + RADIUS)
+	_grid_mesh.clear_surfaces()
+	_grid_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+	_solid_line(_grid_mesh, Vector3(pivot.x, low, pivot.z), Vector3(pivot.x, high, pivot.z))
+	for index: int in maxi(0, roundi((high - low) / GRID_SPACING) + 1):
+		var centre := Vector3(pivot.x, low + index * GRID_SPACING, pivot.z)
+		_solid_line(_grid_mesh, centre - Vector3.RIGHT * 0.09, centre + Vector3.RIGHT * 0.09)
 	_grid_mesh.surface_end()
 
 func _update_marker(pivot: Vector3) -> void:
 	_marker_mesh.clear_surfaces()
 	_marker_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var centre := Vector3(pivot.x, reference_y + 0.025, pivot.z)
+	var centre := pivot + Vector3.UP * 0.025
 	var radius := 0.16
 	for index: int in 12:
 		var start := TAU * float(index) / 12.0

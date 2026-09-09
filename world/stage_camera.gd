@@ -42,19 +42,13 @@ func turn(direction: int) -> void:
 	var start := yaw
 	var target := yaw + signi(direction) * PI * 0.5
 	target_yaw = target
-	var safe_size := size
-	# Sample the short arc once, with extra framing margin between samples.
-	for step: int in 33:
-		safe_size = maxf(safe_size, _pose(lerpf(start, target, float(step) / 32.0))["size"] * 1.01)
+	var start_size := size
 	var end_size: float = _pose(target)["size"]
+	# One captured destination, one fixed world pivot, no intermediate fit.
 	motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	if safe_size > size + 0.01:
-		motion.tween_method(func(height: float) -> void: _apply_pose(start, height), size, safe_size, 0.18)
-	motion.tween_method(func(angle: float) -> void:
-		yaw = angle
-		_apply_pose(angle, safe_size), start, target, 0.38)
-	if safe_size > end_size + 0.01:
-		motion.tween_method(func(height: float) -> void: _apply_pose(target, height), safe_size, end_size, 0.18)
+	motion.tween_method(func(weight: float) -> void:
+		yaw = lerpf(start, target, weight)
+		_apply_pose(yaw, lerpf(start_size, end_size, weight)), 0.0, 1.0, 0.4)
 	motion.tween_callback(_finish)
 
 func _apply_pose(angle: float, height: float) -> void:

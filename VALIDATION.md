@@ -1,4 +1,15 @@
-# Latest check: prism guides and contact boundaries — 2026-09-09
+# Latest check: edit modes and target movement — 2026-09-09
+
+- Added Move, Rotate, and Resize modes, stable screen-space rotation arcs, target selection during dragging, movement guides, and one blended camera turn. The default angle step is 15°; debug 0° retains legal continuous angles. The progressive mode tutorial remains a pending idea.
+- One combined headless regression passed **524 checks, 0 failures**. It covers both puzzle routes, support restoration, wall rejection, removal, Cancel, Undo, Reset, failure recovery, prediction, movement, and control layouts.
+- Focused checks passed: **22 edit-mode and target checks**, **68 bounded-mirror checks**, **47 legal-angle checks**, and **27 continuous-control checks**. HUD mode checks and stable-arc checks also passed. Arc checks include 390×844 portrait safe areas, separate hit regions, fixed 64-unit radius across panel sizes, repeated/reversed travel, and pointer capture. These are headless layout checks, not visual evidence.
+- Initial integration checks found an inferred ray-distance type and an obsolete ring callback assignment. Both were fixed before the successful checks. Final editor import/parse passed. The final HUD-layout ordering change received the focused edit-mode check instead of another full regression.
+- Godot MCP declined the Mac launch before starting a process. No alternative launch or native screenshot was made. The new GPU appearance, arc access in all four rendered views, camera motion feel, and physical touch feel remain unverified. No export or Simulator pass was run.
+- The temporary MCP bridge and autoload are absent. Generated output remains outside Git.
+
+---
+
+# Earlier check: prism guides and contact boundaries — 2026-09-09
 
 - Added the approved faint B corner guides: four 0.025-unit ribbons, 12% peak opacity, and a six-unit visual fade. Contact light now covers the panel and all four destination-column side boundaries. Original, reflected, and absolute surfaces share the C mist shader. Guide fade does not limit contact depth.
 - Godot 4.7.2 headless prism-contact checks passed **74 checks, 0 failures**. Cases include distant contacts, source-side exclusion, reversal, resizing, translation, arbitrary and horizontal frames, actual cut/reflected fragments, removal, empty state, internal coplanar edges, adjacent surface bands, and non-overlapping corner bands. The existing eight contact results also passed after the boundary extension. An early test used an untyped empty array and reported a script error; the corrected typed-array check passed.

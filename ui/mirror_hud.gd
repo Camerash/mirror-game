@@ -28,6 +28,7 @@ var _cancel: Button
 var _enabled: Button
 var _flip: Button
 var _apply: Button
+var _mode_cycle: Button
 var _debug_panel: PanelContainer
 var _level_picker: OptionButton
 var _failure: Label
@@ -63,6 +64,7 @@ func display_state(state: Dictionary) -> void:
 	var editing := bool(_state.get("editing", false))
 	var phase := str(_state.get("phase", "play"))
 	var mirror_busy := bool(_state.get("mirror_busy", false))
+	var mode_busy := bool(_state.get("mode_busy", false))
 	var camera_busy := bool(_state.get("camera_busy", false))
 	var enabled := bool(_state.get("enabled", false))
 	_camera_left.visible = _desktop()
@@ -81,6 +83,9 @@ func display_state(state: Dictionary) -> void:
 	_flip.disabled = mirror_busy
 	_apply.visible = editing and (not _outline_accessible or not enabled)
 	_apply.disabled = not bool(_state.get("can_apply", false))
+	_mode_cycle.visible = editing
+	_mode_cycle.disabled = mode_busy
+	_update_mode_cycle()
 	_edit_border.visible = editing
 	_update_debug(editing, mirror_busy)
 	_responsive_layout()
@@ -142,6 +147,13 @@ func _build() -> void:
 	_enabled = _button("Keep mirror"); _enabled.pressed.connect(func() -> void: _emit("enabled", not bool(_state.get("enabled", true)))); add_child(_enabled); _register("enabled", _enabled)
 	_flip = _add_action("Reverse sides", "flip", null, "flip")
 	_apply = _add_action("Confirm", "apply", null, "apply")
+	_mode_cycle = _button("")
+	_mode_cycle.visible = false
+	_mode_cycle.tooltip_text = "Change edit mode"
+	_mode_cycle.draw.connect(_draw_mode_icon)
+	_mode_cycle.pressed.connect(func() -> void: _emit("mode_cycle", null))
+	add_child(_mode_cycle)
+	_register("mode_cycle", _mode_cycle)
 	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset, _next]: _style_edit(control)
 	_build_debug()
 
@@ -159,7 +171,7 @@ func _build_debug() -> void:
 	_angle_snap.min_value = 0.0
 	_angle_snap.max_value = 90.0
 	_angle_snap.step = 5.0
-	_angle_snap.value = 0.0
+	_angle_snap.value = 15.0
 	_angle_snap.custom_minimum_size.y = TOUCH
 	_angle_snap.value_changed.connect(func(value: float) -> void:
 		_set_angle_snap_display(value)
@@ -192,7 +204,7 @@ func _update_debug(editing: bool, mirror_busy: bool) -> void:
 		control.visible = true
 		control.editable = editing and not mirror_busy and bool(_state.get("enabled", false))
 		control.set_value_no_signal(float(_state.get(spec[1], 3.0)))
-	var angle_snap := clampf(float(_state.get("angle_snap", 0.0)), 0.0, 90.0)
+	var angle_snap := clampf(float(_state.get("angle_snap", 15.0)), 0.0, 90.0)
 	_angle_snap.set_value_no_signal(snappedf(angle_snap, 5.0))
 	_angle_snap.editable = not mirror_busy
 	_set_angle_snap_display(_angle_snap.value)
@@ -235,6 +247,8 @@ func _responsive_layout() -> void:
 			control.size = Vector2(slot, TOUCH)
 			control.position = Vector2(start + (index % columns) * (slot + row_gap), safe.end.y - TOUCH * 2 - GAP * 2 - (index / columns) * (TOUCH + row_gap))
 			index += 1
+	_mode_cycle.size = Vector2(TOUCH, TOUCH)
+	_mode_cycle.position = Vector2(safe.end.x - TOUCH - GAP, safe.end.y - TOUCH - GAP)
 	_debug_panel.position = safe.position + Vector2(GAP, GAP); _debug_panel.size = Vector2(minf(260.0, safe.size.x - GAP * 2.0), minf(420.0, safe.size.y - GAP * 2.0))
 	_hint.size = Vector2(minf(360.0, safe.size.x - TOUCH - GAP * 3.0), TOUCH); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
 	var camera_rect := get_camera_rect()
@@ -252,6 +266,34 @@ func _safe_rect() -> Rect2:
 	return result if result.size.x > 0 and result.size.y > 0 else visible
 
 func _draw_hold() -> void: _hold.draw_arc(_hold.size * .5, 20.0, -PI * .5, -PI * .5 + TAU * float(_hold.get_meta("progress", 0.0)), 24, WARM, 4.0)
+func _update_mode_cycle() -> void:
+	var mode := _edit_mode()
+	var name := mode.capitalize()
+	_mode_cycle.tooltip_text = "Edit mode: %s. Change mode." % name
+	_mode_cycle.accessibility_name = "Edit mode: %s" % name
+	_mode_cycle.queue_redraw()
+func _edit_mode() -> String:
+	var mode := str(_state.get("edit_mode", "move"))
+	return mode if mode in ["move", "rotate", "resize"] else "move"
+func _draw_mode_icon() -> void:
+	if not is_instance_valid(_mode_cycle): return
+	var center := _mode_cycle.size * 0.5
+	var ink := INK if not _mode_cycle.disabled else Color(INK, 0.45)
+	match _edit_mode():
+		"move":
+			_mode_cycle.draw_line(center + Vector2(-12, 0), center + Vector2(12, 0), ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(12, 0), center + Vector2(6, -6), ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(12, 0), center + Vector2(6, 6), ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(-12, 0), center + Vector2(-6, -6), ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(-12, 0), center + Vector2(-6, 6), ink, 2.0, true)
+		"rotate":
+			_mode_cycle.draw_arc(center, 12.0, -PI * 0.82, PI * 0.82, 18, ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(9, -8), center + Vector2(14, -8), ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(9, -8), center + Vector2(11, -3), ink, 2.0, true)
+		"resize":
+			_mode_cycle.draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), ink, false, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(2, 10), center + Vector2(10, 10), ink, 2.0, true)
+			_mode_cycle.draw_line(center + Vector2(10, 2), center + Vector2(10, 10), ink, 2.0, true)
 func _button(text_value: String) -> Button:
 	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button); return button
 func _label(text_value: String, font_size: int) -> Label:

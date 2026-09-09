@@ -69,6 +69,9 @@ func _run() -> void:
 	await settle()
 	game.begin_preview()
 	await settle()
+	game.set_edit_mode("rotate")
+	await settle()
+	game._action("angle_snap", 0.0)
 	var initial: Dictionary = game.preview.duplicate(true)
 	game._start_rotation({"kind":"turn", "axis":Vector3.UP})
 	game._set_rotation_angle(deg_to_rad(13.2))
@@ -104,6 +107,8 @@ func _run() -> void:
 		check(is_equal_approx(game.preview["height"], length), "Resize keeps whole-unit size")
 	var unchanged: Vector3 = game.preview["pivot"]
 	var point: Vector2 = game.camera.unproject_position(unchanged)
+	game.set_edit_mode("move")
+	await settle()
 	game._start_drag(point)
 	game._drag(point)
 	game._finish_drag()

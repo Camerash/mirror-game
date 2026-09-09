@@ -13,6 +13,7 @@ var is_obstructed: Callable
 var _state: Dictionary = {}
 var _editing := false
 var _busy := false
+var _mode := "resize"
 var _camera: Camera3D
 var _safe_rect := Rect2()
 var _excluded: Array[Rect2] = []
@@ -26,16 +27,20 @@ func _ready() -> void:
 	mouse_filter = MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-func set_state(state: Dictionary, editing: bool, busy: bool) -> void:
+func set_state(state: Dictionary, editing: bool, busy: bool, mode: String = "resize") -> void:
 	_state = state.duplicate(true)
 	_editing = editing
 	_busy = busy
+	_mode = mode if mode in ["move", "rotate", "resize"] else "resize"
 	if not _available():
 		cancel()
 		_tabs.clear()
 		queue_redraw()
-	elif _busy and not _active:
-		_tabs.clear()
+	elif not _active:
+		if _busy:
+			_tabs.clear()
+		elif _camera:
+			_layout_tabs()
 		queue_redraw()
 
 func update_view(camera: Camera3D, safe_rect: Rect2, excluded: Array[Rect2], orbs: PackedVector2Array) -> void:
@@ -55,6 +60,7 @@ func pointer(point: Vector2, pressed: bool, index: int) -> bool:
 			_pointer = -2
 			_active_key = ""
 			action_requested.emit(action, null)
+			_refresh_tabs_after_gesture()
 			queue_redraw()
 			return true
 		return false
@@ -92,6 +98,7 @@ func cancel() -> void:
 		_pointer = -2
 		_active_key = ""
 		action_requested.emit(action, null)
+		_refresh_tabs_after_gesture()
 		queue_redraw()
 
 func get_control_rects() -> Dictionary:
@@ -116,10 +123,20 @@ func _available() -> bool:
 
 func _layout_tabs() -> void:
 	_tabs.clear()
+	if _mode == "rotate":
+		return
 	var frame := Rules.frame(_state)
-	_add_tab("width", _anchor("width"), frame.y)
-	_add_tab("height", _anchor("height"), frame.x)
-	_add_height_move(frame)
+	if _mode == "resize":
+		_add_tab("width", _anchor("width"), frame.y)
+		_add_tab("height", _anchor("height"), frame.x)
+	elif _mode == "move":
+		_add_height_move(frame)
+
+func _refresh_tabs_after_gesture() -> void:
+	if _available() and not _busy:
+		_layout_tabs()
+	else:
+		_tabs.clear()
 
 func _anchor(key: String) -> Vector3:
 	var frame := Rules.frame(_state)

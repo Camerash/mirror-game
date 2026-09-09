@@ -363,7 +363,7 @@ func _test_pointer_input() -> void:
 	var original_offset: float = game.preview["offset"]
 	motion.position = touch.position + screen_axis
 	root.push_input(motion)
-	_check(game.preview["offset"] == original_offset and is_equal_approx(game.display_preview["offset"], minf(original_offset + 1.0, game.level["limits"]["max"][0])), "Touch drag changes only the continuous display state")
+	_check(game.preview["offset"] == original_offset and is_equal_approx(game.display_target["offset"], minf(original_offset + 1.0, game.level["limits"]["max"][0])), "Touch drag selects a snapped target without committing")
 	touch.position = game.hud.get_touch_control_bounds()["cancel"].get_center()
 	touch.pressed = false
 	root.push_input(touch)

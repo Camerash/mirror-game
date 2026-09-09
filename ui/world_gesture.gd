@@ -16,8 +16,9 @@ var elapsed := 0.0
 var moved := false
 var consumed := false
 var translating := false
+var allow_translation := true
 
-func begin(point: Vector2, index: int, hit: String, is_editing: bool) -> void:
+func begin(point: Vector2, index: int, hit: String, is_editing: bool, can_translate := true) -> void:
 	if active:
 		return
 	active = true
@@ -26,6 +27,7 @@ func begin(point: Vector2, index: int, hit: String, is_editing: bool) -> void:
 	location = point
 	target = hit
 	editing = is_editing
+	allow_translation = can_translate
 	elapsed = 0.0
 	moved = false
 	consumed = false
@@ -53,7 +55,7 @@ func move(point: Vector2, index: int) -> void:
 	if travel.length() >= TAP_DISTANCE:
 		moved = true
 		hold_progress.emit(origin, -1.0)
-	if editing and target in ["sheet", "outline"] and moved:
+	if editing and allow_translation and target in ["sheet", "outline"] and moved:
 		if not translating:
 			translating = true
 			action_requested.emit("drag_begin", origin)

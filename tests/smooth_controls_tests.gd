@@ -13,20 +13,23 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	var size_before: float = game.camera.size
 	var centre: Vector2 = game.camera.unproject_position(original["pivot"])
 	game._start_drag(centre)
-	game._drag(centre + game.drag_axis * 0.27)
-	check.call(is_equal_approx(game.display_preview["offset"], 2.77) and game.preview == original, "Drag keeps continuous display offset separate from snapped proposal")
+	game._drag(centre + game.drag_axis * 0.35)
+	await tree.create_timer(0.04).timeout
+	check.call(game.display_target["offset"] == 3.0 and game.display_preview["offset"] > 2.5 and game.display_preview["offset"] < 3.0 and game.preview == original, "Drag interpolates toward a snapped target without committing")
 	check.call(game.solids == committed and is_equal_approx(game.camera.size, size_before), "Drag leaves committed collision and camera scale fixed")
 	check.call(not game.apply_preview() and not game.preview_view.ghost.visible, "Manipulation hides stale prediction and blocks confirmation")
 	var source := AABB(Vector3(0, -1, 0), Vector3.ONE)
-	check.call(is_equal_approx(Geometry.reflect(source, game.display_preview).position.x, 4.54), "Reflected structures follow the continuous plane position")
+	check.call(is_equal_approx(Geometry.reflect(source, game.display_preview).position.x, 2.0 * game.display_preview["offset"] - 1.0), "Reflected structures follow the continuous plane position")
 	game._finish_drag()
 	check.call(not game.apply_preview(), "Release settling cannot confirm")
 	await _settle(game, tree)
 	check.call(game.preview["offset"] == 3.0 and game.display_preview.is_empty(), "Release settles on the nearest half unit")
+	game.set_edit_mode("rotate")
 	var pivot: Vector3 = game.preview["pivot"]
 	var before_rotation: Array = game.world.drawn_solids.duplicate(true)
 	game._action("rotation_begin", {"kind":"turn", "axis":Vector3.UP})
 	game._action("rotation_angle", 0.2)
+	await tree.create_timer(0.12).timeout
 	check.call(game.world.drawn_solids != before_rotation and game.preview["pivot"] == pivot, "Rotation updates visual geometry immediately without moving its pivot")
 	check.call(game.rotation_display and not game.apply_preview(), "Continuous rotation blocks confirmation")
 	game._action("rotation_angle", TAU)
@@ -40,15 +43,14 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	check.call(Rules.frame(game.preview).is_equal_approx(before_tilt), "Four signed tilts restore the complete frame")
 	var corners: PackedVector3Array = game.sheet.get_corners()
 	check.call(is_equal_approx(corners[0].distance_to(corners[1]), 3.0) and is_equal_approx(corners[1].distance_to(corners[2]), 3.0), "Frame retains fixed dimensions after rotations")
+	var start_scale: float = game.camera.size
+	var end_scale: float = game.camera._pose(game.camera.yaw + PI * 0.5)["size"]
 	game.turn_camera(1)
-	var orbit_scale := -1.0
 	var last_yaw: float = game.camera.yaw
 	for frame: int in 180:
 		await tree.process_frame
 		if not is_equal_approx(last_yaw, game.camera.yaw):
-			if orbit_scale < 0:
-				orbit_scale = game.camera.size
-			check.call(is_equal_approx(game.camera.size, orbit_scale), "Camera scale stays fixed during orbital motion")
+			check.call(game.camera.size >= minf(start_scale,end_scale)-0.001 and game.camera.size <= maxf(start_scale,end_scale)+0.001, "Camera scale blends between captured endpoints")
 		last_yaw = game.camera.yaw
 		if not game.camera.busy:
 			break

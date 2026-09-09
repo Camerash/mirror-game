@@ -1,5 +1,5 @@
 extends SceneTree
-## One Mac review of bounded resizing, edge-attached orbs and edge-light material.
+## One Mac review of bounded resizing, stable rotation arcs and edge-light material.
 const Game := preload("res://game.gd")
 var game: Node3D
 
@@ -18,19 +18,20 @@ func _run() -> void:
 		await _capture("bounded-view-%d" % view)
 		game.turn_camera(1)
 		await _settle()
-	# Exercise the real ring/controller contract with one held revolution.
-	var ring: Dictionary = game.rings._yaw.duplicate(true)
-	var edge: Vector3 = ring["edge"] * ring["edge_sign"]
-	var start := atan2(edge.dot(ring["v"]), edge.dot(ring["u"]))
+	game.set_edit_mode("rotate")
+	await _settle()
+	# Exercise the visible turn arc controller.
+	var turn_points := game.rings.get_arc_points("turn")
 	var original: Dictionary = game.preview.duplicate(true)
-	var first: Vector2 = game.camera.unproject_position(game.rings._ring_point(ring, start))
-	assert(game.rings.pointer(first, true, 0), "Visible yaw orb accepts input")
-	for step: int in range(1, 25):
-		var point: Vector2 = game.camera.unproject_position(game.rings._ring_point(ring, start + TAU * step / 24.0))
-		game.rings.motion(point, 0)
+	assert(not turn_points.is_empty(), "Visible turn arc has input points")
+	var first: Vector2 = turn_points[12]
+	assert(game.rings.pointer(first, true, 0), "Visible turn arc accepts input")
+	game.rings.motion(turn_points[20], 0)
 	game.rings.pointer(Vector2(-50, -50), false, 0)
 	await _settle()
-	assert(game.preview["axis"] == original["axis"] and game.preview["source"] == original["source"], "Held revolution completes four turns")
+	assert(is_equal_approx(game.preview["yaw"] - original["yaw"], PI / 3.0) and game.preview["pivot"] == original["pivot"], "Turn arc selects 60 degrees and preserves the centre")
+	game.set_edit_mode("resize")
+	await _settle()
 	var tab: Rect2 = game.resize_controls.get_control_rects()["height"]
 	game._pointer(tab.get_center(), true, 0)
 	game.resize_controls.motion(tab.get_center() + game.resize_screen_axis * 1.2, 0)
@@ -71,7 +72,7 @@ func _run() -> void:
 	game.remove_mirror()
 	await _settle()
 	await _capture("bounded-fall")
-	print("Bounded native review: four views, held ring cycle, resize, small/large, horizontal, fall and portrait complete.")
+	print("Bounded native review: four views, turn arc, resize, small/large, horizontal, fall and portrait complete.")
 	game.queue_free()
 	await process_frame
 	quit()
