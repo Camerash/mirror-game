@@ -81,3 +81,9 @@ Runtime review: `direction-contact-in-game.png` shows the earlier contrast corre
 `seam-glow-05.png` is a comparison made with the built-in image generator. **C: Mist glow** is selected. Prompt: compare a thin pearl contact seam with a narrow halo, soft surface glow, mist glow, and stronger contrast on jade and cream stone. Keep the object solid and show light across the top and side faces.
 
 Use C for softness and colour only. Its mirror orientation is incorrect; runtime contours use the actual finite mirror plane and visible object faces. The wider surface band keeps a steady bright centre with slow, soft halo variation. It does not require bloom or volumetric fog.
+
+## Prism guide trial 06
+
+`prism-guides-06.png` is the selected revised **B: Soft ribbons** mockup, made with the built-in image generator. Prompt: retain B's scene and contact glow, reduce the four corner rays to faint, narrow pale blue-grey wisps with an earlier smooth fade, and keep platform contact light stronger. No filled prism faces or far cap.
+
+This is an approximate visual reference. Runtime lines follow the four actual panel corners and reflected normal. Contact contours cover the panel and four side boundaries at any depth. The six-unit guide fade does not limit replacement or contact light.

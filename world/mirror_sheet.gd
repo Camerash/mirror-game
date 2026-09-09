@@ -7,6 +7,7 @@ signal pose_changed
 const Rules := preload("res://core/mirror_state.gd")
 const SheetShader := preload("res://world/mirror_sheet.gdshader")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
+const GuideShader := preload("res://world/mirror_guides.gdshader")
 const MoteShader := preload("res://world/mirror_motes.gdshader")
 
 var panel_size := Vector2(3, 3)
@@ -14,10 +15,12 @@ var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
 var edges := MeshInstance3D.new()
 var ribbons := MeshInstance3D.new()
+var guides := MeshInstance3D.new()
 var motes := MeshInstance3D.new()
 var sheet_material := ShaderMaterial.new()
 var edge_material := StandardMaterial3D.new()
 var ribbon_material := ShaderMaterial.new()
+var guide_material := ShaderMaterial.new()
 var mote_material := ShaderMaterial.new()
 var state: Dictionary = {}
 var editing := false
@@ -35,6 +38,7 @@ func _ready() -> void:
 	edges.material_override = edge_material
 	edges.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ribbons.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	guides.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	motes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	edge_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	edge_material.render_priority = 80
@@ -46,12 +50,16 @@ func _ready() -> void:
 	ribbon_material.shader = RibbonShader
 	ribbon_material.render_priority = 72
 	ribbons.material_override = ribbon_material
+	guide_material.shader = GuideShader
+	guide_material.render_priority = 70
+	guides.material_override = guide_material
 	mote_material.shader = MoteShader
 	mote_material.render_priority = 74
 	motes.material_override = mote_material
 	add_child(sheet)
 	add_child(edges)
 	add_child(ribbons)
+	add_child(guides)
 	add_child(motes)
 
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
@@ -76,16 +84,20 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		sheet.mesh = quad
 		_draw_edges(panel_size.x, panel_size.y)
 		_draw_ribbons(panel_size.x, panel_size.y)
+		_draw_guides(panel_size.x, panel_size.y)
 		_draw_motes(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
 	sheet.visible = enabled
 	ribbons.visible = enabled
+	guides.visible = enabled or editing
 	motes.visible = enabled
 	edges.visible = enabled or editing
 	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
 	var source_sign := float(state.get("source_sign", 1.0))
 	ribbon_material.set_shader_parameter("source_sign", source_sign)
+	guide_material.set_shader_parameter("source_sign", source_sign)
+	guide_material.set_shader_parameter("guide_alpha", 0.35 if not enabled else 1.0)
 	mote_material.set_shader_parameter("source_sign", source_sign)
 	settle_time = 0.18 if not editing else 0.0
 
@@ -172,6 +184,20 @@ func _draw_ribbons(width: float, height: float) -> void:
 		mesh.surface_add_vertex(far_start)
 	mesh.surface_end()
 	ribbons.mesh = mesh
+
+func _draw_guides(width: float, height: float) -> void:
+	const GUIDE_LENGTH := 6.0
+	const GUIDE_WIDTH := 0.025
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for corner: Vector2 in [Vector2(-width, -height), Vector2(width, -height), Vector2(width, height), Vector2(-width, height)]:
+		var centre := Vector3(corner.x, corner.y, 0.0) * 0.5
+		for vertex: Vector2 in [Vector2(-1,0), Vector2(1,0), Vector2(1,1), Vector2(-1,0), Vector2(1,1), Vector2(-1,1)]:
+			mesh.surface_set_uv(Vector2(vertex.x * 0.5 + 0.5, vertex.y))
+			mesh.surface_add_vertex(centre + Vector3(vertex.x * GUIDE_WIDTH * 0.5, 0.0, vertex.y * GUIDE_LENGTH))
+	mesh.surface_end()
+	guides.mesh = mesh
+	guides.custom_aabb = AABB(Vector3(-width * 0.5 - GUIDE_WIDTH, -height * 0.5 - GUIDE_WIDTH, -GUIDE_LENGTH - GUIDE_WIDTH), Vector3(width + GUIDE_WIDTH * 2.0, height + GUIDE_WIDTH * 2.0, (GUIDE_LENGTH + GUIDE_WIDTH) * 2.0))
 
 func _draw_motes(width: float, height: float) -> void:
 	const MOTE_COUNT := 28

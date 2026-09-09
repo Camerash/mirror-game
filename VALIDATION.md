@@ -1,4 +1,13 @@
-# Latest check: soft intersection glow — 2026-09-09
+# Latest check: prism guides and contact boundaries — 2026-09-09
+
+- Added the approved faint B corner guides: four 0.025-unit ribbons, 12% peak opacity, and a six-unit visual fade. Contact light now covers the panel and all four destination-column side boundaries. Original, reflected, and absolute surfaces share the C mist shader. Guide fade does not limit contact depth.
+- Godot 4.7.2 headless prism-contact checks passed **74 checks, 0 failures**. Cases include distant contacts, source-side exclusion, reversal, resizing, translation, arbitrary and horizontal frames, actual cut/reflected fragments, removal, empty state, internal coplanar edges, adjacent surface bands, and non-overlapping corner bands. The existing eight contact results also passed after the boundary extension. An early test used an untyped empty array and reported a script error; the corrected typed-array check passed.
+- The seven guide-state checks passed: four ribbons/six-unit extent, arbitrary frame and side sync, mesh reuse, resized origins, removal dimming, and absence without collision. Final headless editor import/parse and `git diff --check` passed. The temporary MCP bridge and autoload are absent.
+- The runtime MCP tool declined launch before starting a process. No new native screenshot was captured, so GPU appearance, occlusion, and desktop/portrait visual density remain unverified. No export, Simulator, or full gameplay regression was run for this visual-only change. The approved mockup is retained in `docs/art/prism-guides-06.png`; it is not runtime evidence.
+
+---
+
+# Earlier check: soft intersection glow — 2026-09-09
 
 - Applied selected **C: Mist glow** to the existing exact contact contours. The band is 0.36 world units wide with a thin steady pearl core and a soft cyan fade. Shader derivatives retain core visibility at a distance. Slow variation affects only the halo. The comparison image guides softness only; its mirror orientation is incorrect.
 - Godot 4.7.2 headless contact check passed all eight results: finite, reused, angled, coplanar, changed normal, empty, wider band, and face clipping. `git diff --check` passed. No full gameplay suite or export was needed for this material change.
