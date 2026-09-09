@@ -7,17 +7,18 @@ signal pose_changed
 const Rules := preload("res://core/mirror_state.gd")
 const SheetShader := preload("res://world/mirror_sheet.gdshader")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
+const MoteShader := preload("res://world/mirror_motes.gdshader")
 
-var guides := MeshInstance3D.new()
-var guide_material := StandardMaterial3D.new()
 var panel_size := Vector2(3, 3)
 var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
 var edges := MeshInstance3D.new()
 var ribbons := MeshInstance3D.new()
+var motes := MeshInstance3D.new()
 var sheet_material := ShaderMaterial.new()
 var edge_material := StandardMaterial3D.new()
 var ribbon_material := ShaderMaterial.new()
+var mote_material := ShaderMaterial.new()
 var state: Dictionary = {}
 var editing := false
 var transitioning := false
@@ -34,6 +35,7 @@ func _ready() -> void:
 	edges.material_override = edge_material
 	edges.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ribbons.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	motes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	edge_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	edge_material.render_priority = 80
 	edge_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -44,15 +46,13 @@ func _ready() -> void:
 	ribbon_material.shader = RibbonShader
 	ribbon_material.render_priority = 72
 	ribbons.material_override = ribbon_material
-	guide_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	guide_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	guide_material.albedo_color = Color(0.65, 0.86, 0.92, 0.23)
-	guides.material_override = guide_material
-	guides.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(guides)
+	mote_material.shader = MoteShader
+	mote_material.render_priority = 74
+	motes.material_override = mote_material
 	add_child(sheet)
 	add_child(edges)
 	add_child(ribbons)
+	add_child(motes)
 
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if next_state == state and bounds == drawn_bounds and editing == is_editing:
@@ -76,15 +76,17 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		sheet.mesh = quad
 		_draw_edges(panel_size.x, panel_size.y)
 		_draw_ribbons(panel_size.x, panel_size.y)
+		_draw_motes(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
 	sheet.visible = enabled
 	ribbons.visible = enabled
+	motes.visible = enabled
 	edges.visible = enabled or editing
-	guides.visible = editing and enabled
-	if guides.visible:
-		_update_guides(bounds)
 	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
+	var source_sign := float(state.get("source_sign", 1.0))
+	ribbon_material.set_shader_parameter("source_sign", source_sign)
+	mote_material.set_shader_parameter("source_sign", source_sign)
 	settle_time = 0.18 if not editing else 0.0
 
 func contains_visible_point(point: Vector3, selected: Dictionary) -> bool:
@@ -127,23 +129,6 @@ func get_corners() -> PackedVector3Array:
 func is_transitioning() -> bool:
 	return transitioning
 
-func _update_guides(bounds: AABB) -> void:
-	var low := -2.0
-	var high := 2.0
-	for index: int in 8:
-		var point := to_local(bounds.get_endpoint(index))
-		low = minf(low, point.z - 0.5)
-		high = maxf(high, point.z + 0.5)
-	var mesh := ImmediateMesh.new()
-	mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	for corner: Vector2 in [Vector2(-1,-1), Vector2(1,-1), Vector2(1,1), Vector2(-1,1)]:
-		var first := Vector3(corner.x * panel_size.x * 0.5, corner.y * panel_size.y * 0.5, low)
-		var last := Vector3(first.x, first.y, high)
-		mesh.surface_add_vertex(first)
-		mesh.surface_add_vertex(last)
-	mesh.surface_end()
-	guides.mesh = mesh
-
 func _draw_edges(width: float, height: float) -> void:
 	var points := PackedVector3Array()
 	var corners_2d := [Vector2(-width, -height), Vector2(width, -height), Vector2(width, height), Vector2(-width, height)]
@@ -162,7 +147,7 @@ func _draw_edges(width: float, height: float) -> void:
 	edges.mesh = mesh
 
 func _draw_ribbons(width: float, height: float) -> void:
-	const RIBBON_LENGTH := 0.45
+	const RIBBON_LENGTH := 0.25
 	var corners_2d := [Vector2(-width, -height), Vector2(width, -height), Vector2(width, height), Vector2(-width, height)]
 	var mesh := ImmediateMesh.new()
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -188,8 +173,32 @@ func _draw_ribbons(width: float, height: float) -> void:
 	mesh.surface_end()
 	ribbons.mesh = mesh
 
+func _draw_motes(width: float, height: float) -> void:
+	const MOTE_COUNT := 28
+	var mesh := ImmediateMesh.new()
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index: int in MOTE_COUNT:
+		var side := index % 4
+		var fraction := fmod(float(index) * 0.61803398875 + 0.13, 1.0)
+		var size := 0.014 + fmod(float(index) * 0.173, 1.0) * 0.012
+		var point := Vector2.ZERO
+		if side < 2:
+			point = Vector2((-0.5 if side == 0 else 0.5) * width, (fraction - 0.5) * height)
+		else:
+			point = Vector2((fraction - 0.5) * width, (-0.5 if side == 2 else 0.5) * height)
+		var phase := fmod(float(index) * 0.371, 1.0)
+		for vertex: Vector2 in [Vector2(-1,-1), Vector2(1,-1), Vector2(1,1), Vector2(-1,-1), Vector2(1,1), Vector2(-1,1)]:
+			mesh.surface_set_color(Color(phase, size / 0.03, 0.0, 1.0))
+			mesh.surface_set_uv(vertex * 0.5 + Vector2(0.5, 0.5))
+			mesh.surface_add_vertex(Vector3(point.x + vertex.x * size, point.y + vertex.y * size, 0.006))
+	mesh.surface_end()
+	motes.mesh = mesh
+
 func _process(delta: float) -> void:
 	elapsed += delta
+	var camera := get_viewport().get_camera_3d()
+	if camera:
+		mote_material.set_shader_parameter("pixel_world_size", camera.size / maxf(1.0, get_viewport().get_visible_rect().size.y) * 1.1)
 	settle_time = maxf(0.0, settle_time - delta)
 	sheet_material.set_shader_parameter("sheet_time", elapsed)
 	var pulse := 0.70 + sin(elapsed * 2.2) * 0.20 if editing else 1.0
@@ -197,4 +206,6 @@ func _process(delta: float) -> void:
 	edge_material.emission_energy_multiplier = 1.35 if not editing else 0.75 + pulse * 0.45
 	sheet_material.set_shader_parameter("sheet_alpha", 0.07 if editing else 0.11 + settle_time * 0.12)
 	ribbon_material.set_shader_parameter("ribbon_time", elapsed)
-	ribbon_material.set_shader_parameter("ribbon_alpha", 0.62 if editing else 1.0)
+	ribbon_material.set_shader_parameter("ribbon_alpha", 0.85 if editing else 1.0)
+	mote_material.set_shader_parameter("mote_time", elapsed)
+	mote_material.set_shader_parameter("mote_alpha", 0.85 if editing else 1.0)

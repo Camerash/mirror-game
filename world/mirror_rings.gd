@@ -212,7 +212,7 @@ func _build_rings(yaw_sign := 0, pitch_sign := 0) -> void:
 	var pose := _resolved_pose()
 	var width := float(_state.get("width", 3.0))
 	var height := float(_state.get("height", 3.0))
-	_yaw = _make_ring("turn", Vector3.UP, Vector3.RIGHT, Vector3.FORWARD, width * 0.5, pose.basis.x, yaw_sign, int(_state["axis"]) != 1)
+	_yaw = _make_ring("turn", Vector3.UP, Vector3.RIGHT, Vector3.FORWARD, width * 0.5, pose.basis.x, yaw_sign, not Rules.horizontal(_state))
 	_pitch = _make_ring("tilt", pose.basis.x, pose.basis.y, pose.basis.z, height * 0.5, pose.basis.y, pitch_sign, true)
 
 func _make_ring(action: String, axis: Vector3, vector_u: Vector3, vector_v: Vector3, radius: float, edge: Vector3, edge_sign: int, shown: bool) -> Dictionary:

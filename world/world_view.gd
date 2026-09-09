@@ -1,16 +1,13 @@
 class_name MirrorWorldView
 extends Node3D
 
+const Queries := preload("res://core/solid_queries.gd")
 const Paint := preload("res://world/painted.gdshader")
 const Hologram := preload("res://world/hologram.gdshader")
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
 var path_root := Node3D.new()
-var contact_root := Node3D.new()
-var trace_root := Node3D.new()
-var contact_signature := ""
-var trace_time := 0.0
 var drawn_solids: Array[Dictionary] = []
 var visual_slots: Dictionary = {}
 var visual_generation := 0
@@ -19,7 +16,7 @@ var debug_collision := false
 var art_trial := false
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, contact_root, trace_root]:
+	for node: Node3D in [visual_root, collision_root, overlay_root, path_root]:
 		add_child(node)
 
 func set_art_trial(enabled: bool) -> void:
@@ -32,15 +29,7 @@ func set_art_trial(enabled: bool) -> void:
 func commit(solids: Array[Dictionary]) -> void:
 	_clear(collision_root)
 	for solid: Dictionary in solids:
-		var bounds: AABB = solid["bounds"]
-		var body := StaticBody3D.new()
-		var shape := BoxShape3D.new()
-		shape.size = bounds.size
-		var collider := CollisionShape3D.new()
-		collider.shape = shape
-		body.position = bounds.get_center()
-		body.add_child(collider)
-		collision_root.add_child(body)
+		collision_root.add_child(Queries.body(solid))
 	draw_world(solids)
 	_discard_inactive_slots()
 
@@ -188,23 +177,6 @@ func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -
 			points.append(start.lerp(finish, float(index) / count))
 			points.append(start.lerp(finish, float(index + 1) / count))
 	_lines(parent, points, color)
-
-func show_contacts(contacts: Array) -> void:
-	var signature := str(contacts)
-	if signature == contact_signature:
-		return
-	contact_signature = signature
-	_clear(contact_root)
-	_clear(trace_root)
-	trace_time = 1.6
-	trace_root.visible = true
-	for contact: Dictionary in contacts:
-		_outline_box(contact_root, contact["bounds"].grow(0.006), Color("fff1ac"))
-		_outline_box(trace_root, contact["reflected"].grow(0.008), Color("aadbec"), true)
-
-func _process(delta: float) -> void:
-	trace_time = maxf(0.0, trace_time - delta)
-	trace_root.visible = trace_time > 0.0
 
 func draw_route(path: PackedVector3Array) -> void:
 	_clear(path_root)

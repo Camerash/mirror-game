@@ -20,6 +20,7 @@ func check(ok: bool, message: String) -> void:
 func _run() -> void:
 	root.size = Vector2i(1152,800)
 	game = Game.new()
+	game.angle_snap = 90.0
 	root.add_child(game)
 	await settle()
 	game.begin_preview()

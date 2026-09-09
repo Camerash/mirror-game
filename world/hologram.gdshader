@@ -17,7 +17,7 @@ void vertex() {
 
 void fragment() {
 	vec3 source_position = (world_to_material * vec4(world_position, 1.0)).xyz;
-	float top = smoothstep(0.58, 0.88, world_normal.y);
+	float top = smoothstep(0.58, 0.7070, world_normal.y);
 	float contour = sin(source_position.x * 3.4 + sin(source_position.z * 2.6)) * 0.5 + 0.5;
 	vec3 local = world_position - box_centre;
 	vec3 half_size = max(box_size * 0.5, vec3(0.0001));

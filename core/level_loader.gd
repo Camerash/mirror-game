@@ -1,6 +1,8 @@
 class_name LevelLoader
 extends RefCounted
 
+const Rules := preload("res://core/mirror_state.gd")
+
 static func load_level(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
 	if file == null:
@@ -27,6 +29,8 @@ static func load_level(path: String) -> Dictionary:
 	for axis: float in data["limits"]["axes"]:
 		axes.append(int(axis))
 	data["limits"]["axes"] = axes
+	if data["mirror"].has("yaw"):
+		data["mirror"] = Rules.normalized(data["mirror"])
 	return data
 
 static func validate(data: Dictionary) -> String:
@@ -50,6 +54,9 @@ static func validate(data: Dictionary) -> String:
 	if not data["mirror"] is Dictionary or not data["limits"] is Dictionary:
 		return "Mirror and limits must be objects."
 	var mirror: Dictionary = data["mirror"]
+	if mirror.has("yaw") or mirror.has("pitch"):
+		if not _number(mirror.get("yaw")) or not _number(mirror.get("pitch")) or not _integer_in(mirror.get("source_sign", 1), [-1, 1]):
+			return "Angles must be finite radians with source sign +1 or -1."
 	if not mirror.get("enabled") is bool or not _integer_in(mirror.get("axis"), [0, 1, 2]) \
 			or not _integer_in(mirror.get("source"), [-1, 1]) or not _number(mirror.get("offset")):
 		return "Invalid mirror state."

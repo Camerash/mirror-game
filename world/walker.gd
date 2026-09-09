@@ -23,6 +23,9 @@ func _ready() -> void:
 	collision_layer = 2
 	collision_mask = 1
 	floor_snap_length = 0.12
+	floor_max_angle = PI * 0.25
+	floor_stop_on_slope = true
+	floor_constant_speed = true
 	safe_margin = 0.001
 	if build_visuals:
 		_build_visual(collider.position)
@@ -76,8 +79,9 @@ func advance_motion(delta: float) -> void:
 		velocity.y -= GRAVITY * delta
 	else:
 		velocity.y = 0.0
-	velocity.x = 0.0
-	velocity.z = 0.0
+	if grounded or not route.is_empty():
+		velocity.x = 0.0
+		velocity.z = 0.0
 	while not route.is_empty() and Vector2(position.x, position.z).distance_to(Vector2(route[0].x, route[0].z)) < 0.025:
 		route.remove_at(0)
 	if not route.is_empty():

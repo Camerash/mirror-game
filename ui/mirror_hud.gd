@@ -37,6 +37,7 @@ var _edit_border: Control
 var _debug_controls := {}
 var _panel_width: SpinBox
 var _panel_height: SpinBox
+var _angle_snap: SpinBox
 var _debug_status: Label
 var _hint_tween: Tween
 
@@ -153,6 +154,18 @@ func _build_debug() -> void:
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
 	_panel_width = _size_control(box, "Width", "width")
 	_panel_height = _size_control(box, "Height", "height")
+	_angle_snap = SpinBox.new()
+	_angle_snap.prefix = "Angle snap"
+	_angle_snap.min_value = 0.0
+	_angle_snap.max_value = 90.0
+	_angle_snap.step = 5.0
+	_angle_snap.value = 0.0
+	_angle_snap.custom_minimum_size.y = TOUCH
+	_angle_snap.value_changed.connect(func(value: float) -> void:
+		_set_angle_snap_display(value)
+		_emit("angle_snap", value)
+	)
+	box.add_child(_angle_snap)
 	_level_picker = OptionButton.new(); _style(_level_picker); _level_picker.item_selected.connect(func(value: int) -> void: _emit("select_level", value)); box.add_child(_level_picker); _register("level_picker", _level_picker)
 	for item in [["Edit/Create", "edit", null], ["Offset −", "step", -0.5], ["Offset +", "step", 0.5], ["Raise", "height_step", 0.5], ["Lower", "height_step", -0.5], ["Axis 1", "axis", 0], ["Axis 2", "axis", 1], ["Axis 3", "axis", 2], ["Turn left", "turn", -1], ["Turn right", "turn", 1], ["Tilt", "tilt", null], ["Reverse sides", "flip", null], ["Reset", "reset", null]]:
 		var button := _button(str(item[0])); button.pressed.connect(func() -> void: _emit(str(item[1]), item[2])); box.add_child(button); _debug_controls[str(item[1]) + str(item[0])] = button
@@ -179,12 +192,19 @@ func _update_debug(editing: bool, mirror_busy: bool) -> void:
 		control.visible = true
 		control.editable = editing and not mirror_busy and bool(_state.get("enabled", false))
 		control.set_value_no_signal(float(_state.get(spec[1], 3.0)))
+	var angle_snap := clampf(float(_state.get("angle_snap", 0.0)), 0.0, 90.0)
+	_angle_snap.set_value_no_signal(snappedf(angle_snap, 5.0))
+	_angle_snap.editable = not mirror_busy
+	_set_angle_snap_display(_angle_snap.value)
 	if _level_picker.item_count > 0: _level_picker.select(clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1))
 	(_debug_controls["collision"] as CheckButton).set_pressed_no_signal(bool(_state.get("collision", false)))
 	(_debug_controls["standing_only"] as CheckButton).set_pressed_no_signal(bool(_state.get("standing_only", false)))
 	(_debug_controls["style"] as OptionButton).select(clampi(int(_state.get("style", 0)), 0, 1))
 	_debug_status.text = "%s\nOffset %.1f" % [str(_state.get("status", "")), float(_state.get("offset", 0.0))]
 	for control: Control in _debug_controls.values(): control.disabled = editing and mirror_busy
+
+func _set_angle_snap_display(value: float) -> void:
+	_angle_snap.suffix = "° (No snap)" if is_zero_approx(value) else "°"
 
 func _responsive_layout() -> void:
 	if not is_instance_valid(_gear): return

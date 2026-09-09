@@ -1,6 +1,9 @@
 extends Node3D
 ## Commands below are shared by HUD input, keyboard input, and replay tests.
 
+const Queries := preload("res://core/solid_queries.gd")
+const Contact := preload("res://world/mirror_contact.gd")
+const PlacementGuide := preload("res://world/placement_guide.gd")
 const Geometry := preload("res://core/world_geometry.gd")
 const Levels := preload("res://core/level_loader.gd")
 const Navigation := preload("res://core/walk_graph.gd")
@@ -10,7 +13,6 @@ const HUD := preload("res://ui/mirror_hud.gd")
 const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
 const Atmosphere := preload("res://world/atmosphere.gd")
-const DisplayGeometry := preload("res://core/display_geometry.gd")
 const Resize := preload("res://ui/mirror_resize.gd")
 const Rings := preload("res://world/mirror_rings.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
@@ -75,6 +77,10 @@ var rotation_active := false
 var rotation_origin: Dictionary = {}
 var rotation_axis := Vector3.UP
 var rotation_angle := 0.0
+var rotation_kind := "turn"
+var angle_snap := 0.0
+var placement_guide := PlacementGuide.new()
+var contact := Contact.new()
 var display_basis := Basis.IDENTITY
 var rotation_display := false
 var rotation_motion: Tween
@@ -111,6 +117,8 @@ func _setup_scene() -> void:
 	add_child(preview_view)
 	add_child(atmosphere)
 	add_child(sheet)
+	add_child(placement_guide)
+	add_child(contact)
 	add_child(rings)
 	rings.action_requested.connect(_action)
 	rings.is_obstructed = _ring_obstructed
@@ -160,6 +168,10 @@ func load_level(index: int) -> bool:
 		return false
 	_cancel_manipulation()
 	level = loaded
+	level["mirror"] = MirrorRules.normalized(level["mirror"])
+	var reference: Dictionary = level["mirror"].duplicate(true)
+	reference["enabled"] = false
+	placement_guide.configure(Geometry.total_bounds(Geometry.generate(level, reference)).position.y - 0.5)
 	level_index = index
 	world.set_art_trial(index == 0 or index == LEVEL_PATHS.size() - 1)
 	atmosphere.set_art_trial(index == 0)
@@ -258,8 +270,7 @@ func create_mirror(point: Vector2) -> void:
 
 func _new_mirror(location: Vector3) -> Dictionary:
 	var fresh: Dictionary = level["mirror"].duplicate(true)
-	for axis: int in range(3):
-		location[axis] = clampf(snappedf(location[axis], 0.5), level["limits"]["min"][axis], level["limits"]["max"][axis])
+	location = MirrorRules.snapped_pivot(location, level["limits"])
 	fresh["width"] = 3.0
 	fresh["height"] = 3.0
 	fresh["enabled"] = true
@@ -278,7 +289,7 @@ func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():
 		return
 	preview_origin = _snapshot()
-	preview = proposal
+	preview = MirrorRules.normalized(proposal)
 	walker.paused = true
 	phase = "preview"
 	world.draw_route(PackedVector3Array())
@@ -297,22 +308,23 @@ func change_preview(key: String, value: Variant) -> void:
 		_resize_to(key, float(value))
 		return
 	if key == "axis":
-		if int(value) not in [0, 1, 2] or int(value) == int(preview["axis"]):
+		if int(value) not in [0, 1, 2]:
 			return
-		preview.erase("frame_up")
+		for field: String in ["yaw", "pitch", "frame_up", "source_sign"]:
+			preview.erase(field)
 		preview["axis"] = int(value)
-		preview["offset"] = preview["pivot"][int(value)]
+		preview = MirrorRules.normalized(preview)
+	elif key == "source":
+		if int(value) != int(preview["source"]):
+			preview = MirrorRules.reversed(preview)
+	elif key == "offset":
+		var axis: int = preview["axis"]
+		var pivot: Vector3 = preview["pivot"]
+		pivot[axis] = float(value)
+		preview["pivot"] = MirrorRules.snapped_pivot(pivot, level["limits"])
+		preview = MirrorRules.sync(preview)
 	else:
 		preview[key] = value
-	var axis: int = preview["axis"]
-	preview["offset"] = clampf(snappedf(float(preview["offset"]), 0.5),
-		float(level["limits"]["min"][axis]), float(level["limits"]["max"][axis]))
-	var pivot: Vector3 = preview["pivot"]
-	pivot[axis] = float(preview["offset"])
-	preview["pivot"] = pivot
-	if axis != 1:
-		preview["vertical_axis"] = axis
-		preview["vertical_source"] = preview["source"]
 	if preview != previous:
 		_update_preview()
 		_fit_camera(hud.get_play_rect())
@@ -346,9 +358,9 @@ func _advance_rotation() -> void:
 		return
 	while not rotation_queue.is_empty():
 		var step: Dictionary = rotation_queue.pop_front()
-		if step["kind"] == "turn" and int(preview["axis"]) == 1:
+		if step["kind"] == "turn" and MirrorRules.horizontal(preview):
 			continue
-		_start_rotation({"axis": Vector3.UP if step["kind"] == "turn" else MirrorRules.frame(preview).x})
+		_start_rotation({"kind": step["kind"], "axis": Vector3.UP if step["kind"] == "turn" else MirrorRules.frame(preview).x})
 		rotation_active = false
 		_settle_rotation(float(step["direction"]) * PI * 0.5)
 		return
@@ -357,8 +369,9 @@ func _advance_rotation() -> void:
 		_fit_camera(hud.get_play_rect())
 
 func _start_rotation(value: Dictionary) -> void:
-	rotation_origin = preview.duplicate(true)
+	rotation_origin = MirrorRules.normalized(preview)
 	rotation_axis = value["axis"]
+	rotation_kind = str(value.get("kind", "turn" if rotation_axis.is_equal_approx(Vector3.UP) else "tilt"))
 	rotation_angle = 0.0
 	rotation_active = true
 	rotation_display = true
@@ -367,20 +380,25 @@ func _start_rotation(value: Dictionary) -> void:
 	_refresh()
 
 func _set_rotation_angle(angle: float) -> void:
-	if rotation_origin.is_empty():
+	if rotation_origin.is_empty() or not is_finite(angle):
 		return
 	rotation_angle = angle
-	display_basis = Basis(rotation_axis, angle) * MirrorRules.frame(rotation_origin)
+	display_preview = MirrorRules.rotated(rotation_origin, rotation_kind, angle)
+	display_basis = MirrorRules.frame(display_preview)
 	_update_preview()
 
 func _finish_rotation_drag() -> void:
 	rotation_active = false
 	if not cancelling_gesture and not rotation_origin.is_empty():
-		_settle_rotation(roundf(rotation_angle / (PI * 0.5)) * PI * 0.5)
+		var key := "yaw" if rotation_kind == "turn" else "pitch"
+		var origin_angle := float(rotation_origin[key])
+		var target := origin_angle + rotation_angle
+		if angle_snap > 0.0:
+			target = snappedf(target, deg_to_rad(angle_snap))
+		_settle_rotation(target - origin_angle)
 
 func _settle_rotation(target_angle: float) -> void:
-	var frame := Basis(rotation_axis, target_angle) * MirrorRules.frame(rotation_origin)
-	rotation_target = MirrorRules.oriented(rotation_origin, frame)
+	rotation_target = MirrorRules.rotated(rotation_origin, rotation_kind, target_angle)
 	rotation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	rotation_motion.tween_method(_set_rotation_angle, rotation_angle, target_angle, 0.15)
 	rotation_motion.tween_callback(_rotation_finished)
@@ -389,6 +407,7 @@ func _rotation_finished() -> void:
 	if rotation_target.is_empty() or phase != "preview":
 		return
 	preview = rotation_target
+	display_preview.clear()
 	rotation_target = {}
 	rotation_origin.clear()
 	rotation_display = false
@@ -508,7 +527,7 @@ func _display_state() -> Dictionary:
 	return display_preview if not display_preview.is_empty() else (preview if phase == "preview" else mirror)
 
 func _update_preview() -> void:
-	var proposed := DisplayGeometry.generate(level, _display_state(), display_basis) if rotation_display else Geometry.generate(level, _display_state())
+	var proposed := Geometry.generate(level, _display_state())
 	world.draw_world(proposed)
 	atmosphere.set_bounds(Geometry.total_bounds(proposed))
 	_invalidate_prediction()
@@ -566,20 +585,25 @@ func _refresh() -> void:
 		"can_edit": can_edit(), "standing_only": standing_only,
 		"camera_busy": camera.busy or dragging or resizing or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
-		"width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
+		"angle_snap": angle_snap, "width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
 		"offset": selected.get("offset", 0.0), "axis": axis, "source": selected.get("source", 1),
 		"outline_accessible": outline_accessible,
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "style": style, "collision": world.debug_collision})
-	world.show_contacts(Geometry.reflection_contacts(level, selected) if phase == "preview" and not _manipulating() else [])
-	atmosphere.set_mirror(selected, phase == "preview", style, display_basis.z if rotation_display else Vector3.ZERO)
+	contact.set_contacts(world.drawn_solids, selected, MirrorRules.frame(selected) if selected.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
+	atmosphere.set_mirror(selected, phase == "preview", style, MirrorRules.normal(selected) if selected.has("pivot") else Vector3.ZERO)
+	placement_guide.show_position(selected.get("pivot", Vector3.ZERO), (dragging or translating_settle) and resize_origin.is_empty() and phase == "preview")
 	_position_controls()
 
 func _action(action: String, value: Variant) -> void:
 	match action:
 		"select_level": load_level(int(value))
+		"angle_snap":
+			if not _manipulating() and is_finite(float(value)):
+				angle_snap = clampf(snappedf(float(value), 5.0), 0.0, 90.0)
+				_refresh()
 		"width", "height": change_preview(action, float(value))
 		"height_step": _step_height(float(value))
 		"resize_begin": _start_resize(value)
@@ -737,8 +761,10 @@ func _walk_at(point: Vector2) -> void:
 	var query := PhysicsRayQueryParameters3D.create(camera.project_ray_origin(point),
 		camera.project_ray_origin(point) + camera.project_ray_normal(point) * 100, 1)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty() and (hit["normal"] as Vector3).y > 0.9:
-		if not request_walk(hit["position"]):
+	if not hit.is_empty() and (hit["normal"] as Vector3).y >= Queries.FLOOR_Y - 0.0001:
+		var target: Vector3 = hit["position"]
+		target.y += Geometry.RADIUS * (1.0 / (hit["normal"] as Vector3).y - 1.0)
+		if not request_walk(target):
 			hud.show_hint("There is no connected path.")
 	else:
 		hud.show_hint("Tap a platform top to walk.")
@@ -767,7 +793,8 @@ func _step_height(amount: float) -> void:
 	if phase != "preview" or _manipulating() or camera.busy or not pending.is_empty() or not preview["enabled"]:
 		return
 	var pivot: Vector3 = preview["pivot"]
-	pivot.y = clampf(pivot.y + amount, level["limits"]["min"][1], level["limits"]["max"][1])
+	pivot.y += amount
+	pivot = MirrorRules.snapped_pivot(pivot, level["limits"])
 	preview["pivot"] = pivot
 	preview["offset"] = pivot[int(preview["axis"])]
 	_update_preview()
@@ -808,7 +835,7 @@ func _finish_drag() -> void:
 	height_drag = false
 	translating_settle = true
 	var start: Vector3 = display_preview["pivot"]
-	var target := start.snapped(Vector3.ONE * 0.5)
+	var target := MirrorRules.snapped_pivot(start, level["limits"])
 	translation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	translation_motion.tween_method(_set_display_pivot, start, target, 0.15)
 	translation_motion.tween_callback(func() -> void:
@@ -863,8 +890,8 @@ func _solid_hit(point: Vector2, before := INF) -> bool:
 	var origin := camera.project_ray_origin(point)
 	var direction := camera.project_ray_normal(point)
 	for solid: Dictionary in world.drawn_solids:
-		var hit: Variant = (solid["bounds"] as AABB).intersects_ray(origin, direction)
-		if hit != null and origin.distance_to(hit) < before - 0.01:
+		var hit := Queries.ray_hit(origin, direction, solid)
+		if not hit.is_empty() and float(hit["distance"]) < before - 0.01:
 			return true
 	return false
 
@@ -946,10 +973,18 @@ func _finish_resize() -> void:
 		return
 	resizing = false
 	translating_settle = true
-	var start := float(display_preview[resize_key])
-	var target := clampf(roundf(start), resize_limits.x, resize_limits.y)
+	var initial := display_preview.duplicate(true)
+	var length := clampf(roundf(float(initial[resize_key])), resize_limits.x, resize_limits.y)
+	var target := MirrorRules.resized(resize_origin, resize_key, length)
+	target["pivot"] = MirrorRules.snapped_pivot(target["pivot"], level["limits"])
+	target = MirrorRules.sync(target)
 	translation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	translation_motion.tween_method(_set_resize_length, start, target, 0.15)
+	translation_motion.tween_method(func(weight: float) -> void:
+		display_preview = initial.duplicate(true)
+		display_preview[resize_key] = lerpf(float(initial[resize_key]), length, weight)
+		display_preview["pivot"] = (initial["pivot"] as Vector3).lerp(target["pivot"], weight)
+		display_preview = MirrorRules.sync(display_preview)
+		_update_preview(), 0.0, 1.0, 0.15)
 	translation_motion.tween_callback(func() -> void:
 		preview = display_preview.duplicate(true)
 		display_preview.clear()
@@ -965,9 +1000,12 @@ func _resize_to(key: String, length: float) -> void:
 	var limited := clampf(roundf(length), allowed.x, allowed.y)
 	if not is_equal_approx(length, limited):
 		hud.show_hint("Size is limited by the placement area.")
-	preview = MirrorRules.resized(preview, key, limited)
-	_update_preview()
-	_fit_camera(hud.get_play_rect())
+	resize_origin = preview.duplicate(true)
+	resize_key = key
+	resize_limits = allowed
+	display_preview = MirrorRules.resized(preview, key, limited)
+	resizing = true
+	_finish_resize()
 
 func _camera_motion_finished() -> void:
 	_refresh()

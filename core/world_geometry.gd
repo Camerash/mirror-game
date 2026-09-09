@@ -1,11 +1,13 @@
 class_name WorldGeometry
 extends RefCounted
-## Pure axis-aligned world rules. Feet positions use the bottom of the capsule.
+## Shared world rules; legacy box operations remain for cardinal fixtures. Feet positions use the bottom of the capsule.
 
 const MirrorRules := preload("res://core/mirror_state.gd")
+const Polygons := preload("res://core/display_geometry.gd")
+const Queries := preload("res://core/solid_queries.gd")
 const EPS := 0.0001
-const RADIUS := 0.18
-const HEIGHT := 0.8
+const RADIUS := Queries.RADIUS
+const HEIGHT := Queries.HEIGHT
 
 static func vector(values: Array) -> Vector3:
 	return Vector3(float(values[0]), float(values[1]), float(values[2]))
@@ -15,6 +17,8 @@ static func box(data: Dictionary) -> AABB:
 	return AABB(vector(data["center"]) - size * 0.5, size)
 
 static func generate(level: Dictionary, mirror: Dictionary) -> Array[Dictionary]:
+	if mirror.has("yaw"):
+		return Polygons.generate(level, mirror, MirrorRules.frame(mirror))
 	var result: Array[Dictionary] = []
 	var absolute_bounds: Array[AABB] = []
 	for item: Dictionary in level["absolutes"]:
@@ -120,6 +124,8 @@ static func _append_pieces(result: Array[Dictionary], bounds: AABB,
 			result.append(generated)
 
 static func embedded(feet: Vector3, solids: Array[Dictionary]) -> bool:
+	if has_polygons(solids):
+		return Queries.embedded(feet, solids)
 	# Capsule/box distance permits floor contact but rejects actual penetration.
 	var bottom := feet.y + RADIUS
 	var top := feet.y + HEIGHT - RADIUS
@@ -133,6 +139,8 @@ static func embedded(feet: Vector3, solids: Array[Dictionary]) -> bool:
 	return false
 
 static func supported(feet: Vector3, solids: Array[Dictionary], inset := 0.0) -> bool:
+	if has_polygons(solids):
+		return Queries.supported(feet, solids)
 	for solid: Dictionary in solids:
 		var bounds: AABB = solid["bounds"]
 		if absf(bounds.end.y - feet.y) > 0.035:
@@ -143,6 +151,8 @@ static func supported(feet: Vector3, solids: Array[Dictionary], inset := 0.0) ->
 	return false
 
 static func walkable(feet: Vector3, solids: Array[Dictionary]) -> bool:
+	if has_polygons(solids):
+		return Queries.walkable(feet, solids)
 	if embedded(feet, solids):
 		return false
 	# Cover a conservative square footprint with the union of floor rectangles.
@@ -162,6 +172,8 @@ static func walkable(feet: Vector3, solids: Array[Dictionary]) -> bool:
 	return false
 
 static func clear_segment(start: Vector3, finish: Vector3, solids: Array[Dictionary]) -> bool:
+	if has_polygons(solids):
+		return Queries.clear_segment(start, finish, solids)
 	if absf(start.y - finish.y) > 0.035:
 		return false
 	var steps := maxi(1, ceili(start.distance_to(finish) / 0.08))
@@ -176,17 +188,5 @@ static func total_bounds(solids: Array[Dictionary]) -> AABB:
 		bounds = bounds.merge(solid["bounds"])
 	return bounds
 
-static func reflection_contacts(level: Dictionary, mirror: Dictionary) -> Array[Dictionary]:
-	var contacts: Array[Dictionary] = []
-	if not mirror["enabled"]:
-		return contacts
-	for item: Dictionary in level["originals"]:
-		var clipped := selected_source(box(item), mirror)
-		if not has_volume(clipped):
-			continue
-		var reflected := reflect(clipped, mirror)
-		for absolute: Dictionary in level["absolutes"]:
-			var overlap := reflected.intersection(box(absolute))
-			if has_volume(overlap):
-				contacts.append({"bounds": overlap, "reflected": reflected, "absolute_id": absolute["id"]})
-	return contacts
+static func has_polygons(solids: Array[Dictionary]) -> bool:
+	return solids.any(func(solid: Dictionary) -> bool: return solid.has("faces"))

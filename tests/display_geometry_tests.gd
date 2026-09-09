@@ -29,7 +29,10 @@ func _run() -> void:
 		state["enabled"] = true
 		for pitch: int in 4:
 			for yaw: int in 4:
-				var discrete := Geometry.generate(level, state)
+				var legacy := state.duplicate(true)
+				for field: String in ["yaw", "pitch", "source_sign"]:
+					legacy.erase(field)
+				var discrete := Geometry.generate(level, legacy)
 				var continuous := Display.generate(level, state, Rules.frame(state))
 				var a := _volumes(discrete)
 				var b := _volumes(continuous)

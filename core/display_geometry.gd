@@ -1,14 +1,19 @@
 class_name MirrorDisplayGeometry
 extends RefCounted
-## Closed convex fragments for continuous visual previews. Never used for collision.
+## Closed convex fragments shared by rendering, collision, and prediction.
 
-const Geometry := preload("res://core/world_geometry.gd")
 const EPS := 0.00001
+
+static func box(data: Dictionary) -> AABB:
+	var values: Array = data["size"]
+	var center: Array = data["center"]
+	var size := Vector3(values[0], values[1], values[2])
+	return AABB(Vector3(center[0], center[1], center[2]) - size * 0.5, size)
 
 static func generate(level: Dictionary, state: Dictionary, frame: Basis) -> Array[Dictionary]:
 	var output: Array[Dictionary] = []
 	var pivot: Vector3 = state["pivot"]
-	var normal := frame.z.normalized()
+	var normal := frame.z.normalized() * float(state.get("source_sign", 1))
 	var reflection := Transform3D(Basis(Vector3.RIGHT - 2.0 * normal * normal.x,
 		Vector3.UP - 2.0 * normal * normal.y, Vector3.BACK - 2.0 * normal * normal.z),
 		2.0 * normal * normal.dot(pivot))
@@ -16,12 +21,15 @@ static func generate(level: Dictionary, state: Dictionary, frame: Basis) -> Arra
 	var destination := column(pivot, frame, state, true)
 	var absolutes: Array = []
 	for item: Dictionary in level["absolutes"]:
-		var bounds := Geometry.box(item)
+		var bounds := box(item)
 		absolutes.append(box_planes(bounds))
 		_append(output, box_faces(bounds), item, "absolute", Transform3D.IDENTITY, "0")
 		output[-1].erase("faces")
 	for item: Dictionary in level["originals"]:
-		var faces := box_faces(Geometry.box(item))
+		var faces := box_faces(box(item))
+		if not state.get("enabled", false):
+			_emit_fragments(output, [faces], item, "original", Transform3D.IDENTITY, absolutes)
+			continue
 		var retained := subtract(faces, destination)
 		_emit_fragments(output, retained, item, "original", Transform3D.IDENTITY, absolutes)
 		var selected := intersect(faces, source)
@@ -37,7 +45,7 @@ static func generate(level: Dictionary, state: Dictionary, frame: Basis) -> Arra
 	return output
 
 static func column(pivot: Vector3, frame: Basis, state: Dictionary, reverse: bool) -> Array[Plane]:
-	var normal := -frame.z if reverse else frame.z
+	var normal := frame.z * float(state.get("source_sign", 1)) * (-1.0 if reverse else 1.0)
 	var planes: Array[Plane] = [Plane(normal, normal.dot(pivot))]
 	for pair: Array in [[frame.x, float(state.get("width", 3))], [frame.y, float(state.get("height", 3))]]:
 		var axis: Vector3 = pair[0]
@@ -168,7 +176,7 @@ static func _append(output: Array[Dictionary], faces: Array, item: Dictionary, k
 	for face: PackedVector3Array in faces:
 		for point: Vector3 in face:
 			bounds = bounds.expand(point)
-	var source := Geometry.box(item)
+	var source := box(item)
 	output.append({"bounds": bounds, "faces": faces, "id": item["id"], "source_id": item["id"],
 		"source_bounds": source, "kind": kind, "fragment_key": str(item["id"]) + ":" + kind + ":" + suffix,
 		"material_to_world": transform * Transform3D(Basis.IDENTITY, source.get_center())})

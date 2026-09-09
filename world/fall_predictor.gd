@@ -5,6 +5,7 @@ extends SubViewport
 signal ready_result(result: Dictionary)
 
 const Geometry := preload("res://core/world_geometry.gd")
+const Queries := preload("res://core/solid_queries.gd")
 const Walker := preload("res://world/walker.gd")
 const TICKS_PER_BATCH := 180
 const MAX_TICKS := 7200
@@ -69,15 +70,7 @@ func _build() -> void:
 		_finish("blocked")
 		return
 	for solid: Dictionary in request["solids"]:
-		var bounds: AABB = solid["bounds"]
-		var floor_body := StaticBody3D.new()
-		var collider := CollisionShape3D.new()
-		var shape := BoxShape3D.new()
-		shape.size = bounds.size
-		collider.shape = shape
-		floor_body.position = bounds.get_center()
-		floor_body.add_child(collider)
-		scene.add_child(floor_body)
+		scene.add_child(Queries.body(solid))
 	body = Walker.new()
 	body.build_visuals = false
 	body.paused = true

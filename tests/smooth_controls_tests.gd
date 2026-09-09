@@ -32,7 +32,7 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	game._action("rotation_angle", TAU)
 	game._action("rotation_end", null)
 	await _settle(game, tree)
-	check.call(Rules.normal(game.preview) == Rules.normal(original) and game.preview["pivot"] == pivot, "Full held rotation restores normal and preserves pivot")
+	check.call(Rules.normal(game.preview).is_equal_approx(Rules.normal(original)) and game.preview["pivot"] == pivot, "Full held rotation restores normal and preserves pivot")
 	var before_tilt := Rules.frame(game.preview)
 	for index: int in 4:
 		game.tilt_mirror(1)

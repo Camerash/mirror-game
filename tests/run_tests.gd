@@ -1,5 +1,6 @@
 extends SceneTree
 
+const Contact := preload("res://world/mirror_contact.gd")
 const Geometry := preload("res://core/world_geometry.gd")
 const Levels := preload("res://core/level_loader.gd")
 const NavigationTests := preload("res://tests/navigation_tests.gd")
@@ -67,11 +68,15 @@ func _test_geometry() -> void:
 	var active: Dictionary = level["mirror"].duplicate(true)
 	active["enabled"] = true
 	var world := Geometry.generate(level, active)
-	var contacts := Geometry.reflection_contacts(level, active)
-	_check(not contacts.is_empty(), "Reflections report contact with the absolute resting platform")
+	var effect := Contact.new()
+	root.add_child(effect)
+	var contact_state := active.duplicate(true)
+	contact_state["pivot"] = Vector3(5,0,0)
+	var contacts := effect._contours(world, contact_state, preload("res://core/mirror_state.gd").frame(contact_state))
+	_check(not contacts.is_empty(), "Panel intersection includes the absolute resting platform")
 	for contact: Dictionary in contacts:
-		_check(Geometry.has_volume(contact["bounds"]) and contact["reflected"].encloses(contact["bounds"]), "Contact highlight lies within the incoming reflection")
-	_check(Geometry.reflection_contacts(level, level["mirror"]).is_empty(), "Disabled mirrors have no reflection contact highlight")
+		_check(is_equal_approx(contact["a"].x, 5.0) and is_equal_approx(contact["b"].x, 5.0), "Contact contour follows the exact panel plane")
+	effect.free()
 	_check(Geometry.walkable(Vector3(3, 0, 0), world), "Reflection creates walkable support")
 	_check(not Geometry.embedded(Vector3(3, 0, 0), world), "Floor contact is not an embedded character")
 	_check(Geometry.embedded(Vector3(3, -0.4, 0), world), "Real capsule penetration is rejected")

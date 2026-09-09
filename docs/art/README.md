@@ -69,3 +69,9 @@ Native Mac portrait capture on 2026-09-09. The tabs resize from fixed opposite e
 ![Intermediate reflected geometry during rotation](continuous-rotation-in-game.png)
 
 Native Mac captures on 2026-09-09. Hollow knobs sit outside the frame; resize pills sit on its edges. Jade absolutes remain solid while reflected geometry follows the current angle. Final placement still uses quarter turns. These captures record the prototype, not a new generated art target.
+
+## Direction and contact trial 04
+
+`mirror-direction-contact-04.png` is the selected approximate B+C/E reference, made with the built-in image generator. Prompt: a bounded clear panel with an equal-perimeter one-sided light skirt, sparse outward motes, and a soft contact band crossing the top and side of one intact jade absolute. The image exaggerates light for readability. Runtime contact follows exact finite-panel intersections and never cuts an absolute. The earlier boards remain historical references.
+
+Runtime review: `direction-contact-in-game.png` shows the final contrast correction on the jade contact seam and perimeter light; `placement-guide-in-game.png` shows the temporary ground reference. These are actual Mac Compatibility captures. The height control remains in its existing position and can cover part of a contact; moving it is deferred.
