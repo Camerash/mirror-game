@@ -1,4 +1,15 @@
-# Latest check: world-aligned rings and selective contact glow — 2026-09-09
+# Latest check: Constellation snap guides — 2026-09-09
+
+- Added small, passive snap dots for ground movement, height, resizing, and rotation. Current references are amber; selected targets are hollow pearl marks. Guides stay through settling and fade in 0.2 seconds. Removed the old grid, lower link, and ring ticks/markers. The approved subtle board is saved as `docs/art/constellation-02.png` and remains an approximate reference.
+- Focused candidate and integration checks passed **88 checks, 0 failures**. They cover legal world-grid points, distance fading, angled resize centre correction, actual edge targets, unwrapped angle increments, no-snap mode, sheet press before movement, unchanged collision/history, release fading, ring capture, Cancel, moving-pill occlusion, and focus loss. Renderer checks passed for alpha, UI/solid occlusion, idempotent fade, and clear. Edit-mode checks passed **22 checks, 0 failures**; existing ring checks passed.
+- One integrated regression passed **524 checks, 0 failures**, including both puzzle routes, support restoration, wall rejection, removal, Cancel, Undo, Reset, movement, prediction, input, and failure recovery. Final editor import/parse and `git diff --check` passed.
+- Native Mac review used Godot 4.7.2 Compatibility at 1152×800 and 390×844. Inspected ground, height, resize, and rotation guides across four camera views in one session. Dots remained small and faint; the amber reference and hollow target were visible. A moving resize pill initially drew beneath its edge marker. Its occlusion now uses the current drawn pill bounds; the focused integration check verifies that correction. The screenshots precede this small correction.
+- Local captures: `.mcp/screenshots/screenshot_1788949148_24031.png` (ground), `screenshot_1788949165_44111.png` (rotation), `screenshot_1788949191_34804.png` (angled resize), `screenshot_1788949220_55619.png` (portrait height), and `screenshot_1788949233_6652.png` (portrait ground). The process stopped without runtime or shader errors. Its temporary bridge and autoload are absent. Captures and generated output remain outside Git and exports.
+- No export or Simulator check was run. Physical touch feel and readability on a physical phone remain unverified. No user playtest result is claimed.
+
+---
+
+# Earlier check: world-aligned rings and selective contact glow — 2026-09-09
 
 - Replaced flat arcs with projected 3D rings centred on the panel. Turn lies in world X/Z; Tilt is perpendicular to local width. Rings grow with the panel, retain a 48-unit minimum projected major radius, and use a constant touch strip. The selected plane and radius stay fixed during a drag. Edge-on rings use the captured tangent.
 - Focused ring checks passed: world-plane alignment, projection, growth, near-edge-on input, repeated/reversed travel, pointer capture, minimum portrait size, HUD blocking, and horizontal placement. The final edit-mode run passed **22 checks, 0 failures**. Prism contact checks passed **62 checks, 0 failures**; the existing contact check returned all eight flags true. Reflected-only, rotated, reversed, and mixed original/absolute inputs are covered.

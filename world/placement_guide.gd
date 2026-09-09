@@ -1,128 +1,113 @@
 class_name PlacementGuide
 extends Node3D
+## Passive screen-space marks for the current placement candidates.
 
-const GRID_SPACING := 0.5
-const RADIUS := 2.0
-const GRID_COLOR := Color(0.36, 0.70, 0.76, 0.20)
-const MARKER_COLOR := Color(0.88, 0.67, 0.34, 0.62)
-const LINK_COLOR := Color(0.88, 0.67, 0.34, 0.34)
+const Queries := preload("res://core/solid_queries.gd")
+const PEARL := Color("d9eff4")
+const AMBER := Color("f1c57b")
+const FADE_TIME := 0.2
 
-var reference_y := 0.0
-var _grid_height := INF
-var _grid := MeshInstance3D.new()
-var _marker := MeshInstance3D.new()
-var _link := MeshInstance3D.new()
-var _grid_mesh := ImmediateMesh.new()
-var _marker_mesh := ImmediateMesh.new()
-var _link_mesh := ImmediateMesh.new()
-var _grid_material := _material(GRID_COLOR)
-var _marker_material := _material(MARKER_COLOR)
-var _link_material := _material(LINK_COLOR)
-var _fade: Tween
+class MarksCanvas extends Control:
+	var guide: PlacementGuide
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	func _draw() -> void:
+		if guide == null:
+			return
+		for mark: Dictionary in guide._visible_marks:
+			var centre: Vector2 = mark["screen"]
+			var alpha: float = float(mark["alpha"]) * guide._opacity
+			match mark["kind"]:
+				"dot":
+					draw_circle(centre, 2.0, Color(PEARL, alpha * 0.14))
+					draw_circle(centre, 1.0, Color(PEARL, alpha))
+				"reference":
+					draw_circle(centre, 3.2, Color(AMBER, alpha * 0.14))
+					draw_circle(centre, 2.0, Color(AMBER, alpha))
+				"target":
+					draw_arc(centre, 3.5, 0.0, TAU, 24, Color(PEARL, alpha), 0.8, true)
+
+var _canvas := MarksCanvas.new()
+var _layer := CanvasLayer.new()
+var _data: Dictionary = {}
+var _visible_marks: Array[Dictionary] = []
 var _opacity := 1.0
-var _grid_origin := Vector2(INF, INF)
+var _fade: Tween
 
 func _ready() -> void:
-	_grid.mesh = _grid_mesh
-	_marker.mesh = _marker_mesh
-	_link.mesh = _link_mesh
-	_grid.material_override = _grid_material
-	_marker.material_override = _marker_material
-	_link.material_override = _link_material
-	for node: MeshInstance3D in [_grid, _marker, _link]:
-		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(node)
-	visible = false
+	_layer.layer = 3
+	_layer.add_child(_canvas)
+	_canvas.guide = self
+	add_child(_layer)
 
-func configure(next_reference_y: float) -> void:
+func show_guides(data: Dictionary) -> void:
 	_cancel_fade()
-	reference_y = next_reference_y
-	_grid_origin = Vector2(INF, INF)
-	_set_opacity(1.0)
-	visible = false
+	_opacity = 1.0
+	_data = data.duplicate(true)
 
-func show_position(pivot: Vector3, active: bool, target := Vector3.INF, vertical := false, height_limits := Vector2(-100, 100)) -> void:
-	if active:
-		_cancel_fade()
-		visible = true
-		_set_opacity(1.0)
-		var selected := pivot if target == Vector3.INF else target
-		if vertical:
-			_update_height_guide(pivot, selected, height_limits)
-		else:
-			_update_grid(selected)
-		_update_marker(selected)
-		_update_link(pivot)
+func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
+	_visible_marks.clear()
+	if camera == null or _data.is_empty():
+		_redraw()
 		return
-	if not visible or _is_fading():
+	for dot: Dictionary in _data.get("dots", []):
+		if dot.get("position") is Vector3:
+			_add_mark("dot", dot["position"], clampf(float(dot.get("weight", 0.0)), 0.0, 1.0) * 0.35, camera, solids, safe_rect, excluded)
+	for reference: Vector3 in _data.get("references", PackedVector3Array()):
+		_add_mark("reference", reference, 0.85, camera, solids, safe_rect, excluded)
+	if _data.get("target") is Vector3:
+		_add_mark("target", _data["target"], 1.0, camera, solids, safe_rect, excluded)
+	_redraw()
+
+func finish() -> void:
+	if _data.is_empty() or _is_fading():
 		return
 	_fade = create_tween()
-	_fade.tween_method(_set_opacity, _opacity, 0.0, 0.22)
-	_fade.tween_callback(func() -> void:
-		visible = false
-		_fade = null
-	)
+	_fade.tween_method(_set_opacity, _opacity, 0.0, FADE_TIME)
+	_fade.tween_callback(clear)
 
-func _update_grid(pivot: Vector3) -> void:
-	var origin := Vector2(snappedf(pivot.x, GRID_SPACING), snappedf(pivot.z, GRID_SPACING))
-	if origin == _grid_origin and is_equal_approx(pivot.y, _grid_height):
+func clear() -> void:
+	_cancel_fade()
+	_data.clear()
+	_visible_marks.clear()
+	_opacity = 1.0
+	_redraw()
+
+func get_visible_marks() -> Array[Dictionary]:
+	return _visible_marks.duplicate(true)
+
+func _add_mark(kind: String, world_position: Vector3, alpha: float, camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
+	if alpha <= 0.0 or camera.is_position_behind(world_position):
 		return
-	_grid_origin = origin
-	_grid_height = pivot.y
-	_grid_mesh.clear_surfaces()
-	_grid_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var steps := roundi(RADIUS * 2.0 / GRID_SPACING)
-	for index: int in range(steps + 1):
-		var offset := -RADIUS + float(index) * GRID_SPACING
-		var fade := clampf(1.0 - absf(offset) / RADIUS, 0.0, 1.0)
-		_faded_line(_grid_mesh, Vector3(origin.x + offset, pivot.y + 0.012, origin.y - RADIUS), Vector3(origin.x + offset, pivot.y + 0.012, origin.y), Vector3(origin.x + offset, pivot.y + 0.012, origin.y + RADIUS), fade)
-		_faded_line(_grid_mesh, Vector3(origin.x - RADIUS, pivot.y + 0.012, origin.y + offset), Vector3(origin.x, pivot.y + 0.012, origin.y + offset), Vector3(origin.x + RADIUS, pivot.y + 0.012, origin.y + offset), fade)
-	_grid_mesh.surface_end()
+	var screen := camera.unproject_position(world_position)
+	if not safe_rect.has_point(screen) or _excluded(screen, excluded) or _solid_occludes(camera, world_position, solids):
+		return
+	_visible_marks.append({"kind": kind, "position": world_position, "screen": screen, "alpha": alpha})
 
-func _update_height_guide(pivot: Vector3, target: Vector3, limits: Vector2) -> void:
-	_grid_origin = Vector2(INF, INF)
-	var low := maxf(ceilf(limits.x * 2) * 0.5, target.y - RADIUS)
-	var high := minf(floorf(limits.y * 2) * 0.5, target.y + RADIUS)
-	_grid_mesh.clear_surfaces()
-	_grid_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	_solid_line(_grid_mesh, Vector3(pivot.x, low, pivot.z), Vector3(pivot.x, high, pivot.z))
-	for index: int in maxi(0, roundi((high - low) / GRID_SPACING) + 1):
-		var centre := Vector3(pivot.x, low + index * GRID_SPACING, pivot.z)
-		_solid_line(_grid_mesh, centre - Vector3.RIGHT * 0.09, centre + Vector3.RIGHT * 0.09)
-	_grid_mesh.surface_end()
+func _excluded(point: Vector2, excluded: Array[Rect2]) -> bool:
+	for rect: Rect2 in excluded:
+		if rect.has_point(point):
+			return true
+	return false
 
-func _update_marker(pivot: Vector3) -> void:
-	_marker_mesh.clear_surfaces()
-	_marker_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	var centre := pivot + Vector3.UP * 0.025
-	var radius := 0.16
-	for index: int in 12:
-		var start := TAU * float(index) / 12.0
-		var finish := TAU * float(index + 1) / 12.0
-		_solid_line(_marker_mesh, centre + Vector3(cos(start), 0.0, sin(start)) * radius, centre + Vector3(cos(finish), 0.0, sin(finish)) * radius)
-	_marker_mesh.surface_end()
+func _solid_occludes(camera: Camera3D, point: Vector3, solids: Array[Dictionary]) -> bool:
+	var origin := camera.project_ray_origin(camera.unproject_position(point))
+	var distance := origin.distance_to(point)
+	if distance <= 0.01:
+		return false
+	var direction := origin.direction_to(point)
+	for solid: Dictionary in solids:
+		var hit := Queries.ray_hit(origin, direction, solid)
+		if not hit.is_empty() and float(hit["distance"]) < distance - 0.01:
+			return true
+	return false
 
-func _update_link(pivot: Vector3) -> void:
-	_link_mesh.clear_surfaces()
-	_link_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
-	_solid_line(_link_mesh, pivot, Vector3(pivot.x, reference_y + 0.03, pivot.z))
-	_link_mesh.surface_end()
-
-func _faded_line(mesh: ImmediateMesh, start: Vector3, middle: Vector3, finish: Vector3, opacity: float) -> void:
-	mesh.surface_set_color(Color(1.0, 1.0, 1.0, 0.0))
-	mesh.surface_add_vertex(start)
-	mesh.surface_set_color(Color(1.0, 1.0, 1.0, opacity))
-	mesh.surface_add_vertex(middle)
-	mesh.surface_set_color(Color(1.0, 1.0, 1.0, opacity))
-	mesh.surface_add_vertex(middle)
-	mesh.surface_set_color(Color(1.0, 1.0, 1.0, 0.0))
-	mesh.surface_add_vertex(finish)
-
-func _solid_line(mesh: ImmediateMesh, start: Vector3, finish: Vector3) -> void:
-	mesh.surface_set_color(Color.WHITE)
-	mesh.surface_add_vertex(start)
-	mesh.surface_set_color(Color.WHITE)
-	mesh.surface_add_vertex(finish)
+func _set_opacity(value: float) -> void:
+	_opacity = value
+	_redraw()
 
 func _cancel_fade() -> void:
 	if _fade != null and _fade.is_valid():
@@ -132,17 +117,6 @@ func _cancel_fade() -> void:
 func _is_fading() -> bool:
 	return _fade != null and _fade.is_valid() and _fade.is_running()
 
-func _set_opacity(value: float) -> void:
-	_opacity = value
-	_grid_material.albedo_color = Color(GRID_COLOR, GRID_COLOR.a * value)
-	_marker_material.albedo_color = Color(MARKER_COLOR, MARKER_COLOR.a * value)
-	_link_material.albedo_color = Color(LINK_COLOR, LINK_COLOR.a * value)
-
-func _material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.vertex_color_use_as_albedo = true
-	material.albedo_color = color
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	return material
+func _redraw() -> void:
+	if is_instance_valid(_canvas):
+		_canvas.queue_redraw()

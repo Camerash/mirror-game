@@ -12,12 +12,9 @@ const EDGE_ON_RATIO := 0.15
 
 class RingOverlay extends Control:
 	var strokes: Array[Dictionary] = []
-	var markers: Array[Dictionary] = []
 	func _draw() -> void:
 		for stroke: Dictionary in strokes:
 			draw_line(stroke["a"], stroke["b"], stroke["color"], stroke["width"], true)
-		for marker: Dictionary in markers:
-			draw_circle(marker["point"], 4.0, marker["color"])
 
 var _state: Dictionary = {}
 var _editing := false
@@ -27,7 +24,6 @@ var _pose := Transform3D.IDENTITY
 var _has_pose := false
 var _safe_rect := Rect2()
 var _excluded: Array[Rect2] = []
-var _snap_radians := 0.0
 var _arcs: Array[Dictionary] = []
 var _active := false
 var _pointer := -2
@@ -60,10 +56,6 @@ func set_layout(safe_rect: Rect2, excluded: Array[Rect2]) -> void:
 	_safe_rect = safe_rect
 	_excluded = excluded.duplicate()
 	_update()
-
-func set_snap(step_degrees: float) -> void:
-	_snap_radians = deg_to_rad(maxf(0.0, step_degrees))
-	_draw_rings()
 
 func update_view(camera: Camera3D) -> void:
 	_camera = camera
@@ -112,7 +104,6 @@ func _point_allowed(point: Vector2) -> bool:
 func _draw_rings() -> void:
 	if not is_instance_valid(_overlay): return
 	_overlay.strokes.clear()
-	_overlay.markers.clear()
 	for arc: Dictionary in _arcs:
 		if not _visible(arc): continue
 		var color := Color("d9f5ff") if arc["kind"] == "turn" else Color("ffc77e")
@@ -121,14 +112,6 @@ func _draw_rings() -> void:
 			var b := TAU * (index + 1) / SAMPLES
 			var near: bool = (world_point(arc, (a+b)*0.5) - arc["pivot"]).dot(_camera.global_basis.z) >= 0.0
 			_stroke(screen_point(arc,a), screen_point(arc,b), Color(color, 0.95 if near else 0.22), 2.5)
-		var angle := float(_state.get("yaw" if arc["kind"] == "turn" else "pitch", 0.0))
-		var marker := screen_point(arc, angle)
-		if _point_allowed(marker): _overlay.markers.append({"point":marker, "color":color})
-		if _active and _snap_radians > 0:
-			for index: int in ceili(TAU / _snap_radians):
-				var radial := screen_point(arc, index * _snap_radians) - (arc["center"] as Vector2)
-				var point: Vector2 = arc["center"] + radial
-				_stroke(point - radial.normalized()*4, point + radial.normalized()*4, Color(color,0.7), 1.5)
 	_overlay.queue_redraw()
 
 func _stroke(a: Vector2, b: Vector2, color: Color, width: float) -> void:
@@ -251,3 +234,9 @@ func get_control_rects() -> Dictionary:
 		for point: Vector2 in points: rect = rect.expand(point)
 		result[arc["kind"]] = rect.grow(HIT_HALF_WIDTH)
 	return result
+
+func get_ring_frame(kind: String) -> Dictionary:
+	if _active and _drag["kind"] == kind: return _drag.duplicate(true)
+	for arc: Dictionary in _arcs:
+		if arc["kind"] == kind: return arc.duplicate(true)
+	return {}

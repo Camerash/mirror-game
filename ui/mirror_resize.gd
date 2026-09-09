@@ -109,6 +109,24 @@ func get_control_rects() -> Dictionary:
 		result[key] = (_tabs[key] as Dictionary)["rect"]
 	return result
 
+func get_visual_rects() -> Array[Rect2]:
+	var result: Array[Rect2] = []
+	for key: String in _tabs:
+		if _active and key != _active_key:
+			continue
+		var tab: Dictionary = _tabs[key]
+		var half_size := Vector2(16,16)
+		if key != "height_move":
+			var alignment: Vector2 = tab["alignment"]
+			half_size = alignment.abs() * PILL_SIZE.x * 0.5 + alignment.orthogonal().abs() * PILL_SIZE.y * 0.5
+		result.append(Rect2(_visible_center(key,tab)-half_size,half_size*2))
+	return result
+
+func _visible_center(key: String, tab: Dictionary) -> Vector2:
+	if _active and key != "height_move" and _camera:
+		return _camera.unproject_position(_anchor(key) + tab["edge_offset"])
+	return tab["center"]
+
 func blocks_point(point: Vector2) -> bool:
 	for key: String in _tabs:
 		if _active and key != _active_key:
@@ -222,7 +240,7 @@ func _draw() -> void:
 		if _active and key != _active_key:
 			continue
 		var tab: Dictionary = _tabs[key]
-		var center: Vector2 = _camera.unproject_position(_anchor(key) + tab["edge_offset"]) if _active and key != "height_move" and _camera else tab["center"]
+		var center := _visible_center(key,tab)
 		var world_anchor: Vector3 = _state["pivot"] if _active and key == "height_move" else tab["anchor"]
 		var anchor: Vector2 = _camera.unproject_position(world_anchor) if _camera else tab["point"]
 		var style := StyleBoxFlat.new()

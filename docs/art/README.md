@@ -29,6 +29,12 @@ This is the first procedural material trial, not the final Blender art kit. The 
 
 The target is an immersive world with depth fog, detailed stone, a bounded translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Existing mockups are approximate references.
 
+## Constellation board 02
+
+![Approximate Constellation reference](constellation-02.png)
+
+This is an approximate generated reference for the passive Constellation guide. It shows subtle pearl-blue candidate dots, an amber current reference, and a hollow pearl target. The image does not define level geometry, touch regions, or camera framing.
+
 ## Second in-game result
 
 ![Level 1 with holographic reflections](trial-02-in-game.png)

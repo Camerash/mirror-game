@@ -84,6 +84,9 @@ var display_target: Dictionary = {}
 var display_motion: Tween
 var rotation_selected_angle := 0.0
 var placement_guide := PlacementGuide.new()
+var guide_kind := ""
+var guide_origin: Dictionary = {}
+var guide_ring: Dictionary = {}
 var contact := Contact.new()
 var display_basis := Basis.IDENTITY
 var rotation_display := false
@@ -171,9 +174,7 @@ func load_level(index: int) -> bool:
 	_cancel_manipulation()
 	level = loaded
 	level["mirror"] = MirrorRules.normalized(level["mirror"])
-	var reference: Dictionary = level["mirror"].duplicate(true)
-	reference["enabled"] = false
-	placement_guide.configure(Geometry.total_bounds(Geometry.generate(level, reference)).position.y - 0.5)
+	placement_guide.clear()
 	level_index = index
 	world.set_art_trial(index == 0 or index == LEVEL_PATHS.size() - 1)
 	atmosphere.set_art_trial(index == 0)
@@ -411,6 +412,8 @@ func _start_rotation(value: Dictionary) -> void:
 	rotation_selected_angle = snappedf(float(rotation_origin[key]), deg_to_rad(angle_snap)) if angle_snap > 0 else float(rotation_origin[key])
 	display_target = preview.duplicate(true)
 	rotation_active = true
+	if rings.is_active():
+		_begin_constellation(rotation_kind, rotation_origin)
 	rotation_display = true
 	display_basis = MirrorRules.frame(preview)
 	_invalidate_prediction()
@@ -452,6 +455,7 @@ func _rotation_finished() -> void:
 		_fit_camera(hud.get_play_rect())
 
 func _cancel_manipulation() -> void:
+	_clear_constellation()
 	cancelling_gesture = true
 	if display_motion and display_motion.is_valid():
 		display_motion.kill()
@@ -611,7 +615,6 @@ func _refresh() -> void:
 	edit_available = can_edit()
 	rings.set_state(display_target if not display_target.is_empty() else selected, phase == "preview" and edit_mode == "rotate", camera.busy or _manipulating() or not pending.is_empty())
 	rings.set_pose(sheet.global_transform)
-	rings.set_snap(angle_snap)
 	resize_controls.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty(), edit_mode)
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
 		"level_index": level_index, "art_trial": level_index == 0, "can_advance": _can_advance(),
@@ -629,7 +632,7 @@ func _refresh() -> void:
 	rings.update_view(camera)
 	contact.set_contacts(world.drawn_solids, selected, MirrorRules.frame(selected) if selected.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
 	atmosphere.set_mirror(selected, phase == "preview", style, MirrorRules.normal(selected) if selected.has("pivot") else Vector3.ZERO)
-	placement_guide.show_position(selected.get("pivot", Vector3.ZERO), (dragging or translating_settle) and resize_origin.is_empty() and phase == "preview", display_target.get("pivot", Vector3.INF), height_drag, Vector2(level["limits"]["min"][1], level["limits"]["max"][1]))
+	_update_constellation()
 	_position_controls()
 
 func _action(action: String, value: Variant) -> void:
@@ -721,6 +724,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	gesture.advance(delta)
+	_update_guide_view()
 	if sheet.has_geometry:
 		rings.set_pose(sheet.global_transform)
 		_position_resize_controls()
@@ -789,6 +793,8 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 	elif target == "empty" and not mirror.get("enabled", false):
 		target = "create"
 	gesture.begin(point, touch, target, phase == "preview", edit_mode == "move")
+	if phase == "preview" and edit_mode == "move" and target == "sheet":
+		_begin_constellation("ground", preview)
 
 func _gesture_action(action: String, value: Variant) -> void:
 	match action:
@@ -840,6 +846,7 @@ func _start_drag(point: Vector2) -> void:
 	display_preview = preview.duplicate(true)
 	drag_axis = camera.unproject_position(drag_pivot + Vector3.RIGHT) - camera.unproject_position(drag_pivot)
 	drag_ground_origin = _ground_point(point, drag_pivot.y)
+	_begin_constellation("ground", preview)
 	_refresh()
 
 func _step_height(amount: float) -> void:
@@ -857,6 +864,7 @@ func _start_height_drag(point: Vector2) -> void:
 	_start_drag(point)
 	height_drag = true
 	drag_axis = camera.unproject_position(drag_pivot + Vector3.UP) - camera.unproject_position(drag_pivot)
+	_begin_constellation("height", preview)
 
 func _drag(point: Vector2) -> void:
 	if not dragging:
@@ -1002,6 +1010,7 @@ func _start_resize(value: Dictionary) -> void:
 	var direction := MirrorRules.frame(preview).x if resize_key == "width" else MirrorRules.frame(preview).y
 	var pivot: Vector3 = preview["pivot"]
 	resize_screen_axis = camera.unproject_position(pivot + direction) - camera.unproject_position(pivot)
+	_begin_constellation("size_" + resize_key, resize_origin)
 	limit_hint_shown = false
 	_invalidate_prediction()
 	_refresh()
@@ -1022,9 +1031,7 @@ func _set_resize_length(length: float) -> void:
 	_follow_target(_resize_target(selected))
 
 func _resize_target(length: float) -> Dictionary:
-	var target := MirrorRules.resized(resize_origin, resize_key, length)
-	target["pivot"] = MirrorRules.snapped_pivot(target["pivot"], level["limits"])
-	return MirrorRules.sync(target)
+	return Targets.resize_state(resize_origin, resize_key, length, level["limits"])
 
 func _finish_resize() -> void:
 	if not resizing:
@@ -1051,3 +1058,56 @@ func _camera_motion_finished() -> void:
 	_refresh()
 	rings.choose_edge_ends()
 	_position_resize_controls()
+
+func _begin_constellation(kind: String, origin: Dictionary) -> void:
+	guide_kind = kind
+	guide_origin = origin.duplicate(true)
+	guide_ring = rings.get_ring_frame(kind) if kind in ["turn","tilt"] else {}
+	_update_constellation()
+
+func _clear_constellation() -> void:
+	guide_kind = ""
+	guide_origin.clear()
+	guide_ring.clear()
+	placement_guide.clear()
+
+func _update_guide_view() -> void:
+	if not level.is_empty():
+		var excluded := hud.get_blocking_rects()
+		excluded.append_array(resize_controls.get_visual_rects())
+		placement_guide.update_view(camera, world.drawn_solids, hud.get_play_rect(), excluded)
+
+func _update_constellation() -> void:
+	if guide_kind.is_empty(): return
+	var displayed := _display_state()
+	if phase != "preview" or not displayed.get("enabled",false):
+		_clear_constellation()
+		return
+	var target := display_target if not display_target.is_empty() else preview
+	placement_guide.show_guides(_constellation_data(displayed,target))
+	_update_guide_view()
+	if not _manipulating() and not gesture.active:
+		guide_kind = ""
+		guide_origin.clear()
+		guide_ring.clear()
+		placement_guide.finish()
+
+func _constellation_data(displayed: Dictionary, target: Dictionary) -> Dictionary:
+	var dots: Array[Dictionary] = []
+	var references := PackedVector3Array([displayed["pivot"]])
+	var destination: Vector3 = target["pivot"]
+	if guide_kind in ["ground","height"]:
+		dots = Targets.position_dots(displayed["pivot"],guide_origin["pivot"],level["limits"],guide_kind == "height")
+	elif guide_kind.begins_with("size_"):
+		var key := guide_kind.trim_prefix("size_")
+		dots = Targets.resize_dots(guide_origin,displayed,key,level["limits"])
+		references.append(Targets.edge_position(displayed,key))
+		destination = Targets.edge_position(target,key)
+	elif not guide_ring.is_empty():
+		var key := "yaw" if guide_kind == "turn" else "pitch"
+		var angle := float(displayed[key])
+		for candidate: Dictionary in Targets.rotation_angles(angle,deg_to_rad(angle_snap)):
+			dots.append({"position":Rings.world_point(guide_ring,candidate["angle"]),"weight":candidate["weight"]})
+		references = PackedVector3Array([Rings.world_point(guide_ring,angle)])
+		destination = Rings.world_point(guide_ring,float(target[key]))
+	return {"dots":dots,"references":references,"target":destination}
