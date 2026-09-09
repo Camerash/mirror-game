@@ -29,7 +29,13 @@ This is the first procedural material trial, not the final Blender art kit. The 
 
 The target is an immersive world with depth fog, detailed stone, a bounded translucent sheet, and minimal controls. No sun/moon meaning is assigned to the sides. Keep holographic walking tops clear and absolutes solid. The extra pillars and cubes are image-generation additions, not level changes. Existing mockups are approximate references.
 
-## Constellation board 02
+## Constellation board 03 — selected B
+
+![Approximate soft-glow comparison](constellation-03.png)
+
+**B: Soft glow** is selected. The brighter small cores have soft radial halos, strongest near the amber reference and weaker with distance. The image compares glow only; its dot positions are approximate. Runtime points stay on legal snap positions. Generated with the built-in image tool from the supplied game screenshot; prompt: preserve stage geometry and compare crisp, soft, and broad mist halos on a horizontal placement lattice.
+
+## Constellation board 02 — earlier reference
 
 ![Approximate Constellation reference](constellation-02.png)
 

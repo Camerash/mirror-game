@@ -1,4 +1,16 @@
-# Latest check: Constellation snap guides — 2026-09-09
+# Latest check: Constellation soft glow and tuning — 2026-09-10
+
+- Applied selected B: brighter small pearl cores, soft radial halos, and a larger amber reference. Core and halo intensity use the existing distance weight. One shared radial texture supplies the effect without bloom. Halo footprints respect UI exclusion. Saved the approximate comparison board as `docs/art/constellation-03.png`.
+- Added session-only brightness, glow, diameter, and halo sliders, Preview guides, and Reset defaults. Preview uses the last control in the current mode; gestures take priority. Tuning does not rebuild geometry, restart prediction, move the camera, or add history.
+- Focused renderer checks passed for B defaults, reference caps, distance fading, fixed sizes, slider limits, UI/solid occlusion, and release fading. Controller tuning passed **25 checks, 0 failures**. Existing guide checks passed **88 checks, 0 failures**, and edit-control checks passed **22 checks, 0 failures**. UI checks passed for ranges, signal routing, no-signal sync, touch heights, preview availability, and portrait layout. Editor import/parse and `git diff --check` passed.
+- Initial tuning tests used exact floating-point equality for Reset defaults and freed an unparented game test instance. The corrected test uses approximate comparisons and parents the instance before cleanup; it passed without leak warnings. Numeric settings are clamped after stepping to keep their values within slider limits.
+- Mac Compatibility review used 1152×800 and 390×844. Checked idle debug preview, live slider changes, Reset defaults, rotating guides, and moving resize pills. A runtime comparison confirmed camera and prediction remained unchanged during tuning. The first portrait panel covered all guide points; the panel now caps at 220 logical units in narrow portrait, with Preview guides before the sliders. A focused follow-up capture showed 42 visible guide marks below it. Further settings remain scrollable.
+- Captures remain local under `.mcp/screenshots/`: `screenshot_1788983955_96994.png` (desktop tuning), `screenshot_1788983974_22893.png` (rotation), `screenshot_1788983996_58357.png` (portrait resize), and `screenshot_1788984083_82856.png` (corrected portrait tuning). Both native sessions stopped without runtime or shader errors. The temporary bridge and autoload are absent.
+- No full gameplay suite, export, or Simulator check was run for this display-only change. Physical touch feel remains unverified.
+
+---
+
+# Earlier check: Constellation snap guides — 2026-09-09
 
 - Added small, passive snap dots for ground movement, height, resizing, and rotation. Current references are amber; selected targets are hollow pearl marks. Guides stay through settling and fade in 0.2 seconds. Removed the old grid, lower link, and ring ticks/markers. The approved subtle board is saved as `docs/art/constellation-02.png` and remains an approximate reference.
 - Focused candidate and integration checks passed **88 checks, 0 failures**. They cover legal world-grid points, distance fading, angled resize centre correction, actual edge targets, unwrapped angle increments, no-snap mode, sheet press before movement, unchanged collision/history, release fading, ring capture, Cancel, moving-pill occlusion, and focus loss. Renderer checks passed for alpha, UI/solid occlusion, idempotent fade, and clear. Edit-mode checks passed **22 checks, 0 failures**; existing ring checks passed.

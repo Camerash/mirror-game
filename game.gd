@@ -2,6 +2,7 @@ extends Node3D
 ## Commands below are shared by HUD input, keyboard input, and replay tests.
 
 const Targets := preload("res://core/mirror_targets.gd")
+const GuideStyle := preload("res://core/constellation_style.gd")
 const Queries := preload("res://core/solid_queries.gd")
 const Contact := preload("res://world/mirror_contact.gd")
 const PlacementGuide := preload("res://world/placement_guide.gd")
@@ -87,6 +88,9 @@ var placement_guide := PlacementGuide.new()
 var guide_kind := ""
 var guide_origin: Dictionary = {}
 var guide_ring: Dictionary = {}
+var guide_style := GuideStyle.DEFAULTS.duplicate()
+var guide_preview_enabled := false
+var guide_last := {"move":"ground", "rotate":"turn", "resize":"size_width"}
 var contact := Contact.new()
 var display_basis := Basis.IDENTITY
 var rotation_display := false
@@ -455,6 +459,7 @@ func _rotation_finished() -> void:
 		_fit_camera(hud.get_play_rect())
 
 func _cancel_manipulation() -> void:
+	guide_preview_enabled = false
 	_clear_constellation()
 	cancelling_gesture = true
 	if display_motion and display_motion.is_valid():
@@ -607,6 +612,8 @@ func _refresh() -> void:
 	if level.is_empty():
 		return
 	var selected := _display_state()
+	if not _guide_preview_available():
+		guide_preview_enabled = false
 	var axis: int = selected.get("axis", level["mirror"]["axis"])
 	if not sheet.is_transitioning():
 		sheet.set_state(selected, _sheet_bounds(), phase == "preview")
@@ -622,6 +629,7 @@ func _refresh() -> void:
 		"camera_busy": camera.busy or dragging or resizing or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
 		"edit_mode": edit_mode, "mode_busy": _mode_busy(), "angle_snap": angle_snap, "width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
+		"guide_style":guide_style, "guide_preview":guide_preview_enabled, "guide_preview_available":_guide_preview_available(),
 		"offset": selected.get("offset", 0.0), "axis": axis, "source": selected.get("source", 1),
 		"outline_accessible": outline_accessible,
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
@@ -637,6 +645,15 @@ func _refresh() -> void:
 
 func _action(action: String, value: Variant) -> void:
 	match action:
+		"guide_style":
+			if value is Dictionary and GuideStyle.DEFAULTS.has(value.get("key")):
+				var settings := guide_style.duplicate()
+				settings[value["key"]] = value.get("value")
+				_set_guide_style(settings)
+		"guide_defaults": _set_guide_style(GuideStyle.DEFAULTS)
+		"guide_preview": _set_guide_preview(bool(value))
+		"debug_visibility":
+			if not bool(value): _set_guide_preview(false)
 		"mode_cycle":
 			var modes := ["move", "rotate", "resize"]
 			set_edit_mode(modes[(modes.find(edit_mode) + 1) % modes.size()])
@@ -724,7 +741,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	gesture.advance(delta)
-	_update_guide_view()
+	if guide_preview_enabled and guide_kind.is_empty():
+		_update_constellation()
+	else:
+		_update_guide_view()
 	if sheet.has_geometry:
 		rings.set_pose(sheet.global_transform)
 		_position_resize_controls()
@@ -1061,6 +1081,7 @@ func _camera_motion_finished() -> void:
 
 func _begin_constellation(kind: String, origin: Dictionary) -> void:
 	guide_kind = kind
+	guide_last[edit_mode] = kind
 	guide_origin = origin.duplicate(true)
 	guide_ring = rings.get_ring_frame(kind) if kind in ["turn","tilt"] else {}
 	_update_constellation()
@@ -1078,13 +1099,21 @@ func _update_guide_view() -> void:
 		placement_guide.update_view(camera, world.drawn_solids, hud.get_play_rect(), excluded)
 
 func _update_constellation() -> void:
-	if guide_kind.is_empty(): return
 	var displayed := _display_state()
 	if phase != "preview" or not displayed.get("enabled",false):
+		guide_preview_enabled = false
 		_clear_constellation()
 		return
+	if guide_kind.is_empty():
+		if guide_preview_enabled:
+			var kind: String = guide_last[edit_mode]
+			if kind == "turn" and MirrorRules.horizontal(displayed): kind = "tilt"
+			var ring := rings.get_ring_frame(kind) if kind in ["turn","tilt"] else {}
+			placement_guide.show_guides(_constellation_data(displayed,displayed,kind,displayed,ring))
+			_update_guide_view()
+		return
 	var target := display_target if not display_target.is_empty() else preview
-	placement_guide.show_guides(_constellation_data(displayed,target))
+	placement_guide.show_guides(_constellation_data(displayed,target,guide_kind,guide_origin,guide_ring))
 	_update_guide_view()
 	if not _manipulating() and not gesture.active:
 		guide_kind = ""
@@ -1092,22 +1121,37 @@ func _update_constellation() -> void:
 		guide_ring.clear()
 		placement_guide.finish()
 
-func _constellation_data(displayed: Dictionary, target: Dictionary) -> Dictionary:
+func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String, origin: Dictionary, ring: Dictionary) -> Dictionary:
 	var dots: Array[Dictionary] = []
 	var references := PackedVector3Array([displayed["pivot"]])
 	var destination: Vector3 = target["pivot"]
-	if guide_kind in ["ground","height"]:
-		dots = Targets.position_dots(displayed["pivot"],guide_origin["pivot"],level["limits"],guide_kind == "height")
-	elif guide_kind.begins_with("size_"):
-		var key := guide_kind.trim_prefix("size_")
-		dots = Targets.resize_dots(guide_origin,displayed,key,level["limits"])
+	if kind in ["ground","height"]:
+		dots = Targets.position_dots(displayed["pivot"],origin["pivot"],level["limits"],kind == "height")
+	elif kind.begins_with("size_"):
+		var key := kind.trim_prefix("size_")
+		dots = Targets.resize_dots(origin,displayed,key,level["limits"])
 		references.append(Targets.edge_position(displayed,key))
 		destination = Targets.edge_position(target,key)
-	elif not guide_ring.is_empty():
-		var key := "yaw" if guide_kind == "turn" else "pitch"
+	elif not ring.is_empty():
+		var key := "yaw" if kind == "turn" else "pitch"
 		var angle := float(displayed[key])
 		for candidate: Dictionary in Targets.rotation_angles(angle,deg_to_rad(angle_snap)):
-			dots.append({"position":Rings.world_point(guide_ring,candidate["angle"]),"weight":candidate["weight"]})
-		references = PackedVector3Array([Rings.world_point(guide_ring,angle)])
-		destination = Rings.world_point(guide_ring,float(target[key]))
+			dots.append({"position":Rings.world_point(ring,candidate["angle"]),"weight":candidate["weight"]})
+		references = PackedVector3Array([Rings.world_point(ring,angle)])
+		destination = Rings.world_point(ring,float(target[key]))
 	return {"dots":dots,"references":references,"target":destination}
+
+func _guide_preview_available() -> bool:
+	return phase == "preview" and bool(preview.get("enabled",false))
+
+func _set_guide_style(settings: Dictionary) -> void:
+	guide_style = GuideStyle.normalized(settings)
+	placement_guide.set_style(guide_style)
+	_update_guide_view()
+	hud.set_guide_state(guide_style,guide_preview_enabled,_guide_preview_available())
+
+func _set_guide_preview(enabled: bool) -> void:
+	guide_preview_enabled = enabled and _guide_preview_available() and hud.is_debug_visible()
+	if not guide_preview_enabled and guide_kind.is_empty(): placement_guide.clear()
+	_update_constellation()
+	hud.set_guide_state(guide_style,guide_preview_enabled,_guide_preview_available())

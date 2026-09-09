@@ -3,6 +3,7 @@ extends Node3D
 ## Passive screen-space marks for the current placement candidates.
 
 const Queries := preload("res://core/solid_queries.gd")
+const Style := preload("res://core/constellation_style.gd")
 const PEARL := Color("d9eff4")
 const AMBER := Color("f1c57b")
 const FADE_TIME := 0.2
@@ -20,15 +21,14 @@ class MarksCanvas extends Control:
 		for mark: Dictionary in guide._visible_marks:
 			var centre: Vector2 = mark["screen"]
 			var alpha: float = float(mark["alpha"]) * guide._opacity
-			match mark["kind"]:
-				"dot":
-					draw_circle(centre, 2.0, Color(PEARL, alpha * 0.14))
-					draw_circle(centre, 1.0, Color(PEARL, alpha))
-				"reference":
-					draw_circle(centre, 3.2, Color(AMBER, alpha * 0.14))
-					draw_circle(centre, 2.0, Color(AMBER, alpha))
-				"target":
-					draw_arc(centre, 3.5, 0.0, TAU, 24, Color(PEARL, alpha), 0.8, true)
+			var color: Color = AMBER if mark["kind"] == "reference" else PEARL
+			var halo: float = mark["halo"]
+			if halo > 0.0 and float(mark["glow"]) > 0.0:
+				draw_texture_rect(guide._halo_texture, Rect2(centre-Vector2.ONE*halo,Vector2.ONE*halo*2), false, Color(color,float(mark["glow"])*guide._opacity))
+			if mark["kind"] == "target":
+				draw_arc(centre, 3.5, 0.0, TAU, 32, Color(color,alpha), 1.0, true)
+			else:
+				draw_circle(centre,mark["radius"],Color(color,alpha),true,-1.0,true)
 
 var _canvas := MarksCanvas.new()
 var _layer := CanvasLayer.new()
@@ -36,12 +36,27 @@ var _data: Dictionary = {}
 var _visible_marks: Array[Dictionary] = []
 var _opacity := 1.0
 var _fade: Tween
+var _style := Style.DEFAULTS.duplicate()
+var _halo_texture := GradientTexture2D.new()
 
 func _ready() -> void:
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0,0.15,0.35,0.65,1.0])
+	gradient.colors = PackedColorArray([Color(1,1,1,1),Color(1,1,1,0.8),Color(1,1,1,0.4),Color(1,1,1,0.08),Color(1,1,1,0)])
+	_halo_texture.gradient = gradient
+	_halo_texture.width = 64
+	_halo_texture.height = 64
+	_halo_texture.fill = GradientTexture2D.FILL_RADIAL
+	_halo_texture.fill_from = Vector2(0.5,0.5)
+	_halo_texture.fill_to = Vector2(1,0.5)
 	_layer.layer = 3
 	_layer.add_child(_canvas)
 	_canvas.guide = self
 	add_child(_layer)
+
+func set_style(settings: Dictionary) -> void:
+	_style = Style.normalized(settings)
+	_redraw()
 
 func show_guides(data: Dictionary) -> void:
 	_cancel_fade()
@@ -55,9 +70,9 @@ func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, 
 		return
 	for dot: Dictionary in _data.get("dots", []):
 		if dot.get("position") is Vector3:
-			_add_mark("dot", dot["position"], clampf(float(dot.get("weight", 0.0)), 0.0, 1.0) * 0.35, camera, solids, safe_rect, excluded)
+			_add_mark("dot", dot["position"], clampf(float(dot.get("weight", 0.0)), 0.0, 1.0), camera, solids, safe_rect, excluded)
 	for reference: Vector3 in _data.get("references", PackedVector3Array()):
-		_add_mark("reference", reference, 0.85, camera, solids, safe_rect, excluded)
+		_add_mark("reference", reference, 1.0, camera, solids, safe_rect, excluded)
 	if _data.get("target") is Vector3:
 		_add_mark("target", _data["target"], 1.0, camera, solids, safe_rect, excluded)
 	_redraw()
@@ -79,17 +94,28 @@ func clear() -> void:
 func get_visible_marks() -> Array[Dictionary]:
 	return _visible_marks.duplicate(true)
 
-func _add_mark(kind: String, world_position: Vector3, alpha: float, camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
-	if alpha <= 0.0 or camera.is_position_behind(world_position):
+func _add_mark(kind: String, world_position: Vector3, weight: float, camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
+	if weight <= 0.0 or camera.is_position_behind(world_position):
 		return
 	var screen := camera.unproject_position(world_position)
-	if not safe_rect.has_point(screen) or _excluded(screen, excluded) or _solid_occludes(camera, world_position, solids):
+	var mark := _appearance(kind,weight)
+	var radius: float = maxf(mark["radius"],mark["halo"] if float(mark["glow"]) > 0.0 else 0.0)
+	var footprint := Rect2(screen-Vector2.ONE*radius,Vector2.ONE*radius*2)
+	if not safe_rect.encloses(footprint) or _excluded(footprint, excluded) or _solid_occludes(camera, world_position, solids):
 		return
-	_visible_marks.append({"kind": kind, "position": world_position, "screen": screen, "alpha": alpha})
+	mark.merge({"kind":kind,"position":world_position,"screen":screen})
+	_visible_marks.append(mark)
 
-func _excluded(point: Vector2, excluded: Array[Rect2]) -> bool:
+func _appearance(kind: String, weight: float) -> Dictionary:
+	var reference := kind == "reference"
+	return {"alpha":minf(1.0,float(_style["brightness"])*(1.25 if reference else 1.0))*weight,
+		"glow":minf(1.0,float(_style["glow"])*(1.4 if reference else 1.0))*weight,
+		"radius":3.5 if kind == "target" else float(_style["size"])*(1.0 if reference else 0.5),
+		"halo":float(_style["halo"])*(1.6 if reference else 1.0)}
+
+func _excluded(footprint: Rect2, excluded: Array[Rect2]) -> bool:
 	for rect: Rect2 in excluded:
-		if rect.has_point(point):
+		if rect.intersects(footprint):
 			return true
 	return false
 
