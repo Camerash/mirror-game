@@ -63,6 +63,7 @@ func _run() -> void:
 	await settle()
 	check(game.preview["pivot"] == latest, "Release reaches the indicated latest target")
 	game.set_edit_mode("rotate")
+	await settle()
 	var yaw: float = game.preview["yaw"]
 	game._action("rotation_begin", {"kind":"turn", "axis":Vector3.UP})
 	game._action("rotation_angle", deg_to_rad(14))
@@ -71,6 +72,7 @@ func _run() -> void:
 	await settle()
 	check(is_equal_approx(game.preview["yaw"], yaw + deg_to_rad(15)), "Release preserves the rotation target")
 	game.set_edit_mode("resize")
+	await settle()
 	game._start_resize({"key":"width", "point":Vector2.ZERO})
 	game._set_resize_length(4.7)
 	check(game.display_target["width"] == 5 and game.display_target["pivot"].is_equal_approx(game.display_target["pivot"].snapped(Vector3.ONE*0.5)), "Resize targets whole size and world-grid centre together")

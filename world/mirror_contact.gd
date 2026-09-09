@@ -39,6 +39,8 @@ func _contours(solids: Array[Dictionary], state: Dictionary, frame: Basis) -> Ar
 	var boundaries := Display.column(state["pivot"], frame, state, true)
 	var surface_faces: Array = []
 	for solid: Dictionary in solids:
+		if solid.get("kind") == "reflected":
+			continue
 		surface_faces.append_array(_faces(solid))
 	for index: int in boundaries.size():
 		var limits := boundaries.duplicate()

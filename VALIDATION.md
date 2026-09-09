@@ -1,4 +1,16 @@
-# Latest check: edit modes and target movement — 2026-09-09
+# Latest check: world-aligned rings and selective contact glow — 2026-09-09
+
+- Replaced flat arcs with projected 3D rings centred on the panel. Turn lies in world X/Z; Tilt is perpendicular to local width. Rings grow with the panel, retain a 48-unit minimum projected major radius, and use a constant touch strip. The selected plane and radius stay fixed during a drag. Edge-on rings use the captured tangent.
+- Focused ring checks passed: world-plane alignment, projection, growth, near-edge-on input, repeated/reversed travel, pointer capture, minimum portrait size, HUD blocking, and horizontal placement. The final edit-mode run passed **22 checks, 0 failures**. Prism contact checks passed **62 checks, 0 failures**; the existing contact check returned all eight flags true. Reflected-only, rotated, reversed, and mixed original/absolute inputs are covered.
+- One combined regression passed **524 checks, 0 failures**, including both puzzle routes, movement, prediction, support restoration, wall rejection, removal, Cancel, Undo, Reset, and failure recovery. The final adjustment to match ring hit segments with visible HUD-clipped segments passed the focused ring check.
+- Native Godot MCP review completed at 1152×800 and 390×844. Captured all four camera views, a runtime ring pointer/motion drag with snapped reflected geometry, 1×1 and 6×6 panels, portrait controls, and horizontal placement. The horizontal Turn ring and local Tilt ring are readable in the captures; originals and absolutes retain contact light. Holographic edge outlines remain visible on reflections. The native process stopped with no runtime or shader errors and removed its bridge and autoload.
+- Early checks found an inferred Boolean type and a test that began resizing before the new mode camera fit ended. Both were corrected. One headless check was accidentally started while the native bridge was active; its bridge reported a port conflict. After stopping the native process, the same edit-mode check passed without that warning. This is not counted as a clean native check.
+- No export or Simulator check was run. Physical touch feel remains unverified. The minimum ring size and the small stage in portrait still need user playtesting.
+- Local evidence is under `.mcp/screenshots/`: desktop `screenshot_1788944622_29726.png`; held drag `screenshot_1788944636_93757.png`; alternate views `screenshot_1788944649_85384.png`, `screenshot_1788944650_70548.png`, `screenshot_1788944651_55803.png`; small/large `screenshot_1788944661_36469.png`, `screenshot_1788944674_15131.png`; portrait `screenshot_1788944674_968.png`, `screenshot_1788944691_82149.png`; horizontal `screenshot_1788944702_36433.png`. These images are runtime evidence and remain outside Git and exports.
+
+---
+
+# Earlier check: edit modes and target movement — 2026-09-09
 
 - Added Move, Rotate, and Resize modes, stable screen-space rotation arcs, target selection during dragging, movement guides, and one blended camera turn. The default angle step is 15°; debug 0° retains legal continuous angles. The progressive mode tutorial remains a pending idea.
 - One combined headless regression passed **524 checks, 0 failures**. It covers both puzzle routes, support restoration, wall rejection, removal, Cancel, Undo, Reset, failure recovery, prediction, movement, and control layouts.

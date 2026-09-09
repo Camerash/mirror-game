@@ -340,6 +340,8 @@ func set_edit_mode(mode: String) -> void:
 		return
 	edit_mode = mode
 	_refresh()
+	_fit_camera(hud.get_play_rect())
+	_refresh()
 	hud.show_hint(mode.capitalize())
 
 func _mode_busy() -> bool:

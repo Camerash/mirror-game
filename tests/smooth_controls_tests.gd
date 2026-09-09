@@ -25,6 +25,7 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	await _settle(game, tree)
 	check.call(game.preview["offset"] == 3.0 and game.display_preview.is_empty(), "Release settles on the nearest half unit")
 	game.set_edit_mode("rotate")
+	await _settle(game, tree)
 	var pivot: Vector3 = game.preview["pivot"]
 	var before_rotation: Array = game.world.drawn_solids.duplicate(true)
 	game._action("rotation_begin", {"kind":"turn", "axis":Vector3.UP})

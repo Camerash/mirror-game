@@ -47,6 +47,7 @@ func _run() -> void:
 	_check_internal_edges()
 	_check_corner_bands()
 	_check_reflections()
+	_check_reflected_filter()
 	_check_adjacent_surfaces()
 	contact.queue_free()
 	await process_frame
@@ -120,9 +121,43 @@ func _check_reflections() -> void:
 	var level := {"originals": [{"id":"source", "center":[0,0,-3], "size":[6,1,1]}], "absolutes": []}
 	var solids := Display.generate(level, state, Basis.IDENTITY)
 	var seams: Array = contact._contours(solids, state, Basis.IDENTITY)
-	check(not seams.is_empty(), "Reflected fragments receive side contact glow")
-	for seam: Dictionary in seams:
-		check(seam["a"].z > 0.0 and seam["b"].z > 0.0, "Reflected seams stay on the destination side")
+	check(seams.is_empty(), "Reflected fragments do not receive contact glow")
+
+func _check_reflected_filter() -> void:
+	var frame := Basis(Vector3.UP, 0.37) * Basis(Vector3.RIGHT, -0.23)
+	var reflected := {"faces": _transformed_faces(AABB(Vector3(1.0, -0.5, 2.0), Vector3.ONE), frame), "kind": "reflected"}
+	var reflected_only: Array[Dictionary] = [reflected]
+	check(contact._contours(reflected_only, state, frame).is_empty(), "Rotated reflected-only surface has no prism contact")
+	var reversed := state.duplicate()
+	reversed["source_sign"] = -1.0
+	check(contact._contours(reflected_only, reversed, frame).is_empty(), "Side reversal keeps reflected-only surface filtered")
+	var solids := _boundary_solids(frame, 0.25)
+	solids.append(reflected)
+	var seams: Array = contact._contours(solids, state, frame)
+	check(seams.size() == 20, "Rotated original and absolute surfaces retain panel and four side seams")
+	check(contact._contours(_boundary_solids(frame, -1.25), reversed, frame).size() == 20, "Side reversal retains original and absolute prism seams")
+
+func _boundary_solids(frame: Basis, side_z: float) -> Array[Dictionary]:
+	var solids: Array[Dictionary] = []
+	var boundaries: Array[AABB] = [
+		AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE),
+		AABB(Vector3(1.0, -0.5, side_z), Vector3.ONE),
+		AABB(Vector3(-2.0, -0.5, side_z), Vector3.ONE),
+		AABB(Vector3(-0.5, 1.0, side_z), Vector3.ONE),
+		AABB(Vector3(-0.5, -2.0, side_z), Vector3.ONE),
+	]
+	for index: int in boundaries.size():
+		solids.append({"faces": _transformed_faces(boundaries[index], frame), "kind": "original" if index % 2 == 0 else "absolute"})
+	return solids
+
+func _transformed_faces(bounds: AABB, frame: Basis) -> Array:
+	var faces: Array = []
+	for face: PackedVector3Array in Display.box_faces(bounds):
+		var transformed := PackedVector3Array()
+		for point: Vector3 in face:
+			transformed.append(frame * point)
+		faces.append(transformed)
+	return faces
 
 func _check_adjacent_surfaces() -> void:
 	var solids: Array[Dictionary] = []

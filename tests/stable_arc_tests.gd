@@ -1,10 +1,10 @@
 extends RefCounted
-
 const Rings := preload("res://world/mirror_rings.gd")
+const Rules := preload("res://core/mirror_state.gd")
 
 static func run(check: Callable) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
-	tree.root.size = Vector2i(900, 700)
+	tree.root.size = Vector2i(900,700)
 	var stage := Node3D.new()
 	var camera := Camera3D.new()
 	var rings := Rings.new()
@@ -13,74 +13,70 @@ static func run(check: Callable) -> void:
 	stage.add_child(rings)
 	await tree.process_frame
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 8.0
-	camera.position = Vector3(0, 5, 7)
+	camera.size = 8
+	camera.position = Vector3(5,5,7)
 	camera.look_at(Vector3.ZERO)
 	camera.make_current()
 	camera.force_update_transform()
-	var state := {"axis": 0, "source": 1, "pivot": Vector3.ZERO, "frame_up": Vector3.UP, "enabled": true}
-	rings.set_layout(Rect2(Vector2.ZERO, tree.root.size), [Rect2(0, 0, 120, 80)])
-	rings.set_state(state, true, false)
+	var state := Rules.normalized({"axis":0,"source":1,"pivot":Vector3.ZERO,"enabled":true,"width":3.0,"height":3.0})
+	rings.set_state(state,true,false)
+	rings.set_layout(Rect2(0,0,900,700),[Rect2(0,0,100,100)])
 	rings.update_view(camera)
-	var turn := rings.get_arc_points("turn")
-	check.call(turn.size() == 25, "Turn arc is visible while rotation mode is active")
-	var center := Vector2(turn[12].x, turn[0].y)
-	check.call(is_equal_approx(turn[0].distance_to(center), 64.0) and is_equal_approx(turn[12].distance_to(center), 64.0), "Turn arc keeps a 64 logical-unit radius")
-	camera.size = 16.0
-	rings.update_view(camera)
-	turn = rings.get_arc_points("turn")
-	center = Vector2(turn[12].x, turn[0].y)
-	check.call(is_equal_approx(turn[0].distance_to(center), 64.0), "Turn arc size does not follow camera scale")
-	check.call(not rings.blocks_point(Vector2(20, 20)), "HUD exclusions do not become world-obstruction checks")
-	var controls := rings.get_control_rects()
-	check.call(not (controls["turn"] as Rect2).intersects(Rect2(0, 0, 120, 80)) and not (controls["tilt"] as Rect2).intersects(Rect2(0, 0, 120, 80)), "Arc layout keeps touch regions outside HUD exclusions")
-	for sample: int in [1, 12, 23]:
-		check.call(rings.pointer(turn[sample], true, sample), "Any visible turn arc point starts a drag")
-		check.call(rings.pointer(Vector2(-50, -50), false, sample), "A captured drag releases outside its arc")
-	var actions: Array[String] = []
+	var yaw: Dictionary = rings._arcs[0].duplicate(true)
+	var pitch: Dictionary = rings._arcs[1].duplicate(true)
+	check.call(is_equal_approx(yaw["radius"],1.85) and is_equal_approx(pitch["radius"],1.85), "Rings use panel dimensions plus gap")
+	check.call(yaw["axis"] == Vector3.UP and pitch["axis"].is_equal_approx(Rules.frame(state).x), "Ring axes match yaw and local pitch")
+	for ring: Dictionary in [yaw,pitch]:
+		for angle: float in [0.0,0.7,2.1]:
+			var offset := Rings.world_point(ring,angle) - (ring["pivot"] as Vector3)
+			check.call(absf(offset.dot(ring["axis"])) < 0.0001, "Ring points remain on their 3D rotation plane")
+			check.call(Rings.screen_point(ring,angle).distance_to(camera.unproject_position(Rings.world_point(ring,angle))) < 0.01, "Ring projection matches world geometry")
 	var angles: Array[float] = []
-	rings.action_requested.connect(func(action: String, value: Variant) -> void:
-		actions.append(action)
-		if action == "rotation_angle":
-			angles.append(float(value)))
-	check.call(rings.pointer(turn[2], true, 9), "Turn arc captures its pointer")
-	for angle: float in [0.8, 1.6, 2.4, -3.08, -2.28, -1.48, -0.68, 0.12, 0.92]:
-		rings.motion(center + Vector2(cos(angle), sin(angle)) * 64.0, 9)
-	var forward: float = angles.back()
-	rings.motion(center + Vector2(cos(0.12), sin(0.12)) * 64.0, 9)
-	check.call(forward > TAU and angles.back() < forward, "Drag travel wraps through repeated turns and reverses without a jump")
-	var count := angles.size()
-	rings.motion(center, 9)
-	check.call(angles.size() == count, "Samples near the arc centre do not change rotation")
-	check.call(rings.pointer(Vector2(-50, -50), false, 9) and actions.back() == "rotation_end", "Release emits rotation_end after an owned drag")
-	rings.set_state(state.merged({"yaw": 0.0, "pitch": PI * 0.5}, true), true, false)
+	rings.action_requested.connect(func(action: String,value: Variant) -> void:
+		if action == "rotation_angle": angles.append(float(value)))
+	var start := Rings.screen_point(yaw,0.7)
+	check.call(rings.pointer(start,true,4) and rings._drag["kind"] == "turn", "Nearest projected ring captures input")
+	rings.motion(start,4)
+	check.call(is_zero_approx(angles.back()), "Press does not change the angle")
+	for step: int in range(1,18): rings.motion(Rings.screen_point(yaw,0.7+step*0.5),4)
+	check.call(is_equal_approx(angles.back(),8.5), "Pointer angle wraps over repeated turns")
+	rings.motion(Rings.screen_point(yaw,0.7+8.0),4)
+	check.call(is_equal_approx(angles.back(),8.0), "Reverse travel reverses rotation")
+	var captured := rings.get_arc_points("turn")
+	rings.set_pose(Transform3D(Basis(Vector3.UP,0.8),Vector3(2,2,2)))
+	rings.set_state(state.merged({"width":6.0},true),true,true)
+	check.call(rings.get_arc_points("turn") == captured and rings.get_arc_points("tilt").is_empty(), "Gesture freezes the selected ring and hides the other")
+	check.call(rings.pointer(Vector2(-50,-50),false,4), "Release outside retains pointer ownership")
+	rings.set_pose(Transform3D(Rules.frame(state),Vector3.ZERO))
+	rings.set_state(state.merged({"width":6.0,"height":6.0},true),true,false)
+	check.call(is_equal_approx(rings._arcs[0]["radius"],3.35), "Resizing grows the ring")
+	# Edge-on pitch: camera looks along the plane, so use its captured tangent.
+	camera.position = Vector3(6,4,0)
+	camera.look_at(Vector3.ZERO)
+	camera.force_update_transform()
+	rings.set_state(state,true,false)
 	rings.update_view(camera)
-	check.call(rings.get_arc_points("turn").is_empty() and not rings.get_arc_points("tilt").is_empty(), "Turn arc hides for a horizontal mirror")
-	tree.root.size = Vector2i(390, 844)
+	pitch = rings._arcs[1].duplicate(true)
+	check.call(pitch["edge_on"], "Edge-on pitch selects tangent input")
+	start = Rings.screen_point(pitch,0.8)
+	check.call(rings.pointer(start,true,7) and rings._drag["kind"] == "tilt", "Edge-on pitch ring accepts input")
+	var tangent: Vector2 = rings._drag["tangent"]
+	rings.motion(start+tangent*float(pitch["pixel_radius"]),7)
+	check.call(is_equal_approx(angles.back(),1.0), "One projected radius requests one radian")
+	rings.motion(start-tangent*float(pitch["pixel_radius"]),7)
+	check.call(is_equal_approx(angles.back(),-1.0), "Edge-on input supports reversal")
+	rings.pointer(start,false,7)
+	rings.set_state(state.merged({"pitch":PI/2},true),true,false)
+	check.call(rings.get_arc_points("turn").is_empty() and not rings.get_arc_points("tilt").is_empty(), "Horizontal mirror keeps only pitch")
+	tree.root.size = Vector2i(390,844)
 	await tree.process_frame
-	var portrait_safe := Rect2(0, 0, 390, 844)
-	var portrait_excluded: Array[Rect2] = [Rect2(330, 16, 44, 44), Rect2(0, 760, 390, 84)]
-	rings.set_layout(portrait_safe, portrait_excluded)
-	rings.set_state(state.merged({"width": 1.0, "height": 1.0}, true), true, false)
+	camera.size = 20
+	rings.set_layout(Rect2(0,0,390,844),[Rect2(0,740,390,104)])
+	rings.set_state(state.merged({"width":1.0,"height":1.0},true),true,false)
 	rings.update_view(camera)
-	var small := rings.get_arc_points("turn")
-	var small_center := Vector2(small[12].x, small[0].y)
-	rings.set_state(state.merged({"width": 6.0, "height": 6.0}, true), true, false)
-	rings.update_view(camera)
-	var large := rings.get_arc_points("turn")
-	var large_center := Vector2(large[12].x, large[0].y)
-	check.call(is_equal_approx(small[0].distance_to(small_center), 64.0) and is_equal_approx(large[0].distance_to(large_center), 64.0), "Portrait arcs keep their radius for small and large panels")
-	controls = rings.get_control_rects()
-	var turn_rect: Rect2 = controls["turn"]
-	var tilt_rect: Rect2 = controls["tilt"]
-	check.call(portrait_safe.encloses(turn_rect) and portrait_safe.encloses(tilt_rect) and not turn_rect.intersects(tilt_rect), "Portrait touch regions stay in the safe area and apart")
-	check.call(not turn_rect.intersects(portrait_excluded[0]) and not tilt_rect.intersects(portrait_excluded[0]) and not turn_rect.intersects(portrait_excluded[1]) and not tilt_rect.intersects(portrait_excluded[1]), "Portrait arcs avoid gear and bottom actions")
-	check.call(rings.pointer(large[12], true, 19), "Portrait turn arc starts a drag")
-	var frozen := rings.get_arc_points("turn")
-	rings.set_pose(Transform3D(Basis.IDENTITY, Vector3(12, 4, -8)))
-	rings.update_view(camera)
-	var during_drag := rings.get_arc_points("turn")
-	check.call(frozen[0].is_equal_approx(during_drag[0]) and frozen[12].is_equal_approx(during_drag[12]) and frozen[24].is_equal_approx(during_drag[24]), "Active portrait drag keeps arc geometry fixed")
-	rings.pointer(Vector2(-50, -50), false, 19)
+	check.call(is_equal_approx(rings._arcs[0]["pixel_radius"],48.0), "Small portrait rings retain minimum touch scale")
+	var blocked := Rings.screen_point(rings._arcs[0],0.5)
+	rings.set_layout(Rect2(0,0,390,844),[Rect2(blocked-Vector2(30,30),Vector2(60,60))])
+	check.call(not rings.blocks_point(blocked) and not rings.pointer(blocked,true,8), "HUD blocks ring input without relocating the ring")
 	stage.queue_free()
 	await tree.process_frame
