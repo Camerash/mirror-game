@@ -61,3 +61,11 @@ Use an almost-clear panel centre with a fixed world-unit soft perimeter. Keep ra
 ![Bounded panel with resize tabs](bounded-controls-in-game.png)
 
 Native Mac portrait capture on 2026-09-09. The tabs resize from fixed opposite edges; the round rotation orbs stay on the panel. This records the procedural edge-light implementation, not the generated target.
+
+## Free movement and continuous rotation
+
+![Ground and height controls](continuous-controls-in-game.png)
+
+![Intermediate reflected geometry during rotation](continuous-rotation-in-game.png)
+
+Native Mac captures on 2026-09-09. Hollow knobs sit outside the frame; resize pills sit on its edges. Jade absolutes remain solid while reflected geometry follows the current angle. Final placement still uses quarter turns. These captures record the prototype, not a new generated art target.

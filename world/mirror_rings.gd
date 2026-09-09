@@ -7,6 +7,9 @@ signal action_requested(action: String, value: Variant)
 const Rules := preload("res://core/mirror_state.gd")
 const SAMPLES := 96
 const PICK_RADIUS := 24.0
+const KNOB_RADIUS_PIXELS := 16.0
+const KNOB_OUTLINE_PIXELS := 2.5
+const EDGE_GAP := 0.35
 const QUARTER_TURN := PI * 0.5
 const EPSILON := 0.0001
 
@@ -109,7 +112,7 @@ func pointer(point: Vector2, pressed: bool, index: int) -> bool:
 	_drag_ring = selected.duplicate(true)
 	_travel = 0.0
 	_has_angle = _read_angle(point, _drag_ring)
-	action_requested.emit("rotation_begin", null)
+	action_requested.emit("rotation_begin", {"kind": _drag_ring["action"], "axis": _drag_ring["axis"]})
 	_refresh()
 	return true
 
@@ -120,10 +123,7 @@ func motion(point: Vector2, index: int) -> bool:
 		var delta := wrapf(_last_angle - _drag_ring["previous_angle"], -PI, PI)
 		_travel += delta
 		_drag_ring["previous_angle"] = _last_angle
-		while absf(_travel) >= QUARTER_TURN - EPSILON:
-			var direction := 1 if _travel > 0.0 else -1
-			action_requested.emit(str(_drag_ring["action"]), direction)
-			_travel -= direction * QUARTER_TURN
+		action_requested.emit("rotation_angle", _travel)
 		_refresh()
 	return true
 
@@ -188,21 +188,18 @@ func _setup_line(instance: MeshInstance3D, color: Color) -> void:
 	material.albedo_color = color
 	material.emission_enabled = true
 	material.emission = color
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.render_priority = 96
 	instance.material_override = material
 
 func _setup_orb(instance: MeshInstance3D, color: Color) -> void:
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.5
-	sphere.height = 1.0
-	sphere.radial_segments = 12
-	sphere.rings = 6
-	instance.mesh = sphere
+	instance.mesh = ImmediateMesh.new()
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.albedo_color = color
 	material.emission_enabled = true
 	material.emission = color
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	material.render_priority = 97
 	instance.material_override = material
 
@@ -219,7 +216,23 @@ func _build_rings(yaw_sign := 0, pitch_sign := 0) -> void:
 	_pitch = _make_ring("tilt", pose.basis.x, pose.basis.y, pose.basis.z, height * 0.5, pose.basis.y, pitch_sign, true)
 
 func _make_ring(action: String, axis: Vector3, vector_u: Vector3, vector_v: Vector3, radius: float, edge: Vector3, edge_sign: int, shown: bool) -> Dictionary:
-	return {"action": action, "center": _resolved_pose().origin, "axis": axis.normalized(), "u": vector_u.normalized(), "v": vector_v.normalized(), "radius": radius, "edge": edge.normalized(), "edge_sign": edge_sign if edge_sign != 0 else 1, "visible": shown}
+	var gap := _edge_gap(_resolved_pose().origin, edge.normalized(), radius)
+	return {"action": action, "center": _resolved_pose().origin, "axis": axis.normalized(), "u": vector_u.normalized(), "v": vector_v.normalized(), "radius": radius + gap, "edge": edge.normalized(), "edge_sign": edge_sign if edge_sign != 0 else 1, "visible": shown}
+
+func _edge_gap(center: Vector3, edge: Vector3, half_extent: float) -> float:
+	var gap := EDGE_GAP
+	if _camera == null:
+		return gap
+	for sign: float in [-1.0, 1.0]:
+		var anchor := center + edge * half_extent * sign
+		if _camera.is_position_behind(anchor):
+			continue
+		while gap < 8.0:
+			var knob := center + edge * (half_extent + gap) * sign
+			if not _camera.is_position_behind(knob) and _camera.unproject_position(anchor).distance_to(_camera.unproject_position(knob)) >= PICK_RADIUS * 2.0:
+				break
+			gap += 0.1
+	return gap
 
 func _choose_inaccessible_edges() -> void:
 	for ring: Dictionary in [_yaw, _pitch]:
@@ -247,13 +260,22 @@ func _resolved_pose() -> Transform3D:
 func _refresh() -> void:
 	if not _yaw_near.get_parent():
 		return
-	_draw_ring(_yaw, _yaw_near, _yaw_far)
-	_draw_ring(_pitch, _pitch_near, _pitch_far)
-	_update_orb(_yaw, _yaw_orb)
-	_update_orb(_pitch, _pitch_orb)
+	var yaw := _captured_radius(_yaw)
+	var pitch := _captured_radius(_pitch)
+	_draw_ring(yaw, _yaw_near, _yaw_far)
+	_draw_ring(pitch, _pitch_near, _pitch_far)
+	_update_orb(yaw, _yaw_orb)
+	_update_orb(pitch, _pitch_orb)
+
+func _captured_radius(ring: Dictionary) -> Dictionary:
+	if _active and ring["action"] == _drag_ring.get("action", ""):
+		var result := ring.duplicate(true)
+		result["radius"] = _drag_ring["radius"]
+		return result
+	return ring
 
 func _draw_ring(ring: Dictionary, near: MeshInstance3D, far: MeshInstance3D) -> void:
-	var shown := visible and bool(ring.get("visible", false))
+	var shown: bool = visible and bool(ring.get("visible", false)) and ((_active and ring["action"] == _drag_ring.get("action", "")) or (not _active and not _busy))
 	near.visible = shown
 	far.visible = shown
 	if not shown:
@@ -285,15 +307,36 @@ func _draw_ring(ring: Dictionary, near: MeshInstance3D, far: MeshInstance3D) -> 
 		far_mesh.surface_end()
 
 func _update_orb(ring: Dictionary, orb: MeshInstance3D) -> void:
-	orb.visible = visible and bool(ring.get("visible", false))
+	orb.visible = visible and bool(ring.get("visible", false)) and ((_active and ring["action"] == _drag_ring.get("action", "")) or (not _active and not _busy))
 	if not orb.visible:
 		return
-	orb.global_position = _orb_point(ring)
 	var radius := 0.06
+	var outline := 0.01
 	if _camera:
 		var viewport_height := maxf(1.0, _camera.get_viewport().get_visible_rect().size.y)
-		radius = maxf(radius, _camera.size * 6.0 / viewport_height)
-	orb.scale = Vector3.ONE * radius * 2.0
+		radius = maxf(radius, _camera.size * KNOB_RADIUS_PIXELS / viewport_height)
+		outline = _camera.size * KNOB_OUTLINE_PIXELS / viewport_height
+		orb.global_transform = Transform3D(_camera.global_transform.basis, _orb_point(ring))
+	else:
+		orb.global_position = _orb_point(ring)
+	var mesh := orb.mesh as ImmediateMesh
+	mesh.clear_surfaces()
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	var inner := maxf(0.001, radius - outline)
+	for step: int in 16:
+		var first := TAU * float(step) / 16.0
+		var second := TAU * float(step + 1) / 16.0
+		var outer_first := Vector3(cos(first) * radius, sin(first) * radius, 0.0)
+		var outer_second := Vector3(cos(second) * radius, sin(second) * radius, 0.0)
+		var inner_first := Vector3(cos(first) * inner, sin(first) * inner, 0.0)
+		var inner_second := Vector3(cos(second) * inner, sin(second) * inner, 0.0)
+		mesh.surface_add_vertex(outer_first)
+		mesh.surface_add_vertex(outer_second)
+		mesh.surface_add_vertex(inner_first)
+		mesh.surface_add_vertex(inner_first)
+		mesh.surface_add_vertex(outer_second)
+		mesh.surface_add_vertex(inner_second)
+	mesh.surface_end()
 
 func _is_near(ring: Dictionary, location: Vector3) -> bool:
 	return _camera == null or (location - ring["center"]).dot(_camera.global_position - ring["center"]) >= 0.0

@@ -15,10 +15,12 @@ static func frame(state: Dictionary) -> Basis:
 	return Basis(up.cross(facing), up, facing)
 
 static func _rotate(state: Dictionary, axis: Vector3, direction: int) -> Dictionary:
+	return oriented(state, Basis(axis, signi(direction) * PI * 0.5) * frame(state))
+
+static func oriented(state: Dictionary, orientation: Basis) -> Dictionary:
 	var result := state.duplicate(true)
-	var rotation := Basis(axis, signi(direction) * PI * 0.5)
-	var facing := (rotation * normal(state)).round()
-	result["frame_up"] = (rotation * frame(state).y).round()
+	var facing := orientation.z.round()
+	result["frame_up"] = orientation.y.round()
 	result["axis"] = facing.abs().max_axis_index()
 	result["source"] = int(facing[int(result["axis"])])
 	result["offset"] = result["pivot"][int(result["axis"])]

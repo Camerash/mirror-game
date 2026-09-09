@@ -10,6 +10,7 @@ const HUD := preload("res://ui/mirror_hud.gd")
 const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
 const Atmosphere := preload("res://world/atmosphere.gd")
+const DisplayGeometry := preload("res://core/display_geometry.gd")
 const Resize := preload("res://ui/mirror_resize.gd")
 const Rings := preload("res://world/mirror_rings.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
@@ -60,8 +61,10 @@ var failure_veil := ColorRect.new()
 var play_rect := Rect2()
 var dragging := false
 var drag_origin := Vector2.ZERO
-var drag_offset := 0.0
 var drag_axis := Vector2.ZERO
+var drag_pivot := Vector3.ZERO
+var drag_ground_origin := Vector3.ZERO
+var height_drag := false
 var drag_touch := -1
 var gesture := WorldGesture.new()
 var outline_accessible := false
@@ -69,6 +72,12 @@ var display_preview: Dictionary = {}
 var translation_motion: Tween
 var translating_settle := false
 var rotation_active := false
+var rotation_origin: Dictionary = {}
+var rotation_axis := Vector3.UP
+var rotation_angle := 0.0
+var display_basis := Basis.IDENTITY
+var rotation_display := false
+var rotation_motion: Tween
 var rotation_queue: Array[Dictionary] = []
 var rotation_target: Dictionary = {}
 var cancelling_gesture := false
@@ -276,7 +285,7 @@ func _open_preview(proposal: Dictionary) -> void:
 	_update_preview()
 	_fit_camera(hud.get_play_rect())
 	rings.choose_edge_ends()
-	hud.show_hint("Drag the sheet. Use edge tabs to resize. Tap the sheet to place it.")
+	hud.show_hint("Drag to move. Use the height arrow to lift. Tap to place.")
 
 func change_preview(key: String, value: Variant) -> void:
 	if phase != "preview" or not pending.is_empty() or _manipulating():
@@ -326,33 +335,68 @@ func tilt_mirror(direction := 1) -> void:
 func _queue_rotation(kind: String, direction: int) -> void:
 	if phase != "preview" or not pending.is_empty() or dragging or resizing or translating_settle or camera.busy or not preview["enabled"]:
 		return
+	if rotation_active:
+		return
 	rotation_queue.append({"kind": kind, "direction": signi(direction)})
 	_invalidate_prediction()
 	_advance_rotation()
 
 func _advance_rotation() -> void:
-	if not rotation_target.is_empty():
+	if not rotation_target.is_empty() or rotation_active:
 		return
 	while not rotation_queue.is_empty():
 		var step: Dictionary = rotation_queue.pop_front()
-		var next := MirrorRules.turn(preview, step["direction"]) if step["kind"] == "turn" else MirrorRules.tilt(preview, step["direction"])
-		if next == preview:
+		if step["kind"] == "turn" and int(preview["axis"]) == 1:
 			continue
-		rotation_target = next
-		sheet.animate_to(next, _sheet_bounds())
-		_refresh()
+		_start_rotation({"axis": Vector3.UP if step["kind"] == "turn" else MirrorRules.frame(preview).x})
+		rotation_active = false
+		_settle_rotation(float(step["direction"]) * PI * 0.5)
 		return
-	if not rotation_active and phase == "preview":
+	if phase == "preview":
 		_update_preview()
 		_fit_camera(hud.get_play_rect())
+
+func _start_rotation(value: Dictionary) -> void:
+	rotation_origin = preview.duplicate(true)
+	rotation_axis = value["axis"]
+	rotation_angle = 0.0
+	rotation_active = true
+	rotation_display = true
+	display_basis = MirrorRules.frame(preview)
+	_invalidate_prediction()
+	_refresh()
+
+func _set_rotation_angle(angle: float) -> void:
+	if rotation_origin.is_empty():
+		return
+	rotation_angle = angle
+	display_basis = Basis(rotation_axis, angle) * MirrorRules.frame(rotation_origin)
+	_update_preview()
+
+func _finish_rotation_drag() -> void:
+	rotation_active = false
+	if not cancelling_gesture and not rotation_origin.is_empty():
+		_settle_rotation(roundf(rotation_angle / (PI * 0.5)) * PI * 0.5)
+
+func _settle_rotation(target_angle: float) -> void:
+	var frame := Basis(rotation_axis, target_angle) * MirrorRules.frame(rotation_origin)
+	rotation_target = MirrorRules.oriented(rotation_origin, frame)
+	rotation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	rotation_motion.tween_method(_set_rotation_angle, rotation_angle, target_angle, 0.15)
+	rotation_motion.tween_callback(_rotation_finished)
 
 func _rotation_finished() -> void:
 	if rotation_target.is_empty() or phase != "preview":
 		return
 	preview = rotation_target
 	rotation_target = {}
-	_update_preview()
-	_advance_rotation()
+	rotation_origin.clear()
+	rotation_display = false
+	if not rotation_queue.is_empty():
+		_advance_rotation()
+	else:
+		_update_preview()
+		_fit_camera(hud.get_play_rect())
 
 func _cancel_manipulation() -> void:
 	cancelling_gesture = true
@@ -366,8 +410,13 @@ func _cancel_manipulation() -> void:
 	if translation_motion and translation_motion.is_valid():
 		translation_motion.kill()
 	dragging = false
+	height_drag = false
 	translating_settle = false
 	rotation_active = false
+	rotation_display = false
+	rotation_origin.clear()
+	if rotation_motion and rotation_motion.is_valid():
+		rotation_motion.kill()
 	rotation_queue.clear()
 	rotation_target.clear()
 	display_preview.clear()
@@ -459,7 +508,7 @@ func _display_state() -> Dictionary:
 	return display_preview if not display_preview.is_empty() else (preview if phase == "preview" else mirror)
 
 func _update_preview() -> void:
-	var proposed := Geometry.generate(level, _display_state())
+	var proposed := DisplayGeometry.generate(level, _display_state(), display_basis) if rotation_display else Geometry.generate(level, _display_state())
 	world.draw_world(proposed)
 	atmosphere.set_bounds(Geometry.total_bounds(proposed))
 	_invalidate_prediction()
@@ -505,6 +554,8 @@ func _refresh() -> void:
 	var axis: int = selected.get("axis", level["mirror"]["axis"])
 	if not sheet.is_transitioning():
 		sheet.set_state(selected, _sheet_bounds(), phase == "preview")
+	if rotation_display:
+		sheet.global_basis = display_basis
 	edit_available = can_edit()
 	rings.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty())
 	rings.set_pose(sheet.global_transform)
@@ -522,14 +573,15 @@ func _refresh() -> void:
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "style": style, "collision": world.debug_collision})
-	world.show_contacts(Geometry.reflection_contacts(level, selected) if phase == "preview" else [])
-	atmosphere.set_mirror(selected, phase == "preview", style)
+	world.show_contacts(Geometry.reflection_contacts(level, selected) if phase == "preview" and not _manipulating() else [])
+	atmosphere.set_mirror(selected, phase == "preview", style, display_basis.z if rotation_display else Vector3.ZERO)
 	_position_controls()
 
 func _action(action: String, value: Variant) -> void:
 	match action:
 		"select_level": load_level(int(value))
 		"width", "height": change_preview(action, float(value))
+		"height_step": _step_height(float(value))
 		"resize_begin": _start_resize(value)
 		"resize_move": _resize_drag(value)
 		"resize_end":
@@ -547,14 +599,14 @@ func _action(action: String, value: Variant) -> void:
 		"axis": change_preview("axis", int(value))
 		"turn": rotate_mirror(int(value))
 		"tilt": tilt_mirror(1 if value == null else int(value))
-		"rotation_begin":
-			rotation_active = true
-			_invalidate_prediction()
-			_refresh()
-		"rotation_end":
-			rotation_active = false
+		"rotation_begin": _start_rotation(value)
+		"rotation_angle": _set_rotation_angle(float(value))
+		"rotation_end": _finish_rotation_drag()
+		"move_height_begin": _start_height_drag(value)
+		"move_height_move": _drag(value)
+		"move_height_end":
 			if not cancelling_gesture:
-				_advance_rotation()
+				_finish_drag()
 		"camera_turn": turn_camera(int(value))
 		"flip": change_preview("source", -int(preview.get("source", 1)))
 		"apply": apply_preview()
@@ -585,6 +637,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_RIGHT: rotate_mirror(1)
 			KEY_UP: tilt_mirror(-1)
 			KEY_DOWN: tilt_mirror(1)
+			KEY_PAGEUP: _step_height(0.5)
+			KEY_PAGEDOWN: _step_height(-0.5)
 			KEY_Z: undo()
 			KEY_R: load_level(level_index)
 			KEY_BRACKETLEFT: _action("step", -0.5)
@@ -689,46 +743,74 @@ func _walk_at(point: Vector2) -> void:
 	else:
 		hud.show_hint("Tap a platform top to walk.")
 
+func _ground_point(point: Vector2, height: float) -> Vector3:
+	var ray := camera.project_ray_normal(point)
+	var origin := camera.project_ray_origin(point)
+	return origin + ray * ((height - origin.y) / ray.y)
+
 func _start_drag(point: Vector2) -> void:
 	if phase != "preview" or sheet.is_transitioning() or not preview["enabled"]:
 		return
 	dragging = true
+	height_drag = false
 	limit_hint_shown = false
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
 	drag_touch = gesture.pointer
 	drag_origin = point
-	drag_offset = float(preview["offset"])
-	var anchor: Vector3 = preview["pivot"]
-	var direction := Vector3.ZERO
-	direction[int(preview["axis"])] = 1.0
-	drag_axis = camera.unproject_position(anchor + direction) - camera.unproject_position(anchor)
+	drag_pivot = preview["pivot"]
+	drag_axis = camera.unproject_position(drag_pivot + Vector3.RIGHT) - camera.unproject_position(drag_pivot)
+	drag_ground_origin = _ground_point(point, drag_pivot.y)
+	_refresh()
+
+func _step_height(amount: float) -> void:
+	if phase != "preview" or _manipulating() or camera.busy or not pending.is_empty() or not preview["enabled"]:
+		return
+	var pivot: Vector3 = preview["pivot"]
+	pivot.y = clampf(pivot.y + amount, level["limits"]["min"][1], level["limits"]["max"][1])
+	preview["pivot"] = pivot
+	preview["offset"] = pivot[int(preview["axis"])]
+	_update_preview()
+	_fit_camera(hud.get_play_rect())
+
+func _start_height_drag(point: Vector2) -> void:
+	_start_drag(point)
+	height_drag = true
+	drag_axis = camera.unproject_position(drag_pivot + Vector3.UP) - camera.unproject_position(drag_pivot)
 
 func _drag(point: Vector2) -> void:
-	if dragging and drag_axis.length_squared() > 0.01:
-		var offset := drag_offset + (point - drag_origin).dot(drag_axis) / drag_axis.length_squared()
-		var axis: int = preview["axis"]
-		var limited := clampf(offset, level["limits"]["min"][axis], level["limits"]["max"][axis])
-		if not is_equal_approx(limited, offset) and not limit_hint_shown:
-			hud.show_hint("Edge of the placement area.")
-			limit_hint_shown = true
-		_set_display_offset(limited)
+	if not dragging:
+		return
+	var pivot := drag_pivot
+	if height_drag:
+		if drag_axis.length_squared() < 0.01:
+			return
+		pivot.y += (point - drag_origin).dot(drag_axis) / drag_axis.length_squared()
+	else:
+		pivot += _ground_point(point, drag_pivot.y) - drag_ground_origin
+	var limited := pivot
+	for axis: int in 3:
+		limited[axis] = clampf(pivot[axis], level["limits"]["min"][axis], level["limits"]["max"][axis])
+	if not limited.is_equal_approx(pivot) and not limit_hint_shown:
+		hud.show_hint("Edge of the placement area.")
+		limit_hint_shown = true
+	_set_display_pivot(limited)
 
-func _set_display_offset(offset: float) -> void:
-	display_preview["offset"] = offset
-	var pivot: Vector3 = display_preview["pivot"]
-	pivot[int(display_preview["axis"])] = offset
+func _set_display_pivot(pivot: Vector3) -> void:
 	display_preview["pivot"] = pivot
+	display_preview["offset"] = pivot[int(display_preview["axis"])]
 	_update_preview()
 
 func _finish_drag() -> void:
 	if not dragging:
 		return
 	dragging = false
+	height_drag = false
 	translating_settle = true
-	var target := snappedf(float(display_preview["offset"]), 0.5)
+	var start: Vector3 = display_preview["pivot"]
+	var target := start.snapped(Vector3.ONE * 0.5)
 	translation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	translation_motion.tween_method(_set_display_offset, float(display_preview["offset"]), target, 0.15)
+	translation_motion.tween_method(_set_display_pivot, start, target, 0.15)
 	translation_motion.tween_callback(func() -> void:
 		preview = display_preview.duplicate(true)
 		display_preview.clear()

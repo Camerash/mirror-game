@@ -4,6 +4,7 @@ render_mode diffuse_burley;
 uniform vec4 pigment : source_color = vec4(0.76, 0.70, 0.60, 1.0);
 uniform bool absolute_surface = false;
 uniform bool stone_trial = false;
+uniform bool polygon_surface = false;
 uniform vec3 box_centre;
 uniform vec3 box_size = vec3(1.0);
 uniform mat4 world_to_material;
@@ -31,7 +32,7 @@ void fragment() {
 		vec3 world_face = abs(world_normal);
 		// Round the lighting at edges without moving vertices or walkable tops.
 		vec3 edge_distance = max(abs(local) - (half_size - vec3(0.045)), vec3(0.0));
-		vec3 rounded_normal = normalize(world_normal + sign(local) * edge_distance * 8.0);
+		vec3 rounded_normal = polygon_surface ? world_normal : normalize(world_normal + sign(local) * edge_distance * 8.0);
 		NORMAL = normalize((VIEW_MATRIX * vec4(rounded_normal, 0.0)).xyz);
 		vec2 surface = face.y > max(face.x, face.z) ? source_position.xz : (face.x > face.z ? source_position.zy : source_position.xy);
 		vec2 scaled = surface * vec2(1.42, 1.17);
@@ -43,7 +44,7 @@ void fragment() {
 		float joint_width = 0.003 + hash21(cell) * 0.006;
 		float joint = 1.0 - smoothstep(joint_width, joint_width + 0.020, min(min(tile.x, 1.0 - tile.x), min(tile.y, 1.0 - tile.y)));
 		vec2 tangent_edge_distance = world_face.y > max(world_face.x, world_face.z) ? half_size.xz - abs(local.xz) : (world_face.x > world_face.z ? half_size.zy - abs(local.zy) : half_size.xy - abs(local.xy));
-		float bevel = 1.0 - smoothstep(0.012, 0.045, min(tangent_edge_distance.x, tangent_edge_distance.y));
+		float bevel = 1.0 - smoothstep(0.012, 0.045, polygon_surface ? COLOR.r : min(tangent_edge_distance.x, tangent_edge_distance.y));
 		float chip = sin(surface.x * 31.0 + surface.y * 17.0) * sin(surface.x * 11.0 - surface.y * 23.0) + (hash21(cell) - 0.5) * 0.35;
 		float wear = sin(surface.x * 4.3 + sin(surface.y * 3.1)) * 0.5 + 0.5;
 		float pores = sin(surface.x * 57.0 + surface.y * 41.0) * sin(surface.y * 47.0 - surface.x * 29.0);
@@ -55,7 +56,11 @@ void fragment() {
 		color += vec3(0.045, 0.035, 0.020) * (1.0 - bevel) * (face.y > 0.8 ? 1.0 : 0.25);
 	} else if (absolute_surface) {
 		float bands = smoothstep(0.40, 0.44, fract((source_position.x + source_position.z + source_position.y) * 4.0));
-		color = stone_trial ? mix(color * 0.94, color, bands * 0.45) : mix(color * 0.88, color, bands);
+		color = mix(vec3(0.09, 0.25, 0.15), color, bands * (stone_trial ? 0.62 : 0.82));
+	}
+	if (polygon_surface && !stone_trial) {
+		float edge = 1.0 - smoothstep(0.008, 0.045, COLOR.r);
+		color = mix(color, absolute_surface ? vec3(0.06, 0.19, 0.11) : color * 0.64, edge * 0.58);
 	}
 	ALBEDO = color;
 	ROUGHNESS = 0.92;

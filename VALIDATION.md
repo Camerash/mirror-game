@@ -1,4 +1,18 @@
-# Latest check: bounded mirrors and edge light — 2026-09-09
+# Latest check: free movement and continuous rotation — 2026-09-09
+
+- Godot 4.7.2, Compatibility renderer, on this Apple M2 Pro Mac. Final headless editor import/parse passed.
+- Focused display geometry: **1713 checks, 0 failures**. Closed box/cut volumes, snapped parity across the level fixtures and orientations, arbitrary-angle fragments, and absolute subtraction passed. The continuous path is visual only; snapped physics remains unchanged.
+- Focused controller checks: **25 checks, 0 failures**. Ground X/Z drag, height movement, half-unit settling, immediate intermediate rotation, reverse/full turns, nearest-quarter settling, horizontal placement, Cancel, confirmation guards, and persistent mist/absolute nodes passed. Focused ring/resize input checks also passed.
+- One integrated regression pass: **507 checks, 0 failures**. Both puzzle routes, support restoration, wall rejection, removal, Cancel, Undo, Reset, failure recovery, movement, and responsive layouts passed. After review, a focused check verified the fix for a yaw command on a horizontal panel leaving prediction pending; the full suite was not repeated.
+- Native Mac review used 1152×800 and 390×844 windows. Intermediate reflected geometry, hollow knobs, resize pills, jade absolutes, and horizontal placement rendered without shader errors. The first run found a missing desktop height control. The corrected control passed the focused runtime check and a targeted desktop/portrait visual follow-up. These early failed checks are not counted as successful checks.
+- Unchanged boxes keep their mesh path. Rendered fragment instances and materials are reused; mist layers retain their animation clock. The view no longer deletes and rebuilds all platforms and mist on each pointer update. Captures show intermediate angled reflections, not a fade between discrete layouts.
+- Evidence: `.local/continuous-geometry.log`, `.local/continuous-controls-final.log`, `.local/continuous-rings-final.log`, `.local/continuous-regression.log`, `.local/continuous-native.log`, `.local/continuous-final-native.log`, and `.local/continuous-parse-final.log`. Local captures are in ignored `test-output/continuous-*.png`; retained examples are in `docs/art/continuous-*-in-game.png`.
+- An optional final launch through Godot MCP was declined by the tool before launch. It is not counted as a completed check. The earlier native CLI reviews remain the runtime evidence. The temporary MCP bridge and autoload are absent.
+- No exports, Simulator checks, or physical-device checks were run. Physical touch feel and mobile GPU performance remain unverified. Native review processes closed after capture. Documentation assets remain excluded from game exports.
+
+---
+
+# Earlier check: bounded mirrors and edge light — 2026-09-09
 
 - Godot 4.7.2, Compatibility renderer, on this Apple M2 Pro Mac. Final headless editor import/parse passed; `.local/bounded-parse.log` has no errors. The temporary MCP bridge and autoload are absent.
 - Focused `tests/extent_tests.gd`: **67 checks, 0 failures**. Covers bounded clipping, source material coordinates, fixed opposite edges, whole-unit sizes, half-unit centres, repeated grow/shrink cycles, placement limits, rotation after resizing, collision and camera stability, pointer capture, settling, Cancel, Undo, and fresh creation after removal.

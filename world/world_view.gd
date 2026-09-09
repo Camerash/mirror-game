@@ -11,25 +11,16 @@ var contact_root := Node3D.new()
 var trace_root := Node3D.new()
 var contact_signature := ""
 var trace_time := 0.0
-var materials: Dictionary = {}
-var hologram_material := ShaderMaterial.new()
 var drawn_solids: Array[Dictionary] = []
+var visual_slots: Dictionary = {}
+var visual_generation := 0
+var debug_signature := ""
 var debug_collision := false
 var art_trial := false
 
 func _ready() -> void:
-	hologram_material.shader = Hologram
-	hologram_material.set_shader_parameter("pigment", Color("7099bd"))
-	hologram_material.set_shader_parameter("hologram_enabled", true)
 	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, contact_root, trace_root]:
 		add_child(node)
-	for kind: String in ["original", "reflected", "absolute"]:
-		var material := ShaderMaterial.new()
-		material.shader = Paint
-		material.set_shader_parameter("pigment", {"original": Color("c4b59b"), "reflected": Color("7099bd"), "absolute": Color("d7b579")}[kind])
-		material.set_shader_parameter("absolute_surface", kind == "absolute")
-		material.set_shader_parameter("stone_trial", false)
-		materials[kind] = material
 
 func set_art_trial(enabled: bool) -> void:
 	if art_trial == enabled:
@@ -51,43 +42,123 @@ func commit(solids: Array[Dictionary]) -> void:
 		body.add_child(collider)
 		collision_root.add_child(body)
 	draw_world(solids)
+	_discard_inactive_slots()
 
 func draw_world(solids: Array[Dictionary]) -> void:
 	drawn_solids = solids
-	_clear(visual_root)
+	visual_generation += 1
+	var occurrences := {}
+	var visible_index := 0
 	for solid: Dictionary in solids:
-		var bounds: AABB = solid["bounds"]
-		var instance := MeshInstance3D.new()
-		var mesh := BoxMesh.new()
-		mesh.size = bounds.size
-		instance.mesh = mesh
-		instance.position = bounds.get_center()
-		instance.material_override = _solid_material(solid, bounds)
-		visual_root.add_child(instance)
+		var key := _fragment_key(solid, occurrences)
+		var slot: Dictionary = visual_slots.get(key, {})
+		if slot.is_empty():
+			var instance := MeshInstance3D.new()
+			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			visual_root.add_child(instance)
+			slot = {"instance": instance, "material": ShaderMaterial.new(), "mesh_signature": "", "style": ""}
+			visual_slots[key] = slot
+		var instance: MeshInstance3D = slot["instance"]
+		var mesh_signature := _mesh_signature(solid)
+		if slot["mesh_signature"] != mesh_signature:
+			_apply_mesh(instance, solid)
+			slot["mesh_signature"] = mesh_signature
+		_configure_material(slot, solid)
+		instance.visible = true
+		visual_root.move_child(instance, visible_index)
+		visible_index += 1
+		slot["generation"] = visual_generation
+		visual_slots[key] = slot
+	for slot: Dictionary in visual_slots.values():
+		if slot.get("generation", -1) != visual_generation:
+			slot["instance"].visible = false
 	update_debug()
 
-func _solid_material(solid: Dictionary, bounds: AABB) -> ShaderMaterial:
-	var material: ShaderMaterial = materials[solid["kind"]]
-	if not art_trial:
-		var painted := material.duplicate() as ShaderMaterial
-		_apply_source_mapping(painted, solid, bounds)
-		return painted
-	if solid["kind"] == "reflected":
-		var hologram := hologram_material.duplicate() as ShaderMaterial
-		hologram.set_shader_parameter("box_centre", bounds.get_center())
-		hologram.set_shader_parameter("box_size", bounds.size)
-		_apply_source_mapping(hologram, solid, bounds)
-		return hologram
-	var stone := material.duplicate() as ShaderMaterial
-	stone.set_shader_parameter("stone_trial", true)
-	stone.set_shader_parameter("box_centre", bounds.get_center())
-	stone.set_shader_parameter("box_size", bounds.size)
-	_apply_source_mapping(stone, solid, bounds)
-	if solid["kind"] == "original":
-		stone.set_shader_parameter("pigment", Color("b9ad98"))
-	elif solid["kind"] == "reflected":
-		stone.set_shader_parameter("pigment", Color("405877"))
-	return stone
+func _discard_inactive_slots() -> void:
+	for key: String in visual_slots.keys():
+		var slot: Dictionary = visual_slots[key]
+		if slot.get("generation", -1) == visual_generation:
+			continue
+		visual_root.remove_child(slot["instance"])
+		slot["instance"].queue_free()
+		visual_slots.erase(key)
+
+func _fragment_key(solid: Dictionary, occurrences: Dictionary) -> String:
+	if solid.has("fragment_key"):
+		return str(solid["fragment_key"])
+	var base := "%s:%s" % [solid.get("source_id", solid.get("id", "solid")), solid.get("kind", "original")]
+	var count := int(occurrences.get(base, 0))
+	occurrences[base] = count + 1
+	return "%s:%d" % [base, count]
+
+func _mesh_signature(solid: Dictionary) -> String:
+	return str(solid.get("faces", [])) if solid.has("faces") else str(solid["bounds"])
+
+func _apply_mesh(instance: MeshInstance3D, solid: Dictionary) -> void:
+	if solid.has("faces") and not solid["faces"].is_empty():
+		instance.mesh = _polygon_mesh(solid["faces"])
+		instance.position = Vector3.ZERO
+		return
+	var bounds: AABB = solid["bounds"]
+	var mesh := BoxMesh.new()
+	mesh.size = bounds.size
+	instance.mesh = mesh
+	instance.position = bounds.get_center()
+
+func _polygon_mesh(faces: Array) -> ArrayMesh:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for polygon: PackedVector3Array in faces:
+		if polygon.size() < 3:
+			continue
+		var normal := (polygon[1] - polygon[0]).cross(polygon[2] - polygon[0]).normalized()
+		var centre := Vector3.ZERO
+		for point: Vector3 in polygon:
+			centre += point
+		centre /= polygon.size()
+		var boundary_distance := _polygon_boundary_distance(centre, polygon)
+		for index: int in polygon.size():
+			tool.set_normal(normal)
+			tool.set_color(Color(boundary_distance, 0.0, 0.0))
+			tool.add_vertex(centre)
+			tool.set_normal(normal)
+			tool.set_color(Color.BLACK)
+			tool.add_vertex(polygon[(index + 1) % polygon.size()])
+			tool.set_normal(normal)
+			tool.set_color(Color.BLACK)
+			tool.add_vertex(polygon[index])
+	return tool.commit()
+
+func _polygon_boundary_distance(point: Vector3, polygon: PackedVector3Array) -> float:
+	var distance := INF
+	for index: int in polygon.size():
+		var start := polygon[index]
+		var finish := polygon[(index + 1) % polygon.size()]
+		var edge := finish - start
+		var fraction := clampf((point - start).dot(edge) / edge.length_squared(), 0.0, 1.0)
+		distance = minf(distance, point.distance_to(start.lerp(finish, fraction)))
+	return distance
+
+func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
+	var bounds: AABB = solid["bounds"]
+	var use_hologram: bool = art_trial and solid["kind"] == "reflected"
+	var style := "hologram" if use_hologram else "painted"
+	var material: ShaderMaterial = slot["material"]
+	if slot["style"] != style:
+		material.shader = Hologram if use_hologram else Paint
+		slot["style"] = style
+	material.set_shader_parameter("polygon_surface", solid.has("faces") and not solid["faces"].is_empty())
+	material.set_shader_parameter("box_centre", bounds.get_center())
+	material.set_shader_parameter("box_size", bounds.size)
+	if use_hologram:
+		material.set_shader_parameter("pigment", Color("7099bd"))
+		material.set_shader_parameter("hologram_enabled", true)
+	else:
+		material.set_shader_parameter("pigment", {"original": Color("b9ad98") if art_trial else Color("c4b59b"), "reflected": Color("405877") if art_trial else Color("7099bd"), "absolute": Color("719b87")}[solid["kind"]])
+		material.set_shader_parameter("absolute_surface", solid["kind"] == "absolute")
+		material.set_shader_parameter("stone_trial", art_trial)
+	_apply_source_mapping(material, solid, bounds)
+	slot["instance"].material_override = material
 
 func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: AABB) -> void:
 	var material_to_world := Transform3D(Basis.IDENTITY, bounds.get_center())
@@ -96,10 +167,14 @@ func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: 
 	material.set_shader_parameter("world_to_material", material_to_world.affine_inverse())
 
 func update_debug() -> void:
+	var signature := str(debug_collision) + str(drawn_solids.filter(func(solid: Dictionary) -> bool: return debug_collision or solid["kind"] == "absolute"))
+	if signature == debug_signature:
+		return
+	debug_signature = signature
 	_clear(overlay_root)
 	for solid: Dictionary in drawn_solids:
 		if debug_collision or solid["kind"] == "absolute":
-			_outline_box(overlay_root, solid["bounds"], Color("a44836") if debug_collision else Color("715732"))
+			_outline_box(overlay_root, solid["bounds"], Color("a44836") if debug_collision else Color("244b35"))
 
 func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -> void:
 	var points := PackedVector3Array()

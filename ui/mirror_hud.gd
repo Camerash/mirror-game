@@ -154,7 +154,7 @@ func _build_debug() -> void:
 	_panel_width = _size_control(box, "Width", "width")
 	_panel_height = _size_control(box, "Height", "height")
 	_level_picker = OptionButton.new(); _style(_level_picker); _level_picker.item_selected.connect(func(value: int) -> void: _emit("select_level", value)); box.add_child(_level_picker); _register("level_picker", _level_picker)
-	for item in [["Edit/Create", "edit", null], ["Offset −", "step", -0.5], ["Offset +", "step", 0.5], ["Axis 1", "axis", 0], ["Axis 2", "axis", 1], ["Axis 3", "axis", 2], ["Turn left", "turn", -1], ["Turn right", "turn", 1], ["Tilt", "tilt", null], ["Reverse sides", "flip", null], ["Reset", "reset", null]]:
+	for item in [["Edit/Create", "edit", null], ["Offset −", "step", -0.5], ["Offset +", "step", 0.5], ["Raise", "height_step", 0.5], ["Lower", "height_step", -0.5], ["Axis 1", "axis", 0], ["Axis 2", "axis", 1], ["Axis 3", "axis", 2], ["Turn left", "turn", -1], ["Turn right", "turn", 1], ["Tilt", "tilt", null], ["Reverse sides", "flip", null], ["Reset", "reset", null]]:
 		var button := _button(str(item[0])); button.pressed.connect(func() -> void: _emit(str(item[1]), item[2])); box.add_child(button); _debug_controls[str(item[1]) + str(item[0])] = button
 	for spec in [["Collision", "collision"], ["Standing only", "standing_only"]]:
 		var check := CheckButton.new(); check.text = spec[0]; _style(check); check.toggled.connect(func(value: bool) -> void: _emit(spec[1], value)); box.add_child(check); _debug_controls[spec[1]] = check

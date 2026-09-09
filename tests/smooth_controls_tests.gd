@@ -25,14 +25,14 @@ static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
 	check.call(game.preview["offset"] == 3.0 and game.display_preview.is_empty(), "Release settles on the nearest half unit")
 	var pivot: Vector3 = game.preview["pivot"]
 	var before_rotation: Array = game.world.drawn_solids.duplicate(true)
-	game._action("rotation_begin", null)
-	for index: int in 4:
-		game.rotate_mirror(1)
-	check.call(game.world.drawn_solids == before_rotation, "Rotation starts without switching geometry ahead of its animation")
-	check.call(game.rotation_queue.size() == 3, "Held rotation keeps requests received during animation")
+	game._action("rotation_begin", {"kind":"turn", "axis":Vector3.UP})
+	game._action("rotation_angle", 0.2)
+	check.call(game.world.drawn_solids != before_rotation and game.preview["pivot"] == pivot, "Rotation updates visual geometry immediately without moving its pivot")
+	check.call(game.rotation_display and not game.apply_preview(), "Continuous rotation blocks confirmation")
+	game._action("rotation_angle", TAU)
 	game._action("rotation_end", null)
 	await _settle(game, tree)
-	check.call(Rules.normal(game.preview) == Rules.normal(original) and game.preview["pivot"] == pivot, "Queued quarter turns restore normal and preserve pivot")
+	check.call(Rules.normal(game.preview) == Rules.normal(original) and game.preview["pivot"] == pivot, "Full held rotation restores normal and preserves pivot")
 	var before_tilt := Rules.frame(game.preview)
 	for index: int in 4:
 		game.tilt_mirror(1)
