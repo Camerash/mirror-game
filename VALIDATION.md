@@ -1,4 +1,12 @@
-# Latest check: legal angles and mirror feedback — 2026-09-09
+# Latest check: soft intersection glow — 2026-09-09
+
+- Applied selected **C: Mist glow** to the existing exact contact contours. The band is 0.36 world units wide with a thin steady pearl core and a soft cyan fade. Shader derivatives retain core visibility at a distance. Slow variation affects only the halo. The comparison image guides softness only; its mirror orientation is incorrect.
+- Godot 4.7.2 headless contact check passed all eight results: finite, reused, angled, coplanar, changed normal, empty, wider band, and face clipping. `git diff --check` passed. No full gameplay suite or export was needed for this material change.
+- The runtime MCP tool declined launch before starting a process. A local Mac capture was requested but has not been approved or run in this turn. The new GPU shader appearance and physical-device rendering remain unverified. No Simulator check was run.
+
+---
+
+# Earlier check: legal angles and mirror feedback — 2026-09-09
 
 - Godot 4.7.2, Compatibility, Apple M2 Pro Mac. **47 focused angle checks passed**: free yaw/pitch, absolute 5° snap, side reversal without frame change, world-grid resize settling, no next-drag correction, convex slope support/penetration, uphill/downhill capsule motion, legal confirmation, Undo, and Reset. Surface-query checks include 0°, 20°, 44°, 45°, 46°, and 60° slopes. Final review found that flat/ramp joints were too restrictive; the corrected capsule-edge support and surface-following route checks passed at 20°, 30°, and 45°, including native movement across a 45° joint in both directions. Convex gap and overhead-clearance rejection passed.
 - **1713 geometry checks passed**, comparing the convex calculation against the independent legacy box path at cardinal orientations, including closed cuts and absolute subtraction. Contact checks passed for finite/angled/coplanar contours, mesh reuse, changed normals, and empty meshes.

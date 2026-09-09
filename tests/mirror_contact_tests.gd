@@ -13,6 +13,9 @@ func _run() -> void:
 	contact.set_contacts(solids, state, Basis.IDENTITY)
 	var first_mesh: Mesh = contact.seam.mesh
 	var has_finite_seam := first_mesh != null and first_mesh.get_aabb().size.length() > 0.1
+	var band_bounds := first_mesh.get_aabb()
+	var has_soft_band := is_equal_approx(band_bounds.size.z, 0.36)
+	var stays_on_faces := band_bounds.position.x >= -1.003 and band_bounds.end.x <= 1.003 and band_bounds.position.y >= -1.003 and band_bounds.end.y <= 1.003
 	contact.set_contacts(solids, state, Basis.IDENTITY)
 	var reuses_mesh := contact.seam.mesh == first_mesh
 	contact.set_contacts(solids, state, Basis(Vector3.UP, 0.37))
@@ -26,5 +29,5 @@ func _run() -> void:
 	var refreshes_normal := contact.seam.mesh != coplanar_mesh
 	contact.set_contacts([], state, Basis.IDENTITY)
 	var has_safe_empty_mesh := contact.seam.mesh != null and contact.seam.mesh.get_surface_count() == 0
-	print("Mirror contact: finite=%s reused=%s angled=%s coplanar=%s normal=%s empty=%s" % [has_finite_seam, reuses_mesh, has_angled_seam, has_coplanar_seam, refreshes_normal, has_safe_empty_mesh])
-	quit(0 if has_finite_seam and reuses_mesh and has_angled_seam and has_coplanar_seam and refreshes_normal and has_safe_empty_mesh else 1)
+	print("Mirror contact: finite=%s reused=%s angled=%s coplanar=%s normal=%s empty=%s soft_band=%s face_clip=%s" % [has_finite_seam, reuses_mesh, has_angled_seam, has_coplanar_seam, refreshes_normal, has_safe_empty_mesh, has_soft_band, stays_on_faces])
+	quit(0 if has_finite_seam and reuses_mesh and has_angled_seam and has_coplanar_seam and refreshes_normal and has_safe_empty_mesh and has_soft_band and stays_on_faces else 1)

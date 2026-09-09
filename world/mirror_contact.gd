@@ -6,7 +6,7 @@ const Display := preload("res://core/display_geometry.gd")
 const ContactShader := preload("res://world/mirror_contact.gdshader")
 const EPS := 0.0005
 const PANEL_EPS := 0.002
-const BAND_HALF_WIDTH := 0.03
+const BAND_HALF_WIDTH := 0.18
 
 var seam := MeshInstance3D.new()
 var material := ShaderMaterial.new()

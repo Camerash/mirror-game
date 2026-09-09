@@ -74,4 +74,10 @@ Native Mac captures on 2026-09-09. Hollow knobs sit outside the frame; resize pi
 
 `mirror-direction-contact-04.png` is the selected approximate B+C/E reference, made with the built-in image generator. Prompt: a bounded clear panel with an equal-perimeter one-sided light skirt, sparse outward motes, and a soft contact band crossing the top and side of one intact jade absolute. The image exaggerates light for readability. Runtime contact follows exact finite-panel intersections and never cuts an absolute. The earlier boards remain historical references.
 
-Runtime review: `direction-contact-in-game.png` shows the final contrast correction on the jade contact seam and perimeter light; `placement-guide-in-game.png` shows the temporary ground reference. These are actual Mac Compatibility captures. The height control remains in its existing position and can cover part of a contact; moving it is deferred.
+Runtime review: `direction-contact-in-game.png` shows the earlier contrast correction on the jade contact seam and perimeter light; `placement-guide-in-game.png` shows the temporary ground reference. These are actual Mac Compatibility captures. The height control remains in its existing position and can cover part of a contact; moving it is deferred.
+
+## Seam glow trial 05
+
+`seam-glow-05.png` is a comparison made with the built-in image generator. **C: Mist glow** is selected. Prompt: compare a thin pearl contact seam with a narrow halo, soft surface glow, mist glow, and stronger contrast on jade and cream stone. Keep the object solid and show light across the top and side faces.
+
+Use C for softness and colour only. Its mirror orientation is incorrect; runtime contours use the actual finite mirror plane and visible object faces. The wider surface band keeps a steady bright centre with slow, soft halo variation. It does not require bloom or volumetric fog.
