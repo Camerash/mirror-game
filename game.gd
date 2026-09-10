@@ -1,6 +1,7 @@
 extends Node3D
 ## Commands below are shared by HUD input, keyboard input, and replay tests.
 
+const TrialLighting := preload("res://world/trial_lighting.gd")
 const Targets := preload("res://core/mirror_targets.gd")
 const GuideStyle := preload("res://core/constellation_style.gd")
 const Queries := preload("res://core/solid_queries.gd")
@@ -47,6 +48,7 @@ var edit_available := false
 var predictor := Predictor.new()
 var preview_view := PreviewView.new()
 var atmosphere := Atmosphere.new()
+var trial_lighting := TrialLighting.new()
 var solids: Array[Dictionary] = []
 var history: Array[Dictionary] = []
 var phase := "play"
@@ -144,20 +146,7 @@ func _setup_scene() -> void:
 	camera.current = true
 	camera.near = 0.05
 	camera.far = 100.0
-	var environment := WorldEnvironment.new()
-	environment.environment = Environment.new()
-	environment.environment.background_mode = Environment.BG_COLOR
-	environment.environment.background_color = Color("e9e5dc")
-	environment.environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.environment.ambient_light_color = Color("d6e0df")
-	environment.environment.ambient_light_energy = 0.4
-	add_child(environment)
-	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-55, -35, 0)
-	light.light_color = Color("fff0d8")
-	light.light_energy = 0.65
-	light.shadow_enabled = not OS.has_feature("simulator")
-	add_child(light)
+	add_child(trial_lighting)
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
 	canvas.add_child(hud)
@@ -180,8 +169,12 @@ func load_level(index: int) -> bool:
 	level["mirror"] = MirrorRules.normalized(level["mirror"])
 	placement_guide.clear()
 	level_index = index
-	world.set_art_trial(index == 0 or index == LEVEL_PATHS.size() - 1)
+	world.set_art_trial(index == 0)
 	atmosphere.set_art_trial(index == 0)
+	atmosphere.visible = index != 0
+	trial_lighting.set_art_trial(index == 0)
+	sheet.set_art_trial(index == 0)
+	preview_view.set_art_trial(index == 0)
 	walker.set_art_trial(index == 0)
 	gesture.cancel()
 	mirror = level["mirror"].duplicate(true) if level["mirror"]["enabled"] else {"enabled": false}
@@ -588,6 +581,7 @@ func _prediction_ready(result: Dictionary) -> void:
 		"landing": status = "Will fall · The ghost shows a safe landing."
 		"failure": status = "Will fall · No landing before the lower boundary."
 		_: status = "This landing could not be checked. Move the mirror or cancel."
+	preview_view.set_facing(walker.character_visual.rotation.y if walker.character_visual != null else 0.0)
 	preview_view.show_result(result, world)
 	_refresh()
 

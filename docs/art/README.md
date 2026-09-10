@@ -1,3 +1,13 @@
+# Current trial — Ceramic B, porcelain R3, carved jade S1
+
+The selected references are [ceramic-style-board.png](ceramic-style-board.png), [porcelain-reflection-board.png](porcelain-reflection-board.png), and [jade-absolute-board.png](jade-absolute-board.png). These boards were generated with the built-in image tool for appearance comparison. They are not runtime screenshots or exact level layouts.
+
+Level 1 uses ivory ceramic with shallow arch relief, source-preserving porcelain reflections, carved jade, a thin metallic glass frame, and a compact dark traveller with a small pale oval and patterned hem. Fog is absent. Broad studio highlights and source-bound material coordinates keep moving and sliced surfaces stable. Cut caps remain opaque and plain. See [asset instructions](../../art_sources/README.md).
+
+The implementation keeps exact collision boxes; rounded edges are a shading effect. It therefore does not reproduce the reference's rounded silhouette or baked soft lighting pixel for pixel. The character's hidden sides and hem animation are authored interpretations. Match and review the complete game at its normal camera scale before extending this treatment.
+
+---
+
 # Visual trial 01 — Earlier stage-spanning sheet
 
 This is an earlier composition reference: **panel A** of [visual-trial-01.png](visual-trial-01.png), generated during the design discussion on 2026-09-08. Panel B is a comparison only.
@@ -99,3 +109,11 @@ Use C for softness and colour only. Its mirror orientation is incorrect; runtime
 `prism-guides-06.png` is the selected revised **B: Soft ribbons** mockup, made with the built-in image generator. Prompt: retain B's scene and contact glow, reduce the four corner rays to faint, narrow pale blue-grey wisps with an earlier smooth fade, and keep platform contact light stronger. No filled prism faces or far cap.
 
 This is an approximate visual reference. Runtime lines follow the four actual panel corners and reflected normal. Contact contours cover the panel and four side boundaries at any depth. The six-unit guide fade does not limit replacement or contact light.
+
+## Native trial captures
+
+- [Level 1](ceramic-trial-in-game.png)
+- [Character close view](ceramic-character-in-game.png)
+- [Fall preview](ceramic-fall-in-game.png)
+
+These are Godot Compatibility viewport captures, not generated mockups.

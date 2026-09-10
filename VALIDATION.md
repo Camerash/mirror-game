@@ -1,4 +1,15 @@
-# Latest check: angled reflection support — 2026-09-10
+# Latest check: ceramic, porcelain, and jade art trial — 2026-09-10
+
+- Applied B + R3 + S1 to Level 1: mapped ceramic glaze and crackle, shallow arch relief, cool partly transparent porcelain reflections, solid carved jade, a thin metal frame, and near-clear glass. Level 1 haze is hidden. Other levels retain the simple prototype materials. Source mappings and plain cut caps preserve texture scale through slicing.
+- Added an editable Blender character source and imported model with a small face, patterned cloak hem, feet, and two continuous hem blend shapes. Movement drives restrained cloth motion; editing freezes it and restoration clears it. The same model supplies the fall ghost. Blender 5.2.1 LTS was installed for asset generation.
+- After integration, ceramic trial checks passed **14 checks, 0 failures**, legal-angle checks passed **47 checks, 0 failures**, and the gameplay regression suite passed **524 checks, 0 failures**. These cover the art contracts, unchanged capsule, cap classification, fixed frame thickness, cloth pause/reset, angled support, puzzle routes, and failure recovery. No broad suite was repeated during visual tuning.
+- Native Godot 4.7.2 Compatibility review covered 1152×800 desktop and 390×844 portrait, all four camera views, a 15° tilted proposal, source reversal, 1×1 horizontal and 6×6 panels, walking and edit freeze, and the falling model with afterimages. The size and angle inspections used runtime state changes; they are not a physical touch test. Initial shadow acne, harsh jade detail, and hidden hem texture were corrected. Final texture imports use mipmaps and VRAM compression. The final native session stopped with no runtime or shader errors.
+- Saved actual viewport captures in `docs/art/ceramic-trial-in-game.png`, `docs/art/ceramic-character-in-game.png`, and `docs/art/ceramic-fall-in-game.png`. Further local views are in the ignored `.mcp/screenshots/` folder (1789010130–1789010242 series).
+- Limits: this is a first visual trial, not a pixel-identical reproduction. Platform silhouettes remain square; bevel and carving are surface shading. Lighting and the previously unseen character sides are authored interpretations. Mobile performance, physical touch feel, and device rendering remain unverified. No export or Simulator pass was run. The runtime bridge and autoload were removed before commit.
+
+---
+
+# Earlier check: angled reflection support — 2026-09-10
 
 - Reproduced a support error on Level 1 with a 15° mirror tilt, which produces a 30° reflected ramp. A route across separate source blocks failed; the same route across one merged source block passed. At a fragment join, the capsule contact lay on the neighbouring face, but the query only checked the current face. It then lowered the support height and rejected the character as embedded.
 - Support queries now accept a contact on an adjacent face with the same normal and plane. Graph sampling uses the full world for that check. The edge fallback, footprint clearance, and 45° walking limit remain in place.

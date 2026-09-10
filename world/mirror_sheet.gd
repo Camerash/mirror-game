@@ -4,12 +4,16 @@ extends Node3D
 signal transition_finished
 signal pose_changed
 
+const TrialGlass := preload("res://world/trial_glass.gdshader")
+const Frame := preload("res://world/mirror_frame.gd")
 const Rules := preload("res://core/mirror_state.gd")
 const SheetShader := preload("res://world/mirror_sheet.gdshader")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
 const GuideShader := preload("res://world/mirror_guides.gdshader")
 const MoteShader := preload("res://world/mirror_motes.gdshader")
 
+var frame := Frame.new()
+var art_trial := false
 var panel_size := Vector2(3, 3)
 var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
@@ -56,11 +60,20 @@ func _ready() -> void:
 	mote_material.shader = MoteShader
 	mote_material.render_priority = 74
 	motes.material_override = mote_material
+	add_child(frame)
 	add_child(sheet)
 	add_child(edges)
 	add_child(ribbons)
 	add_child(guides)
 	add_child(motes)
+
+func set_art_trial(enabled: bool) -> void:
+	art_trial = enabled
+	frame.visible = enabled and has_geometry
+	sheet_material.shader = TrialGlass if enabled else SheetShader
+	sheet_material.set_shader_parameter("panel_size", panel_size)
+	if has_geometry:
+		frame.update_frame(panel_size, editing, enabled and bool(state.get("enabled", false)))
 
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if next_state == state and bounds == drawn_bounds and editing == is_editing:
@@ -87,11 +100,12 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		_draw_guides(panel_size.x, panel_size.y)
 		_draw_motes(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
+	frame.update_frame(panel_size, editing, art_trial and enabled)
 	sheet.visible = enabled
 	ribbons.visible = enabled
 	guides.visible = enabled or editing
 	motes.visible = enabled
-	edges.visible = enabled or editing
+	edges.visible = editing or (enabled and not art_trial)
 	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
 	var source_sign := float(state.get("source_sign", 1.0))

@@ -2,6 +2,7 @@ class_name MirrorWalker
 extends CharacterBody3D
 
 const Geometry := preload("res://core/world_geometry.gd")
+const CharacterVisual := preload("res://world/character_visual.gd")
 const SPEED := 2.0
 const GRAVITY := 9.8
 signal route_finished
@@ -11,6 +12,8 @@ var grounded := false
 var paused := false
 var route := PackedVector3Array()
 var face: Node3D
+var visual_root: Node3D
+var character_visual: CharacterVisual
 
 func _ready() -> void:
 	var shape := CapsuleShape3D.new()
@@ -42,6 +45,7 @@ func _build_visual(centre: Vector3) -> void:
 	material.roughness = 0.9
 	mesh.material_override = material
 	add_child(mesh)
+	visual_root = mesh
 	set_meta("visual", mesh)
 	face = Node3D.new()
 	mesh.add_child(face)
@@ -59,16 +63,31 @@ func _build_visual(centre: Vector3) -> void:
 	face.visible = false
 
 func set_art_trial(enabled: bool) -> void:
-	if not has_meta("visual"):
+	if not build_visuals:
 		return
-	var mesh := get_meta("visual") as MeshInstance3D
-	var material := mesh.material_override as StandardMaterial3D
-	material.albedo_color = Color("49394f") if enabled else Color("f8f1dd")
-	material.roughness = 0.66 if enabled else 0.9
-	face.visible = enabled
+	if enabled and character_visual == null:
+		if visual_root != null:
+			visual_root.queue_free()
+		character_visual = CharacterVisual.new()
+		character_visual.ready.connect(_set_character_visual_meta, CONNECT_ONE_SHOT)
+		add_child(character_visual)
+		visual_root = character_visual
+		face = null
+	elif not enabled and character_visual != null:
+		character_visual.queue_free()
+		character_visual = null
+		_build_visual(Vector3.UP * Geometry.HEIGHT * 0.5)
+	if face != null:
+		face.visible = false
+
+func _set_character_visual_meta() -> void:
+	if character_visual != null and character_visual.primary_mesh != null:
+		set_meta("visual", character_visual.primary_mesh)
 
 func _physics_process(delta: float) -> void:
 	if paused:
+		if character_visual != null:
+			character_visual.update_motion(delta, Vector3.ZERO, grounded, true)
 		return
 	advance_motion(delta)
 
@@ -94,6 +113,8 @@ func advance_motion(delta: float) -> void:
 		face.rotation.y = lerp_angle(face.rotation.y, atan2(velocity.x, velocity.z), minf(delta * 12.0, 1.0))
 	move_and_slide()
 	grounded = is_on_floor()
+	if character_visual != null:
+		character_visual.update_motion(delta, velocity, grounded, false)
 	if was_walking and route.is_empty():
 		route_finished.emit()
 
@@ -109,3 +130,5 @@ func restore(feet: Vector3, saved_velocity: Vector3) -> void:
 	route.clear()
 	visible = true
 	scale = Vector3.ONE
+	if character_visual != null:
+		character_visual.reset_motion()

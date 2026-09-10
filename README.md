@@ -115,3 +115,9 @@ See [VALIDATION.md](VALIDATION.md) for completed checks and test limits.
 Godot MCP Runtime **3.3.0** is installed outside this repository in `~/.local/share/mirror-tools` and registered in Codex as `godot-runtime`. It can inspect a running Mac scene, send input, and save screenshots. Use `get_project_info` to check the connection. Use `run_project`, then `get_ui_elements` before clicking controls. Call `stop_project` when done and confirm that the temporary bridge has been removed before export or commit. Local screenshots stay in the ignored `.mcp/` folder.
 
 The `i-have-adhd` skill is installed in `~/.codex/skills/i-have-adhd`. It is available on the next turn; use `$i-have-adhd` to activate it. If the new MCP server is not listed in the current session, reload Codex to load its saved configuration.
+
+## Level 1 ceramic art trial
+
+Level 1 uses ceramic B, porcelain R3 reflections, and carved jade S1. The compact Blender character has a patterned hem and restrained motion; the mirror uses a thin metal frame and clear glass. The current fog is hidden in this trial. Other levels keep their simple presentation.
+
+Asset source and regeneration instructions are in [art_sources/README.md](art_sources/README.md). Run the focused art checks with `rtk godot --headless --path . --script tests/ceramic_trial_tests.gd`. Stop the runtime MCP session before any headless checks.

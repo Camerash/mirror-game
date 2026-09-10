@@ -5,3 +5,6 @@ build/
 test-output/
 .local/
 .mcp/
+
+# Blender editor backups; editable .blend sources are tracked.
+*.blend1

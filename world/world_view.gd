@@ -3,6 +3,7 @@ extends Node3D
 
 const Queries := preload("res://core/solid_queries.gd")
 const Paint := preload("res://world/painted.gdshader")
+const TrialMaterials := preload("res://world/trial_materials.gd")
 const Hologram := preload("res://world/hologram.gdshader")
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
@@ -85,7 +86,7 @@ func _mesh_signature(solid: Dictionary) -> String:
 
 func _apply_mesh(instance: MeshInstance3D, solid: Dictionary) -> void:
 	if solid.has("faces") and not solid["faces"].is_empty():
-		instance.mesh = _polygon_mesh(solid["faces"])
+		instance.mesh = _polygon_mesh(solid["faces"], solid)
 		instance.position = Vector3.ZERO
 		return
 	var bounds: AABB = solid["bounds"]
@@ -94,7 +95,7 @@ func _apply_mesh(instance: MeshInstance3D, solid: Dictionary) -> void:
 	instance.mesh = mesh
 	instance.position = bounds.get_center()
 
-func _polygon_mesh(faces: Array) -> ArrayMesh:
+func _polygon_mesh(faces: Array, solid: Dictionary = {}) -> ArrayMesh:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for polygon: PackedVector3Array in faces:
@@ -105,18 +106,36 @@ func _polygon_mesh(faces: Array) -> ArrayMesh:
 		for point: Vector3 in polygon:
 			centre += point
 		centre /= polygon.size()
+		var cut := 1.0 if _is_cut_face(polygon, solid) else 0.0
 		var boundary_distance := _polygon_boundary_distance(centre, polygon)
 		for index: int in polygon.size():
 			tool.set_normal(normal)
-			tool.set_color(Color(boundary_distance, 0.0, 0.0))
+			tool.set_color(Color(boundary_distance, cut, 0.0))
 			tool.add_vertex(centre)
 			tool.set_normal(normal)
-			tool.set_color(Color.BLACK)
+			tool.set_color(Color(0.0, cut, 0.0))
 			tool.add_vertex(polygon[(index + 1) % polygon.size()])
 			tool.set_normal(normal)
-			tool.set_color(Color.BLACK)
+			tool.set_color(Color(0.0, cut, 0.0))
 			tool.add_vertex(polygon[index])
 	return tool.commit()
+
+func _is_cut_face(polygon: PackedVector3Array, solid: Dictionary) -> bool:
+	if not solid.has("source_bounds"):
+		return false
+	var source: AABB = solid["source_bounds"]
+	var mapping: Transform3D = solid.get("material_to_world", Transform3D(Basis.IDENTITY, source.get_center()))
+	var inverse := mapping.affine_inverse()
+	for axis: int in 3:
+		for sign_value: float in [-1.0, 1.0]:
+			var on_source := true
+			for point: Vector3 in polygon:
+				if absf((inverse * point)[axis] - source.size[axis] * 0.5 * sign_value) > 0.0001:
+					on_source = false
+					break
+			if on_source:
+				return false
+	return true
 
 func _polygon_boundary_distance(point: Vector3, polygon: PackedVector3Array) -> float:
 	var distance := INF
@@ -130,22 +149,22 @@ func _polygon_boundary_distance(point: Vector3, polygon: PackedVector3Array) -> 
 
 func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	var bounds: AABB = solid["bounds"]
-	var use_hologram: bool = art_trial and solid["kind"] == "reflected"
-	var style := "hologram" if use_hologram else "painted"
+	var style: String = str(solid["kind"]) + "_trial" if art_trial else "painted"
 	var material: ShaderMaterial = slot["material"]
 	if slot["style"] != style:
-		material.shader = Hologram if use_hologram else Paint
+		if art_trial:
+			TrialMaterials.configure(material, str(solid["kind"]))
+		else:
+			material.shader = Paint
 		slot["style"] = style
 	material.set_shader_parameter("polygon_surface", solid.has("faces") and not solid["faces"].is_empty())
 	material.set_shader_parameter("box_centre", bounds.get_center())
 	material.set_shader_parameter("box_size", bounds.size)
-	if use_hologram:
-		material.set_shader_parameter("pigment", Color("7099bd"))
-		material.set_shader_parameter("hologram_enabled", true)
-	else:
-		material.set_shader_parameter("pigment", {"original": Color("b9ad98") if art_trial else Color("c4b59b"), "reflected": Color("405877") if art_trial else Color("7099bd"), "absolute": Color("719b87")}[solid["kind"]])
+	if not art_trial:
+		material.set_shader_parameter("pigment", {"original": Color("c4b59b"), "reflected": Color("7099bd"), "absolute": Color("719b87")}[solid["kind"]])
 		material.set_shader_parameter("absolute_surface", solid["kind"] == "absolute")
-		material.set_shader_parameter("stone_trial", art_trial)
+		material.set_shader_parameter("stone_trial", false)
+	material.set_shader_parameter("source_size", (solid.get("source_bounds", bounds) as AABB).size)
 	_apply_source_mapping(material, solid, bounds)
 	slot["instance"].material_override = material
 
@@ -156,13 +175,13 @@ func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: 
 	material.set_shader_parameter("world_to_material", material_to_world.affine_inverse())
 
 func update_debug() -> void:
-	var signature := str(debug_collision) + str(drawn_solids.filter(func(solid: Dictionary) -> bool: return debug_collision or solid["kind"] == "absolute"))
+	var signature := str(art_trial) + str(debug_collision) + str(drawn_solids.filter(func(solid: Dictionary) -> bool: return debug_collision or solid["kind"] == "absolute"))
 	if signature == debug_signature:
 		return
 	debug_signature = signature
 	_clear(overlay_root)
 	for solid: Dictionary in drawn_solids:
-		if debug_collision or solid["kind"] == "absolute":
+		if debug_collision or (solid["kind"] == "absolute" and not art_trial):
 			_outline_box(overlay_root, solid["bounds"], Color("a44836") if debug_collision else Color("244b35"))
 
 func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -> void:
@@ -197,10 +216,17 @@ func add_ring(parent: Node3D, feet: Vector3, color: Color, radius := 0.3) -> voi
 	ring.ring_segments = 8
 	node.mesh = ring
 	node.position = feet + Vector3.UP * 0.055
-	node.material_override = _plain(color)
+	node.material_override = _goal_material() if art_trial and is_equal_approx(radius, 0.3) else _plain(color)
 	parent.add_child(node)
 	if art_trial and is_equal_approx(radius, 0.3):
 		_add_goal_carving(parent, feet, radius)
+
+func _goal_material() -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("b49a67")
+	material.metallic = 0.75
+	material.roughness = 0.27
+	return material
 
 func _add_goal_carving(parent: Node3D, feet: Vector3, radius: float) -> void:
 	var points := PackedVector3Array()
