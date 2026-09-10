@@ -99,7 +99,8 @@ static func _segment_face_distance(a: Vector3, b: Vector3, face: PackedVector3Ar
 		distance = minf(distance, closest[0].distance_to(closest[1]))
 	return distance
 
-static func floor_points(x: float, z: float, solids: Array[Dictionary]) -> Array[Vector3]:
+static func floor_points(x: float, z: float, solids: Array[Dictionary], support_world: Array[Dictionary] = []) -> Array[Vector3]:
+	var supports := solids if support_world.is_empty() else support_world
 	var points: Array[Vector3] = []
 	for solid: Dictionary in solids:
 		var bounds: AABB = solid["bounds"]
@@ -113,14 +114,16 @@ static func floor_points(x: float, z: float, solids: Array[Dictionary]) -> Array
 			var point := Vector3(x, y, z)
 			if contains_face(point, face):
 				# A vertical capsule's lowest tip sits above its contact on a slope.
-				point.y = _floor_height(point, face, boundary.normal)
+				point.y = _floor_height(point, face, boundary.normal, supports)
 				points.append(point)
 	return points
 
-static func _floor_height(surface: Vector3, face: PackedVector3Array, normal: Vector3) -> float:
+static func _floor_height(surface: Vector3, face: PackedVector3Array, normal: Vector3, support_world: Array[Dictionary]) -> float:
 	var high := surface.y + RADIUS * (1.0 / normal.y - 1.0)
 	var centre := Vector3(surface.x, high + RADIUS, surface.z)
-	if contains_face(centre - normal * RADIUS, face):
+	var contact := centre - normal * RADIUS
+	# The capsule contact can cross a fragment join on the same surface.
+	if contains_face(contact, face) or _has_coplanar_support(contact, normal, support_world):
 		return high
 	# At a slope joint the bottom sphere contacts an edge before the face.
 	var low := surface.y - RADIUS
@@ -132,6 +135,16 @@ static func _floor_height(surface: Vector3, face: PackedVector3Array, normal: Ve
 		else:
 			high = middle
 	return high
+
+static func _has_coplanar_support(contact: Vector3, normal: Vector3, support_world: Array[Dictionary]) -> bool:
+	for solid: Dictionary in support_world:
+		for face: PackedVector3Array in faces(solid):
+			var boundary := plane(face)
+			if boundary.normal.distance_to(normal) > EPS or absf(boundary.distance_to(contact)) > EPS:
+				continue
+			if contains_face(contact, face):
+				return true
+	return false
 
 static func supported(feet: Vector3, solids: Array[Dictionary]) -> bool:
 	for point: Vector3 in floor_points(feet.x, feet.z, solids):

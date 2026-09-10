@@ -1,4 +1,15 @@
-# Latest check: Constellation soft glow and tuning — 2026-09-10
+# Latest check: angled reflection support — 2026-09-10
+
+- Reproduced a support error on Level 1 with a 15° mirror tilt, which produces a 30° reflected ramp. A route across separate source blocks failed; the same route across one merged source block passed. At a fragment join, the capsule contact lay on the neighbouring face, but the query only checked the current face. It then lowered the support height and rejected the character as embedded.
+- Support queries now accept a contact on an adjacent face with the same normal and plane. Graph sampling uses the full world for that check. The edge fallback, footprint clearance, and 45° walking limit remain in place.
+- Focused reflected-join checks passed **10 checks, 0 failures**: split/merged heights, both route directions, graph support at the join, gaps, overhead clearance, steep slopes, and closed angled cut faces. Existing legal-angle checks passed **47 checks, 0 failures**, including native capsule traversal of uphill/downhill joints, confirmation, Undo, and Reset. An added graph assertion first used an unsupported packed-array method; conversion to Array corrected the test parse error. `git diff --check` passed.
+- An exploratory sweep of 20 yaw/tilt combinations found **187 closed fragments and no unpaired edges**. The tested cap faces already exist; no mesh winding or cap-generation change was required. These checks do not establish the exact transforms in the user's screenshots.
+- One Mac Compatibility diagnostic compared a steep reflected ramp with its normal holographic material and with transparency disabled at runtime. The opaque view showed filled surfaces; transparency exposed internal block faces. Local captures: `.mcp/screenshots/screenshot_1789005881_91868.png` and `screenshot_1789005915_37325.png`. This was a diagnosis, not a new material treatment. Steep-surface readability remains a playtest issue. A mirror tilt can produce twice that slope angle, so some reflected faces remain above the walking limit.
+- The native session stopped without runtime or shader errors. Its temporary bridge and autoload are absent. No full gameplay suite, export, or Simulator check was run. Physical touch feel remains unverified.
+
+---
+
+# Earlier check: Constellation soft glow and tuning — 2026-09-10
 
 - Applied selected B: brighter small pearl cores, soft radial halos, and a larger amber reference. Core and halo intensity use the existing distance weight. One shared radial texture supplies the effect without bloom. Halo footprints respect UI exclusion. Saved the approximate comparison board as `docs/art/constellation-03.png`.
 - Added session-only brightness, glow, diameter, and halo sliders, Preview guides, and Reset defaults. Preview uses the last control in the current mode; gestures take priority. Tuning does not rebuild geometry, restart prediction, move the camera, or add history.

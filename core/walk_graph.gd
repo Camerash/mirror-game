@@ -21,7 +21,7 @@ func rebuild(world: Array[Dictionary]) -> void:
 		var bounds: AABB = solid["bounds"]
 		for x: int in range(ceili(bounds.position.x / STEP), floori(bounds.end.x / STEP) + 1):
 			for z: int in range(ceili(bounds.position.z / STEP), floori(bounds.end.z / STEP) + 1):
-				var candidates: Array = Queries.floor_points(x * STEP, z * STEP, [solid]) if polygon_world else [Vector3(x * STEP, bounds.end.y, z * STEP)]
+				var candidates: Array = Queries.floor_points(x * STEP, z * STEP, [solid], solids) if polygon_world else [Vector3(x * STEP, bounds.end.y, z * STEP)]
 				for point: Vector3 in candidates:
 					var key := _key(point)
 					if ids.has(key) or not Geometry.walkable(point, solids):
