@@ -85,6 +85,7 @@ Later level:
 ### Separate ceramic reference scene
 
 - `art_trial/reference_scene.tscn` is the isolated B + R3 + S1 comparison scene. It uses real rounded core models, ceramic/jade maps, recessed surface decoration, a real goal socket, metal/glass mirror, and an integrated cloak hem. Gameplay assets and layouts remain unchanged by this scene.
+- Ceramic and jade relief use editable high-detail Blender sources baked to tangent normals, AO, cavity, and convex curvature. The glaze uses source-local maps with stable per-block variation inherited by its reflection. Silvered glass shares broad studio reflections with the blocks. The traveller uses a rounded open hood, folded cloak, and a fine continuous hem pattern.
 - Reference view and inspection views establish the material target before gameplay integration. Walk shows a repeatable restrained gait; Cut shows one oblique convex cut and reflected copy; Caps exposes its closed cut face. These controls are art inspection tools, not new game controls.
 - Full clipping of the approved assets into gameplay is later work. The current result is an authored interpretation, with simpler handmade variation and cloak construction than the reference. Review the native captures before replacing Level 1 art.
 

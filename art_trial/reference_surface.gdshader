@@ -3,93 +3,72 @@ render_mode diffuse_burley, depth_prepass_alpha;
 
 uniform sampler2D albedo_map : source_color, repeat_enable, filter_linear_mipmap;
 uniform sampler2D roughness_map : repeat_enable, filter_linear_mipmap;
-uniform sampler2D height_map : repeat_enable, filter_linear_mipmap;
-uniform vec3 tint : source_color = vec3(0.82, 0.75, 0.61);
+uniform sampler2D grain_normal : repeat_enable, filter_linear_mipmap;
+uniform sampler2D side_normal : repeat_disable, filter_linear_mipmap;
+uniform sampler2D top_normal : repeat_disable, filter_linear_mipmap;
+uniform sampler2D side_masks : repeat_disable, filter_linear_mipmap;
+uniform sampler2D top_masks : repeat_disable, filter_linear_mipmap;
+uniform vec3 tint : source_color = vec3(0.90, 0.94, 0.98);
 uniform bool jade = false;
 uniform bool reflected = false;
-uniform bool cut_surface = false;
+uniform bool goal_socket = false;
+uniform float variation = 0.0;
 varying vec3 source_position;
 varying vec3 source_normal;
 varying mat3 normal_to_view;
 
 void vertex() {
-	source_position = VERTEX;
-	source_normal = NORMAL;
+ source_position = VERTEX;
+ source_normal = NORMAL;
  normal_to_view = mat3(MODELVIEW_MATRIX);
 }
 
-vec4 triplanar(sampler2D map, vec3 position, vec3 normal) {
-	vec3 weights = pow(abs(normal), vec3(5.0));
-	weights /= max(dot(weights, vec3(1.0)), 0.001);
-	return texture(map, position.zy) * weights.x + texture(map, position.xz) * weights.y + texture(map, position.xy) * weights.z;
+vec3 weights_for(vec3 normal) {
+ vec3 weights = pow(abs(normal), vec3(8.0));
+ return weights / max(dot(weights, vec3(1.0)), 0.001);
 }
 
-float arch_distance(vec2 point, float radius) {
-	float legs = abs(abs(point.x) - radius);
-	float arc = abs(length(vec2(point.x, point.y - radius)) - radius);
-	return point.y < radius ? legs : arc;
-}
-
-float ceramic_arch(vec2 point) {
-	float result = 0.0;
-	for (int index = 0; index < 3; index++) {
-		float offset = (float(index) - 1.0) * 0.29;
-		float line = arch_distance(vec2(point.x - offset, point.y - 0.10), 0.092);
-		result = max(result, 1.0 - smoothstep(0.012, 0.045, line));
-	}
-	return result;
-}
-
-float jade_arch(vec2 point) {
-	float result = 0.0;
-	for (int index = 0; index < 3; index++) {
-		float radius = 0.27 - float(index) * 0.07;
-		float line = arch_distance(vec2(point.x, point.y - 0.10), radius);
-		result = max(result, 1.0 - smoothstep(0.010, 0.042, line));
-	}
-	return result;
+vec3 grain(sampler2D map, vec3 position, vec3 weights) {
+ return texture(map, position.zy).rgb * weights.x + texture(map, position.xz).rgb * weights.y + texture(map, position.xy).rgb * weights.z;
 }
 
 void fragment() {
-	vec3 normal = normalize(source_normal);
-	vec3 face = abs(normal);
-	bool top = normal.y > 0.72;
-	bool side = !top && face.y < 0.72;
-	vec2 side_point = face.x > face.z ? source_position.zy : source_position.xy;
-	side_point.y += 0.35;
- float arch = 0.0;
-	if (side && !cut_surface) {
-		arch = jade ? jade_arch(side_point) : ceramic_arch(side_point);
-	}
-	float top_border = jade && top && !cut_surface ? 1.0 - smoothstep(0.015, 0.060, abs(min(0.5 - abs(source_position.x), 0.5 - abs(source_position.z)) - 0.080)) : 0.0;
-	vec3 base = triplanar(albedo_map, source_position * 1.35, normal).rgb * tint * 1.18;
-	float roughness = triplanar(roughness_map, source_position * 1.35, normal).r;
-	float height = triplanar(height_map, source_position * 1.35, normal).r - 0.5;
-	if (cut_surface) {
-		base = mix(base, jade ? vec3(0.13, 0.29, 0.18) : vec3(0.61, 0.55, 0.42), 0.58);
-		roughness = 0.56;
-	} else {
-		base = mix(base, jade ? vec3(0.055, 0.18, 0.09) : vec3(0.33, 0.38, 0.27), arch * 0.48);
-		roughness = mix(roughness, 0.28, arch * 0.72);
-		base = mix(base, vec3(0.13, 0.31, 0.19), top_border * 0.34);
-		roughness = mix(roughness, 0.24, top_border * 0.60);
-	}
-	vec3 relief_normal = normal;
- if (!cut_surface) {
-  vec3 wave = vec3(cos(source_position.x*7.0+source_position.z*2.0),sin(source_position.y*6.0),sin(source_position.z*8.0+source_position.x*1.5));
-  relief_normal = normalize(normal + wave*(vec3(1.0)-abs(normal))*0.055);
- }
- if (side && !cut_surface) {
-  float h_right = jade ? jade_arch(side_point+vec2(0.002,0)) : ceramic_arch(side_point+vec2(0.002,0));
-  float h_left = jade ? jade_arch(side_point-vec2(0.002,0)) : ceramic_arch(side_point-vec2(0.002,0));
-  float h_up = jade ? jade_arch(side_point+vec2(0,0.002)) : ceramic_arch(side_point+vec2(0,0.002));
-  float h_down = jade ? jade_arch(side_point-vec2(0,0.002)) : ceramic_arch(side_point-vec2(0,0.002));
-  vec3 horizontal = face.x > face.z ? vec3(0,0,1) : vec3(1,0,0);
-  relief_normal = normalize(normal + horizontal * (h_right-h_left)*2.0 + vec3(0,1,0)*(h_up-h_down)*2.0);
- }
- NORMAL = normalize(normal_to_view*relief_normal);
- ALBEDO = reflected ? mix(base, vec3(0.24, 0.44, 0.57), 0.72) : base;
-	ROUGHNESS = clamp(roughness + height * 0.15, 0.11, 0.62);
-	SPECULAR = jade ? 0.72 : 0.60;
- ALPHA = reflected && side && !cut_surface ? 0.96 : 1.0;
+ vec3 n = normalize(source_normal);
+ vec3 weights = weights_for(n);
+ vec2 uv_x = vec2(source_position.z + 0.5, (source_position.y + 0.35) / 0.7);
+ vec2 uv_z = vec2(source_position.x + 0.5, (source_position.y + 0.35) / 0.7);
+ vec2 uv_y = source_position.xz + vec2(0.5);
+ // PNG rows run down; the bake's tile V runs up.
+ uv_x.y = 1.0 - uv_x.y;
+ uv_z.y = 1.0 - uv_z.y;
+ uv_y.y = 1.0 - uv_y.y;
+ vec3 nx = texture(side_normal, uv_x).rgb * 2.0 - 1.0;
+ vec3 nz = texture(side_normal, uv_z).rgb * 2.0 - 1.0;
+ vec3 ny = texture(top_normal, uv_y).rgb * 2.0 - 1.0;
+ vec3 masks = texture(side_masks, uv_x).rgb * weights.x + texture(top_masks, uv_y).rgb * weights.y + texture(side_masks, uv_z).rgb * weights.z;
+ // Build source-local tangent slopes. Reflected copies keep these coordinates.
+ float relief_strength = jade ? 0.55 : 0.9;
+ vec3 relief = n + vec3(0.0, nx.y, nx.x) * weights.x * relief_strength;
+ relief += vec3(ny.x, 0.0, ny.y) * weights.y * relief_strength;
+ relief += vec3(nz.x, nz.y, 0.0) * weights.z * relief_strength;
+ vec3 sample_position = source_position * 1.35 + vec3(variation * 0.271, variation * 0.173, variation * 0.391);
+ vec3 base = grain(albedo_map, sample_position, weights) * tint * (1.10 + variation * 0.025);
+ float roughness = grain(roughness_map, sample_position, weights).r;
+ vec3 micro = grain(grain_normal, sample_position, weights) * 2.0 - 1.0;
+ relief = normalize(relief + (micro.x * vec3(1.0,0.0,1.0) + micro.y * vec3(0.0,1.0,0.0)) * 0.025);
+ float pool = clamp(masks.g * 0.85, 0.0, 0.85);
+ float socket = goal_socket ? (1.0-smoothstep(0.10,0.14,length(source_position.xz))) * (1.0-smoothstep(0.29,0.345,source_position.y)) : 0.0;
+ base = mix(base, jade ? vec3(0.035,0.095,0.070) : vec3(0.24,0.39,0.31), pool);
+ base = mix(base, jade ? vec3(0.20,0.30,0.24) : vec3(0.79,0.82,0.67), masks.b * 0.10);
+ base = mix(base,vec3(0.018,0.035,0.025),socket);
+ NORMAL = normalize(normal_to_view * relief);
+ ALBEDO = reflected ? mix(base, vec3(0.40,0.59,0.73), 0.40) : base;
+ AO = mix(mix(1.0, masks.r, 0.72),0.25,socket);
+ AO_LIGHT_AFFECT = 0.30;
+ ROUGHNESS = clamp(roughness * 0.66 + 0.070 - pool * 0.065, 0.13, 0.38);
+ SPECULAR = 0.65;
+ ROUGHNESS = mix(ROUGHNESS,0.48,socket);
+ CLEARCOAT = 0.35*(1.0-socket);
+ CLEARCOAT_ROUGHNESS = 0.24;
+ ALPHA = reflected && abs(n.y) < 0.72 ? 0.94 : 1.0;
 }

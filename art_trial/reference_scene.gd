@@ -22,7 +22,7 @@ func _ready() -> void:
  add_child(stage)
  add_child(character)
  character.position = Vector3(0,0.7,0)
- character.rotation.y = PI/2
+ character.rotation.y = PI/4
  camera.projection = Camera3D.PROJECTION_ORTHOGONAL
  camera.near = 0.02
  camera.far = 80
@@ -120,9 +120,9 @@ func toggle_cut()->void:
   if not sliced:
    root.transform=original_transforms[index]
    core.mesh=original_meshes[index]
-   core.material_override=Stage.Materials.build("ceramic" if index==2 else "reflected")
+   core.material_override=Stage.Materials.build("ceramic" if index==2 else "reflected",2)
   else:
-   var surface := Stage.Materials.build("ceramic" if index==2 else "reflected")
+   var surface := Stage.Materials.build("ceramic" if index==2 else "reflected",2)
    var cap := StandardMaterial3D.new()
    cap.albedo_color=Color("d3c8ac") if index==2 else Color("b8ced6")
    cap.roughness=0.55

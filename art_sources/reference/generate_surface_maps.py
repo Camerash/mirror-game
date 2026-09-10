@@ -49,14 +49,18 @@ def save(name, values):
 def maps(kind):
 	broad = noise(5, 17) * 0.62 + noise(16, 29) * 0.38
 	fine = noise(93, 41)
-	cracks = cellular(25 if kind == "ceramic" else 17)
+	cracks = cellular(9 if kind == "ceramic" else 14)
 	yy, xx = np.mgrid[0:SIZE, 0:SIZE].astype(np.float32) / SIZE
 	warp = noise(7, 59) * 0.8 + noise(19, 61) * 0.2
 	veins = np.exp(-((np.sin((xx * 13.0 + yy * 4.5 + warp * 4.0) * np.pi) + 0.42) / 0.13) ** 2)
 	if kind == "ceramic":
 		base = np.array([0.84, 0.77, 0.63], dtype=np.float32)
 		colour = base + (broad[:, :, None] - 0.5) * np.array([0.09, 0.07, 0.035]) + (fine[:, :, None] - 0.5) * 0.018
-		colour -= cracks[:, :, None] * np.array([0.12, 0.105, 0.07])
+		# Sparse fine glaze crazing, with celadon clouds below the glaze.
+		cracks *= np.clip((noise(11, 73) - 0.18) * 2.0, 0.0, 1.0)
+		colour -= cracks[:, :, None] * np.array([0.16, 0.115, 0.075])
+		pool = np.clip((noise(6, 91) - 0.58) * 2.0, 0.0, 0.48)
+		colour -= pool[:, :, None] * np.array([0.17, 0.045, 0.005])
 		roughness = 0.22 + broad * 0.12 + cracks * 0.19
 		height = fine * 0.018 - cracks * 0.08
 	else:

@@ -12,9 +12,10 @@ func _ready() -> void:
   if index == 7: path = "res://assets/reference/goal_block.glb"
   var block := (load(path) as PackedScene).instantiate() as Node3D
   block.position.x = index * 1.015 + (0.35 if index == 7 else 0.0)
+  if kind == "reflected": block.scale.x = -1.0
   add_child(block)
   blocks.append(block)
-  apply_surface(block, Materials.build(kind))
+  apply_surface(block, Materials.build("goal" if index == 7 else kind, 5 - index if kind == "reflected" else index % 3))
  _build_mirror()
 
 func apply_surface(root: Node, material: Material) -> void:

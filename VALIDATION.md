@@ -1,3 +1,11 @@
+# Latest check: ceramic reference detail refinement — 2026-09-10
+
+- Kept this pass in the separate Mobile art scene. Added editable high-relief Blender sources and Cycles normal/AO/cavity/curvature bakes. Added source-paired glaze variation, fine crazing, clearcoat, a separate studio environment, silvered glass, and recessed goal shading. Existing gameplay assets and rules were not changed.
+- Rebuilt the rounded hood and continuous patterned cloak. Native review caught a detached rim, an open crown, compressed hem UVs, hidden legs, wrong numeric-map encoding, and a remaining top groove. Corrected these in the source assets and regenerated them. The cloak now has restrained gait and inertia response, with a tested return to rest.
+- Editor import passed. Focused reference-art checks passed **631 checks, 0 failures**, including closed oblique caps, numeric-map encoding and variation, reflected source variation, retained cloth shape keys, motion limits, and settling/reset. The broader gameplay suite was not repeated for this isolated art pass.
+- Native Mac review used Godot 4.7.2, Mobile/Metal on Apple M2 Pro. Inspected 1440×760 and 390×844 windows, four stage views, character/ceramic/jade details, and the cut/cap controls. No runtime errors were reported. MCP was stopped and its temporary bridge was removed.
+- Saved native review images and an eight-second 30 FPS motion recording. See `docs/art/reference-scene.md` for the before image, current images, source workflow, and remaining visual differences. This is a closer authored study, not a pixel-identical match. Physical iOS/Android, exports, and performance benchmarks were not run.
+
 # Latest check: separate ceramic reference scene — 2026-09-10
 
 - Added the isolated Mobile reference scene, real rounded ceramic/jade cores, source-space maps and arch shading, fitted goal socket, shaped character, glass/frame, repeatable gait, and one oblique cut demonstration. Existing playable-level assets were not replaced.

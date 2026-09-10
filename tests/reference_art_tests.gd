@@ -29,5 +29,46 @@ func run()->void:
  var cap := result.surface_get_arrays(1)
  for point: Vector3 in cap[Mesh.ARRAY_VERTEX]: check(absf(plane.distance_to(point))<0.0001,"Cap lies on cut plane")
  source.free()
+ check_baked_maps()
+ check_character_motion()
+ var materials := preload("res://art_trial/reference_materials.gd")
+ var original := materials.build("ceramic",2)
+ var reflected := materials.build("reflected",2)
+ check(original.get_shader_parameter("variation")==reflected.get_shader_parameter("variation"),"Reflection inherits source texture variation")
  print("Reference art: %d checks, %d failures"%[count,failures])
  quit(1 if failures else 0)
+
+func check_baked_maps() -> void:
+ for family: String in ["ceramic", "jade"]:
+  for face: String in ["side", "top"]:
+   var path := "res://assets/reference/detail_%s_%s" % [family,face]
+   var normal := Image.load_from_file(ProjectSettings.globalize_path(path + "_normal.png"))
+   var masks := Image.load_from_file(ProjectSettings.globalize_path(path + "_masks.png"))
+   check(normal != null and masks != null, "Baked maps exist")
+   if normal == null or masks == null: continue
+   check(normal.get_size()==Vector2i(1024,1024), "Detail bake resolution")
+   var minimum := 1.0
+   var maximum := 0.0
+   for y: int in range(0,1024,16):
+    for x: int in range(0,1024,16):
+     var sample := normal.get_pixel(x,y)
+     minimum = minf(minimum,sample.r)
+     maximum = maxf(maximum,sample.r)
+   check(maximum-minimum>0.05, "Relief normal must not be flat")
+   var flat := normal.get_pixel(512,128)
+   if family=="ceramic" and face=="side":
+    check(absf(flat.r-0.5)<0.12 and absf(flat.g-0.5)<0.12,"Normal data is linear, not sRGB")
+
+func check_character_motion() -> void:
+ var character := preload("res://art_trial/reference_character.gd").new()
+ root.add_child(character)
+ check(character.cloak != null, "Cloak node exists")
+ if character.cloak != null:
+  check(character.cloak.mesh.get_blend_shape_count()==2, "Cloak retains both motion shapes")
+  for step: int in 60: character.update_motion(1.0/60.0,Vector3(0,0,0.65))
+  check(character.hem_offset.length()>0.005 and character.hem_offset.length()<=character.HEM_SWAY_LIMIT,"Walking produces restrained cloth motion")
+  for step: int in 180: character.update_motion(1.0/60.0,Vector3.ZERO)
+  check(character.hem_offset.length()<0.0001, "Cloak settles at rest")
+  character.reset_motion()
+  check(character.hem_offset==Vector2.ZERO,"Reset clears cloth motion")
+ character.free()

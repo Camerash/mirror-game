@@ -36,7 +36,9 @@ func update_motion(delta: float, velocity: Vector3, grounded := true, paused := 
 	if grounded:
 		gait_phase += delta * STEP_RATE * minf(planar_speed / 2.0, 1.0)
 	var local_velocity := transform.basis.inverse() * velocity
-	var target_hem := Vector2(-local_velocity.x, -local_velocity.z) * 0.011
+	var gait_weight := minf(planar_speed / 0.65, 1.0) if grounded else 0.0
+	var gait_sway := Vector2(sin(gait_phase) * 0.006, cos(gait_phase * 2.0) * 0.002) * gait_weight
+	var target_hem := Vector2(-local_velocity.x, -local_velocity.z) * 0.025 + gait_sway
 	hem_offset = hem_offset.lerp(target_hem.limit_length(HEM_SWAY_LIMIT), minf(delta * 7.0, 1.0))
 	_apply_hem()
 	var step := sin(gait_phase) * FOOT_SWING * minf(planar_speed / 2.0, 1.0)

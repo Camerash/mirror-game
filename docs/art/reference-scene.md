@@ -3,8 +3,13 @@
 This is a native Godot Mobile scene. The generated [B target](reference-target.jpg) supplies the art reference; it is not a runtime capture. R3 porcelain and S1 jade remain the selected material variants.
 
 - [Native scene](reference-scene.png)
+- [Before the detail pass](reference-before-detail.png)
 - [Character](reference-character.png)
+- [Ceramic detail](reference-ceramic.png)
+- [Jade detail](reference-jade.png)
 - [Closed cut cap](reference-cut-cap.png)
+- [Cut and reflected copy](reference-cut.png)
+- [View 2](reference-view-1.png), [View 3](reference-view-2.png), [View 4](reference-view-3.png)
 - [Portrait controls](reference-portrait.png)
 - [Eight-second motion recording](reference-motion.mp4)
 
@@ -18,7 +23,7 @@ The cut demo clips the imported convex rounded core at one fixed plane, interpol
 
 ## Editable sources
 
-Blender 5.2.1 is used. Source models and scripts are under `art_sources/reference/`; runtime GLBs and 2K ceramic/jade maps are under `assets/reference/`. The cloak uses one mesh with integrated material triangles at the hem; shape keys move that mesh. The retained Blender rig is for editing, while runtime motion drives named nodes and shape keys directly.
+Blender 5.2.1 is used. Source models and scripts are under `art_sources/reference/`; runtime GLBs and 2K ceramic/jade maps are under `assets/reference/`. The cloak uses one folded mesh with a continuous UV hem pattern; shape keys move that mesh. The retained Blender rig is for editing, while runtime motion drives named nodes and shape keys directly.
 
 Regenerate from the project root:
 
@@ -27,10 +32,11 @@ rtk proxy blender --background --python art_sources/reference/build_reference_bl
 rtk proxy blender --background --python art_sources/reference/build_reference_goal.py
 rtk proxy blender --background --python art_sources/reference/character_build.py
 rtk proxy python3 art_sources/reference/generate_surface_maps.py
+rtk proxy blender --background --python art_sources/reference/bake_reference_detail_maps.py
 rtk godot --headless --editor --path . --quit
 ```
 
-The map generator uses NumPy. Maps have mipmaps and VRAM compression. The surface shader supplies recessed arch shading and broad glaze variation; arches are not separate collision geometry or an offline high-poly bake. The goal socket is real mesh geometry. Reflected sides use 96% opacity; caps and tops remain opaque.
+The glaze map generator uses NumPy. Editable high-relief face models are baked with Cycles to 1K tangent normal maps and packed masks (R: AO, G: cavity, B: positive convex curvature). These numeric maps use Non-Color encoding, mipmaps, and VRAM compression. They supply surface detail on the rounded runtime cores; they do not change collision. The ceramic top bake includes a gentle convex form to break up flat reflections. The 2K glaze maps supply fine crazing, color, roughness, and grain normals. Source-local sampling preserves detail through cuts. Reflected pairs share one variation value. The goal socket is real mesh geometry, with reduced ambient light and glaze at its recessed floor. Reflected sides use 94% opacity; caps and tops remain opaque.
 
 For a motion recording, stop MCP first, then run:
 
@@ -42,6 +48,6 @@ Create the output directory first. The saved review MP4 was encoded from this na
 
 ## Comparison and limits
 
-The new models have real rounded silhouettes and the scene fills the view. Material highlights, the recessed goal, and the character shape are improved over the first trial. Remaining differences include less handmade asymmetry, simpler arch relief, simpler hood/fabric construction, and weaker glass reflection structure than B. The background is a uniform dusty pink, without fog. The selected jade treatment follows S1, rather than B's dark block.
+The scene uses rounded silhouettes, baked arch detail, glaze pooling, broad studio highlights, a rounded hood, and a fine patterned hem. The silvered sheet has angle-dependent opacity, soft surface variation, and a faint finite studio-card reflection. This card represents a light source, not a second game world. The distant background has a quiet rose gradient, without fog. The selected jade treatment follows S1. The source image remains an appearance target: it contains more handmade shape variation and richer cloth detail. Surface bakes do not add geometric undercuts or alter the runtime silhouette. Gameplay integration follows review.
 
 Gameplay art is deliberately separate pending review. Physical iOS/Android rendering, touch feel, and performance have not been checked. No Compatibility renderer or Simulator fallback is included.
