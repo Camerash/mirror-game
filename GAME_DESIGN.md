@@ -14,7 +14,7 @@ This is the current design record. Agreed rules are separate from later mileston
 
 ## Technical baseline
 
-- Godot **4.7.2 stable**, typed GDScript, Compatibility renderer.
+- Godot **4.7.2 stable**, typed GDScript, Mobile renderer on all platforms, with Metal on Apple platforms and no Compatibility fallback.
 - Procedural 3D geometry is the current prototype approach. Blender assets come later.
 - Level data is JSON and separate from scenes.
 - Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The world fills the window. Gameplay uses direct gestures and small contextual actions; diagnostic controls stay in the gear panel.

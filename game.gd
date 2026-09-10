@@ -105,11 +105,6 @@ var viewport_size := Vector2.ZERO
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
 		get_window().content_scale_factor = maxf(1.0, DisplayServer.screen_get_dpi() / 160.0)
-	# The official Intel Simulator template uses software OpenGL on this Mac.
-	# Keep UI resolution intact; reduce only 3D cost for Simulator playtests.
-	if OS.has_feature("simulator"):
-		get_viewport().scaling_3d_scale = 0.35
-		get_viewport().msaa_3d = Viewport.MSAA_DISABLED
 	_setup_scene()
 	var titles: Array[String] = []
 	for path: String in LEVEL_PATHS:

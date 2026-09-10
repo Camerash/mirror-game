@@ -1,4 +1,12 @@
-# Latest check: ceramic, porcelain, and jade art trial — 2026-09-10
+# Latest check: Mobile migration — 2026-09-10
+
+- The full gameplay suite passed 524 checks, 0 failures. Native Mac startup reported Metal 4.0 / Forward Mobile on Apple M2 Pro; the runtime renderer query returned `mobile`. The active mirror and platform materials rendered without shader or runtime errors.
+- First MCP launch timed out before bridge readiness; a native startup completed and a second MCP launch connected. The final session stopped cleanly and removed the temporary bridge. No exports or physical-device tests were run.
+- Removed the Compatibility settings and fallback, Simulator preset/helper, resolution reduction, and shadow override. Physical iOS signing is intentionally unconfigured.
+
+---
+
+# Earlier check: ceramic, porcelain, and jade art trial — 2026-09-10
 
 - Applied B + R3 + S1 to Level 1: mapped ceramic glaze and crackle, shallow arch relief, cool partly transparent porcelain reflections, solid carved jade, a thin metal frame, and near-clear glass. Level 1 haze is hidden. Other levels retain the simple prototype materials. Source mappings and plain cut caps preserve texture scale through slicing.
 - Added an editable Blender character source and imported model with a small face, patterned cloak hem, feet, and two continuous hem blend shapes. Movement drives restrained cloth motion; editing freezes it and restoration clears it. The same model supplies the fall ghost. Blender 5.2.1 LTS was installed for asset generation.

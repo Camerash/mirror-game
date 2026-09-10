@@ -65,7 +65,7 @@ The first command imports and parses the project. The second checks geometry, re
 
 ## Exports
 
-Prototype exploration uses focused checks on Mac. Full suites, layout matrices, captures, and exports are reserved for confirmed decisions or a concrete risk. Routine Simulator and physical-device checks are deferred. Run one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework, or when explicitly requested; record the concrete risk before that pass.
+Prototype exploration uses focused Mac checks with the Mobile renderer. Physical iOS and Android checks remain separate; do not use the Compatibility-only Simulator workflow.
 
 Install templates through Godot's **Manage Export Templates** window. Use version **4.7.2.stable**. Build output and local captures are excluded from Git and resource imports.
 
@@ -78,22 +78,9 @@ rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --exp
 rtk proxy open build/macos/Mirror.app
 ```
 
-### Optional focused iPhone and iPad Simulator check
+### Physical iOS and Android
 
-Use this only for a documented platform-specific risk, such as renderer or shader support, export architecture, or critical touch or safe-area behavior. Install Xcode and an iOS Simulator runtime, then run:
-
-```sh
-rtk proxy python3 tools/build_simulator.py
-rtk proxy xcrun simctl list devices available
-rtk proxy xcrun simctl boot <device-UDID>
-rtk proxy xcrun simctl install <device-UDID> build/ios-derived/Build/Products/Debug-iphonesimulator/Mirror.app
-rtk proxy xcrun simctl launch <device-UDID> org.mirrorgame.prototype
-rtk proxy open -a Simulator
-```
-
-Skip `boot` for an already running device. Replace `<device-UDID>` with the selected iPhone or iPad ID. The script exports a new Xcode project and builds without signing or provisioning. Set the `GODOT` environment variable if the editor is in another location. The team ID in the preset is a placeholder for this unsigned build.
-
-The installed official template advertises an ARM Simulator library but contains only Intel code. The build script checks the actual library and selects its available architecture. On this Apple Silicon Mac, the Simulator app therefore runs through Rosetta. This matches a [reported Godot template issue](https://github.com/godotengine/godot/issues/118161). The `simulator` export feature turns off shadows and uses 35% 3D resolution; UI resolution stays unchanged. Simulator timing does not measure physical-device performance. Physical iOS signing and Android exports are later work. Do not run a broad repeated Simulator matrix.
+The project uses the Mobile renderer exclusively. iOS Simulator is not a supported target. For physical iOS exports, set your real Apple development team in the iOS preset and configure signing in Xcode. No signing identity is supplied by the project. Android export setup and physical-device validation remain pending.
 
 ## Source layout
 

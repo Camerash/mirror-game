@@ -16,7 +16,7 @@ func _ready() -> void:
 	environment.environment.background_mode = Environment.BG_COLOR
 	add_child(environment)
 	key.rotation_degrees = Vector3(-55, -35, 0)
-	key.shadow_enabled = not OS.has_feature("simulator")
+	key.shadow_enabled = true
 	key.directional_shadow_max_distance = 35.0
 	key.shadow_bias = 0.2
 	key.shadow_normal_bias = 1.5
