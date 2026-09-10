@@ -1,4 +1,15 @@
-# Latest check: Mobile migration — 2026-09-10
+# Latest check: separate ceramic reference scene — 2026-09-10
+
+- Added the isolated Mobile reference scene, real rounded ceramic/jade cores, source-space maps and arch shading, fitted goal socket, shaped character, glass/frame, repeatable gait, and one oblique cut demonstration. Existing playable-level assets were not replaced.
+- The focused cut check passed **612 checks, 0 failures**: Mobile selection, imported core, separate cap surface, welded edge pairs, and cap-plane coordinates. This count includes individual mesh edge and cap-vertex assertions. The migration gameplay suite already passed **524 checks, 0 failures**; it was not repeated during art tuning.
+- Native Mac review used Metal / Forward Mobile on Apple M2 Pro, 1440×760 desktop and 390×844 portrait. Inspected four views, character close view, source/reflected cut, exposed cap, moving hem and reset, glass, goal, and wrapped controls. The initial alternate-view fit clipped the stage; fitting projected stage bounds corrected it and the affected view was rechecked.
+- Corrected early asset errors: axis conversion separated the face from the hood; separate pale panels did not follow the hem; goal cutter/rim used a local rather than world height. Final assets use one cloak with integrated hem faces and a real top socket. Final imports and native session had no runtime/shader errors. The bridge/autoload were removed after review.
+- Native observation returned 119–120 FPS; a 60-frame process monitor sample averaged 10.006 ms on the portrait viewport. These are local observations with inspection active, not a device or isolated GPU benchmark. The eight-second 1152×800 recording used fixed 30 FPS; its encoding throughput is not runtime performance.
+- Captures and comparison limits are in `docs/art/reference-scene.md`. Relief is shader-based, not an offline sculpture bake; the image remains an approximate target. Physical iOS/Android, Simulator, and game exports were not run.
+
+---
+
+# Earlier check: Mobile migration — 2026-09-10
 
 - The full gameplay suite passed 524 checks, 0 failures. Native Mac startup reported Metal 4.0 / Forward Mobile on Apple M2 Pro; the runtime renderer query returned `mobile`. The active mirror and platform materials rendered without shader or runtime errors.
 - First MCP launch timed out before bridge readiness; a native startup completed and a second MCP launch connected. The final session stopped cleanly and removed the temporary bridge. No exports or physical-device tests were run.

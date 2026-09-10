@@ -82,6 +82,12 @@ Later level:
 - Level 1 absolutes use solid jade grain, shallow nested arch carvings, and a top border on both sides, including the goal platform. Other levels keep muted jade green (`#719B87`) stripes. A fine, steady pearl seam with a wider soft cyan mist glow follows the exact intersections of the mirror panel and the four replacement-prism side boundaries on visible top and side faces of original and absolute structures. The contact glow excludes a mirror’s own reflected structures. The perimeter light and prism guides remain. Absolutes remain solid and unchanged. The glow fades across the object surface, with slow, subtle variation around the stable centre. Contact light updates during editing and stays after placement; removal proposals fade it. Collision and overlap rules are unchanged.
 - Watercolour-like modular forms, soft piano, muffled percussion, and subtle boundary changes remain candidates. Validate readability before adding effects.
 
+### Separate ceramic reference scene
+
+- `art_trial/reference_scene.tscn` is the isolated B + R3 + S1 comparison scene. It uses real rounded core models, ceramic/jade maps, recessed surface decoration, a real goal socket, metal/glass mirror, and an integrated cloak hem. Gameplay assets and layouts remain unchanged by this scene.
+- Reference view and inspection views establish the material target before gameplay integration. Walk shows a repeatable restrained gait; Cut shows one oblique convex cut and reflected copy; Caps exposes its closed cut face. These controls are art inspection tools, not new game controls.
+- Full clipping of the approved assets into gameplay is later work. The current result is an authored interpretation, with simpler handmade variation and cloak construction than the reference. Review the native captures before replacing Level 1 art.
+
 ### Current art trial: B + R3 + S1
 
 - Use [ceramic B](docs/art/ceramic-style-board.png), [porcelain R3](docs/art/porcelain-reflection-board.png), and [carved jade S1](docs/art/jade-absolute-board.png) as appearance targets for Level 1. Generated layouts and hidden surfaces are approximate. Earlier boards remain historical references.

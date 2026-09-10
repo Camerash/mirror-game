@@ -1,3 +1,7 @@
+# Separate Mobile reference scene
+
+See [the reference scene record](reference-scene.md) for the new standalone scene, native captures, and motion recording. The earlier Level 1 art remains in gameplay pending review.
+
 # Current trial — Ceramic B, porcelain R3, carved jade S1
 
 The selected references are [ceramic-style-board.png](ceramic-style-board.png), [porcelain-reflection-board.png](porcelain-reflection-board.png), and [jade-absolute-board.png](jade-absolute-board.png). These boards were generated with the built-in image tool for appearance comparison. They are not runtime screenshots or exact level layouts.

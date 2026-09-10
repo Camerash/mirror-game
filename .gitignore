@@ -8,3 +8,7 @@ test-output/
 
 # Blender editor backups; editable .blend sources are tracked.
 *.blend1
+
+# Asset generator bytecode
+__pycache__/
+*.pyc

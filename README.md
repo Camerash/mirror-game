@@ -108,3 +108,9 @@ The `i-have-adhd` skill is installed in `~/.codex/skills/i-have-adhd`. It is ava
 Level 1 uses ceramic B, porcelain R3 reflections, and carved jade S1. The compact Blender character has a patterned hem and restrained motion; the mirror uses a thin metal frame and clear glass. The current fog is hidden in this trial. Other levels keep their simple presentation.
 
 Asset source and regeneration instructions are in [art_sources/README.md](art_sources/README.md). Run the focused art checks with `rtk godot --headless --path . --script tests/ceramic_trial_tests.gd`. Stop the runtime MCP session before any headless checks.
+
+## Separate reference scene
+
+Run `rtk godot --path . art_trial/reference_scene.tscn` for the new ceramic comparison scene. It uses Mobile/Metal on this Mac and does not replace the playable levels. View cycles the camera; Detail cycles close views; Walk runs the motion sequence; Cut toggles the oblique cut; Caps exposes the cut face; Hide removes controls. Q/E rotate, Space toggles motion, C toggles the cut, and H restores hidden controls. A touch also restores hidden controls.
+
+See [the scene record](docs/art/reference-scene.md) for captures, asset instructions, and limits.
