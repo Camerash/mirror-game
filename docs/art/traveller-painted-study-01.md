@@ -1,5 +1,7 @@
 # Painted traveller study 01
 
+This records the first painted-face result. The [three-style hair study](traveller-hair-study-02.md) is the current hair revision. Captures below preserve the earlier comparison; the study scene and source now use the revised hair.
+
 ## Confirmed direction
 
 This is an isolated study of the girl's head, hair, hood, neck, and shoulders. It does not replace the gameplay character or the ceramic reference-scene character. The previous [plain study](traveller-head-study-01.md) is preserved for comparison.
@@ -21,11 +23,12 @@ Run `art_trial/painted_traveller_study.tscn` with Godot Mobile. The existing `ar
 - Front, Side, Back, Three-quarter, Game angle: fixed comparison views. Q/E cycle views.
 - Face / F: neutral, half closed, closed, gentle smile.
 - Blink / B: one short stepped blink, then the selected expression returns.
-- Hood / U: raised or lowered static pose. No transition is claimed.
+- Hood / U: raised or lowered static pose with matching authored hair clearance. No transition is claimed.
+- Hair / T: Long, Bob, or Low bun. This preserves the face, hood, camera, lighting, and review size.
 - Grey / G: inspect shape without the painted colours. Lighting / L: neutral or ceramic-scene light.
 - Size / V: close or small review scale. Turntable / Space: rotate without changing scale.
 - Hide / H: hide or restore controls. Touch the view to restore hidden controls.
-- Reset study / R: neutral face, raised hood, colour, and the three-quarter view.
+- Reset study / R: long hair, neutral face, raised hood, colour, and the three-quarter view.
 
 The four face tiles occupy the top 256-pixel row of the shared atlas, in the order above. The exported head UVs select the neutral tile. A local copy of the native head material shifts U by 0.25 per frame. Expressions do not rebuild geometry or change another character's material. Other surfaces use the remaining atlas area.
 
