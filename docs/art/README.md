@@ -2,7 +2,13 @@
 
 See [the reference scene record](reference-scene.md) for the new standalone scene, native captures, and motion recording. The earlier Level 1 art remains in gameplay pending review.
 
-## New traveller concepts — selection pending
+## Rounded traveller faces — selection pending
+
+The [rounded-face board](traveller-rounded-faces-01.png) follows the selected RiME direction, with Jusant as a secondary face-style reference. A — Gentle, B — Quiet, and C — Mature compare rounded face shapes with visible lids, a simple nose and mouth, and matte shading. Each has a bust and full-body view with the same blue-grey costume. Exact character, age, eye size, palette, and proportions remain proposals. The eyes in this board are still somewhat larger than the RiME reference.
+
+Generated with the built-in image tool without image attachments. See the [prompt and review record](traveller-rounded-faces-01.md). This is a concept board, not a native render or an approved model sheet. No Blender or gameplay assets were changed.
+
+## Earlier new traveller concepts
 
 The [new concept board](traveller-new-concepts-01.png) starts from a visible face, hood, and cloak, without previous character image references. Rows compare A — Small wanderer, B — Slender traveller, and C — Grounded traveller. Column 1 has a simple stylised human face; column 2 has a minimal expressive face. Both have eyes and a mouth. Each matched pair keeps the same clothing, pose, and palette. Figure and face selection remain open. These are generated concepts, not Blender renders or an approved construction sheet.
 
