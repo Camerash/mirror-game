@@ -2,7 +2,11 @@
 
 See [the reference scene record](reference-scene.md) for the new standalone scene, native captures, and motion recording. The earlier Level 1 art remains in gameplay pending review.
 
-## Rounded traveller faces — selection pending
+## Little girl with long hair — concept pending
+
+The traveller is confirmed as a little girl with long hair. The [new mockup](traveller-girl-01.png) shows one proposed character in close and full-body views. Loose chestnut hair and a blue-grey cloak are proposals, not confirmed colours or styling. Keep the RiME-led rounded-face direction. See the [prompt and review record](traveller-girl-01.md). No model assets were changed.
+
+## Earlier rounded traveller faces
 
 The [rounded-face board](traveller-rounded-faces-01.png) follows the selected RiME direction, with Jusant as a secondary face-style reference. A — Gentle, B — Quiet, and C — Mature compare rounded face shapes with visible lids, a simple nose and mouth, and matte shading. Each has a bust and full-body view with the same blue-grey costume. Exact character, age, eye size, palette, and proportions remain proposals. The eyes in this board are still somewhat larger than the RiME reference.
 
