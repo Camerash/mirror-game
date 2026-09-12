@@ -5,7 +5,8 @@ This is a native Godot Mobile scene. The generated [NPR board, panel B — Soft 
 - [Native scene](reference-scene.png)
 - [Before soft illustration](reference-before-soft.png)
 - [Before the detail pass](reference-before-detail.png)
-- [Character](reference-character.png)
+- [Character](reference-character.png) · [supplied target](traveller-target.png) · [before refinement](traveller-before.png)
+- Traveller [front](traveller-front.png), [side](traveller-side.png), [back](traveller-back.png), and [motion clip](traveller-motion.mp4)
 - [Ceramic detail](reference-ceramic.png)
 - [Jade detail](reference-jade.png)
 - [Closed cut cap](reference-cut-cap.png)
@@ -13,7 +14,7 @@ This is a native Godot Mobile scene. The generated [NPR board, panel B — Soft 
 - [Opposite view](reference-view-2.png)
 - Earlier detail-pass views: [View 2](reference-view-1.png), [View 4](reference-view-3.png)
 - [Portrait controls](reference-portrait.png)
-- [Earlier detail-pass motion recording](reference-motion.mp4) (motion is unchanged; shading predates B)
+- [Earlier detail-pass motion recording](reference-motion.mp4) (historical model and shading)
 
 ## Run and inspect
 
@@ -25,7 +26,7 @@ The cut demo clips the imported convex rounded core at one fixed plane, interpol
 
 ## Editable sources
 
-Blender 5.2.1 is used. Source models and scripts are under `art_sources/reference/`; runtime GLBs and 2K ceramic/jade maps are under `assets/reference/`. The cloak uses one folded mesh with a continuous UV hem pattern; shape keys move that mesh. The retained Blender rig is for editing, while runtime motion drives named nodes and shape keys directly.
+Blender 5.2.1 is used. Source models and scripts are under `art_sources/reference/`; runtime GLBs and 2K ceramic/jade maps are under `assets/reference/`. The traveller uses 2,144 triangles, including a 560-triangle cloak and 600-triangle hood. One 512×512 atlas carries charcoal color and the grey-beige triangular hem band. Three shape keys move the lower cloak; shoulders are pinned. The retained Blender rig is for editing, while runtime motion drives named nodes and shape keys directly.
 
 Regenerate from the project root:
 
@@ -50,7 +51,7 @@ Create the output directory first. The saved review MP4 was encoded from this na
 
 ## Comparison and limits
 
-The scene keeps rounded silhouettes, baked arches and rims, a rounded hood, and a fine patterned hem. Soft illustration simplifies small surface variations, weakens clearcoat, and uses broad satin highlights. A low-contrast light field replaces the bright studio windows. The glass uses a soft silver sheen and angle-dependent opacity without fine noise or simulated studio-card reflections. The background remains a quiet rose gradient without fog. Character and gold material changes use local copies, preserving imported resources. Models, surface coordinates, and the restrained cloth motion are unchanged.
+The scene keeps rounded silhouettes, baked arches and rims, a rounded hood, and a fine patterned hem. Soft illustration simplifies small surface variations, weakens clearcoat, and uses broad satin highlights. A low-contrast light field replaces the bright studio windows. The glass uses a soft silver sheen and angle-dependent opacity without fine noise or simulated studio-card reflections. The background remains a quiet rose gradient without fog. Character and gold material changes use local copies, preserving imported resources. Ceramic models and source coordinates are unchanged. The traveller is refined separately against its close reference.
 
 The B mockup is a shading target, not an exact image match. Surface bakes do not add geometric undercuts or alter silhouettes. This pass adds no theme switcher or new gameplay assets.
 
@@ -60,3 +61,23 @@ Gameplay art is deliberately separate pending review. Physical iOS/Android rende
 ## Soft illustration validation — 2026-09-12
 
 Native Mobile/Metal review covered 1152×800 and 430×932 windows, material close views, opposite mirror view, oblique cut/cap, and a short walking sequence. Final native reference checks passed 634 assertions with no failures or error output. The check includes local material ownership to preserve imported resources. Initial cleanup errors from per-surface overrides were resolved by assigning local material copies to private mesh resources. No gameplay regression suite, export, Simulator, or physical-device test was run for this isolated pass.
+
+
+## Traveller refinement — 2026-09-12
+
+The supplied close reference guides the sloped cowl, recessed ivory oval, bell cloak, charcoal color, triangular hem, and short boots. Front and hidden angles are authored interpretations. The hood is a simple ring-based surface with a connected inset opening; no subdivision modifier is exported. The asset has 2,144 triangles total and the cloak has 560. The Blender generator rebuilds locally in about two seconds; no additional Blender service is required.
+
+`HemX` and `HemZ` provide signed 0.032-unit displacement at the hem; `HemTwist` provides 6 degrees of turn lag. Shape strength fades to zero at the shoulders. The runtime caches indices, uses a critically damped response, and updates three weights. It does not rebuild geometry or run cloth collision. Pause freezes the pose; Reset clears motion history. Large time gaps are clamped to prevent a catch-up jump. Godot's signed weights were checked at -1.
+
+The native reference tests passed **643 checks, 0 failures**, including pause/resume, rapid turns, settling, Reset, 30/60 Hz response, local material ownership, and mesh limits. Native front/side/back and recording frames were checked. No runtime errors were reported. Gameplay assets, exports, and physical-device checks remain outside this pass.
+
+A four-block timing comparison (off/on/off/on, 120 measured frames after 30 warm-up frames per block) used the same Mac art scene and camera. Median frame times were 8.323/8.320/8.309/8.318 ms. The enabled controller averaged 37.4/32.4 microseconds per call. Display pacing can hide small rendering differences; these are local observations, not a guarantee of zero cost or a phone benchmark.
+
+Reproduce the eight-second normal/close motion review from the project root after stopping MCP:
+
+```sh
+rtk proxy mkdir -p .local
+rtk godot --path . --script tests/traveller_motion_review.gd --write-movie .local/traveller-motion.avi --fixed-fps 30
+```
+
+The recording includes starts, stops, direction changes, and settling. The final MP4 is a native recording, not generated concept art. Movie export speed is not runtime performance.

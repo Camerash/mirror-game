@@ -1,3 +1,11 @@
+# Latest check: simple reference traveller — 2026-09-12
+
+- Refined the isolated traveller against the supplied close image. Kept simple mesh construction: **2,144 triangles total**, **560 cloak**, **600 hood**, one 512×512 atlas. Changed the sloped hood/opening, charcoal, triangular hem, feet, and three cloak shapes. Gameplay assets remain unchanged.
+- Focused motion check passed 17 assertions during development. Final native Mobile/Metal reference check passed **643 checks, 0 failures**, no error output. It covers movement and turn limits, pause/resume, Reset, settling, 30/60 Hz consistency, local material ownership, and triangle limits. Actual Godot negative shape weight -1 was verified through the runtime tool.
+- Native Mac review inspected rest, front, side, back, and normal camera distance. Corrected the initial hood profile, inward hood winding, deeply hidden face, atlas charcoal encoding, and a projecting collar. Saved the supplied target, previous/current views, and an eight-second normal/close motion recording; reviewed sampled motion frames for pose and hem continuity. MCP stopped without errors and its temporary bridge/autoload were removed.
+- Same-camera Mac timing, off/on/off/on blocks with 30 warm-up and 120 measured frames each: median frame times **8.323 / 8.320 / 8.309 / 8.318 ms**; enabled controller mean **37.4 / 32.4 µs per call**. Apple M2 Pro, Godot 4.7.2, Mobile/Metal, 1152×800. Display pacing limits interpretation. No zero-cost or physical-device claim.
+- No broad gameplay suite, game export, Simulator, or physical-device test. Raw recordings and temporary files remain outside Git. See `docs/art/reference-scene.md` for evidence and recording instructions.
+
 # Latest check: soft illustration ceramic — 2026-09-12
 
 - Applied NPR board panel B to the isolated reference scene. Preserved meshes, carvings, source-paired detail, cuts, and motion. Reduced grain, glaze contrast, clearcoat, and studio reflection contrast. Kept ivory originals, cool reflected sides, jade absolutes, and the mauve background.

@@ -27,23 +27,25 @@ def material(name, color, roughness=0.6):
 def make_cloak_material():
     atlas = bpy.data.images.new("Cloak Hem Atlas", 512, 512, alpha=False)
     pixels = []
-    pale = (0.77, 0.71, 0.58, 1.0)
-    black = (0.0003, 0.0004, 0.0007, 1.0)
+    # Image pixels are stored as sRGB.  These values decode to the same dark
+    # charcoal range as the procedural material under the game renderer.
+    band = (0.56, 0.525, 0.455, 1.0)
+    charcoal = (0.18, 0.19, 0.21, 1.0)
     for y in range(512):
         v = y / 511.0
         for x in range(512):
             u = x / 511.0
-            cell = (u * 18.0) % 1.0
-            triangle_top = 0.035 + 0.075 * (1.0 - abs(cell - 0.5) * 2.0)
-            is_baseline = v < 0.035
-            is_triangle_edge = v < 0.115 and abs(v - triangle_top) < 0.008
-            pixels.extend(pale if is_baseline or is_triangle_edge else black)
+            cell = (u * 12.0) % 1.0
+            triangle_top = 0.045 + 0.105 * (1.0 - abs(cell - 0.5) * 2.0)
+            is_hem = v < 0.045
+            is_triangle_edge = 0.045 <= v <= 0.155 and abs(v - triangle_top) < 0.012
+            pixels.extend(band if is_hem or is_triangle_edge else charcoal)
     atlas.pixels.foreach_set(pixels)
     atlas.filepath_raw = ATLAS_PATH
     atlas.file_format = "PNG"
     atlas.save()
     atlas.pack()
-    cloak = material("Cloak Black with Pale Scallop Hem", (0.0003, 0.0004, 0.0007), 0.71)
+    cloak = material("Cloak Charcoal with Grey Beige Triangle Hem", (0.026, 0.029, 0.034), 0.71)
     nodes = cloak.node_tree.nodes
     texture = nodes.new("ShaderNodeTexImage")
     texture.name = "Continuous Hem Pattern"
@@ -52,9 +54,9 @@ def make_cloak_material():
     return cloak
 
 
-BLACK = material("Cloak Inner Black", (0.0001, 0.0001, 0.0002), 0.82)
-FACE = material("Warm Porcelain Face", (0.88, 0.69, 0.49), 0.54)
-SOLE = material("Soft Black Feet", (0.018, 0.020, 0.026), 0.62)
+BLACK = material("Cloak Inner Charcoal", (0.023, 0.025, 0.030), 0.82)
+FACE = material("Recessed Ivory Face", (0.72, 0.68, 0.57), 0.54)
+SOLE = material("Soft Charcoal Feet", (0.022, 0.024, 0.029), 0.62)
 
 
 def smooth(obj):
@@ -62,8 +64,8 @@ def smooth(obj):
         face.use_smooth = True
 
 
-def uv_sphere(name, location, scale, mat):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=20, location=location)
+def uv_sphere(name, location, scale, mat, segments=20, rings=12):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=segments, ring_count=rings, location=location)
     obj = bpy.context.object
     obj.name = name
     obj.scale = scale
@@ -96,20 +98,20 @@ def mesh_object(name, verts, faces, mat, loop_uvs=None):
     return obj
 
 
-def folded_ring(count, radius_x, radius_y, height, fold_amount):
+def folded_ring(count, radius_x, radius_y, height, fold_amount, center_y=0.0):
     ring = []
     for index in range(count):
         angle = math.tau * index / count
         fold = 1.0 + fold_amount * math.cos(angle * 6.0 + 0.28)
-        ring.append((math.cos(angle) * radius_x * fold, math.sin(angle) * radius_y * fold, height))
+        ring.append((math.cos(angle) * radius_x * fold, center_y + math.sin(angle) * radius_y * fold, height))
     return ring
 
 
 def cloak_mesh(cloak_material):
-    count = 48
-    profile = ((0.105, 0.255, 0.190, 0.060), (0.130, 0.270, 0.200, 0.058), (0.170, 0.265, 0.196, 0.056), (0.225, 0.245, 0.182, 0.052), (0.290, 0.220, 0.165, 0.049), (0.355, 0.195, 0.148, 0.045), (0.415, 0.173, 0.132, 0.041), (0.465, 0.153, 0.120, 0.035), (0.505, 0.137, 0.111, 0.029), (0.525, 0.132, 0.108, 0.025))
-    # Shorter, narrower cloak leaves the small legs visible at the stage camera angle.
-    profile = tuple((0.18 + (row[0] - 0.105) * (0.345 / 0.420), row[1] * 0.86, row[2] * 0.86, row[3]) for row in profile)
+    count = 40
+    # Wide lower rows make the clean bell silhouette.  The two lower rows
+    # reserve vertical space for the atlas hem instead of a thin edge decal.
+    profile = ((0.145, 0.245, 0.183, 0.038), (0.175, 0.253, 0.190, 0.038), (0.215, 0.249, 0.186, 0.035), (0.285, 0.230, 0.173, 0.031), (0.355, 0.205, 0.156, 0.027), (0.420, 0.178, 0.139, 0.022), (0.505, 0.145, 0.117, 0.018), (0.555, 0.118, 0.102, 0.015))
     verts = [point for row in profile for point in folded_ring(count, row[1], row[2], row[0], row[3])]
     faces = []
     loop_uvs = []
@@ -127,68 +129,58 @@ def cloak_mesh(cloak_material):
     basis = cloak.shape_key_add(name="Basis")
     hem_x = cloak.shape_key_add(name="HemX")
     hem_z = cloak.shape_key_add(name="HemZ")
+    hem_twist = cloak.shape_key_add(name="HemTwist")
     for index, point in enumerate(basis.data):
-        strength = max(0.0, 1.0 - point.co.z / 0.53) ** 1.7
+        strength = max(0.0, 1.0 - (point.co.z - 0.145) / 0.410) ** 1.7
         hem_x.data[index].co = point.co + Vector((0.032 * strength, 0.0, 0.0))
-        hem_z.data[index].co = point.co + Vector((0.0, -0.026 * strength, 0.0))
+        hem_z.data[index].co = point.co + Vector((0.0, -0.032 * strength, 0.0))
+        angle = math.radians(6.0) * strength
+        hem_twist.data[index].co = Vector((
+            point.co.x * math.cos(angle) - point.co.y * math.sin(angle),
+            point.co.x * math.sin(angle) + point.co.y * math.cos(angle),
+            point.co.z,
+        ))
+    for key in cloak.data.shape_keys.key_blocks[1:]:
+        key.slider_min = -1.0
+        key.slider_max = 1.0
     return cloak
 
 
 def rounded_hood():
-    count = 64
-    profile = ((0.470, 0.155, 0.125, 0.028), (0.515, 0.164, 0.134, 0.030), (0.555, 0.168, 0.138, 0.030), (0.590, 0.166, 0.137, 0.029), (0.625, 0.162, 0.133, 0.028), (0.660, 0.155, 0.128, 0.026), (0.695, 0.145, 0.120, 0.023), (0.730, 0.130, 0.110, 0.020), (0.765, 0.105, 0.090, 0.016), (0.795, 0.065, 0.058, 0.008), (0.812, 0.018, 0.018, 0.000))
-    verts = [point for row in profile for point in folded_ring(count, row[1], row[2], row[0], row[3])]
+    count = 40
+
+    def oval_ring(y, center_z, radius_x, radius_z):
+        return [(math.cos(math.tau * index / count) * radius_x, y, center_z + math.sin(math.tau * index / count) * radius_z) for index in range(count)]
+
+    # Ring zero is the actual opening boundary.  The crown peaks just behind
+    # its brow, then each rear ring lowers to form the reference's hood tail.
+    cowl = ((-0.100, 0.650, 0.074, 0.106), (-0.064, 0.673, 0.110, 0.137), (-0.028, 0.680, 0.132, 0.136), (0.015, 0.666, 0.163, 0.132), (0.055, 0.645, 0.180, 0.126), (0.132, 0.604, 0.174, 0.096), (0.188, 0.570, 0.112, 0.057))
+    outer = oval_ring(*cowl[0])
+    rings = [outer] + [oval_ring(*row) for row in cowl[1:]]
+    # This inset ring shares the outer boundary and turns it into a real,
+    # recessed opening.  It replaces the separate disc-like rim.
+    inner = [(x * 0.78, -0.094, 0.650 + (z - 0.650) * 0.78) for x, _, z in outer]
+    verts = [point for ring in rings for point in ring] + inner
     faces = []
-    for row in range(len(profile) - 1):
+    for row in range(len(rings) - 1):
         for index in range(count):
-            angle = math.tau * (index + 0.5) / count
-            x = math.cos(angle) * (profile[row][1] + profile[row + 1][1]) * 0.5
-            z = (profile[row][0] + profile[row + 1][0]) * 0.5
-            # The front panel is removed as an oval, so the rim shares a real
-            # opening instead of concealing a rectangular slit.
-            if (x / 0.067) ** 2 + ((z - 0.640) / 0.087) ** 2 < 1.0 and math.sin(angle) < -0.70:
-                continue
             current = row * count + index
-            faces.append((current, row * count + (index + 1) % count, (row + 1) * count + (index + 1) % count, (row + 1) * count + index))
-    cap_index = len(verts)
-    verts.append((0.0, 0.0, 0.816))
+            faces.append(((row + 1) * count + index, (row + 1) * count + (index + 1) % count, row * count + (index + 1) % count, current))
+    inner_start = len(rings) * count
     for index in range(count):
-        faces.append(((len(profile) - 1) * count + index, (len(profile) - 1) * count + (index + 1) % count, cap_index))
+        faces.append((index, (index + 1) % count, inner_start + (index + 1) % count, inner_start + index))
+    cap_index = len(verts)
+    verts.append((0.0, 0.215, 0.555))
+    last_start = (len(rings) - 1) * count
+    for index in range(count):
+        faces.append((cap_index, last_start + (index + 1) % count, last_start + index))
     hood = mesh_object("RoundedDrapedHood", verts, faces, BLACK)
     smooth(hood)
-    subdivision = hood.modifiers.new("Soft Hood Surface", "SUBSURF")
-    subdivision.levels = 2
-    subdivision.render_levels = 2
     return hood
 
 
 def hood_opening():
-    def front_surface(x, z):
-        samples = ((0.515, 0.164, 0.134), (0.555, 0.168, 0.138), (0.625, 0.162, 0.133), (0.660, 0.155, 0.128), (0.730, 0.130, 0.110))
-        lower, upper = samples[0], samples[-1]
-        for candidate in samples[1:]:
-            if z <= candidate[0]:
-                upper = candidate
-                break
-            lower = candidate
-        blend = (z - lower[0]) / (upper[0] - lower[0]) if upper[0] != lower[0] else 0.0
-        radius_x = lower[1] + (upper[1] - lower[1]) * blend
-        radius_y = lower[2] + (upper[2] - lower[2]) * blend
-        return -radius_y * math.sqrt(max(0.0, 1.0 - (x / radius_x) ** 2))
-
-    count = 48
-    outer = []
-    inner = []
-    for index in range(count):
-        angle = math.tau * index / count
-        for ring, radius_x, radius_z in ((outer, 0.078, 0.096), (inner, 0.055, 0.071)):
-            x = math.cos(angle) * radius_x
-            z = 0.640 + math.sin(angle) * radius_z
-            ring.append((x, front_surface(x, z) - 0.002, z))
-    uv_sphere("HoodOpeningRecess", (0.0, -0.065, 0.640), (0.130, 0.060, 0.145), BLACK)
-    rim = mesh_object("HoodOpeningRim", outer + inner, [(index, (index + 1) % count, count + (index + 1) % count, count + index) for index in range(count)], BLACK)
-    smooth(rim)
-    uv_sphere("OvalFace", (0.0, -0.128, 0.640), (0.034, 0.008, 0.046), FACE)
+    uv_sphere("OvalFace", (0.0, -0.084, 0.660), (0.030, 0.006, 0.042), FACE, segments=16, rings=10)
 
 
 def make_rig():
@@ -215,8 +207,8 @@ def main():
     rounded_hood()
     hood_opening()
     for name, x in (("FootLeft", -0.075), ("FootRight", 0.075)):
-        cone(name.replace("Foot", "Leg"), 0.037, 0.030, 0.175, (x, 0.015, 0.117), BLACK)
-        uv_sphere(name, (x, -0.042, 0.026), (0.052, 0.071, 0.026), SOLE)
+        cone(name.replace("Foot", "Leg"), 0.034, 0.028, 0.135, (x, 0.010, 0.105), BLACK, vertices=16)
+        uv_sphere(name, (x, -0.047, 0.027), (0.049, 0.066, 0.027), SOLE, segments=16, rings=10)
     bpy.ops.wm.save_as_mainfile(filepath=OUT_BLEND)
     bpy.ops.object.select_all(action="SELECT")
     for obj in bpy.context.scene.objects:
