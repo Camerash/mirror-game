@@ -1,3 +1,11 @@
+# Latest check: soft illustration ceramic — 2026-09-12
+
+- Applied NPR board panel B to the isolated reference scene. Preserved meshes, carvings, source-paired detail, cuts, and motion. Reduced grain, glaze contrast, clearcoat, and studio reflection contrast. Kept ivory originals, cool reflected sides, jade absolutes, and the mauve background.
+- Godot MCP native review: Godot 4.7.2, Mobile/Metal, Apple M2 Pro; 1152×800 desktop and 430×932 portrait. Inspected overview, ceramic/jade details, opposite mirror view, cut/cap, and a short walking sequence. No runtime shader errors or new transparent-object ordering defects were observed. Narrow controls wrapped without overlap. Physical touch and device performance remain unverified.
+- Initial headless and native regression runs passed their assertions but logged null-material errors when freeing character surface overrides. Replaced those overrides with materials on private mesh resources. A focused native lifecycle check then passed without errors. Added assertions for local mesh/material ownership and the soft cloak finish. Final native reference regression: **634 checks, 0 failures**, no error output. Repeated checks only to resolve this failure; broad gameplay tests were not run.
+- Saved the selected generated board, prior overview, and current native captures. The earlier motion video and side-view captures 1/3 remain historical. See `docs/art/reference-scene.md`. No exports, Simulator checks, physical-device checks, or performance claims.
+- MCP stopped without errors. Its temporary bridge and autoload were removed. Documentation assets remain excluded from exports.
+
 # Latest check: ceramic reference detail refinement — 2026-09-10
 
 - Kept this pass in the separate Mobile art scene. Added editable high-relief Blender sources and Cycles normal/AO/cavity/curvature bakes. Added source-paired glaze variation, fine crazing, clearcoat, a separate studio environment, silvered glass, and recessed goal shading. Existing gameplay assets and rules were not changed.

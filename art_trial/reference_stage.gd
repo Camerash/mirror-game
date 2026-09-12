@@ -19,8 +19,18 @@ func _ready() -> void:
  _build_mirror()
 
 func apply_surface(root: Node, material: Material) -> void:
- if root is MeshInstance3D and "Gold" not in root.name:
-  root.material_override = material
+ if root is MeshInstance3D:
+  if "Gold" in root.name:
+   root.mesh = root.mesh.duplicate()
+   for index: int in root.mesh.get_surface_count():
+    var source := root.get_active_material(index) as StandardMaterial3D
+    if source == null: continue
+    var metal := source.duplicate() as StandardMaterial3D
+    metal.roughness = 0.42
+    metal.metallic_specular = 0.35
+    root.mesh.surface_set_material(index, metal)
+  else:
+   root.material_override = material
  for child: Node in root.get_children():
   apply_surface(child, material)
 
@@ -32,7 +42,8 @@ func _build_mirror() -> void:
  mirror.add_child(frame)
  frame.update_frame(Vector2(1.12,2.45),false,true)
  frame.metal.albedo_color = Color("c4ae79")
- frame.metal.roughness = 0.2
+ frame.metal.roughness = 0.42
+ frame.metal.metallic_specular = 0.35
  var panel := MeshInstance3D.new()
  var mesh := QuadMesh.new()
  mesh.size = Vector2(1.1,2.43)

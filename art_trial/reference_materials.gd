@@ -13,7 +13,6 @@ static func build(kind: String, variation := 0) -> ShaderMaterial:
 	material.set_shader_parameter("albedo_map", maps[0])
 	material.set_shader_parameter("roughness_map", maps[1])
 	var family := "jade" if is_jade else "ceramic"
-	material.set_shader_parameter("grain_normal", load("res://assets/reference/surface_%s_normal.png" % family))
 	for face: String in ["side", "top"]:
 		for channel: String in ["normal", "masks"]:
 			material.set_shader_parameter(face + "_" + channel, load("res://assets/reference/detail_%s_%s_%s.png" % [family, face, channel]))

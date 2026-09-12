@@ -19,6 +19,7 @@ var right_foot_rest := Transform3D.IDENTITY
 func _ready() -> void:
 	var traveller := CharacterScene.instantiate() as Node3D
 	add_child(traveller)
+	_soften_materials(traveller)
 	left_foot = traveller.find_child("FootLeft", true, false) as Node3D
 	right_foot = traveller.find_child("FootRight", true, false) as Node3D
 	cloak = traveller.find_child("Cloak", true, false) as MeshInstance3D
@@ -66,3 +67,19 @@ func _apply_hem() -> void:
 		var index := cloak.find_blend_shape_by_name(pair[0])
 		if index >= 0:
 			cloak.set_blend_shape_value(index, float(pair[1]) / HEM_SWAY_LIMIT)
+
+
+# Use local copies so imported and gameplay materials remain unchanged.
+func _soften_materials(node: Node) -> void:
+	if node is MeshInstance3D:
+		node.mesh = node.mesh.duplicate()
+		for index: int in node.mesh.get_surface_count():
+			var source := node.get_active_material(index) as StandardMaterial3D
+			if source == null:
+				continue
+			var material := source.duplicate() as StandardMaterial3D
+			material.roughness = maxf(material.roughness, 0.72)
+			material.metallic_specular = 0.2
+			node.mesh.surface_set_material(index, material)
+	for child: Node in node.get_children():
+		_soften_materials(child)

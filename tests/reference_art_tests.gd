@@ -65,6 +65,13 @@ func check_character_motion() -> void:
  check(character.cloak != null, "Cloak node exists")
  if character.cloak != null:
   check(character.cloak.mesh.get_blend_shape_count()==2, "Cloak retains both motion shapes")
+  var imported := character.CharacterScene.instantiate()
+  var source_cloak := imported.find_child("Cloak", true, false) as MeshInstance3D
+  check(character.cloak.mesh != source_cloak.mesh, "Art material changes use a local mesh resource")
+  var soft_material := character.cloak.mesh.surface_get_material(0) as StandardMaterial3D
+  check(soft_material != source_cloak.mesh.surface_get_material(0), "Imported cloak material remains separate")
+  check(soft_material.roughness >= 0.72, "Soft cloak keeps a matte finish")
+  imported.free()
   for step: int in 60: character.update_motion(1.0/60.0,Vector3(0,0,0.65))
   check(character.hem_offset.length()>0.005 and character.hem_offset.length()<=character.HEM_SWAY_LIMIT,"Walking produces restrained cloth motion")
   for step: int in 180: character.update_motion(1.0/60.0,Vector3.ZERO)
