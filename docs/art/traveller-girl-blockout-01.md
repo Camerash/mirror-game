@@ -1,6 +1,6 @@
 # Traveller girl — first Blender blockout
 
-2026-09-13. This is a shape study based on the [approved concept direction](traveller-girl-01.png). Shape approval remains pending. These images are native Blender renders, not generated mockups.
+2026-09-13. **Rejected as the replacement character.** This shape study remains as a native Blender baseline. Its successful technical checks did not establish the required artistic quality. The next trial follows the [head construction reference](traveller-head-construction-01.md), with proportion approval required before modeling.
 
 ![Five views of the same model](traveller-girl-blockout-01/review-board.png)
 

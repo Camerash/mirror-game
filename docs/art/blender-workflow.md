@@ -30,6 +30,8 @@ The newer [Blender Compact MCP for Astra](https://github.com/mohakmalviya/blende
 
 ## Character study
 
-Keep Astra as the main coordinator and visual reviewer. A Terra worker may implement a bounded modeling step after its shape and interfaces are defined.
+For the current character trial, keep the selected main Astra as coordinator and visual reviewer. Use one explicit `gpt-6-astra` modeling worker at `xhigh` effort. Only that worker edits the study's Blender file; the main agent handles the brief, Godot comparison, integration, and final review. This task-specific choice does not yet change global delegation rules.
 
-Start with simple geometry and plain material colours. Inspect the same model from front, side, back, three-quarter, and elevated game views. Correct shape and overlap errors before adding texture, a rig, or cloth motion. Save the editable Blender file and its construction script. Existing game assets remain until the replacement is approved.
+The [head-study reference](traveller-head-construction-01.md) requires proportion approval before modeling. Use native Blender modeling, UV, painting, and baking tools. An official CC0 base mesh is permitted; no cloud generator, paid asset, or new add-on is part of this trial. Save small editable steps and use scripts for precise edits, setup, and checks.
+
+Inspect plain geometry from front, side, back, three-quarter, and elevated game views. After shape approval, finish a painted head study and review it in Godot Mobile. Successful scripting and a low triangle count are supporting checks, not proof of visual quality. Keep the previous study as a rejected baseline and retain existing game assets until replacement approval. Record and adopt only a process that produces a user-accepted native result.
