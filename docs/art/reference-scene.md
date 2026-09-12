@@ -63,7 +63,9 @@ Gameplay art is deliberately separate pending review. Physical iOS/Android rende
 Native Mobile/Metal review covered 1152×800 and 430×932 windows, material close views, opposite mirror view, oblique cut/cap, and a short walking sequence. Final native reference checks passed 634 assertions with no failures or error output. The check includes local material ownership to preserve imported resources. Initial cleanup errors from per-surface overrides were resolved by assigning local material copies to private mesh resources. No gameplay regression suite, export, Simulator, or physical-device test was run for this isolated pass.
 
 
-## Traveller refinement — 2026-09-12
+## Earlier traveller refinement — 2026-09-12
+
+This section records the retained runtime model and its checks. Its appearance and linked character target are no longer design requirements. The replacement starts from the [new hooded traveller concepts](traveller-new-concepts-01.png), pending selection and model-sheet approval.
 
 The supplied close reference guides the sloped cowl, recessed ivory oval, bell cloak, charcoal color, triangular hem, and short boots. Front and hidden angles are authored interpretations. The hood is a simple ring-based surface with a connected inset opening; no subdivision modifier is exported. The asset has 2,144 triangles total and the cloak has 560. The Blender generator rebuilds locally in about two seconds; no additional Blender service is required.
 
