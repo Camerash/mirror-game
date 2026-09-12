@@ -1,10 +1,10 @@
 # Traveller girl 01
 
-Confirmed: little girl, long hair, visible face, hood, and cloak. The RiME-led face direction remains. Exact age and final model design are not approved.
+Confirmed: little girl, long hair, visible face, hood, and cloak. The RiME-led face direction remains. On 2026-09-13, the user approved trying this concept in a separate Blender blockout. Exact age and final model shape are not approved.
 
-[Mockup](traveller-girl-01.png), generated with the built-in image tool using [rounded-face board](traveller-rounded-faces-01.png) as a style reference. The prompt proposes a 7–9-year-old appearance, long loose chestnut hair, and blue-grey clothing. These details need user review.
+[Mockup](traveller-girl-01.png), generated with the built-in image tool using [rounded-face board](traveller-rounded-faces-01.png) as a style reference. The prompt proposes a 7–9-year-old appearance, long loose chestnut hair, and blue-grey clothing. Use these details as the blockout target; review the resulting shape from all sides before approval.
 
-Visual review: both views show a child with long hair over the cloak, a face inside the hood, and consistent clothing. Boots are visible. The portrait crops the hair ends; the full-body view shows their proposed length. Fine hair grooves and cloth grain remain in the generated image and should be simplified for a game model. This is a concept, not a construction sheet or runtime capture. No Blender changes, game tests, or exports were made.
+Visual review: both views show a child with long hair over the cloak, a face inside the hood, and consistent clothing. Boots are visible. The portrait crops the hair ends; the full-body view shows their proposed length. Fine hair grooves and cloth grain remain in the generated image and should be simplified for a game model. This is a concept, not a construction sheet or runtime capture. At concept delivery, no Blender changes, game tests, or exports were made. The later Blender study is separate from the runtime assets.
 
 ## Final prompt
 

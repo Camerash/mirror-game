@@ -2,9 +2,9 @@
 
 See [the reference scene record](reference-scene.md) for the new standalone scene, native captures, and motion recording. The earlier Level 1 art remains in gameplay pending review.
 
-## Little girl with long hair — concept pending
+## Little girl with long hair — Blender shape study
 
-The traveller is confirmed as a little girl with long hair. The [new mockup](traveller-girl-01.png) shows one proposed character in close and full-body views. Loose chestnut hair and a blue-grey cloak are proposals, not confirmed colours or styling. Keep the RiME-led rounded-face direction. See the [prompt and review record](traveller-girl-01.md). No model assets were changed.
+The [girl concept](traveller-girl-01.png) is the target for a separate simple Blender blockout. The user approved trying its long chestnut hair, visible face, hood, and blue-grey cloak in Blender. Shape approval is still pending. Keep the RiME-led rounded-face direction. See the [native blockout views and review](traveller-girl-blockout-01.md), [concept record](traveller-girl-01.md), and [Blender workflow](blender-workflow.md). Existing runtime assets remain unchanged.
 
 ## Earlier rounded traveller faces
 
