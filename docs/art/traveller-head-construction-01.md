@@ -1,10 +1,10 @@
 # Traveller head construction 01
 
-2026-09-13. **Proportion approval pending.** This is a generated design reference, not a Blender render or proof of model quality.
+2026-09-13. **Proportions approved by the user.** This is a generated design reference, not a Blender render or proof of model quality.
 
 ![Head construction reference](traveller-head-construction-01.png)
 
-## Appearance proposed for approval
+## Approved appearance
 
 The [girl concept](traveller-girl-01.png) supplies the identity and palette: a child with a visible face, long chestnut hair, and a raised blue-grey hood connected to a cloak. This sheet proposes smaller eyes, broad hair masses, plain cloth, and quiet painted colour. Exact age remains unspecified.
 
@@ -12,17 +12,13 @@ The front, side, and three-quarter views show the same proposed head at similar 
 
 The second generation removes fine cloth grain and hair grooves from the first draft. Inspect proportions before modeling. The sheet is not a measured orthographic projection: use its guides as visual aids, then reconcile small view differences in the actual 3D mesh. The covered skull and rear hair still need construction in Blender. The three-quarter view faces left; the side view faces right. They show opposite sides, not a required turn direction.
 
-## Confirmed trial
+## Current construction decision
 
-Use one Astra modeling worker at xhigh effort, with the main Astra agent owning the brief, native visual review, and Godot integration. Use Blender native tools and the installed official Blender Lab MCP. An official CC0 base mesh is allowed. No cloud generator, paid asset, or new add-on is part of this trial.
+The sheet supplies identity and proportions. The user selected a simpler painted-face construction after the first native shape study. Keep broad cheek and chin volume, without modeled sockets, lips, or separate eye and brow pieces. Paint small vertical oval eyes, simple brows, and a small mouth directly on the head. Review those features with the shape, rather than waiting for a featureless grey-model approval.
 
-1. Approve these proportions.
-2. Build a separate simple head, hood, hair, neck, and shoulder study. Review grey geometry in front, side, back, three-quarter, and elevated views before adding materials.
-3. After shape approval, author UVs and painted colour. Target at most 5,000 triangles, one 1024-square colour atlas, and at most three opaque material surfaces. Add roughness only if useful.
-4. Check a blink and a small head turn. Review the textured asset in Godot Mobile under neutral and ceramic-scene lighting, at close and game size.
-5. Deliver editable Blender source, packed textures, GLB, native captures, and a short turntable. Existing runtime assets stay intact until replacement approval.
+The [painted traveller trial](traveller-painted-study-01.md) keeps the liked hood silhouette, corrects the hair, and reviews raised and lowered hood poses before body modeling. It uses one shared colour atlas and simple stepped expressions. The previous plain source remains in `art_sources/traveller_head/` for comparison. Its anatomical base and separate facial pieces are not the new construction target.
 
-This stage completed image generation and visual inspection only. Official base-mesh preparation is recorded separately in [the base review](traveller-head-base-review.md). No replacement model, rig, texture atlas, or Godot result is claimed yet. Do not update global modeling delegation rules or adopt a project skill until the user confirms a better native result.
+The full-body model, hand-assisted hood transition, interaction poses, and walk are later work. Existing gameplay assets remain unchanged until replacement approval. Do not update global modeling delegation rules or adopt a project skill until the user confirms a better native result.
 
 ## Generation record
 

@@ -1,6 +1,6 @@
 # Traveller head base review
 
-Status: preparation only. No project model or Blender scene was changed.
+Status: historical source review for the first detailed head study. The current painted-face direction replaces its anatomical construction requirements; see [the painted study](traveller-painted-study-01.md). The facts below describe the inspected source and the earlier proposed adaptation.
 
 ## Source and license
 
@@ -8,7 +8,7 @@ The inspected source is the official Blender download [Human Base Meshes v1.4.1]
 
 ## Selected starting asset
 
-Use `human_base_meshes_bundle.blend`, object `Head - Generic Topology`. It is the best base for the later study. The 318-vertex control mesh has 316 all-quad faces, no boundary edges, one `UVMap`, and a Subdivision modifier. At its viewport level it evaluates to 1,266 vertices and 2,528 triangles. It has the `Real_Kid`, `Toon_FEMALE`, and `Toon_Anime_Kid` shape keys. These are useful reference shapes, not final child proportions.
+The earlier trial selected `human_base_meshes_bundle.blend`, object `Head - Generic Topology`. The 318-vertex control mesh has 316 all-quad faces, no boundary edges, one `UVMap`, and a Subdivision modifier. At its viewport level it evaluates to 1,266 vertices and 2,528 triangles. It has the `Real_Kid`, `Toon_FEMALE`, and `Toon_Anime_Kid` shape keys. These are useful reference shapes, not final child proportions.
 
 The actual face topology has closed loops around each eye and a loop around the mouth. These provide a starting point for eyelid and mouth work; they do not prove a usable blink. The object has no material and no blink shape key. The bundle's separate `Eye - Stylized` object is 1,600 triangles. Avoid that cost for this target. Painted atlas eyes or much simpler native eyeballs are candidates. Confirm that eyelid closure works without stretching the iris or exposing gaps before selecting the final construction.
 

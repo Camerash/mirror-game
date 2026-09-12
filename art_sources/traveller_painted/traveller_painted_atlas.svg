@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<!-- Editable vector paint. Each head tile is 256 square; only the eyes and mouth change. -->
+<defs>
+  <g id="brows" fill="none" stroke="#664532" stroke-width="4.8" stroke-linecap="round">
+    <path d="M80 104 Q91 98 102 102"/><path d="M154 102 Q165 98 176 104"/>
+  </g>
+  <g id="open-eyes" fill="#332b2a">
+    <ellipse cx="91" cy="130" rx="6.4" ry="12.2"/>
+    <ellipse cx="165" cy="130" rx="6.4" ry="12.2"/>
+  </g>
+</defs>
+<rect width="1024" height="1024" fill="#30495b"/>
+<g transform="translate(0 0)"><rect width="256" height="256" fill="#c98567"/><use href="#brows"/><use href="#open-eyes"/><path d="M117 176 Q128 179 139 176" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<g transform="translate(256 0)"><rect width="256" height="256" fill="#c98567"/><use href="#brows"/><g fill="#332b2a"><ellipse cx="91" cy="136" rx="6.4" ry="6.1"/><ellipse cx="165" cy="136" rx="6.4" ry="6.1"/></g><path d="M117 176 Q128 179 139 176" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<g transform="translate(512 0)"><rect width="256" height="256" fill="#c98567"/><use href="#brows"/><g fill="none" stroke="#332b2a" stroke-width="3.6" stroke-linecap="round"><path d="M84 135 Q91 138 98 135"/><path d="M158 135 Q165 138 172 135"/></g><path d="M117 176 Q128 179 139 176" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<g transform="translate(768 0)"><rect width="256" height="256" fill="#c98567"/><use href="#brows"/><use href="#open-eyes"/><path d="M113 174 Q128 187 143 174" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<!-- Static body swatches, shared by every pose. -->
+<rect x="0" y="300" width="256" height="724" fill="#55392d"/>
+<rect x="256" y="300" width="256" height="724" fill="#647e9b"/>
+<rect x="512" y="300" width="256" height="724" fill="#4b6885"/>
+<rect x="768" y="300" width="256" height="724" fill="#c98567"/>
+</svg>
