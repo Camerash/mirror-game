@@ -2,6 +2,14 @@
 
 See [the reference scene record](reference-scene.md) for the new standalone scene, native captures, and motion recording. The earlier Level 1 art remains in gameplay pending review.
 
+## Traveller design study — selection pending
+
+The [comparison board](traveller-comparison-01.png) shows three small hood variations from the [original close-up](traveller-target.png): A — Close reconstruction, B — Softer hood, and C — Compact hood. Each row shows front, side, and three-quarter views with the same cloak, trim, colours, and pose. All use one centred blank ivory face in a dark recess. These are generated design proposals, not Blender renders or an approved construction sheet.
+
+The next step requires a selection. The selected design will receive front, side, back, three-quarter, and elevated game-camera views for approval before modeling. Keep the current assets intact. Approve a simple untextured model before adding materials or cloth motion.
+
+Generated with the built-in image tool. The [prompt record](traveller-comparison-01.md) contains the generation and correction prompts. Visual review on 2026-09-12 checked all nine drawings, labels, face count, and consistent trim. One correction changed the middle column from oblique views to profiles. Generated views remain approximate: the thin face sliver, hood opening depth, and exact proportions must be resolved in the selected sheet. No runtime, export, or game tests were run for this image study.
+
 # Current trial — Ceramic B, porcelain R3, carved jade S1
 
 The selected references are [ceramic-style-board.png](ceramic-style-board.png), [porcelain-reflection-board.png](porcelain-reflection-board.png), and [jade-absolute-board.png](jade-absolute-board.png). These boards were generated with the built-in image tool for appearance comparison. They are not runtime screenshots or exact level layouts.
