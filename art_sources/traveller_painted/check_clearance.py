@@ -142,18 +142,38 @@ def rear_path_length(obj, coordinates, roots, tips):
     raise AssertionError("Rear hair has no connected root-to-tip path")
 
 
+def check_long_hair_surface():
+    """Check the visible outer surface; the old inner shell is a separate issue."""
+    obj=bpy.data.objects["HairCap.Long"]
+    count=len(obj.data.vertices)//2
+    faces=[list(face.vertices) for face in obj.data.polygons if max(face.vertices)<count]
+    for name in ("Basis","HairTucked"):
+        points=[vertex.co for vertex in obj.data.shape_keys.key_blocks[name].data]
+        surface=BVHTree.FromPolygons(points,faces)
+        crossings=[(a,b) for a,b in surface.overlap(surface)
+                   if a<b and not set(faces[a]).intersection(faces[b])]
+        assert not crossings,(name,"Long outer hair folds through itself",crossings)
+    print("Long outer hair: no self-crossings in either pose")
+
+
 def check_long_hair_length():
     obj = bpy.data.objects["HairCap.Long"]
     keys = obj.data.shape_keys.key_blocks
-    roots = group_vertices(obj, "LongRearRoot")
-    tips = set(group_vertices(obj, "LongRearTip"))
-    lowered = rear_path_length(obj, keys["Basis"].data, roots, tips)
-    raised = rear_path_length(obj, keys["HairTucked"].data, roots, tips)
-    assert lowered > 1.0, "Rear landmarks must span the long hair"
-    assert abs(raised / lowered - 1.0) <= 0.10, ("Rear hair changes length", lowered, raised)
-    tip_shift = max(abs(keys["Basis"].data[i].co.z - keys["HairTucked"].data[i].co.z) for i in tips)
-    assert tip_shift <= 0.10, ("Raised hood shortens rear hair", tip_shift)
-    print(f"Long rear hair: path {lowered:.3f} / {raised:.3f}, tip height shift {tip_shift:.3f}")
+    # Authored path lengths in source commit 84d513a, before the local bend.
+    paths=(("Left","HairRootLeft","HairTipLeft",1.406860798,1.447959483),
+           ("Right","HairRootRight","HairTipRight",1.438831020,1.481253531),
+           ("Rear","LongRearRoot","LongRearTip",1.679053316,1.679053316))
+    for label,root_name,tip_name,basis_length,raised_length in paths:
+        roots=group_vertices(obj,root_name)
+        tips=set(group_vertices(obj,tip_name))
+        lowered=rear_path_length(obj,keys["Basis"].data,roots,tips)
+        raised=rear_path_length(obj,keys["HairTucked"].data,roots,tips)
+        assert abs(lowered-basis_length)<1e-6,(label,"Lowered hair changed",lowered)
+        assert abs(raised/raised_length-1.0)<=.02,(label,"Hair length changed",raised,raised_length)
+        tip_shift=max(abs(keys["Basis"].data[i].co.z-keys["HairTucked"].data[i].co.z) for i in tips)
+        assert tip_shift<1e-6,(label,"Hair tip height changed",tip_shift)
+        assert all((keys["Basis"].data[i].co-keys["HairTucked"].data[i].co).length<.0001 for i in roots), (label,"Hair root moved")
+        print(f"Long {label}: path {lowered:.6f} / {raised:.6f}, raised change {(raised/raised_length-1)*100:.2f}%, tip height shift {tip_shift:.6f}")
 
 
 if __name__ == "__main__":
@@ -171,3 +191,4 @@ if __name__ == "__main__":
         check_hood_attachment(hood)
     check_hair_connections()
     check_long_hair_length()
+    check_long_hair_surface()

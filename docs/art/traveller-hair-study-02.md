@@ -8,6 +8,8 @@ The long style has broad locks below the shoulders. The bob ends near the chin. 
 
 Use the [earlier rounded hood](traveller-hair-study-02/rounded-hood-target.jpg) as the shape target. Its bottom joins the cloak's top neckline. Do not extend the sides down to a lower shoulder attachment. Keep the neckline fixed in both hood poses. The face-opening edges end at separate left and right front-neck points. The lower cloth fit can vary by hairstyle: Long needs a larger rear opening, while Bob and Low bun close the unused lower gap. Keep the crown, main face-opening outline, and garment seam consistent. Fit the covered hair inside this hood with authored hair endpoints; the complete hairstyle remains visible with the hood lowered. Keep the long front sections visible through the opening. Do not use transparency or camera-dependent hiding to conceal clipping.
 
+The Long hood must retain broad side cloth into the neckline. Its rear hair exit must not remove the visible side panels. Small local bends in the raised `HairTucked` pose are allowed to fit the front locks through the face opening and the rear hair through the nape opening. Preserve the lowered pose, connected roots, and tip heights. Front-lock and rear-hair path lengths may change by at most 2% from the preceding study. Use directly authored cloth boundaries instead of successive cage-point repairs or broad face-removal exceptions.
+
 ## Controls and model contract
 
 Open `art_trial/painted_traveller_study.tscn`. **Hair / T** cycles the three styles. **Hood / U** changes the static hood pose. Face, blink, grey view, lighting, fixed views, and small view retain their existing controls. Changing hair preserves the selected expression and any active blink, hood pose, camera, lighting, and review scale. Reset returns to Long with a raised hood and neutral face.
@@ -24,23 +26,27 @@ The editable source contains named style collections, each with its own `Hood.Lo
 
 ## Validation
 
-![Rounded Bob hood with separate front-neck ends](traveller-hair-study-02/bob/raised/three-quarter.png)
+![Long hood with broad sides into the neckline](traveller-hair-study-02/native/clean-long-three-quarter.png)
 
-Current Blender evidence covers **side, rear, and three-quarter views** for all three styles in both poses. Raised examples: [Bob side](traveller-hair-study-02/bob/raised/side.png), [Low bun](traveller-hair-study-02/bun/raised/three-quarter.png), and [Long rear opening](traveller-hair-study-02/long/raised/back.png). Lowered examples: [Long side](traveller-hair-study-02/long/lowered/side.png) and [Low bun](traveller-hair-study-02/bun/lowered/three-quarter.png). Front and elevated Blender images still show the preceding hood revision.
+Current Blender evidence covers front, side, rear, three-quarter, and elevated views for all three styles in both poses. Raised examples: [Long side](traveller-hair-study-02/long/raised/side.png), [Long three-quarter](traveller-hair-study-02/long/raised/three-quarter.png), and [Long rear opening](traveller-hair-study-02/long/raised/back.png).
 
-The current native Mobile/Metal review covers [three-quarter](traveller-hair-study-02/native/hood-cloak-three-quarter.png), [side](traveller-hair-study-02/native/hood-cloak-side.png), and [rear](traveller-hair-study-02/native/hood-cloak-back.png) views of all three styles in both poses. It confirms that Bob and Low bun no longer have an exposed throat band or hanging rear point. Long keeps the larger hair exit and the same full-length rear hair.
+The current native Mobile/Metal review covers [three-quarter](traveller-hair-study-02/native/clean-long-three-quarter.png), [side](traveller-hair-study-02/native/clean-long-side.png), and [rear](traveller-hair-study-02/native/clean-long-back.png) views of all three styles in both poses. Long now has broad cloth into the neckline and a finished rear exit, without the previous thin connector strips. Bob and Low bun retain their previous shape.
 
 | Complete bust | Triangles | Opaque materials | Colour atlas |
 | --- | ---: | ---: | --- |
-| Long | 4,196 | 2 | 1024×1024 |
+| Long | 4,276 | 2 | 1024×1024 |
 | Bob | 4,300 | 2 | 1024×1024 |
 | Low bun | 4,496 | 2 | 1024×1024 |
 
-The lower opening is part of the coarse hood cage. Its two front ends join the garment separately; there is no cloth edge across the throat. Bob and Low bun have broad lower side and rear cloth that rounds into the neckline. Long keeps a larger rear and side exit for its existing hair. The hood and garment remain separate meshes. Each hood has 38 fixed seam vertices spanning 0.594 units across the neckline. The maximum distance from those vertices to the garment surface is 0.045 units for Long and 0.030 units for Bob and Low bun; the seam is embedded in the garment top.
+The hood uses directly authored cage rows and explicit face and rear opening boundaries. The sequential point overrides and broad Long face-removal exceptions are removed. Its two front ends join the garment separately; there is no cloth edge across the throat. The hood and garment remain separate meshes. Each hood has 38 fixed seam vertices spanning 0.594 units across the neckline, within 0.030 units of the garment surface.
 
-The focused Blender checks passed for all six style/pose combinations. They found no hair/head, hair/hood, or hood/head crossings. Each hood is one connected, closed shell, with no open edges or collapsed base faces. Each seam spans both neckline sides, has adjacent seam vertices, and stays fixed between poses. All three scalp meshes remain closed surfaces with shared side-lock roots. Long rear hair retains a root-to-tip path of 1.679 units in both poses, with no tip-height change.
+The focused Blender checks passed for all six style/pose combinations. They found no hair/head, hair/hood, or hood/head crossings. Each hood is one connected, closed shell with a fixed seam. All three scalp meshes retain connected side-lock roots. Against source commit `84d513a`, the Long front-lock paths are unchanged and the rear path changes by −0.57%. Root positions and tip heights are fixed. The outer Long hair surface has no detected self-crossings in either pose.
 
-An exact comparison against the preceding editable source confirmed unchanged vertex coordinates, both hair pose coordinates, face connectivity, root groups, and object transforms for all four hair meshes. The separate fringe and side-lock meshes remain removed. The GLB checks confirmed one `Hood` node per model, equal vertex counts between hood poses, two opaque materials, one shared atlas, and the triangle counts above.
+Long's lowered hair coordinates remain exact. Bob and Low bun hair coordinates are unchanged; their hood coordinates differ by less than 0.00000007 units after writing the cage rows directly. Long's raised pose uses an ordered route around the lower cloth. The GLBs retain one `Hood` node each, matching pose vertex counts, the existing controls, two opaque materials, and one shared atlas.
+
+The hidden inner hair shell is not fully free of self-overlap. A diagnostic found 631 overlapping face pairs in the saved Long candidate, compared with 779 in `84d513a`; these counts do not indicate visible outer-surface crossings. Full inner-shell cleanup is not established by the static clearance checks.
+
+Pending fit decision: the saved candidate moves the lower rear curtain slightly backward at fixed tip heights. A strict fade to the original lower positions puts all 54 source vertices below z=1.2 inside the cloak body and hides the hair ends. The centre tip moves from y=0.4325 to y=0.6000 in the saved candidate. A choice between this lower-hair fit and a cloak-body change is pending; the full lower-fade requirement is not complete. Failed subdivision and fade experiments are excluded from the saved study.
 
 The current asset passed **137 focused Godot checks, 0 failures**. The current native review used Godot 4.7.2, Mobile rendering through Metal, on a Mac with an M2 Pro. Clothing approval remains with the user. The older [native three-quarter](traveller-hair-study-02/native/connected-locks-three-quarter.png), [side](traveller-hair-study-02/native/connected-locks-side.png), and [rear](traveller-hair-study-02/native/connected-locks-back.png) boards document the connected hair before this hood fit.
 

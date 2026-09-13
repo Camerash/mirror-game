@@ -84,6 +84,40 @@ def mesh(name, verts, faces, material, uvbox):
     return obj
 
 
+def smooth_weight(value):
+    value=max(0.0,min(1.0,value))
+    return value*value*(3-2*value)
+
+
+def long_hair_tuck(point, angle):
+    """Retain the front locks and route the connected nape into a broad exit."""
+    x,y,z=point
+    # Keep the accepted front-fit curve from 84d513a. No opposing forward
+    # correction is needed because the cloth now fits beside the jaw.
+    contact=math.exp(-((z-1.76)/.32)**2)*max(0.0,min(1.0,(-y-.10)/.15))
+    y += .18*contact
+    radial=Vector((x/.56,y/.49,(z-2.48)/.68))
+    if .001 < radial.length < 1.07:
+        radial *= 1.07/radial.length
+        x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
+    # The connected strip passes inside the side cloth before it descends.
+    bridge=smooth_weight((angle-.82)/.18)*smooth_weight(2.20-angle)
+    z += .75*bridge*max(0.0,2.25-z)
+    # Use the final height and the stable cage angle to keep column order.
+    passage=smooth_weight((2.50-z)/.50)*smooth_weight((angle-.90)/.45)
+    curtain=max(0.0,min(1.0,(angle-1.35)/(math.pi-1.35)))
+    rear_x=math.copysign(.54*(1-curtain),x)
+    rear_y=.52+.08*math.sin(curtain*math.pi/2)
+    x += (rear_x-x)*passage
+    y += (rear_y-y)*passage
+    radius=math.hypot(x/.56,y/.49)
+    head_radius=math.sqrt(max(0.0,1.07**2-((z-2.48)/.68)**2))
+    if .001 < radius < head_radius:
+        x *= head_radius/radius
+        y *= head_radius/radius
+    return Vector((x,y,z))
+
+
 def add_hair_tuck(obj):
     obj.shape_key_add(name="Basis")
     tucked=obj.shape_key_add(name="HairTucked")
@@ -91,15 +125,8 @@ def add_hair_tuck(obj):
     for vertex, key in zip(obj.data.vertices, tucked.data):
         x,y,z=obj.matrix_world @ vertex.co
         if obj.name == "HairCap.Long":
-            # The lower hood opening clears the whole long curtain.  The
-            # raised endpoint keeps its length and broad downward shape.
-            contact=math.exp(-((z-1.76)/.32)**2)*max(0.0,min(1.0,(-y-.10)/.15))
-            y += .18*contact
-            radial=Vector((x/.56, y/.49, (z-2.48)/.68))
-            if .001 < radial.length < 1.07:
-                radial *= 1.07/radial.length
-                x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
-            key.co=inverse @ Vector((x, y, z))
+            angle=obj.data.attributes["HoodRouteAngle"].data[vertex.index].value
+            key.co=inverse @ long_hair_tuck(Vector((x,y,z)),angle)
             continue
         if obj.name.startswith("HairCap") and y > -.12:
             # The raised hood covers the rear cap. Gather that covered hair
@@ -117,7 +144,23 @@ def add_hair_tuck(obj):
             radial *= 1.058/radial.length
             x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
         key.co=inverse @ Vector((x,y,z))
+    if obj.name == "HairCap.Long":
+        fit_long_hair_thickness(obj,tucked)
     tucked.value=1.0
+
+
+def fit_long_hair_thickness(obj, tucked):
+    """Keep the inner shell behind the bent outer surface at the nape."""
+    count=len(obj.data.vertices)//2
+    surface=bpy.data.meshes.new("Long route surface")
+    faces=[list(face.vertices) for face in obj.data.polygons if max(face.vertices)<count]
+    surface.from_pydata([key.co for key in tucked.data[:count]],[],faces)
+    surface.update()
+    for i,vertex in enumerate(surface.vertices):
+        z=obj.data.vertices[i].co.z
+        weight=smooth_weight((2.70-z)/.15)
+        tucked.data[i+count].co=tucked.data[i+count].co.lerp(vertex.co-.014*vertex.normal,weight)
+    bpy.data.meshes.remove(surface)
 
 
 def hair_cap(name, body, end_height):
@@ -173,6 +216,10 @@ def hair_cap(name, body, end_height):
             faces.append((r*n+j,r*n+k,(r+1)*n+k,(r+1)*n+j))
     faces.append(tuple(range(n-1,-1,-1)))
     cap=mesh(name,vertices,faces,body,(.125,.56))
+    if name.endswith(".Long"):
+        route=cap.data.attributes.new("HoodRouteAngle","FLOAT","POINT")
+        for i,item in enumerate(route.data):
+            item.value=abs(math.atan2(math.sin(math.tau*(i%n)/n),math.cos(math.tau*(i%n)/n)))
     # A low cage plus one baked subdivision rounds only the silhouette.
     sub=cap.modifiers.new("Rounded hair volume","SUBSURF")
     sub.levels=1; sub.render_levels=1
@@ -199,6 +246,11 @@ def add_hair_landmarks(obj):
         index=min(vertices, key=lambda vertex: (vertex.co-target).length).index
         group.add([index], 1.0, "REPLACE")
     if obj.name == "HairCap.Long":
+        for name,target in (("HairTipLeft",Vector((-.39,-.27,1.42))),
+                            ("HairTipRight",Vector((.39,-.27,1.45)))):
+            group=obj.vertex_groups.new(name=name)
+            index=min(vertices,key=lambda vertex:(vertex.co-target).length).index
+            group.add([index],1.0,"REPLACE")
         root=obj.vertex_groups.new(name="LongRearRoot")
         tip=obj.vertex_groups.new(name="LongRearTip")
         root_index=min(vertices, key=lambda vertex: (vertex.co-Vector((0,.46,2.72))).length).index
@@ -247,42 +299,39 @@ def body(bodymat, skin):
 
 
 def hood(bodymat, style):
-    # The same crown and face opening end at two front-neck points. Build the
-    # lower opening in the cage, so its edges cannot become a separate strap.
-    outline=[(0,-.32,3.37),(.30,-.35,3.30),(.56,-.40,3.08),(.68,-.32,2.78),(.76,-.22,2.42),(.77,-.28,2.06),(.65,-.43,1.86),(.23,-.48,1.68),(.27,-.05,1.58),(0,.34,1.58)]
-    outline += [(-x,y,z) for x,y,z in reversed(outline[1:-1])]
-    rings=[outline]
-    for depth, width, vertical in [(0.12,1.06,1.01),(.43,.97,.94),(.66,.62,.70)]:
-        rings.append([(x*width, depth + .10*(1-(z-1.54)/1.78), 2.34+(z-2.34)*vertical) for x,y,z in outline])
-    for i in (5,6,7,11,12,13):
-        x,y,z=rings[1][i]
-        rings[1][i]=(x,{5:-.05,6:-.28,7:-.34,11:-.34,12:-.28,13:-.05}[i],z)
-    for i,x,y in ((8,.34,.09),(9,0,.34),(10,-.34,.09)):
-        rings[1][i]=(x,y,1.55)
-    for r,x,y,z in ((1,.79,-.12,1.98),(2,.68,.45,2.00)):
-        rings[r][5]=(x,y,z)
-        rings[r][13]=(-x,y,z)
-    for i in (7,11):
-        x,y,z=rings[1][i]
-        rings[1][i]=(x,y,1.88)
-    for i,x,y,z in ((7,.29,-.12,1.70),(8,.26,.25,1.55),(9,0,.34,1.55),
-                    (10,-.26,.25,1.55),(11,-.29,-.12,1.70)):
-        rings[2][i]=(x,y,z)
-    # Short raised hair leaves this lower area empty. Let the cloth fall to
-    # the seam there; Long needs the larger exit behind its connected locks.
-    if style != "Long":
-        for i,sign in ((7,1),(11,-1)):
-            rings[1][i]=(sign*.38,.10,1.68)
-            rings[2][i]=(sign*.37,.50,1.76)
-    for i,x,y,z in ((6,.40,.74,2.02),(7,.30,.77,1.98),(8,.15,.78,1.94),(9,0,.78,1.92),
-                    (10,-.15,.78,1.94),(11,-.30,.77,1.98),(12,-.40,.74,2.02)):
-        rings[3][i]=(x,y,z)
-    n=len(outline); verts=[p for r in rings for p in r]; faces=[]
-    for r in range(len(rings)-1):
-        for i in range(n):
-            if (r == 0 and i in (8,9)) or (style == "Long" and r >= 1 and 5 <= i <= 12 and not (r == 1 and 7 <= i <= 10)):
-                continue
-            j=(i+1)%n; faces.append((r*n+i,r*n+j,(r+1)*n+j,(r+1)*n+i))
+    # Final right-half cage rows, mirrored once. The two face-opening ends
+    # and the back neckline are authored positions, not trimmed leftovers.
+    upper_rows=(
+        ((0,-.32,3.37),(.30,-.35,3.30),(.56,-.40,3.08),(.68,-.32,2.78),(.76,-.22,2.42)),
+        ((0,.117191011,3.3803),(.318,.121123596,3.3096),(.5936,.133483146,3.0874),
+         (.7208,.150337079,2.7844),(.8056,.170561798,2.4208)),
+        ((0,.427191011,3.3082),(.291,.431123596,3.2424),(.5432,.443483146,3.0356),
+         (.6596,.460337079,2.7536),(.7372,.480561798,2.4152)),
+        ((0,.657191011,3.061),(.186,.661123596,3.012),(.3472,.673483146,2.858),
+         (.4216,.690337079,2.648),(.4712,.710561798,2.396)),
+    )
+    lower_rows=(
+        ((.77,-.02,2.06),(.65,.02,1.86),(.23,-.18,1.68),(.27,-.05,1.58),(0,.34,1.58)),
+        ((.79,.18,1.98),(.72,.25,1.8552),(.46,.20,1.68),(.34,.09,1.55),(0,.34,1.55)),
+        ((.77,.52,2.08),(.72,.61,1.98),(.62,.56,1.78),(.26,.25,1.55),(0,.34,1.55)),
+        ((.65,.78,2.20),(.64,.80,2.08),(.59,.81,2.02),(.33,.84,2.04),(0,.85,2.05)),
+    ) if style == "Long" else (
+        ((.77,-.28,2.06),(.65,-.43,1.86),(.23,-.48,1.68),(.27,-.05,1.58),(0,.34,1.58)),
+        ((.79,-.12,1.98),(.689,-.28,1.8552),(.38,.10,1.68),(.34,.09,1.55),(0,.34,1.55)),
+        ((.68,.45,2.00),(.6305,.512022472,1.8888),(.37,.50,1.76),(.26,.25,1.55),(0,.34,1.55)),
+        ((.4774,.730786517,2.144),(.40,.74,2.02),(.30,.77,1.98),(.15,.78,1.94),(0,.78,1.92)),
+    )
+    rows=[upper+lower for upper,lower in zip(upper_rows,lower_rows)]
+    rings=[list(row)+[(-x,y,z) for x,y,z in reversed(row[1:-1])] for row in rows]
+    n=len(rings[0]); verts=[point for ring in rings for point in ring]; faces=[]
+    face_edges=(*range(8),*range(10,n))
+    rear_edges=(*range(7),*range(11,n)) if style == "Long" else range(n)
+    # The face opening stops at two front-neck ends. Long has one rear
+    # opening between the nape seam and rear shell; both side panels remain.
+    for row,edges in enumerate((face_edges,range(n),rear_edges)):
+        for i in edges:
+            j=(i+1)%n
+            faces.append((row*n+i,row*n+j,(row+1)*n+j,(row+1)*n+i))
     verts.append((0,.82,2.30))
     for i in range(n):
         faces.append(((len(rings)-1)*n+i,(len(rings)-1)*n+(i+1)%n,len(verts)-1))
