@@ -138,19 +138,6 @@ def add_hair_tuck(obj):
     tucked.value=1.0
 
 
-def conform_fringe(obj):
-    """Keep the shallow sweep against the scalp instead of floating above it."""
-    for vertex in obj.data.vertices:
-        # A smooth depth bend preserves the broad sweep and its rounded volume.
-        blend=max(0,min(1,(vertex.co.z-2.70)/.50))
-        vertex.co.y += .17*blend
-        radial=Vector((vertex.co.x/.56,vertex.co.y/.49,(vertex.co.z-2.48)/.68))
-        if radial.length < 1.055:
-            radial *= 1.055/radial.length
-            vertex.co=Vector((radial.x*.56,radial.y*.49,2.48+radial.z*.68))
-    obj.data.update()
-
-
 def hair_cap(name, body, end_height):
     """A single scalp-to-back mass; the front remains open for the face."""
     n=16; rows=7; vertices=[]; faces=[]
@@ -164,11 +151,19 @@ def hair_cap(name, body, end_height):
             curtain=max(0,min(1,(distance-.66)/.86))
             curtain=curtain*curtain*(3-2*curtain)
             end=2.76*(1-curtain)+end_height*curtain
+            # Shape the single cap front hem into the swept fringe. It sits
+            # on the scalp, so there is no separate raised fringe volume.
+            fringe=max(0,min(1,(.95-distance)/.35))
+            fringe=fringe*fringe*(3-2*fringe)
+            sweep=2.96+.12*math.sin(angle)-.22*max(0, -math.sin(angle))
+            end=end*(1-fringe)+sweep*fringe
             if end_height > 1.5:
                 # Lift the side hem to make the short styles round, not square.
                 end += .11 * curtain * math.sin(angle)**2
-            # Resample each column onto its own final height.
-            z=profile[row][0] if row<4 else 2.84+(end-2.84)*(row-3)/(rows-4)
+            # Resample every column from crown to hem. The front sweep can
+            # sit higher than the old fixed third row, so partial resampling
+            # would fold the column back over itself.
+            z=3.23+(end-3.23)*row/(rows-1)
             for k in range(len(profile)-1):
                 high, low=profile[k],profile[k+1]
                 if high[0]>=z>=low[0]:
@@ -203,21 +198,10 @@ def hair_cap(name, body, end_height):
     return cap
 
 
-def fringe(style, body):
-    # A large sweep and small supporting sweep share one right crown root.
-    # They overlap the cap's upper hairline and keep the painted forehead clear.
-    left=swept_panel(f"HairFringe.L.{style}", [
-        (.20,-.22,3.19,.075),(.11,-.34,3.17,.15),(-.06,-.45,3.10,.20),(-.27,-.49,2.93,.19),(-.43,-.43,2.74,.018)], body)
-    right=swept_panel(f"HairFringe.R.{style}", [
-        (.25,-.22,3.17,.045),(.18,-.32,3.14,.085),(.05,-.42,3.04,.11),(-.16,-.46,2.84,.014)], body)
-    return [left,right]
-
-
 def style_hair(style, body):
     collection=bpy.data.collections.new(f"Hair Style {style}")
     bpy.context.scene.collection.children.link(collection)
     objects=[hair_cap(f"HairCap.{style}", body, {"Long":1.02,"Bob":1.92,"Bun":1.72}[style])]
-    objects.extend(fringe(style, body))
     if style == "Long":
         objects.extend([
             swept_panel("HairLock.L.Long", [(-.34,-.43,2.94,.18),(-.48,-.42,2.54,.22),(-.52,-.38,2.03,.23),(-.45,-.30,1.40,.18),(-.36,-.23,1.08,.025)], body),
@@ -245,8 +229,6 @@ def style_hair(style, body):
                 radial *= 1.055/radial.length
                 vertex.co=inverse @ Vector((radial.x*.56, radial.y*.49, 2.48+radial.z*.68))
         obj.data.update()
-        if obj.name.startswith("HairFringe"):
-            conform_fringe(obj)
         add_hair_tuck(obj)
     return collection
 
@@ -296,18 +278,19 @@ def hood(bodymat):
                         if vertex.co.z <= 1.585 and abs(vertex.co.x) < .08]
     attachment.add(attachment_indices, 1.0, "REPLACE")
     assert len(attachment_indices) >= 2, attachment_indices
-    # Fold the same shell behind the neck. The sewn neckline remains fixed.
+    # Fold the same shell into a compact back collar. This leaves the Long
+    # hair vertical instead of forcing it to flare around the cloth.
     for i, key in enumerate(lowered.data):
         x,y,z=hood.data.vertices[i].co
         if i in attachment_indices:
             key.co = (x,y,z)
         else:
-            key.co = (x*.80, .18+(z-1.56)*.30+(y-.18)*.15, 1.56-(y-.18)*.30)
+            key.co = (x*.42, .12+(z-1.56)*.11+(y-.18)*.06, 1.68-(y-.18)*.18)
     return hood
 
 
 def fit_lowered_hair():
-    """Lay rear hair over the folded collar with one broad, smooth bend."""
+    """Keep the lowered cap clear of the head and collar without a flare."""
     for name in ("HairCap.Long", "HairBun.Bun"):
         obj=bpy.data.objects[name]
         inverse=obj.matrix_world.inverted()
@@ -315,11 +298,10 @@ def fit_lowered_hair():
         for vertex, key in zip(obj.data.vertices, basis.data):
             point=obj.matrix_world @ vertex.co
             if name == "HairCap.Long":
-                weight=max(0.0, min(1.0, (2.80-point.z)/1.40))
-                weight=weight*weight*(3.0-2.0*weight)
-                rear=max(0.0, min(1.0, (point.y+.12)/.30))
-                point.x *= 1.0+.48*weight*rear
-                point.y += .49*weight*rear
+                radial=Vector((point.x/.56, point.y/.49, (point.z-2.48)/.68))
+                if .001 < radial.length < 1.07:
+                    radial *= 1.07/radial.length
+                    point=Vector((radial.x*.56, radial.y*.49, 2.48+radial.z*.68))
             else:
                 point.y += .12
                 point.z += .13
