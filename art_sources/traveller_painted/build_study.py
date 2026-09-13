@@ -84,37 +84,24 @@ def mesh(name, verts, faces, material, uvbox):
     return obj
 
 
-def swept_panel(name, points, material):
-    """A shallow, tapered hair mass, wide across the face and never a tube."""
-    controls=[Vector(p) for p in points]
-    verts=[]; faces=[]
-    for i, control in enumerate(controls):
-        centre=Vector(control[:3]); half_width=control.w
-        tangent=(Vector(controls[min(i+1,len(controls)-1)][:3])-Vector(controls[max(i-1,0)][:3])).normalized()
-        across=(Vector((1,0,0))-tangent*tangent.x).normalized()
-        # Two rounded front corners and a rear skin form a small coherent volume.
-        for offset, depth in ((-1,.025),(-.55,-.055),(.55,-.055),(1,.025)):
-            verts.append(centre + across * (half_width * offset) + Vector((0, depth, 0)))
-    for i in range(len(controls)-1):
-        for j in range(3):
-            a=i*4+j; faces.append((a,a+1,a+5,a+4))
-        faces.append((i*4, (i+1)*4, (i+1)*4+3, i*4+3))
-    faces += [(0,1,2,3), tuple(range((len(controls)-1)*4, len(controls)*4))]
-    obj=mesh(name, verts, faces, material, (.125,.56))
-    rounded=obj.modifiers.new("Soft hair mass", "SUBSURF")
-    rounded.levels=1; rounded.render_levels=1
-    bpy.context.view_layer.objects.active=obj
-    bpy.ops.object.modifier_apply(modifier=rounded.name)
-    return obj
-
-
 def add_hair_tuck(obj):
     obj.shape_key_add(name="Basis")
     tucked=obj.shape_key_add(name="HairTucked")
     inverse=obj.matrix_world.inverted()
     for vertex, key in zip(obj.data.vertices, tucked.data):
         x,y,z=obj.matrix_world @ vertex.co
-        if obj.name.startswith("HairCap") and (y > -.12 or (obj.name.endswith(".Long") and z < 2.50)):
+        if obj.name == "HairCap.Long":
+            # The lower hood opening clears the whole long curtain.  The
+            # raised endpoint keeps its length and broad downward shape.
+            contact=math.exp(-((z-1.76)/.32)**2)*max(0.0,min(1.0,(-y-.10)/.15))
+            y += .18*contact
+            radial=Vector((x/.56, y/.49, (z-2.48)/.68))
+            if .001 < radial.length < 1.07:
+                radial *= 1.07/radial.length
+                x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
+            key.co=inverse @ Vector((x, y, z))
+            continue
+        if obj.name.startswith("HairCap") and y > -.12:
             # The raised hood covers the rear cap. Gather that covered hair
             # near the crown; leave the open front hairline unchanged.
             z=2.66+(z-2.66)*.16
@@ -125,29 +112,24 @@ def add_hair_tuck(obj):
             y = .44+(y-.48)*.30
             z = 2.64+(z-1.80)*.25
         # Front locks ease inward where their upper shoulders pass the rim.
-        if obj.name.startswith("HairLock"):
-            blend=max(0,min(1,(z-1.08)/1.85))
-            x_limit=.34+.16*blend
-            key.co=inverse @ Vector((max(-x_limit,min(x_limit,x)), y, z))
-        else:
-            radial=Vector((x/.56, y/.49, (z-2.48)/.68))
-            if radial.length < 1.058:
-                radial *= 1.058/radial.length
-                x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
-            key.co=inverse @ Vector((x,y,z))
+        radial=Vector((x/.56, y/.49, (z-2.48)/.68))
+        if radial.length < 1.058:
+            radial *= 1.058/radial.length
+            x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
+        key.co=inverse @ Vector((x,y,z))
     tucked.value=1.0
 
 
 def hair_cap(name, body, end_height):
-    """A single scalp-to-back mass; the front remains open for the face."""
-    n=16; rows=7; vertices=[]; faces=[]
+    """One continuous scalp mesh, including its forehead fringe and side locks."""
+    n=24; rows=7; vertices=[]; faces=[]
     profile=[(3.23,.015,.015),(3.18,.24,.20),(3.06,.43,.37),
              (2.84,.565,.48),(2.56,.59,.525),(2.22,.60,.52),
              (1.80,.60,.48),(1.32,.54,.42),(.98,.43,.35)]
     for row in range(rows):
         for j in range(n):
-            angle=math.tau*j/n
-            distance=abs(math.atan2(math.sin(angle),math.cos(angle)))
+            angle=math.atan2(math.sin(math.tau*j/n), math.cos(math.tau*j/n))
+            distance=abs(angle)
             curtain=max(0,min(1,(distance-.66)/.86))
             curtain=curtain*curtain*(3-2*curtain)
             end=2.76*(1-curtain)+end_height*curtain
@@ -157,6 +139,15 @@ def hair_cap(name, body, end_height):
             fringe=fringe*fringe*(3-2*fringe)
             sweep=2.96+.12*math.sin(angle)-.22*max(0, -math.sin(angle))
             end=end*(1-fringe)+sweep*fringe
+            # The two low side hem regions are the locks.  They are columns
+            # of this scalp mesh, so their roots share faces and vertices with
+            # the fringe and scalp instead of meeting as separate panels.
+            lock_left=max(0, 1-abs(angle + .76)/.38)
+            lock_right=max(0, 1-abs(angle - .76)/.38)
+            lock=max(lock_left, lock_right)
+            lock=lock*lock*(3-2*lock)
+            lock_end={"Long":1.08, "Bob":2.02, "Bun":2.06}[name.rsplit(".", 1)[1]]
+            end=end*(1-lock)+lock_end*lock
             if end_height > 1.5:
                 # Lift the side hem to make the short styles round, not square.
                 end += .11 * curtain * math.sin(angle)**2
@@ -195,27 +186,34 @@ def hair_cap(name, body, end_height):
     solid.thickness=.014; solid.offset=-1
     bpy.context.view_layer.objects.active=cap
     bpy.ops.object.modifier_apply(modifier=solid.name)
+    add_hair_landmarks(cap)
     return cap
+
+
+def add_hair_landmarks(obj):
+    """Store sparse root and long-rear landmarks after final subdivision."""
+    vertices=obj.data.vertices
+    for group_name, target in (("HairRootLeft", Vector((-.34,-.40,2.82))),
+                               ("HairRootRight", Vector((.34,-.40,2.82)))):
+        group=obj.vertex_groups.new(name=group_name)
+        index=min(vertices, key=lambda vertex: (vertex.co-target).length).index
+        group.add([index], 1.0, "REPLACE")
+    if obj.name == "HairCap.Long":
+        root=obj.vertex_groups.new(name="LongRearRoot")
+        tip=obj.vertex_groups.new(name="LongRearTip")
+        root_index=min(vertices, key=lambda vertex: (vertex.co-Vector((0,.46,2.72))).length).index
+        tip_index=min(vertices, key=lambda vertex: (vertex.co-Vector((0,.48,1.02))).length).index
+        root.add([root_index], 1.0, "REPLACE")
+        tip.add([tip_index], 1.0, "REPLACE")
 
 
 def style_hair(style, body):
     collection=bpy.data.collections.new(f"Hair Style {style}")
     bpy.context.scene.collection.children.link(collection)
     objects=[hair_cap(f"HairCap.{style}", body, {"Long":1.02,"Bob":1.92,"Bun":1.72}[style])]
-    if style == "Long":
-        objects.extend([
-            swept_panel("HairLock.L.Long", [(-.34,-.43,2.94,.18),(-.48,-.42,2.54,.22),(-.52,-.38,2.03,.23),(-.45,-.30,1.40,.18),(-.36,-.23,1.08,.025)], body),
-            swept_panel("HairLock.R.Long", [(.30,-.42,2.94,.15),(.45,-.40,2.53,.20),(.49,-.35,1.96,.22),(.42,-.26,1.38,.17),(.33,-.20,1.10,.025)], body)])
-    elif style == "Bob":
-        objects.extend([
-            swept_panel("HairCheek.L.Bob", [(-.37,-.42,2.92,.14),(-.46,-.39,2.58,.16),(-.43,-.34,2.20,.12),(-.34,-.29,2.02,.025)], body),
-            swept_panel("HairCheek.R.Bob", [(.31,-.42,2.93,.12),(.40,-.39,2.59,.14),(.38,-.34,2.23,.10),(.30,-.29,2.05,.025)], body)])
-    else:
+    if style == "Bun":
         bpy.ops.mesh.primitive_uv_sphere_add(segments=14, ring_count=8, location=(0,.48,1.80))
         bun=bpy.context.object; bun.name="HairBun.Bun"; bun.data.name=bun.name; bun.scale=(.34,.20,.21); bpy.ops.object.transform_apply(location=False, rotation=False, scale=True); bun.data.materials.append(body); smooth(bun); uv_field(bun,(.125,.56)); objects.append(bun)
-        objects.extend([
-            swept_panel("HairCheek.L.Bun", [(-.36,-.42,2.92,.13),(-.44,-.39,2.58,.14),(-.39,-.32,2.22,.10),(-.31,-.26,2.06,.025)], body),
-            swept_panel("HairCheek.R.Bun", [(.31,-.42,2.93,.11),(.39,-.39,2.60,.12),(.35,-.32,2.25,.09),(.28,-.26,2.09,.025)], body)])
     for obj in objects:
         bpy.context.collection.objects.unlink(obj); collection.objects.link(obj)
         # Keep the entire hair surface outside the smooth head, including
@@ -266,8 +264,48 @@ def hood(bodymat):
     hood=mesh("Hood",verts,faces,bodymat,(.625,.56))
     sub=hood.modifiers.new("BroadClothForm","SUBSURF"); sub.levels=1; sub.render_levels=1
     bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=sub.name)
+    # This is the lower rear opening of the raised hood.  It keeps the rounded
+    # upper shell and sewn neckline while giving the unshortened Long curtain
+    # a real cloth exit, instead of gathering that curtain at the crown.
+    hood_bm=bmesh.new(); hood_bm.from_mesh(hood.data)
+    opening=[face for face in hood_bm.faces if (
+        1.65 < face.calc_center_median().z < 2.12 and
+        face.calc_center_median().y > .05 and
+        abs(face.calc_center_median().x) < .70
+    )]
+    bmesh.ops.delete(hood_bm, geom=opening, context="FACES")
+    hood_bm.to_mesh(hood.data); hood_bm.free(); hood.data.update()
+    # Fold the retained lower rim toward the neckline. The rear hair passes
+    # behind this cloth lip, with its full length and position unchanged.
+    for vertex in hood.data.vertices:
+        weight=max(0.0, min(1.0, (1.90-vertex.co.z)/.20))
+        if vertex.co.y > .28:
+            vertex.co.y += (.28-vertex.co.y)*weight
+    for vertex in hood.data.vertices:
+        x,y,z=vertex.co
+        if y < .10 or z < 1.85:
+            weight=max(0.0, min(1.0, (abs(x)-.12)/.20))
+            weight *= max(0.0, min(1.0, (2.35-z)/.35))
+            vertex.co.y += (min(y,-.25)-y)*weight
+    hood.data.update()
+    # Round only the new opening edge; keep the neckline and dome fixed.
+    hood_bm=bmesh.new(); hood_bm.from_mesh(hood.data)
+    for vertex in hood_bm.verts:
+        if vertex.is_boundary and vertex.co.y > .32 and 1.85 < vertex.co.z < 2.40:
+            vertex.co.z=2.10+.10*(vertex.co.x/.70)**2
+    rim=[v for v in hood_bm.verts if v.is_boundary and 1.63 < v.co.z < 2.32]
+    for _ in range(3):
+        bmesh.ops.smooth_vert(hood_bm, verts=rim, factor=.35, use_axis_x=True,
+                             use_axis_y=True, use_axis_z=True)
+    hood_bm.to_mesh(hood.data); hood_bm.free(); hood.data.update()
+    # Apply shell thickness after the opening. Blender creates the rim faces
+    # here, so the passage is framed cloth rather than an uncapped face cut.
     solid=hood.modifiers.new("ClothThickness","SOLIDIFY"); solid.thickness=.05; solid.offset=-1
     bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=solid.name)
+    hood_bm=bmesh.new(); hood_bm.from_mesh(hood.data)
+    loose=[vertex for vertex in hood_bm.verts if not vertex.link_edges]
+    if loose: bmesh.ops.delete(hood_bm, geom=loose, context="VERTS")
+    hood_bm.to_mesh(hood.data); hood_bm.free(); hood.data.update()
     uv_field(hood, (.625,.56))
     hood.shape_key_add(name="Basis")
     lowered=hood.shape_key_add(name="HoodLowered")
