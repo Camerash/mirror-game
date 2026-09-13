@@ -18,14 +18,15 @@ def world_surface(obj, deps):
     return result, vertices
 
 
-def check_pose(lowered, hair):
-    bpy.data.objects["Hood"].data.shape_keys.key_blocks["HoodLowered"].value = lowered
+def check_pose(lowered, hair, hood_obj):
+    hood_obj.data.shape_keys.key_blocks["HoodLowered"].value = lowered
     for obj in hair:
         obj.data.shape_keys.key_blocks["HairTucked"].value = 1 - lowered
     bpy.context.view_layer.update()
     deps = bpy.context.evaluated_depsgraph_get()
-    hood, _ = world_surface(bpy.data.objects["Hood"], deps)
+    hood, _ = world_surface(hood_obj, deps)
     head, _ = world_surface(bpy.data.objects["Head"], deps)
+    assert not hood.overlap(head), (hood_obj.name, lowered, "Hood crosses the head")
     failures = []
     for obj in hair:
         surface, vertices = world_surface(obj, deps)
@@ -37,16 +38,23 @@ def check_pose(lowered, hair):
         if crossings or inside:
             failures.append((obj.name, crossings, inside))
     assert not failures, ("Hood lowered", lowered, failures)
-    print(f"Hood lowered={lowered}: {len(hair)} hair meshes clear of head and hood")
+    print(f"{hood_obj.name} lowered={lowered}: {len(hair)} hair meshes clear of head and hood")
 
 
-def check_hood_attachment():
-    hood = bpy.data.objects["Hood"]
+def check_hood_attachment(hood):
     group = hood.vertex_groups.get("HoodAttachment")
     assert group is not None, "Hood garment seam is missing"
     seam = [v.index for v in hood.data.vertices
             if any(g.group == group.index and g.weight > 0.5 for g in v.groups)]
     assert len(seam) >= 2, "Hood needs a sewn edge, not a single attachment point"
+    seam_x=[hood.data.vertices[i].co.x for i in seam]
+    assert min(seam_x) < -.20 and max(seam_x) > .20, "Hood seam must span both neckline sides"
+    edge_faces = {tuple(sorted(edge.vertices)): 0 for edge in hood.data.edges}
+    for face in hood.data.polygons:
+        assert face.area > 1e-8, (hood.name, "Hood has a collapsed face")
+        for a,b in face.edge_keys:
+            edge_faces[tuple(sorted((a,b)))] += 1
+    assert all(count == 2 for count in edge_faces.values()), (hood.name, "Hood shell is open or non-manifold")
     keys = hood.data.shape_keys.key_blocks
     assert all((keys["Basis"].data[i].co - keys["HoodLowered"].data[i].co).length < 0.0001
                for i in seam), "Hood garment seam moves when lowered"
@@ -62,6 +70,7 @@ def check_hood_attachment():
             visited.add(index)
             pending.extend(neighbours[index] - visited)
     assert len(visited) == len(hood.data.vertices), "Hood contains detached cloth pieces"
+    assert all(neighbours[i].intersection(seam) for i in seam), "Hood seam contains isolated contact points"
     bpy.context.view_layer.update()
     body, body_vertices = world_surface(bpy.data.objects["TravellerBody"], bpy.context.evaluated_depsgraph_get())
     neckline_height = max(point.z for point in body_vertices)
@@ -69,8 +78,8 @@ def check_hood_attachment():
                for i in seam), "Hood must join the neckline, not the lower shoulders"
     distance = max(body.find_nearest(hood.matrix_world @ keys["Basis"].data[i].co)[3]
                    for i in seam)
-    assert distance < 0.065, ("Hood seam is detached from clothing", distance)
-    print(f"Hood attachment: {len(seam)} fixed vertices, connected cloth, garment distance {distance:.4f}")
+    assert distance < 0.05, ("Hood seam is detached from clothing", distance)
+    print(f"{hood.name} attachment: {len(seam)} fixed vertices, width {max(seam_x)-min(seam_x):.3f}, closed connected cloth, garment distance {distance:.4f}")
 
 
 def group_vertices(obj, name):
@@ -154,8 +163,11 @@ if __name__ == "__main__":
         collection.hide_viewport = False
     hair = [obj for obj in bpy.data.objects if obj.type == "MESH" and obj.name.startswith("Hair")]
     assert hair, "Study hair meshes are missing"
-    for lowered in (0, 1):
-        check_pose(lowered, hair)
-    check_hood_attachment()
+    for style in ("Long", "Bob", "Bun"):
+        hood=bpy.data.objects["Hood."+style]
+        style_hair=[obj for obj in hair if obj.name.endswith("."+style)]
+        for lowered in (0,1):
+            check_pose(lowered,style_hair,hood)
+        check_hood_attachment(hood)
     check_hair_connections()
     check_long_hair_length()

@@ -246,84 +246,79 @@ def body(bodymat, skin):
     mesh("TravellerBody",verts,faces,bodymat,(.375,.56))
 
 
-def hood(bodymat):
-    # The approved rounded raised hood cage. Its low rear point meets the
-    # garment neckline; keep this external cage unchanged.
-    outline=[(0,-.32,3.37),(.30,-.35,3.30),(.56,-.40,3.08),(.68,-.32,2.78),(.76,-.22,2.42),(.77,-.12,2.06),(.65,-.10,1.76),(.36,-.23,1.60),(0,.18,1.56)]
+def hood(bodymat, style):
+    # The same crown and face opening end at two front-neck points. Build the
+    # lower opening in the cage, so its edges cannot become a separate strap.
+    outline=[(0,-.32,3.37),(.30,-.35,3.30),(.56,-.40,3.08),(.68,-.32,2.78),(.76,-.22,2.42),(.77,-.28,2.06),(.65,-.43,1.86),(.23,-.48,1.68),(.27,-.05,1.58),(0,.34,1.58)]
     outline += [(-x,y,z) for x,y,z in reversed(outline[1:-1])]
     rings=[outline]
     for depth, width, vertical in [(0.12,1.06,1.01),(.43,.97,.94),(.66,.62,.70)]:
         rings.append([(x*width, depth + .10*(1-(z-1.54)/1.78), 2.34+(z-2.34)*vertical) for x,y,z in outline])
+    for i in (5,6,7,11,12,13):
+        x,y,z=rings[1][i]
+        rings[1][i]=(x,{5:-.05,6:-.28,7:-.34,11:-.34,12:-.28,13:-.05}[i],z)
+    for i,x,y in ((8,.34,.09),(9,0,.34),(10,-.34,.09)):
+        rings[1][i]=(x,y,1.55)
+    for r,x,y,z in ((1,.79,-.12,1.98),(2,.68,.45,2.00)):
+        rings[r][5]=(x,y,z)
+        rings[r][13]=(-x,y,z)
+    for i in (7,11):
+        x,y,z=rings[1][i]
+        rings[1][i]=(x,y,1.88)
+    for i,x,y,z in ((7,.29,-.12,1.70),(8,.26,.25,1.55),(9,0,.34,1.55),
+                    (10,-.26,.25,1.55),(11,-.29,-.12,1.70)):
+        rings[2][i]=(x,y,z)
+    # Short raised hair leaves this lower area empty. Let the cloth fall to
+    # the seam there; Long needs the larger exit behind its connected locks.
+    if style != "Long":
+        for i,sign in ((7,1),(11,-1)):
+            rings[1][i]=(sign*.38,.10,1.68)
+            rings[2][i]=(sign*.37,.50,1.76)
+    for i,x,y,z in ((6,.40,.74,2.02),(7,.30,.77,1.98),(8,.15,.78,1.94),(9,0,.78,1.92),
+                    (10,-.15,.78,1.94),(11,-.30,.77,1.98),(12,-.40,.74,2.02)):
+        rings[3][i]=(x,y,z)
     n=len(outline); verts=[p for r in rings for p in r]; faces=[]
     for r in range(len(rings)-1):
         for i in range(n):
+            if (r == 0 and i in (8,9)) or (style == "Long" and r >= 1 and 5 <= i <= 12 and not (r == 1 and 7 <= i <= 10)):
+                continue
             j=(i+1)%n; faces.append((r*n+i,r*n+j,(r+1)*n+j,(r+1)*n+i))
     verts.append((0,.82,2.30))
     for i in range(n):
         faces.append(((len(rings)-1)*n+i,(len(rings)-1)*n+(i+1)%n,len(verts)-1))
-    hood=mesh("Hood",verts,faces,bodymat,(.625,.56))
-    sub=hood.modifiers.new("BroadClothForm","SUBSURF"); sub.levels=1; sub.render_levels=1
-    bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=sub.name)
-    # This is the lower rear opening of the raised hood.  It keeps the rounded
-    # upper shell and sewn neckline while giving the unshortened Long curtain
-    # a real cloth exit, instead of gathering that curtain at the crown.
-    hood_bm=bmesh.new(); hood_bm.from_mesh(hood.data)
-    opening=[face for face in hood_bm.faces if (
-        1.65 < face.calc_center_median().z < 2.12 and
-        face.calc_center_median().y > .05 and
-        abs(face.calc_center_median().x) < .70
-    )]
-    bmesh.ops.delete(hood_bm, geom=opening, context="FACES")
-    hood_bm.to_mesh(hood.data); hood_bm.free(); hood.data.update()
-    # Fold the retained lower rim toward the neckline. The rear hair passes
-    # behind this cloth lip, with its full length and position unchanged.
-    for vertex in hood.data.vertices:
-        weight=max(0.0, min(1.0, (1.90-vertex.co.z)/.20))
-        if vertex.co.y > .28:
-            vertex.co.y += (.28-vertex.co.y)*weight
-    for vertex in hood.data.vertices:
-        x,y,z=vertex.co
-        if y < .10 or z < 1.85:
-            weight=max(0.0, min(1.0, (abs(x)-.12)/.20))
-            weight *= max(0.0, min(1.0, (2.35-z)/.35))
-            vertex.co.y += (min(y,-.25)-y)*weight
-    hood.data.update()
-    # Round only the new opening edge; keep the neckline and dome fixed.
-    hood_bm=bmesh.new(); hood_bm.from_mesh(hood.data)
-    for vertex in hood_bm.verts:
-        if vertex.is_boundary and vertex.co.y > .32 and 1.85 < vertex.co.z < 2.40:
-            vertex.co.z=2.10+.10*(vertex.co.x/.70)**2
-    rim=[v for v in hood_bm.verts if v.is_boundary and 1.63 < v.co.z < 2.32]
-    for _ in range(3):
-        bmesh.ops.smooth_vert(hood_bm, verts=rim, factor=.35, use_axis_x=True,
-                             use_axis_y=True, use_axis_z=True)
-    hood_bm.to_mesh(hood.data); hood_bm.free(); hood.data.update()
-    # Apply shell thickness after the opening. Blender creates the rim faces
-    # here, so the passage is framed cloth rather than an uncapped face cut.
-    solid=hood.modifiers.new("ClothThickness","SOLIDIFY"); solid.thickness=.05; solid.offset=-1
-    bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=solid.name)
+    hood=mesh("Hood."+style,verts,faces,bodymat,(.625,.56))
+    attachment=hood.vertex_groups.new(name="HoodAttachment")
+    attachment.add([r*n+i for r in (0,1,2) for i in (8,9,10)],1.0,"REPLACE")
+    attachment_index=attachment.index
     hood_bm=bmesh.new(); hood_bm.from_mesh(hood.data)
     loose=[vertex for vertex in hood_bm.verts if not vertex.link_edges]
-    if loose: bmesh.ops.delete(hood_bm, geom=loose, context="VERTS")
+    if loose: bmesh.ops.delete(hood_bm,geom=loose,context="VERTS")
     hood_bm.to_mesh(hood.data); hood_bm.free(); hood.data.update()
-    uv_field(hood, (.625,.56))
+    sub=hood.modifiers.new("BroadClothForm","SUBSURF"); sub.levels=1; sub.render_levels=1
+    bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=sub.name)
+    # Embed the fixed sewn edge in the garment's top volume. Subdivision
+    # rounds the adjoining cloth; the seam stays fixed in both authored poses.
+    for vertex in hood.data.vertices:
+        if any(g.group == attachment_index and g.weight > .5 for g in vertex.groups):
+            vertex.co.z=1.55
+    solid=hood.modifiers.new("ClothThickness","SOLIDIFY"); solid.thickness=.05; solid.offset=-1
+    bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=solid.name)
+    uv_field(hood,(.625,.56))
     hood.shape_key_add(name="Basis")
     lowered=hood.shape_key_add(name="HoodLowered")
-    attachment=hood.vertex_groups.new(name="HoodAttachment")
-    # The applied shell gives the genuine rear neck contact a thin inner and
-    # outer pair. It is the sewn neckline, not a suspended shoulder panel.
     attachment_indices=[vertex.index for vertex in hood.data.vertices
-                        if vertex.co.z <= 1.585 and abs(vertex.co.x) < .08]
-    attachment.add(attachment_indices, 1.0, "REPLACE")
+                        if any(g.group == attachment_index and g.weight > .5 for g in vertex.groups)]
     assert len(attachment_indices) >= 2, attachment_indices
-    # Fold the same shell into a compact back collar. This leaves the Long
-    # hair vertical instead of forcing it to flare around the cloth.
-    for i, key in enumerate(lowered.data):
+    # Fold the same shell into a compact back collar without changing the hair.
+    for i,key in enumerate(lowered.data):
         x,y,z=hood.data.vertices[i].co
         if i in attachment_indices:
-            key.co = (x,y,z)
+            key.co=(x,y,z)
         else:
-            key.co = (x*.42, .12+(z-1.56)*.11+(y-.18)*.06, 1.68-(y-.18)*.18)
+            key.co=(x*.42,.12+(z-1.56)*.11+(y-.18)*.06,1.68-(y-.18)*.18)
+    collection=bpy.data.collections["Hair Style "+style]
+    bpy.context.collection.objects.unlink(hood)
+    collection.objects.link(hood)
     return hood
 
 
@@ -354,10 +349,11 @@ def triangle_count(objects):
 
 def assert_study(styles):
     meshes=[o for o in bpy.context.scene.objects if o.type=="MESH"]
-    common=[obj for obj in meshes if not obj.name.startswith("Hair")]
+    common=[obj for obj in meshes if not obj.name.startswith(("Hair","Hood"))]
     counts={style: triangle_count(common + list(collection.objects)) for style, collection in styles.items()}
     assert all(count <= 5000 for count in counts.values()), counts
-    assert bpy.data.objects["Hood"].data.shape_keys.key_blocks.get("HoodLowered")
+    assert all(bpy.data.objects["Hood."+style].data.shape_keys.key_blocks.get("HoodLowered")
+               for style in styles)
     for obj in meshes:
         if obj.name.startswith("Hair"):
             assert obj.data.shape_keys and obj.data.shape_keys.key_blocks.get("HairTucked"), obj.name
@@ -381,18 +377,24 @@ def setup_review():
 def aim(camera, location): camera.location=location; camera.rotation_euler=(Vector((0,0,2.05))-camera.location).to_track_quat("-Z","Y").to_euler()
 
 
+def set_pose(collection, lowered):
+    for obj in collection.objects:
+        keys=obj.data.shape_keys.key_blocks
+        if obj.name.startswith("Hood"):
+            keys["HoodLowered"].value=lowered
+        else:
+            keys["HairTucked"].value=1-lowered
+
+
 def renders(camera, styles):
     views={"front":(0,-7,2.15),"side":(7,0,2.15),"back":(0,7,2.15),"three-quarter":(4.8,-5.2,2.6),"elevated":(4.8,-5.2,5.2)}
     if os.environ.get("TRAVELLER_EARLY"):
         views={name: views[name] for name in ("front", "three-quarter")}
-    hoodobj=bpy.data.objects["Hood"]; hood_key=hoodobj.data.shape_keys.key_blocks["HoodLowered"]
     for style, collection in styles.items():
         for other in styles.values():
             other.hide_render = other != collection
         for pose, value in (("raised",0), ("lowered",1)):
-            hood_key.value=value
-            for obj in collection.objects:
-                obj.data.shape_keys.key_blocks["HairTucked"].value = 1 - value
+            set_pose(collection,value)
             for name, location in views.items():
                 aim(camera,location)
                 output=RENDERS / style.lower() / pose
@@ -402,11 +404,8 @@ def renders(camera, styles):
 
 
 def save_export(styles):
-    hood=bpy.data.objects["Hood"]
-    hood.data.shape_keys.key_blocks["HoodLowered"].value = 0.0
     for collection in styles.values():
-        for obj in collection.objects:
-            obj.data.shape_keys.key_blocks["HairTucked"].value = 1.0
+        set_pose(collection,0)
     for style, collection in styles.items():
         collection.hide_render = style != "Long"
         collection.hide_viewport = style != "Long"
@@ -414,17 +413,24 @@ def save_export(styles):
     # Export selections even for the comparison collections hidden in the file.
     for collection in styles.values():
         collection.hide_viewport = False
-    common=[obj for obj in bpy.context.scene.objects if obj.type=="MESH" and not obj.name.startswith("Hair")]
+    common=[obj for obj in bpy.context.scene.objects if obj.type=="MESH" and not obj.name.startswith(("Hair","Hood"))]
     for style, collection in styles.items():
         bpy.ops.object.select_all(action="DESELECT")
         for obj in common + list(collection.objects): obj.select_set(True)
-        bpy.ops.export_scene.gltf(filepath=str(GLBS[style]), export_format="GLB", use_selection=True, export_yup=True, export_image_format="AUTO")
+        hoodobj=bpy.data.objects["Hood."+style]
+        name=hoodobj.name
+        try:
+            hoodobj.name="Hood"
+            bpy.ops.export_scene.gltf(filepath=str(GLBS[style]), export_format="GLB", use_selection=True, export_yup=True, export_image_format="AUTO")
+        finally:
+            hoodobj.name=name
 
 
 if __name__ == "__main__":
     if not bpy.app.background:
         raise RuntimeError("Use a separate background Blender process with factory startup.")
-    clean(); skin, bodymat=atlas_materials(); head(skin); body(bodymat,skin); hood(bodymat)
+    clean(); skin, bodymat=atlas_materials(); head(skin); body(bodymat,skin)
     styles={style: style_hair(style, bodymat) for style in ("Long", "Bob", "Bun")}
     fit_lowered_hair()
+    for style in styles: hood(bodymat,style)
     assert_study(styles); cam=setup_review(); renders(cam, styles); save_export(styles)
