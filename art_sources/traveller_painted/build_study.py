@@ -111,16 +111,30 @@ def swept_panel(name, points, material):
 def add_hair_tuck(obj):
     obj.shape_key_add(name="Basis")
     tucked=obj.shape_key_add(name="HairTucked")
+    inverse=obj.matrix_world.inverted()
     for vertex, key in zip(obj.data.vertices, tucked.data):
-        x,y,z=vertex.co
-        # Keep the rear tail and fringe natural. Only front locks ease inward
-        # where their upper shoulders pass the cloth rim.
+        x,y,z=obj.matrix_world @ vertex.co
+        if obj.name.startswith("HairCap") and (y > -.12 or (obj.name.endswith(".Long") and z < 2.50)):
+            # The raised hood covers the rear cap. Gather that covered hair
+            # near the crown; leave the open front hairline unchanged.
+            z=2.66+(z-2.66)*.16
+            y=-.03+(y+.03)*.32
+        elif obj.name.startswith("HairBun"):
+            # A compact raised bun stays inside the rounded shell.
+            x *= .45
+            y = .44+(y-.48)*.30
+            z = 2.64+(z-1.80)*.25
+        # Front locks ease inward where their upper shoulders pass the rim.
         if obj.name.startswith("HairLock"):
             blend=max(0,min(1,(z-1.08)/1.85))
             x_limit=.34+.16*blend
-            key.co=(max(-x_limit,min(x_limit,x)), y, z)
+            key.co=inverse @ Vector((max(-x_limit,min(x_limit,x)), y, z))
         else:
-            key.co=(x,y,z)
+            radial=Vector((x/.56, y/.49, (z-2.48)/.68))
+            if radial.length < 1.058:
+                radial *= 1.058/radial.length
+                x,y,z=radial.x*.56,radial.y*.49,2.48+radial.z*.68
+            key.co=inverse @ Vector((x,y,z))
     tucked.value=1.0
 
 
@@ -253,8 +267,8 @@ def body(bodymat, skin):
 
 
 def hood(bodymat):
-    # The approved raised hood cage, copied from the earlier study before the
-    # shape key is made. Its central neck point is behind the visible neck.
+    # The approved rounded raised hood cage. Its low rear point meets the
+    # garment neckline; keep this external cage unchanged.
     outline=[(0,-.32,3.37),(.30,-.35,3.30),(.56,-.40,3.08),(.68,-.32,2.78),(.76,-.22,2.42),(.77,-.12,2.06),(.65,-.10,1.76),(.36,-.23,1.60),(0,.18,1.56)]
     outline += [(-x,y,z) for x,y,z in reversed(outline[1:-1])]
     rings=[outline]
@@ -270,49 +284,48 @@ def hood(bodymat):
     hood=mesh("Hood",verts,faces,bodymat,(.625,.56))
     sub=hood.modifiers.new("BroadClothForm","SUBSURF"); sub.levels=1; sub.render_levels=1
     bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=sub.name)
-    # Cut the rear opening, then extend its side rim chains down to the
-    # shoulder. The centre rear stays open for the long tail and bun.
-    bm=bmesh.new(); bm.from_mesh(hood.data)
-    bmesh.ops.bisect_plane(bm, geom=list(bm.verts)+list(bm.edges)+list(bm.faces),
-                          plane_co=(0,0,1.92), plane_no=(0,0,1), clear_inner=True)
-    side_edges=[edge for edge in bm.edges if edge.is_boundary
-                and all(abs(vertex.co.z-1.92) < .001 for vertex in edge.verts)
-                and abs(sum(vertex.co.x for vertex in edge.verts)/2) > .55]
-    lower_vertices={}
-    for edge in side_edges:
-        upper=list(edge.verts)
-        for vertex in upper:
-            if vertex not in lower_vertices:
-                angle=math.atan2((vertex.co.y-.11)/.38, vertex.co.x/.78)
-                lower_vertices[vertex]=bm.verts.new((.78*math.cos(angle), .11+.38*math.sin(angle), 1.25))
-        face=bm.faces.new((upper[0],upper[1],lower_vertices[upper[1]],lower_vertices[upper[0]]))
-        face.smooth=True
-    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
-    bm.to_mesh(hood.data); bm.free()
     solid=hood.modifiers.new("ClothThickness","SOLIDIFY"); solid.thickness=.05; solid.offset=-1
     bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=solid.name)
     uv_field(hood, (.625,.56))
     hood.shape_key_add(name="Basis")
     lowered=hood.shape_key_add(name="HoodLowered")
     attachment=hood.vertex_groups.new(name="HoodAttachment")
-    attachment_indices=[]
-    for vertex in hood.data.vertices:
-        x,y,z=vertex.co
-        # The lower side hems sit on the garment shoulder. These
-        # authoring vertices stay fixed in both endpoint poses.
-        if z < 1.30:
-            attachment_indices.append(vertex.index)
+    # The applied shell gives the genuine rear neck contact a thin inner and
+    # outer pair. It is the sewn neckline, not a suspended shoulder panel.
+    attachment_indices=[vertex.index for vertex in hood.data.vertices
+                        if vertex.co.z <= 1.585 and abs(vertex.co.x) < .08]
     attachment.add(attachment_indices, 1.0, "REPLACE")
-    # Fold the same hood shell behind the neck so it rests on the shoulder top.
+    assert len(attachment_indices) >= 2, attachment_indices
+    # Fold the same shell behind the neck. The sewn neckline remains fixed.
     for i, key in enumerate(lowered.data):
         x,y,z=hood.data.vertices[i].co
-        # Turn the opening upward and fold its length onto the back collar.
-        # The positive determinant keeps the shell's inside/outside unchanged.
         if i in attachment_indices:
             key.co = (x,y,z)
         else:
-            key.co = (x*.90, .54+(z-1.56)*.26, 1.52-(y-.18)*.28)
+            key.co = (x*.80, .18+(z-1.56)*.30+(y-.18)*.15, 1.56-(y-.18)*.30)
     return hood
+
+
+def fit_lowered_hair():
+    """Lay rear hair over the folded collar with one broad, smooth bend."""
+    for name in ("HairCap.Long", "HairBun.Bun"):
+        obj=bpy.data.objects[name]
+        inverse=obj.matrix_world.inverted()
+        basis=obj.data.shape_keys.key_blocks["Basis"]
+        for vertex, key in zip(obj.data.vertices, basis.data):
+            point=obj.matrix_world @ vertex.co
+            if name == "HairCap.Long":
+                weight=max(0.0, min(1.0, (2.80-point.z)/1.40))
+                weight=weight*weight*(3.0-2.0*weight)
+                rear=max(0.0, min(1.0, (point.y+.12)/.30))
+                point.x *= 1.0+.48*weight*rear
+                point.y += .49*weight*rear
+            else:
+                point.y += .12
+                point.z += .13
+            vertex.co=inverse @ point
+            key.co=vertex.co
+        obj.data.update()
 
 
 def triangle_count(objects):
@@ -393,4 +406,5 @@ if __name__ == "__main__":
         raise RuntimeError("Use a separate background Blender process with factory startup.")
     clean(); skin, bodymat=atlas_materials(); head(skin); body(bodymat,skin); hood(bodymat)
     styles={style: style_hair(style, bodymat) for style in ("Long", "Bob", "Bun")}
+    fit_lowered_hair()
     assert_study(styles); cam=setup_review(); renders(cam, styles); save_export(styles)

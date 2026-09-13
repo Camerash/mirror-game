@@ -62,7 +62,10 @@ def check_hood_attachment():
             pending.extend(neighbours[index] - visited)
     assert len(visited) == len(hood.data.vertices), "Hood contains detached cloth pieces"
     bpy.context.view_layer.update()
-    body, _ = world_surface(bpy.data.objects["TravellerBody"], bpy.context.evaluated_depsgraph_get())
+    body, body_vertices = world_surface(bpy.data.objects["TravellerBody"], bpy.context.evaluated_depsgraph_get())
+    neckline_height = max(point.z for point in body_vertices)
+    assert all((hood.matrix_world @ keys["Basis"].data[i].co).z >= neckline_height - 0.12
+               for i in seam), "Hood must join the neckline, not the lower shoulders"
     distance = max(body.find_nearest(hood.matrix_world @ keys["Basis"].data[i].co)[3]
                    for i in seam)
     assert distance < 0.065, ("Hood seam is detached from clothing", distance)
