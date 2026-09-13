@@ -39,6 +39,36 @@ def check_pose(lowered, hair):
     print(f"Hood lowered={lowered}: {len(hair)} hair meshes clear of head and hood")
 
 
+def check_hood_attachment():
+    hood = bpy.data.objects["Hood"]
+    group = hood.vertex_groups.get("HoodAttachment")
+    assert group is not None, "Hood garment seam is missing"
+    seam = [v.index for v in hood.data.vertices
+            if any(g.group == group.index and g.weight > 0.5 for g in v.groups)]
+    assert len(seam) >= 2, "Hood needs a sewn edge, not a single attachment point"
+    keys = hood.data.shape_keys.key_blocks
+    assert all((keys["Basis"].data[i].co - keys["HoodLowered"].data[i].co).length < 0.0001
+               for i in seam), "Hood garment seam moves when lowered"
+    neighbours = [set() for _ in hood.data.vertices]
+    for edge in hood.data.edges:
+        a, b = edge.vertices
+        neighbours[a].add(b)
+        neighbours[b].add(a)
+    visited, pending = set(), [seam[0]]
+    while pending:
+        index = pending.pop()
+        if index not in visited:
+            visited.add(index)
+            pending.extend(neighbours[index] - visited)
+    assert len(visited) == len(hood.data.vertices), "Hood contains detached cloth pieces"
+    bpy.context.view_layer.update()
+    body, _ = world_surface(bpy.data.objects["TravellerBody"], bpy.context.evaluated_depsgraph_get())
+    distance = max(body.find_nearest(hood.matrix_world @ keys["Basis"].data[i].co)[3]
+                   for i in seam)
+    assert distance < 0.065, ("Hood seam is detached from clothing", distance)
+    print(f"Hood attachment: {len(seam)} fixed vertices, connected cloth, garment distance {distance:.4f}")
+
+
 if __name__ == "__main__":
     if not bpy.app.background:
         raise RuntimeError("Run clearance checks in a separate background Blender process.")
@@ -48,3 +78,4 @@ if __name__ == "__main__":
     assert hair, "Study hair meshes are missing"
     for lowered in (0, 1):
         check_pose(lowered, hair)
+    check_hood_attachment()

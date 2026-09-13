@@ -250,10 +250,6 @@ def body(bodymat, skin):
             j=(i+1)%n; faces.append((r*n+i,r*n+j,(r+1)*n+j,(r+1)*n+i))
     faces.append(tuple(range(n-1,-1,-1))); faces.append(tuple(2*n+i for i in range(n)))
     mesh("TravellerBody",verts,faces,bodymat,(.375,.56))
-    # A low rear collar joins the hood seat to the shoulder mass in both poses.
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, location=(0, .34, 1.38))
-    seat = bpy.context.object; seat.name = "HoodSeat"; seat.scale = (.74, .18, .17)
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True); seat.data.materials.append(bodymat); smooth(seat); uv_field(seat, (.625,.56))
 
 
 def hood(bodymat):
@@ -274,26 +270,48 @@ def hood(bodymat):
     hood=mesh("Hood",verts,faces,bodymat,(.625,.56))
     sub=hood.modifiers.new("BroadClothForm","SUBSURF"); sub.levels=1; sub.render_levels=1
     bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=sub.name)
-    # The hood needs a real lower opening for neck and rear hair. Cut the
-    # cloth surface before adding thickness, which closes only its thin rim.
+    # Cut the rear opening, then extend its side rim chains down to the
+    # shoulder. The centre rear stays open for the long tail and bun.
     bm=bmesh.new(); bm.from_mesh(hood.data)
     bmesh.ops.bisect_plane(bm, geom=list(bm.verts)+list(bm.edges)+list(bm.faces),
                           plane_co=(0,0,1.92), plane_no=(0,0,1), clear_inner=True)
+    side_edges=[edge for edge in bm.edges if edge.is_boundary
+                and all(abs(vertex.co.z-1.92) < .001 for vertex in edge.verts)
+                and abs(sum(vertex.co.x for vertex in edge.verts)/2) > .55]
+    lower_vertices={}
+    for edge in side_edges:
+        upper=list(edge.verts)
+        for vertex in upper:
+            if vertex not in lower_vertices:
+                angle=math.atan2((vertex.co.y-.11)/.38, vertex.co.x/.78)
+                lower_vertices[vertex]=bm.verts.new((.78*math.cos(angle), .11+.38*math.sin(angle), 1.25))
+        face=bm.faces.new((upper[0],upper[1],lower_vertices[upper[1]],lower_vertices[upper[0]]))
+        face.smooth=True
     bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
-    for edge in bm.edges:
-        if edge.is_boundary:
-            edge.smooth = False
     bm.to_mesh(hood.data); bm.free()
     solid=hood.modifiers.new("ClothThickness","SOLIDIFY"); solid.thickness=.05; solid.offset=-1
     bpy.context.view_layer.objects.active=hood; bpy.ops.object.modifier_apply(modifier=solid.name)
+    uv_field(hood, (.625,.56))
     hood.shape_key_add(name="Basis")
     lowered=hood.shape_key_add(name="HoodLowered")
+    attachment=hood.vertex_groups.new(name="HoodAttachment")
+    attachment_indices=[]
+    for vertex in hood.data.vertices:
+        x,y,z=vertex.co
+        # The lower side hems sit on the garment shoulder. These
+        # authoring vertices stay fixed in both endpoint poses.
+        if z < 1.30:
+            attachment_indices.append(vertex.index)
+    attachment.add(attachment_indices, 1.0, "REPLACE")
     # Fold the same hood shell behind the neck so it rests on the shoulder top.
     for i, key in enumerate(lowered.data):
         x,y,z=hood.data.vertices[i].co
         # Turn the opening upward and fold its length onto the back collar.
         # The positive determinant keeps the shell's inside/outside unchanged.
-        key.co = (x*.73, .42+(z-1.56)*.26, 1.52-(y-.18)*.28)
+        if i in attachment_indices:
+            key.co = (x,y,z)
+        else:
+            key.co = (x*.90, .54+(z-1.56)*.26, 1.52-(y-.18)*.28)
     return hood
 
 
