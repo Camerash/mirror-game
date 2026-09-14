@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://art_trial/animated_traveller_study.gd" id="1"]
+
+[node name="AnimatedTravellerStudy" type="Node3D"]
+script = ExtResource("1")
+model_path = "res://assets/studies/traveller_animated.glb"
+face_material_name = "TravellerDrawingFace"
+hood_mesh_name = "Garment"
+arm_controls_enabled = false

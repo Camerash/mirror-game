@@ -1,0 +1,45 @@
+{
+  "sample_rate_hz": 120,
+  "samples_per_clip": 241,
+  "clips": {
+    "HoodDown": {
+      "failures": [],
+      "fixed_geometry_max_error": 0,
+      "bone_scale_max_error": 0,
+      "rim_midpoint_to_skin_distance": [
+        0.025906816124916077,
+        0.026295093819499016
+      ]
+    },
+    "HoodUp": {
+      "failures": [],
+      "fixed_geometry_max_error": 0,
+      "bone_scale_max_error": 0,
+      "rim_midpoint_to_skin_distance": [
+        0.02590329758822918,
+        0.026996683329343796
+      ]
+    }
+  },
+  "triangles": {
+    "Head": 624,
+    "Hair": 964,
+    "Body": 1344,
+    "Boots": 424,
+    "Garment": 3332
+  },
+  "total_triangles": 6688,
+  "max_bone_influences": 2,
+  "garment_modifiers": [],
+  "bones": 24,
+  "rigid_attachments": {
+    "Head": "Head",
+    "Hair": "Head",
+    "Garment": "Chest"
+  },
+  "foot_groups": [
+    "Foot.L",
+    "Foot.R"
+  ],
+  "passed": true
+}
