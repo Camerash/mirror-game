@@ -15,7 +15,7 @@ This is the current design record. Agreed rules are separate from later mileston
 ## Technical baseline
 
 - Godot **4.7.2 stable**, typed GDScript, Mobile renderer on all platforms, with Metal on Apple platforms and no Compatibility fallback.
-- Procedural 3D geometry is the current prototype approach. Blender assets come later.
+- Procedural 3D geometry remains available for prototypes. Character studies use editable Blender assets. All agents must follow the Blender workflow in `AGENTS.md`: edit the approved source in a persistent session, use Blender Lab inspection tools first, make small native edits or focused scripts, and review key poses before completing animation. Keep scripts for export and validation; do not rebuild the whole character for local visual corrections.
 - Level data is JSON and separate from scenes.
 - Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The world fills the window. Gameplay uses direct gestures and small contextual actions; diagnostic controls stay in the gear panel.
 - The orthographic camera uses four views at 45°, 135°, 225°, and 315°, with 30° downward elevation. Empty-space swipes turn it in quarter steps on mobile; dim curved buttons and Q/E do this on desktop. Each view change blends camera angle, scale, and framing about one fixed pivot for 0.4 seconds. A transient crop at the outer edge is accepted. Rotate-ring fitting runs when Rotate opens, after resize, and after a camera-view change; the camera stays fixed during a rotation gesture. Window resizing cancels the active gesture and starts one blended framing update.
