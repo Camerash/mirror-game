@@ -1,5 +1,5 @@
 extends SceneTree
-## Focused checks for the raised draft; the folded garment is unresolved.
+## Focused checks for the two authored static hood endpoints.
 
 const Study := preload("res://art_trial/drawing_traveller_study.tscn")
 var checks := 0
@@ -21,16 +21,16 @@ func run() -> void:
 	var study := Study.instantiate()
 	root.add_child(study)
 	check(study.face_material != null, "The drawing face has a local material")
-	check(study.hood != null, "The raised garment draft is available")
-	if study.face_material != null and study.hood != null:
+	check(study.hood != null and study.hood_shape >= 0, "Both authored hood endpoints are available")
+	if study.face_material != null and study.hood != null and study.hood_shape >= 0:
 		check_asset(study)
-		check_raised_draft(study)
+		check_poses(study)
 		check_expressions(study)
 		check_controls(study)
 		check_isolation(study)
 		check_reset(study)
 	study.free()
-	print("Drawing raised draft: %d checks, %d failures" % [checks, failures])
+	print("Drawing static poses: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
 
@@ -72,23 +72,39 @@ func check_asset(study: Node) -> void:
 	print("Drawing asset: %d triangles, %d materials, %d textures" % [triangles, materials.size(), textures.size()])
 
 
-func check_raised_draft(study: Node) -> void:
+func check_poses(study: Node) -> void:
 	var camera_transform: Transform3D = study.camera.transform
 	var camera_size: float = study.camera.size
 	var bounds: AABB = study.bounds
-	check(study.hood.name == "Garment", "Garment is the raised draft mesh")
-	check(study.hood_shape == -1, "The raised draft has no hood-down endpoint")
+	check(study.model.find_children("*", "Skeleton3D").is_empty(), "The static export does not double-deform the baked hood")
 	for mesh: MeshInstance3D in study.meshes:
-		check(mesh.mesh.get_blend_shape_count() == 0, "%s has no draft deformation keys" % mesh.name)
+		var expected_shapes := 1 if mesh == study.hood else 0
+		check(mesh.mesh.get_blend_shape_count() == expected_shapes, "%s has only the agreed endpoint shape" % mesh.name)
 		for surface: int in mesh.mesh.get_surface_count():
-			var vertices: PackedVector3Array = mesh.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
+			var base: PackedVector3Array = mesh.mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]
 			var contains_vertices := true
-			for point: Vector3 in vertices:
+			for point: Vector3 in base:
 				contains_vertices = contains_vertices and bounds.grow(0.0001).has_point(mesh.global_transform * point)
-			check(contains_vertices, "Drawing camera bounds include the raised draft")
-	study.set_hood_lowered(true)
-	check(not study.hood_lowered, "The disabled hood action keeps the raised draft")
-	check(study.bounds == bounds and study.camera.transform == camera_transform and study.camera.size == camera_size, "The disabled hood action preserves the camera fit")
+			check(contains_vertices, "Camera bounds contain the raised pose")
+			if mesh != study.hood:
+				continue
+			var shape: PackedVector3Array = mesh.mesh.surface_get_blend_shape_arrays(surface)[study.hood_shape][Mesh.ARRAY_VERTEX]
+			check(base.size() == shape.size(), "Hood endpoints share vertex topology")
+			var maximum_shift := 0.0
+			for index: int in shape.size():
+				var point := shape[index]
+				if mesh.mesh.blend_shape_mode == Mesh.BLEND_SHAPE_MODE_RELATIVE:
+					point += base[index]
+				maximum_shift = maxf(maximum_shift, point.distance_to(base[index]))
+				contains_vertices = contains_vertices and bounds.grow(0.0001).has_point(mesh.global_transform * point)
+			check(maximum_shift > 0.1, "The exported folded hood is a distinct pose")
+			check(contains_vertices, "Camera bounds contain the folded pose")
+	study.set_expression(3)
+	for lowered: bool in [true, false, true]:
+		study.set_hood_lowered(lowered)
+		check(study.hood.get_blend_shape_value(study.hood_shape) == float(lowered), "Hood selection applies an exact endpoint")
+		check(study.expression == 3, "Hood selection preserves the expression")
+		check(study.bounds == bounds and study.camera.transform == camera_transform and study.camera.size == camera_size, "Hood selection preserves the common camera fit")
 
 
 func check_expressions(study: Node) -> void:
@@ -107,9 +123,9 @@ func check_expressions(study: Node) -> void:
 
 func check_controls(study: Node) -> void:
 	check(not study.arm_controls_enabled and study.reach_button == null, "Drawing review omits the arm control")
-	check(not study.hood_controls_enabled and study.hood_button == null, "The raised draft omits the hood control")
+	check(study.hood_controls_enabled and study.hood_button != null, "Both static hood poses can be selected")
 	var notice := study.get_node("DraftNotice/Label") as Label
-	check(notice.text == "Raised shape draft — hood-down is unresolved." and notice.is_visible_in_tree(), "The raised draft shows its unresolved status")
+	check(notice.text == "Static hood poses — animation is not yet implemented." and notice.is_visible_in_tree(), "The study clearly identifies the static review")
 	study.controls.hide()
 	check(notice.is_visible_in_tree(), "The draft status stays visible when controls are hidden")
 	study.controls.show()
@@ -118,9 +134,10 @@ func check_controls(study: Node) -> void:
 	key.keycode = KEY_A
 	study._unhandled_input(key)
 	check(not study.arms_reaching, "The arm shortcut is disabled for the drawing study")
+	study.set_hood_lowered(false)
 	key.keycode = KEY_U
 	study._unhandled_input(key)
-	check(not study.hood_lowered, "The hood shortcut is disabled for the raised draft")
+	check(study.hood_lowered, "The hood shortcut selects the folded endpoint")
 	key.keycode = KEY_SPACE
 	study._unhandled_input(key)
 	check(not study.turntable, "Space cannot start a drawing turntable")
@@ -137,6 +154,8 @@ func check_isolation(study: Node) -> void:
 	root.add_child(second)
 	check(study.face_material != second.face_material, "Drawing expression material belongs to each study")
 	study.set_expression(3)
+	study.set_hood_lowered(true)
+	check(second.hood.get_blend_shape_value(second.hood_shape) == 0.0, "Hood selection is local to each study")
 	check(second.face_material.uv1_offset == Vector3.ZERO, "Drawing expression changes do not affect another study")
 	for mesh: MeshInstance3D in study.meshes:
 		for surface: int in mesh.mesh.get_surface_count():
@@ -156,5 +175,5 @@ func check_reset(study: Node) -> void:
 	study.controls.hide()
 	study.reset_study()
 	check(study.expression == 0 and study.face_material.uv1_offset == Vector3.ZERO, "Reset restores the neutral drawing expression")
-	check(not study.hood_lowered and study.hood_shape == -1, "Reset keeps the raised draft without a hood-down endpoint")
+	check(not study.hood_lowered and study.hood.get_blend_shape_value(study.hood_shape) == 0.0, "Reset restores the raised hood")
 	check(not study.small_view and study.view_index == 3 and not study.grey and not study.ceramic_light and study.controls.visible, "Reset restores the drawing review settings")

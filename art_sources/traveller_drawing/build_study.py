@@ -12,11 +12,12 @@ import bpy
 import bmesh
 import numpy as np
 from mathutils import Vector
+from mathutils.bvhtree import BVHTree
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 EVIDENCE = ROOT / "docs/art/traveller-drawing-02"
-BLEND = HERE / "traveller_drawing.blend"
+BLEND = Path(os.environ.get("TRAVELLER_BLEND", HERE / "traveller_drawing.blend"))
 ATLAS = HERE / "traveller_drawing_atlas.png"
 GLB = ROOT / "assets/studies/traveller_drawing.glb"
 CLOTH_UV = (.625, .56)
@@ -78,11 +79,11 @@ def profile(points, value):
 def hood_surface():
     # Each rib gives crown Y/Z, side width, and the two neckline endpoints.
     ribs = ((-.49, 3.08, .57, -.34, .17, 2.15),
-            (-.31, 3.32, .96, -.20, .30, 2.10),
-            (.00, 3.36, 1.16, -.04, .37, 2.10),
-            (.30, 3.27, 1.16, .10, .38, 2.10),
-            (.51, 3.07, 1.12, .22, .35, 2.10),
-            (.64, 2.70, 1.02, .30, .30, 2.08),
+            (-.31, 3.27, .76, -.20, .30, 2.10),
+            (.00, 3.31, .86, -.04, .37, 2.10),
+            (.30, 3.23, .87, .10, .38, 2.10),
+            (.51, 3.05, .91, .22, .35, 2.10),
+            (.64, 2.70, .92, .30, .30, 2.08),
             (.74, 2.33, .67, .36, .25, 2.06),
             (.71, 2.04, .40, .395, .18, 2.03),
             (.45, 1.98, .12, .42, .12, 2.01))
@@ -93,7 +94,7 @@ def hood_surface():
         for column in range(columns):
             angle = -math.pi/2+math.pi*column/(columns-1)
             c, s = math.cos(angle), math.sin(angle)
-            vertices.append((s*(side_x+(width-side_x)*c), side_y+(y-side_y)*c,
+            vertices.append((s*(side_x+(width-side_x)*c**.72), side_y+(y-side_y)*c,
                              side_z+(z-side_z)*c))
     for row in range(rows-1):
         for column in range(columns-1):
@@ -103,6 +104,40 @@ def hood_surface():
     seam += [(rows-1)*columns+column for column in range(1, columns)]
     seam += [row*columns+columns-1 for row in range(rows-2, -1, -1)]
     return vertices, faces, seam
+
+
+def lowered_hood(raised, faces, seam, hood_faces):
+    """Place one broad hood drape on the cape, with a softly turned free rim.
+
+    The rows form nested curves in the cape's angle/height chart. This makes
+    the artist-authored return continuous; there is no physical fold solver.
+    The seam is shared and the entire lower cloak remains fixed.
+    """
+    cape = BVHTree.FromPolygons([Vector(p) for p in raised], faces[hood_faces:])
+    points = []
+    for row in range(17):
+        t = row/16
+        side = Vector(raised[row*21])
+        side_angle = math.atan2(-side.x, -(side.y+.04))
+        middle_z = 1.30+.68*t**.8
+        for column in range(21):
+            angle = -math.pi/2+math.pi*column/20
+            c, sine = math.cos(angle), math.sin(angle)
+            around = math.pi+math.copysign(abs(sine)**1.8, sine)*(math.pi-side_angle)
+            z = side.z+(middle_z-side.z)*c
+            direction = Vector((-math.sin(around), -math.cos(around), 0))
+            origin = Vector((0, -.04, z))
+            hit = cape.ray_cast(origin, direction, 2)[0]
+            assert hit is not None or row == 16 or column in (0, 20), "Hood drape misses cape"
+            gap = (.045+.018*math.sin(math.pi*min(row/3, 1)))*(1-t**8)*c**.6
+            # The broad collar turn keeps the inward lining clear of the cape.
+            seam_step = min(column, 20-column, 16-row)
+            if seam_step > 0:
+                gap += .075*math.exp(-.5*(seam_step-1)**2)
+            points.append(tuple(hit+direction*gap) if hit else raised[row*21+column])
+    for index in seam:
+        points[index] = raised[index]
+    return points
 
 
 def cloak_surface(vertices, faces, seam):
@@ -168,11 +203,31 @@ def garment(material):
     obj["single_surface_vertices"] = len(vertices)
     obj["neckline_indices"] = seam
     obj["hem_indices"] = hem
-    obj["stage"] = "Raised drawing draft only. The lowered hood failed its shape and strain checks."
-    obj["lowered_pose_available"] = False
+    # Semantic regions survive revisions without hard-coded clasp offsets.
+    regions = {
+        "HoodSurface": list(range(hood_count)),
+        "MovingCollar": seam + list(range(hood_count, hood_count+len(seam))),
+        "Clasp": sorted({i for face in clasp_faces for i in faces[face]}),
+        "FixedCloak": list(range(hood_count, len(vertices))),
+    }
+    for name, indices in regions.items():
+        obj.vertex_groups.new(name=name).add(indices, 1, "REPLACE")
+    obj["hood_face_indices"] = list(range(hood_faces))
+    obj["collar_face_indices"] = list(range(hood_faces, hood_faces+2*(len(seam)-1)))
+    obj["stage"] = "Authored static hood endpoints; appearance and clearance gate."
+    obj["cloth_metric_rule"] = "Area and edge strain are diagnostics, not acceptance gates."
+    obj["lowered_pose_available"] = True
+    obj.shape_key_add(name="Basis")
+    lowered = obj.shape_key_add(name="HoodLowered")
+    for vertex, point in zip(lowered.data, lowered_hood(vertices, faces, seam, hood_faces)):
+        vertex.co = point
     solid = obj.modifiers.new("Cloth thickness", "SOLIDIFY")
     solid.thickness = .018
     solid.offset = -1
+    solid.use_quality_normals = True
+    solid.use_even_offset = True
+    triangulate = obj.modifiers.new("Fixed shell triangles", "TRIANGULATE")
+    triangulate.quad_method = "FIXED"
     return obj
 
 
@@ -194,18 +249,62 @@ def setup_review():
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.world.color = (.055, .065, .08)
+    camera.location = (4.8, -5.2, 2.7)
+    camera.rotation_euler = (Vector((0, 0, 1.68))-camera.location).to_track_quat("-Z", "Y").to_euler()
     return camera
 
 
 def render_draft(camera):
-    for name, location in (("front", (0, -7, 1.7)), ("side", (7, 0, 1.7)),
-                           ("three-quarter", (4.8, -5.2, 2.7)), ("back", (0, 7, 1.7))):
-        camera.location = location
-        camera.rotation_euler = (Vector((0, 0, 1.68))-camera.location).to_track_quat("-Z", "Y").to_euler()
-        folder = EVIDENCE / "raised-draft"
-        folder.mkdir(parents=True, exist_ok=True)
-        bpy.context.scene.render.filepath = str(folder/(name+".png"))
-        bpy.ops.render.render(write_still=True)
+    key = bpy.data.objects["Garment"].data.shape_keys.key_blocks["HoodLowered"]
+    folder = EVIDENCE / "authored-shapes"
+    folder.mkdir(parents=True, exist_ok=True)
+    for pose, value in (("raised", 0), ("lowered", 1)):
+        key.value = value
+        bpy.context.view_layer.update()
+        for name, location in (("front", (0, -7, 1.7)), ("side", (7, 0, 1.7)),
+                               ("three-quarter", (4.8, -5.2, 2.7)), ("back", (0, 7, 1.7))):
+            camera.location = location
+            camera.rotation_euler = (Vector((0, 0, 1.68))-camera.location).to_track_quat("-Z", "Y").to_euler()
+            bpy.context.scene.render.filepath = str(folder/(pose+"-"+name+".png"))
+            bpy.ops.render.render(write_still=True)
+    key.value = 0
+    bpy.context.view_layer.update()
+
+
+def export_static(parts, cloth, root):
+    """Bake the lining and fixed triangles into both morph endpoints once."""
+    key = cloth.data.shape_keys.key_blocks["HoodLowered"]
+    dependency_graph = bpy.context.evaluated_depsgraph_get()
+    key.value = 0
+    bpy.context.view_layer.update()
+    data = bpy.data.meshes.new_from_object(cloth.evaluated_get(dependency_graph),
+               preserve_all_data_layers=True, depsgraph=dependency_graph)
+    key.value = 1
+    bpy.context.view_layer.update()
+    lowered = cloth.evaluated_get(dependency_graph).data
+    assert len(data.vertices) == len(lowered.vertices), "Shell vertex order changed"
+    assert [tuple(p.vertices) for p in data.polygons] == [tuple(p.vertices) for p in lowered.polygons], "Shell triangles changed"
+    lowered_points = [v.co.copy() for v in lowered.vertices]
+    key.value = 0
+    bpy.context.view_layer.update()
+    cloth.name = "GarmentAuthoring"
+    baked = bpy.data.objects.new("Garment", data)
+    bpy.context.collection.objects.link(baked)
+    baked.parent = root
+    baked.shape_key_add(name="Basis")
+    lowered_key = baked.shape_key_add(name="HoodLowered")
+    for vertex, point in zip(lowered_key.data, lowered_points):
+        vertex.co = point
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in parts+[baked, root]:
+        obj.select_set(True)
+    GLB.parent.mkdir(parents=True, exist_ok=True)
+    bpy.ops.export_scene.gltf(filepath=str(GLB), export_format="GLB", use_selection=True,
+                             export_apply=False, export_animations=False, export_extras=True)
+    bpy.data.objects.remove(baked, do_unlink=True)
+    bpy.data.meshes.remove(data)
+    cloth.name = "Garment"
+    shutil.copyfile(ATLAS, GLB.with_name("traveller_drawing_atlas.png"))
 
 
 def main():
@@ -219,13 +318,10 @@ def main():
         obj.parent = root
     camera = setup_review()
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND))
-    bpy.ops.object.select_all(action="DESELECT")
-    for obj in parts+[cloth, root]:
-        obj.select_set(True)
-    GLB.parent.mkdir(parents=True, exist_ok=True)
-    bpy.ops.export_scene.gltf(filepath=str(GLB), export_format="GLB", use_selection=True,
-                              export_apply=True, export_animations=False, export_extras=True)
-    shutil.copyfile(ATLAS, GLB.with_name("traveller_drawing_atlas.png"))
+    if not os.environ.get("TRAVELLER_PREVIEW"):
+        import runpy
+        runpy.run_path(str(HERE/"check_static.py"), run_name="__main__")
+        export_static(parts, cloth, root)
     if not os.environ.get("TRAVELLER_NO_RENDER"):
         render_draft(camera)
 

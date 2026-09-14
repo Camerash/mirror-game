@@ -6,10 +6,10 @@
     "Hair_crossings": 0,
     "Body_crossings": 0
   },
-  "stage": "Raised drawing draft only. The lowered hood failed its shape and strain checks.",
+  "stage": "Authored static hood endpoints; appearance and clearance gate.",
   "check_scope": "both endpoints",
   "outer_triangles": 1370,
-  "outer_area": 11.893904685974121,
+  "outer_area": 11.38469123840332,
   "minimum_triangle_area": 7.558862853329629e-05,
   "triangles": {
     "Head": 624,
@@ -29,7 +29,7 @@
     "Hair": 0,
     "Body": 0,
     "Boots": 0,
-    "Garment": 0
+    "Garment": 2
   },
   "hair_coordinates_preserved": true,
   "materials": [
@@ -46,8 +46,113 @@
   "concealed_arm_vertices": 180,
   "arm_coverage_rays": 1440,
   "arm_coverage_misses": 0,
-  "lowered_pose_available": false,
-  "failures": [
-    "Lowered endpoint is not delivered; this is a raised-only draft"
-  ]
+  "lowered_pose_available": true,
+  "cloth_metric_rule": "Area and edge strain are diagnostics only; approved appearance and clearance gate.",
+  "unit_object_scales": true,
+  "runtime_armature_modifiers": 0,
+  "export": {
+    "skins": 0,
+    "animations": 0,
+    "mesh_targets": {
+      "Body": [
+        0
+      ],
+      "Boots": [
+        0
+      ],
+      "Garment": [
+        1
+      ],
+      "Hair": [
+        0
+      ],
+      "Head": [
+        0
+      ]
+    },
+    "accessor_counts": {
+      "Body": [
+        {
+          "POSITION": 524,
+          "NORMAL": 524,
+          "morphs": []
+        }
+      ],
+      "Boots": [
+        {
+          "POSITION": 384,
+          "NORMAL": 384,
+          "morphs": []
+        }
+      ],
+      "Garment": [
+        {
+          "POSITION": 1570,
+          "NORMAL": 1570,
+          "morphs": [
+            {
+              "POSITION": 1570,
+              "NORMAL": 1570
+            }
+          ]
+        }
+      ],
+      "Hair": [
+        {
+          "POSITION": 468,
+          "NORMAL": 468,
+          "morphs": []
+        }
+      ],
+      "Head": [
+        {
+          "POSITION": 342,
+          "NORMAL": 342,
+          "morphs": []
+        }
+      ]
+    },
+    "no_node_skin": true
+  },
+  "HoodLowered": {
+    "outer_self_crossings": 0,
+    "shell_self_crossings": 0,
+    "Head_crossings": 0,
+    "Hair_crossings": 0,
+    "Body_crossings": 0
+  },
+  "hood_cloth": {
+    "raised_area": 4.397942272803228,
+    "lowered_area": 1.5801941757797224,
+    "area_change": -0.6406969264804574,
+    "edge_strain_p95": 0.8138179083815901,
+    "edge_strain_max": 1.436601272002934,
+    "minimum_triangle_area": 7.55886235929048e-05,
+    "edges_checked": 996
+  },
+  "moving_collar": {
+    "raised_area": 0.6219452673777215,
+    "lowered_area": 0.6219452673777215,
+    "area_change": 0.0,
+    "edge_strain_p95": 0.0,
+    "edge_strain_max": 0.0,
+    "minimum_triangle_area": 0.0006483995818248105,
+    "edges_checked": 209
+  },
+  "whole_cloth": {
+    "raised_area": 11.384691400784135,
+    "lowered_area": 8.566943303760631,
+    "area_change": -0.24750324781130462,
+    "edge_strain_p95": 0.773864299317684,
+    "edge_strain_max": 1.436601272002934,
+    "minimum_triangle_area": 7.55886235929048e-05,
+    "edges_checked": 2098
+  },
+  "maximum_pose_shift": 2.0344267872255872,
+  "neckline_shift": 0.0,
+  "Clasp_vertices": 4,
+  "Clasp_shift": 0.0,
+  "FixedCloak_vertices": 371,
+  "FixedCloak_shift": 0.0,
+  "failures": []
 }

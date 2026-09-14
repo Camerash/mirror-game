@@ -7,7 +7,7 @@ script = ExtResource("1")
 model_path = "res://assets/studies/traveller_drawing.glb"
 face_material_name = "TravellerDrawingFace"
 hood_mesh_name = "Garment"
-hood_controls_enabled = false
+hood_controls_enabled = true
 arm_controls_enabled = false
 
 [node name="DraftNotice" type="CanvasLayer" parent="."]
@@ -23,6 +23,6 @@ offset_bottom = 64.0
 grow_horizontal = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.13, 0.15, 0.18, 1)
-text = "Raised shape draft — hood-down is unresolved."
+text = "Static hood poses — animation is not yet implemented."
 horizontal_alignment = 1
 autowrap_mode = 3

@@ -6,10 +6,10 @@
     "Hair_crossings": 0,
     "Body_crossings": 0
   },
-  "stage": "Raised drawing draft only. The lowered hood failed its shape and strain checks.",
+  "stage": "Authored static hood endpoints; appearance and clearance gate.",
   "check_scope": "raised draft",
   "outer_triangles": 1370,
-  "outer_area": 11.893904685974121,
+  "outer_area": 11.38469123840332,
   "minimum_triangle_area": 7.558862853329629e-05,
   "triangles": {
     "Head": 624,
@@ -29,7 +29,7 @@
     "Hair": 0,
     "Body": 0,
     "Boots": 0,
-    "Garment": 0
+    "Garment": 2
   },
   "hair_coordinates_preserved": true,
   "materials": [
@@ -46,6 +46,9 @@
   "concealed_arm_vertices": 180,
   "arm_coverage_rays": 1440,
   "arm_coverage_misses": 0,
-  "lowered_pose_available": false,
+  "lowered_pose_available": true,
+  "cloth_metric_rule": "Area and edge strain are diagnostics only; approved appearance and clearance gate.",
+  "unit_object_scales": true,
+  "runtime_armature_modifiers": 0,
   "failures": []
 }

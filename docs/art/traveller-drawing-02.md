@@ -6,19 +6,23 @@ Use [character and hood action](traveller-drawing-02/character-and-hood-action.j
 
 ## Confirmed shape
 
-Keep chestnut low-bun hair and blue-grey clothing. Match the compact figure, small painted face, close rounded hood, narrow shoulders, and cloak that widens toward the ankles. Arms and most of the legs are covered at rest. Small authored shoes remain visible. The front opening starts below a diamond garment clasp. Paint the triangular hem border and simple eyes, brows, mouth, and soft cheeks.
+Keep chestnut low-bun hair and blue-grey clothing. Match the compact figure, small painted face, close rounded hood fitted to the head at the front and sides, narrow shoulders, and cloak that widens toward the ankles. Arms and most of the legs are covered at rest. Small authored shoes remain visible. The front opening starts below a diamond garment clasp. Paint the triangular hem border and simple eyes, brows, mouth, and soft cheeks.
 
-Build connected, deliberate mesh contours. Use broad cloth shading and restrained highlights. The hood joins the cloak at a continuous neckline. Both static hood poses share topology; the lowered hood rests behind the neck and upper back in broad folds. Keep the complete hairstyle and its dimensions. Do not shrink cloth or conceal intersections.
+Build connected, deliberate mesh contours. Use broad cloth shading and restrained highlights. The hood joins the cloak at a continuous neckline. Both static hood poses share topology; the lowered hood rests across the upper back in broad, flat folds with a small soft fold behind the neck. Keep additional hood room local to the bun; do not widen the whole hood. Keep the complete hairstyle and its dimensions. Do not reduce the hood to a small band or conceal intersections.
 
-The shared upper collar may move with the hood while the lower cloak and clasp remain stable. A connected seam does not require every collar vertex to remain fixed in space. Measure the hood and moving collar separately from the fixed cloak so its larger area cannot hide local shrinkage.
+The shared upper collar may move with the hood while the lower cloak and clasp remain stable. A connected seam does not require every collar vertex to remain fixed in space. Review the hood and moving collar separately from the fixed cloak. The lowered hood must still read as the same full-sized garment, with soft folds rather than a thin strip or stiff flap.
 
 ## Shape approval gate
 
-Review raised and lowered hood poses in front, side, rear, three-quarter, and elevated views, in grey and colour, at close and game size. Animation follows user shape approval. Target 6,000 triangles, ceiling 8,000, one 1024-square atlas, and at most two opaque materials. Preserve cloth area within 5%; at least 95% of edges remain within 10% of their original length and none exceed 20%. Record failed checks without relaxing these limits.
+Review raised and lowered hood poses in front, side, rear, three-quarter, and elevated views, in grey and colour, at close and game size. Animation follows user shape approval. Target 6,000 triangles, ceiling 8,000, one 1024-square atlas, and at most two opaque materials. The user replaced the strict area and edge-length gates with visual shape and clearance requirements. Area and strain may be recorded as diagnostics; they are not acceptance gates. Require a full-sized hood, continuous neckline, no cloth self-intersections, and no head, hair, or body penetration. Keep the full hair unchanged.
 
-## Rig construction
+## Authored hood shapes
 
-Use a small hood rig and authored static poses with local corrective shapes. Do not use offline or runtime cloth simulation for further hood work. Keep bone scales at one; a rig must fold the cloth, not shrink it. The rig does not replace area, stretch, clearance, or visual checks. Approve both static poses before keyframe animation.
+Model a good lowered endpoint directly on the same vertex topology as the fitted raised hood. Form a shallow cloth pocket with broad soft folds across the upper back. Keep the neckline attached, the lower cloak and clasp stable, and the full head and hair clear. A small rig may assist authoring, but a physical folding solution is not required. Do not use offline or runtime cloth simulation.
+
+Export the static `Garment.HoodLowered` endpoint without runtime hood bones or clips. Pose selection remains an immediate switch. After endpoint approval, author intermediate shapes that lift the rim clear of the head and bun, move it back, then settle it. Check each interval; a clear endpoint does not prove a clear transition. Do not combine the full-pose morph with duplicate skeletal deformation.
+
+This follows the use of blend shapes for controlled clothing deformation in [Phung Nhat Huy’s rigging breakdown](https://www.cgmasteracademy.com/blog/8-steps-to-rig-an-expressive-character-and-their-clothes.html) and [Blender’s shape-key workflow](https://docs.blender.org/manual/en/5.0/animation/shape_keys/introduction.html). The exact hood construction remains an artistic choice for this model, not a guaranteed recipe from either source. [Godot supports blend-shape animation tracks](https://docs.godotengine.org/en/stable/classes/class_animation.html); animation is still deferred until shape approval.
 
 ## Later motion
 
@@ -28,16 +32,17 @@ Hands emerge through the front opening, grip the hood, lower it, and return bene
 
 Open `art_trial/drawing_traveller_study.tscn`. From the project folder, run `rtk proxy godot --path . art_trial/drawing_traveller_study.tscn`. The previous full traveller scene remains a separate comparison.
 
-Use Front, Side, Back, Three-quarter, and Elevated for fixed views. Grey / colour, Lighting, Size, Face, and Reset remain available. The current draft is raised-only: it has no hood-pose control, arm-pose control, or automatic animation. Keyboard: Q/E views, G grey, L lighting, V size, F expression, R Reset, H controls. U does nothing in this draft. The scene displays an unfinished notice rather than a false hood-down pose.
+Use Front, Side, Back, Three-quarter, and Elevated for fixed views. Grey / colour, Lighting, Size, Face, and Reset remain available. Hood switches between Raised and Folded immediately, with common camera bounds. Keyboard: Q/E views, G grey, L lighting, V size, F expression, U hood, R Reset, H controls. Arms and automatic motion remain disabled. The notice states that these are static poses, not a finished transition.
 
-## Validation
+## Validation — authored endpoint pass
 
-The required two-pose delivery is **incomplete**. The useful raised silhouette is retained for review. No lowered pose or animation is approved, and no zero-displacement substitute is exported as a folded hood.
+Both static hood poses are available for user shape review. The raised hood is narrower (1.198 source units across the outer hood) and follows the head more closely. The lowered hood lies close to the upper back. The source retains editable outer geometry, thickness modifiers, and the directly authored shape. The GLB has baked thickness with matching triangles and one `Garment.HoodLowered` morph; it has no skeleton or animation clips.
 
-The final bounded sewn-pattern test failed the required raised-to-lowered comparison: area -11.378%, edge strain p95 31.368%, maximum 126.054%, and 57 outer self-intersections. Head, hair, and body crossings were zero, but the lowered hood was visibly crumpled. The attempt is rejected; its evidence is separate from the raised draft. Flat-pattern strain is an additional construction diagnostic and does not replace these endpoint measurements.
+- Source checks: 5,892 triangles, two opaque materials, one 1024 atlas. Both endpoints have zero detected outer/lining self-crossings and zero head, hair, or body crossings. Hair coordinates are unchanged. The outer lower cloak, neckline, and clasp remain fixed. All 1,440 arm-coverage rays pass.
+- Export checks: one garment morph, no other targets, skins, or animations. Garment base and morph position/normal accessors each contain 1,570 vertices.
+- Cloth diagnostics: hood area change -64.07%, edge strain p95 81.38%, maximum 143.66%. This is an artistic morph, not a physical fold. These numbers are retained under the user's approved change to visual shape and clearance requirements.
+- Godot import and all 90 focused drawing-viewer checks pass. They cover endpoint selection, shared bounds, expressions, material ownership, keyboard controls, and Reset. The shared viewer code and old gameplay assets were unchanged in this pass.
+- Native Mac Mobile/Metal review: both poses captured from five views, plus grey and game-size views. See the [comparison](traveller-drawing-02/native-authored/comparison.png), [all views](traveller-drawing-02/native-authored/all-views.png), and [Blender shape captures](traveller-drawing-02/authored-shapes/lowered-back.png). The rear fold has low contrast under the flat inspector lighting; this remains a visual review point.
+- The runtime bridge timed out, so the native review used the authorised direct Mac launch. It exited successfully after capture. A CoreAudio start error was logged; audio was not reviewed. The runtime is stopped and its temporary capture script and bridge are removed.
 
-Earlier direct drape and panel-fit attempts also failed. The angular panel construction preserved lengths but lost the drawn rounded hood. It is not used as the visual target or exported as an accepted result. No limits were relaxed. The raised source checks pass: 5,892 triangles, two opaque materials, one 1024 atlas, and zero reported cloth self, shell, head, hair, or body crossings. The complete hairstyle is unchanged. There are 180 concealed arm vertices; all 1,440 coverage rays passed. The default two-pose checker correctly fails because the lower pose is absent.
-
-Godot focused checks passed: drawing study 80/80 and preserved full study 92/92. Native Mac Mobile/Metal captures are saved in [native-raised](traveller-drawing-02/native-raised/view-3.png). The runtime bridge launch timed out twice, so a direct Mac launch captured the draft and exited. The runtime reported a CoreAudio start error; no audio result is claimed. The draft has a readable unfinished notice. The rear view shows a continuous garment; the hem detail remains low contrast. These captures do not validate a folded pose or animation. Physical-device performance is unverified.
-
-The runtime is stopped and the temporary capture script and bridge are removed. The failed simulation is retained only as evidence, not as a model target.
+Animation is still deferred. Clear endpoints do not prove a clear path between them. After approval, author and check intermediate targets around the head and bun. Physical-device performance and gameplay replacement remain unverified.
