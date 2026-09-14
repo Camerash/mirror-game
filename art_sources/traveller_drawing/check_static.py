@@ -134,20 +134,58 @@ def main():
         failures.append("Triangle limit")
     result["components"] = {name: components(bpy.data.objects[name].data)
                             for name in ("Hair", "Boots", "Garment")}
-    if result["components"] != {"Hair": 1, "Boots": 2, "Garment": 1}:
-        failures.append("Hair, shoes, or sewn garment is disconnected")
+    if result["components"]["Hair"] not in (1, 2) or result["components"]["Boots"] != 2 or result["components"]["Garment"] != 1:
+        failures.append("Unexpected hair, shoe, or garment components")
     result["deformation_keys"] = {obj.name: len(obj.data.shape_keys.key_blocks)
                                   if obj.data.shape_keys else 0 for obj in objects}
-    source = Path(__file__).resolve().parents[1]/"traveller_full/traveller_full.blend"
-    with bpy.data.libraries.load(str(source), link=False) as (_, loaded):
-        loaded.objects = ["Hair"]
-    original = loaded.objects[0]
-    current = bpy.data.objects["Hair"]
-    result["hair_coordinates_preserved"] = (len(original.data.vertices) == len(current.data.vertices) and
-        all(a.co == b.co for a, b in zip(original.data.vertices, current.data.vertices)))
-    bpy.data.objects.remove(original)
-    if not result["hair_coordinates_preserved"]:
-        failures.append("The full hairstyle changed")
+    hair = bpy.data.objects["Hair"]
+    hair_positions = []
+    for value in (0, 1):
+        cloth.data.shape_keys.key_blocks["HoodLowered"].value = value
+        bpy.context.view_layer.update()
+        hair_positions.append([tuple(v.co) for v in hair.evaluated_get(bpy.context.evaluated_depsgraph_get()).data.vertices])
+    result["hair_fixed_between_poses"] = hair_positions[0] == hair_positions[1]
+    cloth.data.shape_keys.key_blocks["HoodLowered"].value = 0
+    bpy.context.view_layer.update()
+    edge_heights = [hair.data.vertices[i].co.z for i in group_indices(hair, "SideHairEdge")]
+    nape_heights = [hair.data.vertices[i].co.z for i in group_indices(hair, "NapeEdge")]
+    result["side_hair_edge_height"] = [min(edge_heights), max(edge_heights)]
+    result["nape_edge_height"] = [min(nape_heights), max(nape_heights)]
+    if not result["hair_fixed_between_poses"]:
+        failures.append("Hair moves between poses")
+    if not .04 < max(edge_heights)-min(edge_heights) < .10:
+        failures.append("The side hair edge is not a soft shallow curve")
+    hair_points, hair_faces, hair_surface = mesh_surface(hair)
+    pairs = [(a, b) for a, b in hair_surface.overlap(hair_surface)
+             if a < b and not set(hair_faces[a]).intersection(hair_faces[b])]
+    scalp_indices = set(group_indices(hair, "Scalp"))
+    contact_indices = set(group_indices(hair, "BunContact"))
+    allowed = [(a, b) for a, b in pairs if
+               (set(hair_faces[a]) <= scalp_indices and set(hair_faces[b]) <= contact_indices) or
+               (set(hair_faces[b]) <= scalp_indices and set(hair_faces[a]) <= contact_indices)]
+    result["hair_self_crossings"] = len(pairs)
+    result["intentional_bun_scalp_crossings"] = len(allowed)
+    result["unexpected_hair_self_crossings"] = len(pairs)-len(allowed)
+    outer_indices = set(group_indices(hair, "ScalpOuter"))
+    scalp_outer = BVHTree.FromPolygons(hair_points, [f for f in hair_faces if set(f) <= outer_indices])
+    penetration = 0.0
+    for index in group_indices(hair, "Bun"):
+        point = hair_points[index]
+        nearest, normal, _, _ = scalp_outer.find_nearest(point)
+        penetration = max(penetration, -(point-nearest).dot(normal))
+    result["bun_scalp_maximum_vertex_penetration"] = penetration
+    result["hair_head_crossings"] = len(hair_surface.overlap(mesh_surface(bpy.data.objects["Head"])[2]))
+    if result["unexpected_hair_self_crossings"] or result["hair_head_crossings"] or penetration > .006:
+        failures.append("Hair surface crossing")
+    bun_points = np.array([hair.data.vertices[i].co[:] for i in group_indices(hair, "Bun")])
+    result["bun_bounds"] = [bun_points.min(axis=0).tolist(), bun_points.max(axis=0).tolist()]
+    body = bpy.data.objects["Body"]
+    ear_tips = [max((v.co for v in body.data.vertices if 2.50 < v.co.z < 2.64 and abs(v.co.y-.01) < .06),
+                    key=lambda point: side*point.x) for side in (-1, 1)]
+    result["ear_tips_visible"] = all(hair_surface.ray_cast(point, Vector((side, 0, 0)), 1)[0] is None
+                                      for side, point in zip((-1, 1), ear_tips))
+    if not result["ear_tips_visible"]:
+        failures.append("Hair covers the ear tips")
     materials = {material for obj in objects for material in obj.data.materials}
     images = {node.image for material in materials for node in material.node_tree.nodes
               if node.type == "TEX_IMAGE"}
@@ -225,6 +263,8 @@ def main():
         seam_shift = max((keys["Basis"].data[i].co-keys["HoodLowered"].data[i].co).length
                          for i in cloth["neckline_indices"])
         result["neckline_shift"] = seam_shift
+        if seam_shift > .0001:
+            failures.append("Neckline moves")
         for group_name in ("Clasp", "FixedCloak"):
             indices = group_indices(cloth, group_name)
             shift = max((keys["Basis"].data[i].co-keys["HoodLowered"].data[i].co).length for i in indices)

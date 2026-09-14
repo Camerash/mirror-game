@@ -1,0 +1,28 @@
+{
+  "reference": "/tmp/approved_clean_profile.blend",
+  "includes": "evaluated coordinates, face indices, normals and UVs",
+  "current_sha256": {
+    "Head": "31a688a85a8b20306c714606981ff69d0648c722ffa070e792409a041e346a2e",
+    "Body": "dba68a73e6e6f89f9440506ebe10eaa6c7e73148384e06bb5a994448175ff2d9",
+    "Boots": "8470957414a240d0573550c107bee6d5d0089c7475b665a332b8f5ba42fa7332",
+    "Garment": {
+      "0": "610c9fe722219604ab48c159fd180c10f45852f6e827a2c229bb012d3e386fda",
+      "1": "8fef7920882d0de4f0526c48002346c79a59c2d2b69790544d1fed139c4bff5f"
+    }
+  },
+  "approved_sha256": {
+    "Head": "31a688a85a8b20306c714606981ff69d0648c722ffa070e792409a041e346a2e",
+    "Body": "dba68a73e6e6f89f9440506ebe10eaa6c7e73148384e06bb5a994448175ff2d9",
+    "Boots": "8470957414a240d0573550c107bee6d5d0089c7475b665a332b8f5ba42fa7332",
+    "Garment": {
+      "0": "610c9fe722219604ab48c159fd180c10f45852f6e827a2c229bb012d3e386fda",
+      "1": "8fef7920882d0de4f0526c48002346c79a59c2d2b69790544d1fed139c4bff5f"
+    }
+  },
+  "exact_match": {
+    "Head": true,
+    "Body": true,
+    "Boots": true,
+    "Garment": true
+  }
+}

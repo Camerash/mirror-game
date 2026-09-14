@@ -1,6 +1,7 @@
 """Build the drawing-based static study with Blender's bundled Python.
 
-The prior study supplies only the fixed head, complete hair and concealed body.
+The prior study supplies the fixed head, shoes and concealed body.
+The hair has a curved side edge and a compact bun resting against the scalp.
 The cloak and hood share one authored surface and one neckline vertex loop.
 """
 import math
@@ -26,7 +27,7 @@ CLOTH_UV = (.625, .56)
 def reference_parts():
     source = ROOT / "art_sources/traveller_full/traveller_full.blend"
     with bpy.data.libraries.load(str(source), link=False) as (_, loaded):
-        loaded.objects = ["Head", "Hair", "Body", "Boots", "Arms"]
+        loaded.objects = ["Head", "Body", "Boots", "Arms"]
     for obj in loaded.objects:
         bpy.context.collection.objects.link(obj)
         obj.parent = None
@@ -65,7 +66,126 @@ def reference_parts():
     image.name = ATLAS.name
     image.filepath_raw = str(ATLAS)
     image.pack()
+    drawing_hair(bpy.data.materials["TravellerDrawingBody"])
     return [bpy.data.objects[name] for name in ("Head", "Hair", "Body", "Boots")], bpy.data.materials["TravellerDrawingBody"]
+
+
+def scalp_surface():
+    """Clip regular scalp rings at the fringe; avoid long diagonal face strips."""
+    columns, rows = 28, 8
+    heights = [2.17+.065*math.cos(math.tau*col/columns)**2 for col in range(columns)]
+    for col, height in {0: 2.89, 1: 2.905576, 2: 2.920372, 3: 2.397868,
+                         25: 2.397868, 26: 2.859628, 27: 2.874424}.items():
+        heights[col] = height
+    limits = [math.acos((z-2.62)/.575) for z in heights]
+    maximum = max(limits)
+    vertices, cells, lookup = [], [], {}
+    def vertex(u, polar):
+        key = (round(u % columns, 8), round(polar, 8)) if polar > 1e-8 else (0, 0)
+        if key not in lookup:
+            angle = math.tau*u/columns
+            lookup[key] = len(vertices)
+            vertices.append((.51*math.sin(polar)*math.sin(angle),
+                             .015-.46*math.sin(polar)*math.cos(angle),
+                             2.62+.575*math.cos(polar)))
+        return lookup[key]
+    for row in range(rows-1):
+        for col in range(columns):
+            polygon = [(col, maximum*row/7), (col+1, maximum*row/7),
+                       (col+1, maximum*(row+1)/7), (col, maximum*(row+1)/7)]
+            clipped = []
+            for left, right in zip(polygon, polygon[1:]+polygon[:1]):
+                distance = lambda p: limits[col]+(limits[(col+1)%columns]-limits[col])*(p[0]-col)-p[1]
+                dl, dr = distance(left), distance(right)
+                if dl >= -1e-9:
+                    clipped.append(left)
+                if (dl > 0) != (dr > 0) and abs(dl-dr) > 1e-9:
+                    weight = dl/(dl-dr)
+                    clipped.append(tuple(left[i]+weight*(right[i]-left[i]) for i in range(2)))
+            face = tuple(dict.fromkeys(vertex(*point) for point in clipped))
+            if len(face) > 2:
+                cells.append((row, col, face))
+    boundary = [vertex(col, limits[col]) for col in range(columns)]
+    return vertices, cells, boundary
+
+
+def drawing_hair(material):
+    """Build a curved scalp boundary and a closed bun with a shallow contact cap."""
+    vertices, cells, boundary = scalp_surface()
+    faces = [face for _, _, face in cells]
+    full_scalp = faces[:]
+    outer_count = len(vertices)
+    inner_start = len(vertices)
+    for point in vertices[:outer_count]:
+        x, y, z = point
+        normal = Vector((x/.51**2, (y-.015)/.46**2, (z-2.62)/.575**2)).normalized()
+        vertices.append(tuple(Vector(point)-.008*normal))
+    edge_counts = {}
+    for face in full_scalp:
+        faces.append(tuple(inner_start+i for i in reversed(face)))
+        for left, right in zip(face, face[1:]+face[:1]):
+            edge = tuple(sorted((left, right)))
+            edge_counts[edge] = edge_counts.get(edge, 0)+1
+    for (left, right), count in edge_counts.items():
+        if count == 1:
+            faces.append((left, right, inner_start+right, inner_start+left))
+    scalp_count = len(vertices)
+    contact_indices = rounded_bun(vertices, faces, full_scalp)
+    bun_indices = list(range(scalp_count, len(vertices)))
+    data = bpy.data.meshes.new("Hair")
+    data.from_pydata(vertices, [], faces)
+    data.materials.append(material)
+    bm = bmesh.new()
+    bm.from_mesh(data)
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    bm.to_mesh(data)
+    bm.free()
+    obj = bpy.data.objects.new("Hair", data)
+    bpy.context.collection.objects.link(obj)
+    for polygon in data.polygons:
+        polygon.use_smooth = True
+    uv = data.uv_layers.new(name="UVMap")
+    for loop in uv.data:
+        loop.uv = (.125, .56)
+    for name, indices in {"SideHairEdge": boundary[4:25], "NapeEdge": boundary[12:17],
+                          "Scalp": list(range(scalp_count)), "ScalpOuter": list(range(outer_count)),
+                          "Bun": bun_indices, "BunContact": contact_indices}.items():
+        obj.vertex_groups.new(name=name).add(indices, 1, "REPLACE")
+    obj["construction"] = "Curved side hair with a closed compact oval bun resting directly against the scalp"
+    obj["bun_scalp_overlap"] = "A shallow front-cap contact is intentional; all other crossings are rejected."
+
+
+def rounded_bun(vertices, faces, scalp_faces):
+    """Use oval profile rings with no bridge or narrow attachment neck."""
+    scalp = BVHTree.FromPolygons([Vector(p) for p in vertices], scalp_faces)
+    previous, contact = [], []
+    for row in range(9):
+        polar = math.pi*row/8
+        ring = []
+        for column in range(1 if row in (0, 8) else 16):
+            angle = math.tau*column/16
+            x = .22*math.sin(polar)*math.cos(angle)
+            z = 2.31+.195*math.sin(polar)*math.sin(angle)
+            hit = scalp.ray_cast(Vector((x, 1, z)), Vector((0, -1, 0)), 2)[0]
+            y = .46-.14*math.cos(polar)
+            if hit is not None:
+                # Only the hidden front cap overlaps; the visible half clears it.
+                y = max(y, hit.y+(-.003 if row < 4 else .003))
+            ring.append(len(vertices))
+            vertices.append((x, y, z))
+        if row <= 4:
+            contact.extend(ring)
+        if previous:
+            for i in range(16):
+                j = (i+1) % 16
+                if len(previous) == 1:
+                    faces.append((previous[0], ring[j], ring[i]))
+                elif len(ring) == 1:
+                    faces.append((previous[i], previous[j], ring[0]))
+                else:
+                    faces.append((previous[i], previous[j], ring[j], ring[i]))
+        previous = ring
+    return contact
 
 
 def profile(points, value):
@@ -123,21 +243,38 @@ def lowered_hood(raised, faces, seam, hood_faces):
         for column in range(21):
             angle = -math.pi/2+math.pi*column/20
             c, sine = math.cos(angle), math.sin(angle)
-            around = math.pi+math.copysign(abs(sine)**1.8, sine)*(math.pi-side_angle)
+            around = math.pi+sine*(math.pi-side_angle)
             z = side.z+(middle_z-side.z)*c
             direction = Vector((-math.sin(around), -math.cos(around), 0))
             origin = Vector((0, -.04, z))
             hit = cape.ray_cast(origin, direction, 2)[0]
             assert hit is not None or row == 16 or column in (0, 20), "Hood drape misses cape"
             gap = (.045+.018*math.sin(math.pi*min(row/3, 1)))*(1-t**8)*c**.6
-            # The broad collar turn keeps the inward lining clear of the cape.
-            seam_step = min(column, 20-column, 16-row)
-            if seam_step > 0:
-                gap += .075*math.exp(-.5*(seam_step-1)**2)
-            points.append(tuple(hit+direction*gap) if hit else raised[row*21+column])
+            # Separate smooth side and rear turns avoid a ridge at their join.
+            side_step, rear_step = min(column, 20-column), 16-row
+            if min(side_step, rear_step) > 0:
+                side_turn = .075*math.exp(-.5*(side_step-1)**2)*(1-t**4)
+                rear_turn = .025*math.exp(-.5*((rear_step-2)/1.5)**2)*c**.6
+                gap += side_turn+rear_turn
+            if hit is not None:
+                radius = (hit-origin).length
+                if z < 1.90:
+                    smooth_radius = smooth_cape_radius(around, z)
+                    weight = min(1, max(0, (1.90-z)/.15))
+                    radius = radius*(1-weight)+smooth_radius*weight
+                points.append(tuple(origin+direction*(radius+gap)))
+            else:
+                points.append(raised[row*21+column])
     for index in seam:
         points[index] = raised[index]
     return points
+
+
+def smooth_cape_radius(angle, z):
+    """Use the authored cape profile at the rim, not its faceted ray hits."""
+    t = max(0, (2.07-z)/1.85)
+    rx, ry = .34+.54*t**.65, .31+.32*t**.65
+    return 1/math.sqrt((math.sin(angle)/rx)**2+(math.cos(angle)/ry)**2)
 
 
 def cloak_surface(vertices, faces, seam):
@@ -225,7 +362,8 @@ def garment(material):
     solid.thickness = .018
     solid.offset = -1
     solid.use_quality_normals = True
-    solid.use_even_offset = True
+    # Normal offsets avoid miter growth at the folded collar corners.
+    solid.use_even_offset = False
     triangulate = obj.modifiers.new("Fixed shell triangles", "TRIANGULATE")
     triangulate.quad_method = "FIXED"
     return obj
@@ -255,8 +393,10 @@ def setup_review():
 
 
 def render_draft(camera):
-    key = bpy.data.objects["Garment"].data.shape_keys.key_blocks["HoodLowered"]
-    folder = EVIDENCE / "authored-shapes"
+    cloth = bpy.data.objects["Garment"]
+    key = cloth.data.shape_keys.key_blocks["HoodLowered"]
+    solid = cloth.modifiers["Cloth thickness"]
+    folder = EVIDENCE / "hair-curve"
     folder.mkdir(parents=True, exist_ok=True)
     for pose, value in (("raised", 0), ("lowered", 1)):
         key.value = value
@@ -267,6 +407,11 @@ def render_draft(camera):
             camera.rotation_euler = (Vector((0, 0, 1.68))-camera.location).to_track_quat("-Z", "Y").to_euler()
             bpy.context.scene.render.filepath = str(folder/(pose+"-"+name+".png"))
             bpy.ops.render.render(write_still=True)
+            if pose == "lowered" and name in ("side", "back"):
+                solid.show_render = False
+                bpy.context.scene.render.filepath = str(folder/(pose+"-outer-"+name+".png"))
+                bpy.ops.render.render(write_still=True)
+                solid.show_render = True
     key.value = 0
     bpy.context.view_layer.update()
 
