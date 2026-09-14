@@ -3,6 +3,11 @@ extends "res://art_trial/head_study.gd"
 
 const EXPRESSIONS := ["Neutral", "Half closed", "Closed", "Smile"]
 
+@export var face_material_name := "TravellerFullFace"
+@export var hood_mesh_name := "Hood"
+@export var hood_controls_enabled := true
+@export var arm_controls_enabled := true
+
 var face_material: StandardMaterial3D
 var hood: MeshInstance3D
 var arms: MeshInstance3D
@@ -49,20 +54,25 @@ func _pose_bounds(mesh: Mesh) -> AABB:
 
 func _bind_model() -> void:
 	for mesh: MeshInstance3D in meshes:
-		if mesh.name == "Hood":
+		if mesh.name == hood_mesh_name:
 			hood = mesh
-			hood_shape = hood.find_blend_shape_by_name("HoodLowered")
-		if mesh.name == "Arms":
+			if hood_controls_enabled:
+				hood_shape = hood.find_blend_shape_by_name("HoodLowered")
+		if arm_controls_enabled and mesh.name == "Arms":
 			arms = mesh
 			reach_shape = arms.find_blend_shape_by_name("ArmsReach")
 		for surface: int in mesh.mesh.get_surface_count():
 			var source := mesh.mesh.surface_get_material(surface) as StandardMaterial3D
-			if source != null and source.resource_name == "TravellerFullFace":
+			if source != null and source.resource_name == face_material_name:
 				if face_material == null:
 					face_material = source.duplicate() as StandardMaterial3D
 				mesh.set_surface_override_material(surface, face_material)
-	if face_material == null or hood_shape < 0 or reach_shape < 0:
-		push_error("Full traveller needs TravellerFullFace, HoodLowered, and ArmsReach.")
+	if face_material == null:
+		push_error("Traveller study needs " + face_material_name + ".")
+	if hood_controls_enabled and hood_shape < 0:
+		push_error("Traveller study needs HoodLowered.")
+	if arm_controls_enabled and reach_shape < 0:
+		push_error("Traveller study needs ArmsReach.")
 
 
 func _build_controls() -> void:
@@ -79,10 +89,12 @@ func _build_controls() -> void:
 	_button("Lighting", func(): ceramic_light = not ceramic_light; _set_lighting())
 	_button("Size: Close", func(): set_small_view(not small_view))
 	size_button = controls.get_child(controls.get_child_count() - 1) as Button
-	_button("Hood: Raised", func(): set_hood_lowered(not hood_lowered))
-	hood_button = controls.get_child(controls.get_child_count() - 1) as Button
-	_button("Arms: Rest", func(): set_arms_reaching(not arms_reaching))
-	reach_button = controls.get_child(controls.get_child_count() - 1) as Button
+	if hood_controls_enabled:
+		_button("Hood: Raised", func(): set_hood_lowered(not hood_lowered))
+		hood_button = controls.get_child(controls.get_child_count() - 1) as Button
+	if arm_controls_enabled:
+		_button("Arms: Rest", func(): set_arms_reaching(not arms_reaching))
+		reach_button = controls.get_child(controls.get_child_count() - 1) as Button
 	_button("Face: Neutral", func(): set_expression((expression + 1) % EXPRESSIONS.size()))
 	face_button = controls.get_child(controls.get_child_count() - 1) as Button
 	_button("Reset study", reset_study)
@@ -98,6 +110,8 @@ func set_expression(index: int) -> void:
 
 
 func set_hood_lowered(lowered: bool) -> void:
+	if not hood_controls_enabled:
+		return
 	hood_lowered = lowered
 	if hood != null and hood_shape >= 0:
 		hood.set_blend_shape_value(hood_shape, 1.0 if lowered else 0.0)
@@ -106,6 +120,8 @@ func set_hood_lowered(lowered: bool) -> void:
 
 
 func set_arms_reaching(reaching: bool) -> void:
+	if not arm_controls_enabled:
+		return
 	arms_reaching = reaching
 	if arms != null and reach_shape >= 0:
 		arms.set_blend_shape_value(reach_shape, 1.0 if reaching else 0.0)

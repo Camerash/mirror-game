@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<!-- Editable vector paint. Each head tile is 256 square; only the eyes and mouth change. -->
+<defs>
+<filter id="blush"><feGaussianBlur stdDeviation="2.6"/></filter>
+  <g id="brows" fill="none" stroke="#664532" stroke-width="4.8" stroke-linecap="round">
+    <path d="M80 104 Q91 98 102 102"/><path d="M154 102 Q165 98 176 104"/>
+  </g>
+  <g id="open-eyes" fill="#332b2a">
+    <ellipse cx="91" cy="130" rx="6.4" ry="12.2"/>
+    <ellipse cx="165" cy="130" rx="6.4" ry="12.2"/>
+  </g>
+</defs>
+<rect width="1024" height="1024" fill="#30495b"/>
+<g transform="translate(0 0)"><rect width="256" height="256" fill="#c98567"/><g fill="#bc6864" opacity=".36" filter="url(#blush)"><ellipse cx="74" cy="158" rx="12" ry="6"/><ellipse cx="182" cy="158" rx="12" ry="6"/></g><use href="#brows"/><use href="#open-eyes"/><path d="M117 176 Q128 179 139 176" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<g transform="translate(256 0)"><rect width="256" height="256" fill="#c98567"/><g fill="#bc6864" opacity=".36" filter="url(#blush)"><ellipse cx="74" cy="158" rx="12" ry="6"/><ellipse cx="182" cy="158" rx="12" ry="6"/></g><use href="#brows"/><g fill="#332b2a"><ellipse cx="91" cy="136" rx="6.4" ry="6.1"/><ellipse cx="165" cy="136" rx="6.4" ry="6.1"/></g><path d="M117 176 Q128 179 139 176" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<g transform="translate(512 0)"><rect width="256" height="256" fill="#c98567"/><g fill="#bc6864" opacity=".36" filter="url(#blush)"><ellipse cx="74" cy="158" rx="12" ry="6"/><ellipse cx="182" cy="158" rx="12" ry="6"/></g><use href="#brows"/><g fill="none" stroke="#332b2a" stroke-width="3.6" stroke-linecap="round"><path d="M84 135 Q91 138 98 135"/><path d="M158 135 Q165 138 172 135"/></g><path d="M117 176 Q128 179 139 176" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<g transform="translate(768 0)"><rect width="256" height="256" fill="#c98567"/><g fill="#bc6864" opacity=".36" filter="url(#blush)"><ellipse cx="74" cy="158" rx="12" ry="6"/><ellipse cx="182" cy="158" rx="12" ry="6"/></g><use href="#brows"/><use href="#open-eyes"/><path d="M113 174 Q128 187 143 174" fill="none" stroke="#945754" stroke-width="3.8" stroke-linecap="round"/></g>
+<!-- Static body swatches, shared by every pose. -->
+<rect x="0" y="300" width="256" height="724" fill="#55392d"/>
+<rect x="256" y="300" width="256" height="724" fill="#647e9b"/>
+<rect x="512" y="300" width="256" height="724" fill="#4b6885"/>
+<rect x="768" y="300" width="256" height="724" fill="#c98567"/>
+<rect x="0" y="896" width="1024" height="128" fill="#4b6885"/>
+<g fill="#30495b"><rect x="0" y="916" width="1024" height="6"/><rect x="0" y="1000" width="1024" height="7"/><path d="M9 990 L32 935 L55 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M73 990 L96 935 L119 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M137 990 L160 935 L183 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M201 990 L224 935 L247 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M265 990 L288 935 L311 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M329 990 L352 935 L375 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M393 990 L416 935 L439 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M457 990 L480 935 L503 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M521 990 L544 935 L567 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M585 990 L608 935 L631 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M649 990 L672 935 L695 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M713 990 L736 935 L759 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M777 990 L800 935 L823 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M841 990 L864 935 L887 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M905 990 L928 935 L951 990 Z" fill="none" stroke="#30495b" stroke-width="6"/><path d="M969 990 L992 935 L1015 990 Z" fill="none" stroke="#30495b" stroke-width="6"/></g>
+<path d="M640 783 L665 819 L640 855 L615 819 Z" fill="#30495b"/>
+</svg>

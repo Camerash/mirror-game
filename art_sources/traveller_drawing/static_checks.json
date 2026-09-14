@@ -1,0 +1,53 @@
+{
+  "Basis": {
+    "outer_self_crossings": 0,
+    "shell_self_crossings": 0,
+    "Head_crossings": 0,
+    "Hair_crossings": 0,
+    "Body_crossings": 0
+  },
+  "stage": "Raised drawing draft only. The lowered hood failed its shape and strain checks.",
+  "check_scope": "both endpoints",
+  "outer_triangles": 1370,
+  "outer_area": 11.893904685974121,
+  "minimum_triangle_area": 7.558862853329629e-05,
+  "triangles": {
+    "Head": 624,
+    "Hair": 932,
+    "Body": 1000,
+    "Boots": 424,
+    "Garment": 2912
+  },
+  "total_triangles": 5892,
+  "components": {
+    "Hair": 1,
+    "Boots": 2,
+    "Garment": 1
+  },
+  "deformation_keys": {
+    "Head": 0,
+    "Hair": 0,
+    "Body": 0,
+    "Boots": 0,
+    "Garment": 0
+  },
+  "hair_coordinates_preserved": true,
+  "materials": [
+    "TravellerDrawingBody",
+    "TravellerDrawingFace"
+  ],
+  "atlas_sizes": [
+    [
+      1024,
+      1024
+    ]
+  ],
+  "opaque_materials": true,
+  "concealed_arm_vertices": 180,
+  "arm_coverage_rays": 1440,
+  "arm_coverage_misses": 0,
+  "lowered_pose_available": false,
+  "failures": [
+    "Lowered endpoint is not delivered; this is a raised-only draft"
+  ]
+}

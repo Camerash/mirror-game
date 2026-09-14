@@ -1,5 +1,7 @@
 # Full-body traveller study 01
 
+This revision is preserved for comparison. The [drawing-led remodel](traveller-drawing-02.md) is the current shape target. Its longer cloak and new hood construction replace the proportions and failed folded endpoint in this study.
+
 ## Shape review gate
 
 Build a new compact girl, approximately three heads tall, with a painted face, chestnut low bun, and blue-grey open-front hooded cape. Use a simple tunic, sleeved arms, hands with thumbs and grouped fingers, and boots. The old busts are appearance references only. Keep their assets and the gameplay character intact.
