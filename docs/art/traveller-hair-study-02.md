@@ -1,5 +1,7 @@
 # Traveller hair study 02
 
+This bust study is now an appearance reference only. The [new full-body low-bun study](traveller-full-01.md) replaces further hood repairs here. Its hood must fold with retained cloth area; the old endpoint compression is not a construction reference. Existing assets remain saved for comparison.
+
 ## Confirmed comparison
 
 Compare **Long**, **Bob**, and **Low bun** before full-body modeling. No hairstyle is selected as final. All three use the same painted face, chestnut palette, head, blue-grey hood, camera, and lighting.

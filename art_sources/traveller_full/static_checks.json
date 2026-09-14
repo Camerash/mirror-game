@@ -1,0 +1,53 @@
+{
+  "triangles": {
+    "Arms": 336,
+    "Body": 664,
+    "Boots": 424,
+    "Garment": 908,
+    "Hair": 932,
+    "Head": 624,
+    "Hood": 1696
+  },
+  "total_triangles": 5584,
+  "construction": {
+    "Hair": {
+      "components": 1,
+      "non_manifold_edges": 0,
+      "self_crossings": 0
+    },
+    "Boots": {
+      "components": 2,
+      "non_manifold_edges": 0,
+      "self_crossings": 0
+    }
+  },
+  "cloth": {
+    "single_surface_area_raised": 3.672619499904769,
+    "single_surface_area_lowered": 3.617051508880432,
+    "area_change": -0.01513034253229284,
+    "edge_strain_p95": 0.19210134418088728,
+    "edge_strain_max": 0.646252147943637,
+    "edges_checked": 1192,
+    "minimum_triangle_area": 0.0003917430320661275
+  },
+  "geometry": {
+    "seam_vertices": 57,
+    "seam_shift": 0.0,
+    "garment_seam_distance": 0.0,
+    "Basis": {
+      "outer_self_crossings": 0,
+      "Head_crossings": 0,
+      "Hair_crossings": 0
+    },
+    "HoodLowered": {
+      "outer_self_crossings": 220,
+      "Head_crossings": 0,
+      "Hair_crossings": 0
+    }
+  },
+  "failures": [
+    "More than 5% of cloth edges change length by over 10%",
+    "A cloth edge changes length by over 20%",
+    "HoodLowered: outer hood crosses itself"
+  ]
+}

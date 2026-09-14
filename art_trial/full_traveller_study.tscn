@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://art_trial/full_traveller_study.gd" id="1"]
+
+[node name="FullTravellerStudy" type="Node3D"]
+script = ExtResource("1")
+model_path = "res://assets/studies/traveller_full.glb"
