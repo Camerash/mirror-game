@@ -39,4 +39,3 @@ The broad held hood turn and the visible front opening remain art review points.
 ## Controls
 
 Use Hood Down / Hood Up to start each action. Play/Pause stops or resumes the current action; speed cycles through 0.25, 0.5, 1, and 2 times. The time slider pauses and samples the active clip. Reverse requests remain disabled while an action is unfinished, including a paused action at time zero. The static Hood control deliberately cancels playback and shows an endpoint for inspection. Reset restores the raised hood, concealed arms, neutral face, and default view settings. Keyboard: D down, I up, Space play/pause; existing Q/E, G, L, V, F, U, R, and H controls remain.
-
