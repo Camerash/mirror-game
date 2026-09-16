@@ -42,6 +42,48 @@ def report(obj, build):
     return total
 
 
+def measure(body_name='Body'):
+    """Measured proportions of the built character, not the chart's prediction."""
+    import mathutils
+    def bounds(name):
+        obj = bpy.data.objects[name]
+        points = [obj.matrix_world @ mathutils.Vector(c) for c in obj.bound_box]
+        return (min(p.z for p in points), max(p.z for p in points),
+                min(p.x for p in points), max(p.x for p in points))
+    head_z0, head_z1, head_x0, head_x1 = bounds('Head')
+    floor = bounds('Boots')[0]
+    top = max(bounds('Hair')[1], head_z1)
+    total = top - floor
+    head = head_z1 - head_z0
+    rig = bpy.data.objects['Rig']
+    body = bpy.data.objects[body_name]
+    names = {g.index: g.name for g in body.vertex_groups}
+    # Measured on the evaluated mesh, so the idle pose is what gets reported.
+    evaluated = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    hand = [v.co.z for v, source in zip(evaluated.data.vertices, body.data.vertices)
+            if any(names[g.group].startswith(('Hand.', 'Fingers.', 'Thumb.'))
+                   and g.weight > .5 for g in source.groups)]
+    shoulder = rig.data.bones['UpperArm.R'].head_local.z
+    hip = rig.data.bones['Thigh.R'].head_local.z
+    chest = 2 * max(abs(v.co.x) for v in body.data.vertices
+                    if 1.50 < v.co.z < 1.70 and abs(v.co.y) < .06)
+    return {'heads_tall': round(total / head, 2),
+            'head_pct': round(head / total * 100),
+            'arm_pct': round((shoulder - min(hand)) / total * 100),
+            'leg_pct': round((hip - floor) / total * 100),
+            'fingertip_z': round(min(hand), 3),
+            'head_over_chest': round((head_x1 - head_x0) / chest, 2)}
+
+
+def palette_regions(body_name='Body'):
+    """Distinct atlas points used, so an interleaved cuff shows up as a count."""
+    mesh = bpy.data.objects[body_name].data
+    uv = mesh.uv_layers.active.data
+    return collections.Counter(
+        (round(uv[loop].uv.x, 3), round(uv[loop].uv.y, 3))
+        for polygon in mesh.polygons for loop in polygon.loop_indices)
+
+
 def clearance(body, others=('Garment', 'Head', 'Hair', 'Boots')):
     """Overlap counts against the other character meshes."""
     points, faces = surface(body)

@@ -6,25 +6,35 @@ Run with:
 The accepted Garment (with its nine hood shape keys), Head, Hair and Boots are
 carried over untouched. Only the body mesh and the arm bones are rebuilt.
 """
+import math
+import os
 import sys
 from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import build_body as body_builder
+import proportions
 import check_body
 import skin_body
 
 SOURCE = HERE.parents[0] / 'traveller_animated/traveller_animated.blend'
 TARGET = HERE / 'traveller.blend'
+CHART = os.environ.get('TRAVELLER_CHART', 'chibi')
 # Four deform segments per arm. Bendy bones do not survive glTF export, so the
 # continuous curve has to come from real joints posed along an arc.
-ARM_SEGMENTS = [('UpperArm.%s', 0, 3), ('UpperArm.%s.001', 3, 6),
-                ('Forearm.%s', 6, 9), ('Forearm.%s.001', 9, 12)]
+ARM_BONES = ['UpperArm.%s', 'UpperArm.%s.001', 'Forearm.%s', 'Forearm.%s.001']
+
+
+def arm_segments(samples):
+    """Split the spine into four even bone spans, whatever its sample count."""
+    last = samples - 1
+    cuts = [round(last * n / 4) for n in range(5)]
+    return [(ARM_BONES[n], cuts[n], cuts[n + 1]) for n in range(4)]
 
 
 def ear_islands(old_body):
@@ -104,6 +114,59 @@ def clear_pose(rig):
     bpy.context.view_layer.update()
 
 
+def pose_idle(rig, angle=None):
+    """Drop the arms to the resting silhouette.
+
+    The mesh is modelled in T-pose, so this is the pose everything else is
+    judged against: the garment is fitted to it and the game idles in it.
+    """
+    angle = proportions.IDLE_ARM_ANGLE if angle is None else angle
+    chain = ['UpperArm.%s', 'UpperArm.%s.001', 'Forearm.%s', 'Forearm.%s.001',
+             'Hand.%s', 'Fingers.%s', 'Thumb.%s']
+    for bone in rig.pose.bones:
+        bone.rotation_mode = 'QUATERNION'
+        bone.rotation_quaternion = (1, 0, 0, 0)
+        bone.location = (0, 0, 0)
+        bone.scale = (1, 1, 1)
+    bpy.context.view_layer.update()
+    for side, sign in (('R', 1), ('L', -1)):
+        pivot = rig.data.bones[chain[0] % side].head_local.copy()
+        turn = (Matrix.Translation(pivot)
+                @ Matrix.Rotation(math.radians(angle * sign), 4, 'Y')
+                @ Matrix.Translation(-pivot))
+        for template in chain:
+            name = template % side
+            if name in rig.pose.bones:
+                rig.pose.bones[name].matrix = turn @ rig.data.bones[name].matrix_local
+                bpy.context.view_layer.update()
+
+
+def store_idle_action(rig):
+    """Keep the idle pose in the file as an action, so it is reproducible."""
+    pose_idle(rig)
+    action = bpy.data.actions.get('Idle') or bpy.data.actions.new('Idle')
+    if not rig.animation_data:
+        rig.animation_data_create()
+    rig.animation_data.action = action
+    for bone in rig.pose.bones:
+        bone.keyframe_insert('rotation_quaternion', frame=1)
+    rig.animation_data.action = None
+    return action
+
+
+def scale_head(factor):
+    """Scale head, hair and ears about the chin, keeping their shapes exactly."""
+    if abs(factor - 1) < 1e-6:
+        return
+    base = min(v.co.z for v in bpy.data.objects['Head'].data.vertices)
+    for name in ('Head', 'Hair'):
+        mesh = bpy.data.objects[name].data
+        for vertex in mesh.vertices:
+            vertex.co = Vector((vertex.co.x * factor, vertex.co.y * factor,
+                                base + (vertex.co.z - base) * factor))
+        mesh.update()
+
+
 def extend_rig(rig, spines):
     """Split each arm into four deform segments laid along the new tube centre.
 
@@ -120,7 +183,7 @@ def extend_rig(rig, spines):
                 edit.remove(edit[name])
         edit['Clavicle.' + side].tail = spine[0]
         parent = edit['Clavicle.' + side]
-        for template, first, last in ARM_SEGMENTS:
+        for template, first, last in arm_segments(len(spine)):
             bone = edit.new(template % side)
             bone.head, bone.tail = spine[first], spine[last]
             bone.parent = parent
@@ -133,6 +196,20 @@ def extend_rig(rig, spines):
             # arc forward predictably and symmetrically.
             bone.align_roll(Vector((0, 1, 0)))
             parent = bone
+        # The hand chain was authored pointing down; swing it onto the T-pose
+        # arm so bones and mesh agree.
+        pivot = spine[-1]
+        turn = (Matrix.Translation(pivot)
+                @ body_builder.hand_turn(1 if side == 'R' else -1)
+                @ Matrix.Translation(-pivot))
+        inherited = Vector((1 if side == 'R' else -1, 1, 1))
+        for name in ('Hand.' + side, 'Fingers.' + side, 'Thumb.' + side):
+            bone = edit.get(name)
+            if bone:
+                head, tail, roll = bone.head.copy(), bone.tail.copy(), bone.roll
+                offset = spine[-1] - Vector((inherited.x * .2997, -.0848, .6318))
+                bone.head = turn @ (head + offset)
+                bone.tail = turn @ (tail + offset)
         hand = edit['Hand.' + side]
         hand.parent = parent
         hand.use_connect = False
@@ -155,11 +232,13 @@ def extend_rig(rig, spines):
 
 def main():
     bpy.ops.wm.open_mainfile(filepath=str(SOURCE))
+    chart = body_builder.use_chart(CHART)
+    print('### chart', CHART, proportions.summary(CHART))
     old_body = bpy.data.objects['Body']
     hands = body_builder.hand_assembly(old_body)
     ears = ear_islands(old_body)
     build = body_builder.Build()
-    grid, loops, _ = body_builder.build_torso(build, body_builder.arm_spine())
+    grid, loops, _ = body_builder.build_torso(build)
     body_builder.build_neck(build, grid)
     body_builder.build_legs(build, grid)
     body_builder.build_arms(build, loops, hands)
@@ -167,13 +246,20 @@ def main():
     mesh.materials.append(bpy.data.materials['TravellerDrawingBody'])
     old_body.data = mesh
     move_ears_to_head(ears, bpy.data.objects['Head'])
+    scale_head(chart['head_scale'])
     rig = bpy.data.objects['Rig']
     clear_pose(rig)
     extend_rig(rig, build.spines)
     influences = skin_body.apply(old_body, rig, build)
     print('### max influences', influences)
-    modifier = old_body.modifiers.get('Armature') or old_body.modifiers.new('Body skin', 'ARMATURE')
+    # Exactly one armature modifier. Looking the old one up by the name this
+    # script uses missed the inherited modifier ('Body skin'), so every rebuild
+    # stacked another and the mesh was deformed twice over.
+    for modifier in [m for m in old_body.modifiers if m.type == 'ARMATURE']:
+        old_body.modifiers.remove(modifier)
+    modifier = old_body.modifiers.new('Body skin', 'ARMATURE')
     modifier.object = rig
+    assert sum(1 for m in old_body.modifiers if m.type == 'ARMATURE') == 1
     for key in ('animated_arm_start', 'upper_body_rebuilt'):
         if key in old_body.keys():
             del old_body[key]
@@ -186,6 +272,11 @@ def main():
     body_builder.report(mesh, 'body')
     check_body.report(old_body, build)
     print('### clearance', check_body.clearance(old_body))
+    store_idle_action(rig)
+    print('### measured ', check_body.measure())   # in the idle pose
+    print('### posed crossings', check_body.crossings(old_body)[0])
+    clear_pose(rig)
+    print('### palette  ', dict(check_body.palette_regions()))
     print('### rig bones', len(rig.data.bones),
           [b.name for b in rig.data.bones if 'Arm' in b.name])
     TARGET.parent.mkdir(parents=True, exist_ok=True)

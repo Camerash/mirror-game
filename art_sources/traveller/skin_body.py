@@ -69,9 +69,13 @@ def apply(body, rig, build):
     chains = {'torso': ['Pelvis', 'Spine', 'Chest'], 'neck': ['Neck', 'Head']}
     for side in ('L', 'R'):
         chains['leg' + side] = ['Thigh.' + side, 'Shin.' + side, 'Foot.' + side]
-        chains['arm' + side] = ['Clavicle.' + side, 'UpperArm.' + side,
-                                'UpperArm.%s.001' % side, 'Forearm.' + side,
-                                'Forearm.%s.001' % side]
+        # Clavicle is deliberately not in the chain. With it first, the rings
+        # nearest the shoulder took most of their weight from a bone that does
+        # not move with the arm, so a raised arm tore away from its own deltoid.
+        chains['arm' + side] = ['UpperArm.' + side, 'UpperArm.%s.001' % side,
+                                'Forearm.' + side, 'Forearm.%s.001' % side]
+        # The cuff hangs off the wrist end of the same chain.
+        chains['cuff' + side] = chains['arm' + side]
     body.vertex_groups.clear()
     for bone in rig.data.bones:
         body.vertex_groups.new(name=bone.name)
@@ -88,18 +92,22 @@ def apply(body, rig, build):
             weights = {('Forearm.%s.001' % side) if name == 'Forearm.' + side else name: value
                        for name, value in build.weights[index].items()}
         elif part.startswith('shoulder'):
+            # The armhole ring is the deltoid: it belongs to the arm, with
+            # enough chest to keep the seam attached to the body.
             side = part[-1]
-            weights = {'Clavicle.' + side: .55, 'Chest': .45}
+            weights = {'UpperArm.' + side: .62, 'Chest': .38}
         else:
             weights = chain_weights(point, chain_points(rig, chains[part]), chains[part])
             if part == 'torso':
-                # Soften the armhole surround so the deltoid does not crease.
+                # Let the torso around each armhole follow the arm a little, so
+                # the armpit opens and closes instead of creasing.
                 for side, centre in shoulders.items():
-                    near = max(0.0, 1 - (point - centre).length / .34)
+                    near = max(0.0, 1 - (point - centre).length / .40)
                     if near > 0:
-                        share = .6 * near * near
+                        share = .68 * near * near
                         weights = {k: v * (1 - share) for k, v in weights.items()}
-                        weights['Clavicle.' + side] = weights.get('Clavicle.' + side, 0) + share
+                        name = 'UpperArm.' + side
+                        weights[name] = weights.get(name, 0) + share
         # The old body carried helper groups such as AnimatedArms; keep bones only.
         weights = {k: v for k, v in weights.items()
                    if v > 1e-4 and k in rig.data.bones}

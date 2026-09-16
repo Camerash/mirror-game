@@ -9,9 +9,16 @@ Column system: 20-column torso, 10-column limbs. 20 = 2 x 10, so every junction
 is 1:1. Each limb hole is a 3-wide x 2-tall block of torso faces, whose boundary
 is exactly 10 vertices.
 
-The accepted hand assembly (102 vertices per arm, including the folded open cuff
-and the thumb) is reused verbatim from the existing body; only the sleeve above
-it is regenerated.
+The body is modelled in T-pose: the upper body and both arms are one clean
+horizontal tube. The arm leaves the armhole along the hole's own normal, so
+there is no corner to crease; the arms-down look is a rig pose.
+
+The accepted hand and thumb are reused verbatim from the existing body. Its
+folded cuff is not: that cuff turned back wider than the sleeve around it, so it
+poked through and had to be squashed inwards to fit. The cuff is regenerated here
+as a single-wall funnel instead, which cannot fold through itself.
+
+Proportions come from `proportions.py`, not from literals here.
 """
 import math
 import sys
@@ -19,15 +26,20 @@ from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from body_shape import catmull_rom, even_samples, parallel_frames, ring
+import proportions
 
 COLUMNS = 20
 LIMB_COLUMNS = 10
-PALETTE_UV = (.375, .56)
+# One atlas point per region. The inherited model interleaved cloth, trim and
+# skin by height through the cuff, which is what made it read as bare wrist.
+CLOTH_UV = (.375, .56)
+TRIM_UV = (.625, .73)
 HAND_UV = (.875, .56)
+PALETTE_UV = CLOTH_UV
 CENTRE_Y = -.0135
 
 # Measured from the accepted body: (z, radius x, radius y).
@@ -38,34 +50,48 @@ CENTRE_Y = -.0135
 # Narrowed from the inherited barrel (rx .386/.361). The old torso was wider
 # than the arms hanging beside it, so they could only ever intersect. It is
 # entirely under the cloak, and the front split shows depth (ry), not width.
-TORSO_KEYS = [(1.08, .2950, .2500), (1.55, .2450, .2050),
-              (1.92, .2950, .2200), (2.10, .2250, .1750)]
-TORSO_CLAMP_BELOW = 1.76
-TORSO_MARGIN = .022
-TORSO_ROWS = [2.10, 2.02, 1.94, 1.86, 1.78, 1.70, 1.60, 1.50, 1.40, 1.30, 1.20, 1.12]
-ARMHOLE_ROWS = (2, 4)          # vertex rows spanning the hole (two face rows)
+TORSO = ()                     # (radius x, radius y), set by `use_chart`
+# A straight tube needs fewer rows than the old vase profile.
+# The top three rows are spaced one sleeve radius apart, so the armhole is
+# exactly as tall as the arm is thick and its top edge sits on the torso's top
+# ring. The hole then matches the sleeve's cross-section and the bridge between
+# them is short and flush, instead of stretching to twice the height.
+TORSO_ROWS = [2.000, 1.878, 1.756, 1.630, 1.500, 1.370, 1.240, 1.120]
+ARMHOLE_ROWS = (0, 2)          # the hole opens at the very top of the torso
 ARMHOLE_COLUMNS = {'R': 18, 'L': 8}   # first of four vertex columns
 # Legs sit entirely under the cloak (only the boots show), so they are drawn in
 # to clear the hands that hang beside them.
-LEG_KEYS = [(.32, .1700, .0960, .0980), (.78, .1660, .1020, .1040),
-            (1.18, .1640, .1200, .1225)]
+LEG_KEYS = []                  # set by `use_chart`
 LEG_ROWS = [1.02, .92, .80, .68, .56, .44, .32]
 NECK_ROWS = [(2.15, .150), (2.21, .140), (2.27, .120), (2.31, .080)]
-SLEEVE_RINGS = 13
-SLEEVE_RADIUS = (.138, .118)   # armhole end, cuff end; monotone between
+SLEEVE_RINGS = 11
+SLEEVE_RADIUS = ()             # set by `use_chart`
 ELLIPSE = .82                  # measured ry/rx of the sleeve, constant
-# The wrist moves outboard of its inherited x=0.2997 so the hand clears the
-# thigh; the hand assembly is translated by the same offset.
-WRIST = (.4100, -.1000, .6318)
+ARM_LENGTH = 0                 # set by `use_chart`; shoulder to fingertip
 INHERITED_WRIST = (.2997, -.0848, .6318)
-SHOULDER_KICK = (.155, -.010, -.070)    # arm leaves the armhole outward, then turns down
-WRIST_APPROACH = (.010, -.085, .330)    # gentle backward bow into the wrist
-CUFF_TUCK = .55                # keep the cuff's return wall inside the sleeve
+# Hand-assembly vertices above this inherited height are the old folded cuff and
+# are discarded; the rest is the hand and thumb, kept as authored.
+CUFF_SPLIT_Z = .54
+# A subtle cuff: the band reads mostly as trim colour, not as a flare. This
+# supersedes the "about 25% wider than the adjacent sleeve" line in
+# GAME_DESIGN.md, which the user replaced with flush, subtle sleeves.
+CUFF_FLARE = ((.45, 1.05), (.85, 1.11))
+
+
+def use_chart(name):
+    """Load one proportion chart into the module constants."""
+    global TORSO, LEG_KEYS, ARM_LENGTH, SLEEVE_RADIUS
+    chart = proportions.CHARTS[name]
+    TORSO = chart['torso']
+    LEG_KEYS = chart['leg_keys']
+    ARM_LENGTH = chart['arm_length']
+    SLEEVE_RADIUS = chart['sleeve_radius']
+    return chart
 
 
 def design_radius(z):
-    return (catmull_rom([(k[0], k[1]) for k in TORSO_KEYS], z),
-            catmull_rom([(k[0], k[2]) for k in TORSO_KEYS], z))
+    """Constant. The torso is a tube; upper and lower body share one radius."""
+    return TORSO
 
 
 def armhole_centre():
@@ -83,41 +109,28 @@ def armhole_centre():
 
 
 def arm_spine(sign=1):
-    """Shoulder-to-wrist spine: a real deltoid, then one gentle bow to the wrist.
+    """Straight, horizontal, leaving the armhole along its own normal.
 
-    A spine that drops straight from the armhole keeps the whole sleeve pressed
-    against the torso, which is why the two surfaces could not be separated. A
-    shoulder leaves outward first and only then turns down, which clears the
-    torso and reads correctly as a deltoid.
+    A spine that drops from the armhole makes the hole's normal and the arm's
+    direction meet at ninety degrees, and the bridge that turns that corner is
+    the cave-in seen at the shoulder. Going straight out has no corner.
     """
     centre = armhole_centre()
-    wrist = Vector((sign * WRIST[0], WRIST[1], WRIST[2]))
-    start = Vector((sign * centre.x, centre.y, centre.z))
-    outward = Vector((sign * SHOULDER_KICK[0], SHOULDER_KICK[1], SHOULDER_KICK[2]))
-    approach = Vector((sign * WRIST_APPROACH[0], WRIST_APPROACH[1], WRIST_APPROACH[2]))
-    return even_samples(start, start + outward, wrist + approach, SLEEVE_RINGS, p3=wrist)
+    start = Vector((sign * abs(centre.x), centre.y, centre.z))
+    outward = Vector((sign, 0, 0))
+    wrist = start + outward * (ARM_LENGTH - proportions.HAND_DROP)
+    reach = (wrist - start) / 3
+    return even_samples(start, start + reach, wrist - reach, SLEEVE_RINGS, p3=wrist)
+
+
+def hand_turn(sign):
+    """The inherited hand points down; in T-pose it points along the arm."""
+    return Matrix.Rotation(math.radians(-90 * sign), 4, 'Y')
 
 
 def sleeve_radius(index):
     t = index / (SLEEVE_RINGS - 1)
     return SLEEVE_RADIUS[0] + (SLEEVE_RADIUS[1] - SLEEVE_RADIUS[0]) * t * t
-
-
-def torso_radius(z, spine=None):
-    """Design profile, clamped below the armhole so the arm cannot pass through."""
-    rx, ry = design_radius(z)
-    if spine is None or z >= TORSO_CLAMP_BELOW:
-        return rx, ry
-    limit = None
-    for index, point in enumerate(spine):
-        if abs(point.z - z) < .24:
-            inner = abs(point.x) - sleeve_radius(index) - TORSO_MARGIN
-            limit = inner if limit is None else min(limit, inner)
-    if limit is None:
-        return rx, ry
-    if rx <= limit:
-        return rx, ry
-    return limit, ry * limit / rx
 
 
 def leg_centre(z):
@@ -178,11 +191,11 @@ class Build:
         return tip
 
 
-def build_torso(build, spine=None):
+def build_torso(build):
     """20-column loft with two armholes cut as 3x2 face blocks."""
     grid = []
     for z in TORSO_ROWS:
-        rx, ry = torso_radius(z, spine)
+        rx, ry = design_radius(z)
         centre = Vector((0, CENTRE_Y, z))
         points = ring(centre, Vector((1, 0, 0)), Vector((0, 1, 0)), rx, ry, COLUMNS)
         grid.append(build.ring(points, 'torso'))
@@ -288,29 +301,36 @@ def hand_assembly(body):
         if len(island) != 202:
             continue
         side = 'R' if mesh.vertices[island[0]].co.x > 0 else 'L'
-        sleeve, hand = set(island[:100]), island[100:]
+        sleeve = set(island[:100])
+        assembly = island[100:]
+        # Drop the inherited folded cuff; keep the hand and thumb as authored.
+        hand = [i for i in assembly if mesh.vertices[i].co.z <= CUFF_SPLIT_Z]
+        cuff = set(assembly) - set(hand)
         keep = set(hand)
         faces, uvs = [], []
         for face in mesh.polygons:
             if all(i in keep for i in face.vertices):
                 faces.append(tuple(face.vertices))
                 uvs.append(tuple(mesh.uv_layers.active.data[face.loop_indices[0]].uv))
-        attach = [f for f in mesh.polygons
-                  if any(i in sleeve for i in f.vertices) and any(i in keep for i in f.vertices)]
-        rim = [i for i in hand if any(i in f.vertices for f in attach)]
-        # Order the rim the way the old bridge ran, following the attach quads.
+        # The new rim is the hand's own top ring: the kept vertices that used to
+        # carry faces up into the discarded cuff.
+        bridging = [f for f in mesh.polygons
+                    if any(i in cuff | sleeve for i in f.vertices)
+                    and any(i in keep for i in f.vertices)]
+        rim = [i for i in hand if any(i in f.vertices for f in bridging)]
+        neighbours = {i: set() for i in rim}
+        for edge in mesh.edges:
+            a, b = edge.vertices
+            if a in neighbours and b in neighbours:
+                neighbours[a].add(b)
+                neighbours[b].add(a)
         order, current = [rim[0]], rim[0]
         while len(order) < len(rim):
-            for face in attach:
-                verts = [i for i in face.vertices if i in rim]
-                if current in verts:
-                    following = [i for i in verts if i not in order]
-                    if following:
-                        order.append(following[0])
-                        current = following[0]
-                        break
-            else:
+            following = [i for i in neighbours[current] if i not in order]
+            if not following:
                 break
+            order.append(following[0])
+            current = following[0]
         weights = {i: {names[g.group]: g.weight for g in mesh.vertices[i].groups if g.weight > 0}
                    for i in hand}
         result[side] = {'verts': hand, 'faces': faces, 'uvs': uvs, 'rim': order,
@@ -325,12 +345,13 @@ def build_arms(build, loops, hands):
     for side, sign in (('R', 1), ('L', -1)):
         loop = loops[side]
         spine = arm_spine(sign)
-        frames = parallel_frames(spine, Vector((sign, 0, 0)))
+        # Vertical reference: the arm runs along x, so +x would be degenerate.
+        frames = parallel_frames(spine, Vector((0, 0, 1)))
         rings = []
         for index, (point, frame) in enumerate(zip(spine, frames)):
             radius = sleeve_radius(index)
             _, normal, binormal = frame
-            rings.append(ring(point, normal * sign, binormal, radius, radius * ELLIPSE,
+            rings.append(ring(point, normal, binormal, radius, radius * ELLIPSE,
                               LIMB_COLUMNS))
         build.relax.update(loop)
         build.spines[side] = spine
@@ -338,38 +359,49 @@ def build_arms(build, loops, hands):
         for index, points in enumerate(rings):
             ordered, _ = align([build.points[i] for i in previous], points)
             current = build.ring(ordered, 'arm' + side)
-            if index < 2:
+            # Only the first ring is relaxed now. The wider band existed to
+            # round a ninety-degree corner between torso wall and arm; in T-pose
+            # there is no corner, and relaxing more rings pulled the sleeve in
+            # and left a notch at the shoulder.
+            if index < 1:
                 build.relax.update(current)
-            build.bridge(previous, current)
+            build.bridge(previous, current, CLOTH_UV)
             previous = current
+
+        # Place the kept hand, then span the gap with a fresh cuff.
         hand = hands[side]
-        shift = Vector((sign * (WRIST[0] - INHERITED_WRIST[0]),
-                        WRIST[1] - INHERITED_WRIST[1], 0))
-        seam = spine[-1]
-        seam_radius = sleeve_radius(SLEEVE_RINGS - 1)
-        lip = [hand['points'][i] + shift for i in hand['rim']]
-        lip_z = sum(p.z for p in lip) / len(lip)
-        lip_radius = max(Vector((p.x - seam.x, p.y - seam.y, 0)).length for p in lip)
-        remap = {}
-        for index in hand['verts']:
-            point = hand['points'][index] + shift
-            # The inherited cuff folds back up *wider* than the wall around it,
-            # so its return poked through the sleeve. Anything above the lip must
-            # stay inside the outer wall, which runs from the lip to the seam.
-            if point.z > lip_z + 1e-5:
-                across = (point.z - lip_z) / max(seam.z - lip_z, 1e-6)
-                wall = lip_radius + (seam_radius - lip_radius) * min(across, 1.0)
-                radial = Vector((point.x - seam.x, point.y - seam.y, 0))
-                if radial.length > wall * CUFF_TUCK:
-                    radial = radial.normalized() * wall * CUFF_TUCK
-                    point = Vector((seam.x + radial.x, seam.y + radial.y, point.z))
-            remap[index] = build.vertex(point, 'hand' + side, hand['weights'][index])
+        inherited = Vector((sign * INHERITED_WRIST[0], INHERITED_WRIST[1],
+                            INHERITED_WRIST[2]))
+        turn = hand_turn(sign)
+        seam_point = spine[-1]
+        remap = {index: build.vertex(
+            seam_point + turn @ (hand['points'][index] - inherited),
+            'hand' + side, hand['weights'][index]) for index in hand['verts']}
         for face, uv in zip(hand['faces'], hand['uvs']):
             build.face(tuple(remap[i] for i in face), uv)
-        rim = [remap[i] for i in hand['rim']]
-        ordered, _ = align([build.points[i] for i in previous], [build.points[i] for i in rim])
-        lookup = {build.points[i].to_tuple(5): i for i in rim}
-        build.bridge(previous, [lookup[p.to_tuple(5)] for p in ordered], HAND_UV)
+        wrist_ring = [remap[i] for i in hand['rim']]
+        ordered, _ = align([build.points[i] for i in previous],
+                           [build.points[i] for i in wrist_ring])
+        lookup = {build.points[i].to_tuple(5): i for i in wrist_ring}
+        wrist_ring = [lookup[p.to_tuple(5)] for p in ordered]
+
+        seam = spine[-1]
+        seam_radius = sleeve_radius(SLEEVE_RINGS - 1)
+        _, normal, binormal = frames[-1]
+        hand_top = sum((build.points[i] for i in wrist_ring), Vector()) / len(wrist_ring)
+        # A single-wall funnel: the sleeve flares out to the lip, then the lip
+        # runs straight in to the wrist. The inherited cuff folded back on itself
+        # and turned wider than the sleeve, which is why it poked through.
+        for across, multiple in CUFF_FLARE:
+            centre = seam.lerp(hand_top, across)
+            radius = seam_radius * multiple
+            points = ring(centre, normal, binormal, radius, radius * ELLIPSE,
+                          LIMB_COLUMNS)
+            ordered, _ = align([build.points[i] for i in previous], points)
+            current = build.ring(ordered, 'cuff' + side)
+            build.bridge(previous, current, TRIM_UV)
+            previous = current
+        build.bridge(previous, wrist_ring, TRIM_UV)
 
 
 def write_mesh(build, name='Body'):
@@ -398,7 +430,7 @@ def write_mesh(build, name='Body'):
     # a hard crease. Relaxing only the two loops that form the fold rounds the
     # deltoid without moving the torso or the sleeve profile.
     band = [remap[i] for i in build.relax if i in remap]
-    for _ in range(3):
+    for _ in range(2):
         moved = {}
         for index in band:
             vertex = work.verts[index]
