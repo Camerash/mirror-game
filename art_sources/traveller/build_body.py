@@ -67,8 +67,13 @@ LEG_ROWS = [1.02, .92, .80, .68, .56, .44, .32]
 # The tunic stops at the shoulder line, level with the top of the arm, and a
 # short skin neck carries on into the head. Before this the cloth ran all the
 # way to z 2.35, which read as a high blue collar with no neck at all.
-SHOULDER_CHAMFER = (2.020, .270)   # 20-column ring: rounds the tunic's top rim
-COLLAR = (2.035, .100)             # 10-column ring where the cloth ends
+# The shoulder curves into the neck along a quarter ellipse. A single chamfer
+# ring left a 148-degree crease, and because it was built as a *circle* over an
+# elliptical torso it also flared .033 proud at the front and back, which is the
+# ledge that showed across the chest.
+SHOULDER_RISE = .050               # how far the dome climbs above the torso top
+SHOULDER_STEPS = (.30, .58, .80)   # fractions of the quarter turn, 20 columns each
+COLLAR_RADIUS = .100               # where the cloth ends and the neck begins
 # Head bottoms out at z 2.08 and only reaches radius .107 by 2.09, so a neck
 # this narrow is hidden from there up and the rest of it is the visible neck.
 NECK_ROWS = [(2.10, .098), (2.17, .090), (2.22, .070)]
@@ -235,30 +240,41 @@ def build_torso(build):
 
 
 def build_neck(build, grid):
-    """Close the tunic at the shoulder line, then carry a short skin neck up."""
-    def circle(z, radius, columns, part):
+    """Dome the tunic into the neck, then carry a short skin neck up."""
+    def loop(z, radius_x, radius_y, columns, part):
         centre = Vector((0, CENTRE_Y + .0045, z))
         return build.ring(ring(centre, Vector((1, 0, 0)), Vector((0, 1, 0)),
-                               radius, radius, columns), part)
+                               radius_x, radius_y, columns), part)
 
-    # A single chamfer so the tunic's top rim is defined but not a razor edge.
-    z, radius = SHOULDER_CHAMFER
-    rim = circle(z, radius, COLUMNS, 'torso')
-    build.bridge(grid[0], rim, CLOTH_UV)
+    top_z = TORSO_ROWS[0]
+    torso_x, torso_y = TORSO
+    # Each ring interpolates the torso's own two radii toward the round collar,
+    # so the dome stays elliptical where the body is and only becomes circular
+    # as it reaches the neck. Building these as circles is what made the ledge.
+    previous = grid[0]
+    for step in SHOULDER_STEPS:
+        turn = step * math.pi / 2
+        blend = math.cos(turn)
+        current = loop(top_z + SHOULDER_RISE * math.sin(turn),
+                       COLLAR_RADIUS + (torso_x - COLLAR_RADIUS) * blend,
+                       COLLAR_RADIUS + (torso_y - COLLAR_RADIUS) * blend,
+                       COLUMNS, 'torso')
+        build.bridge(previous, current, CLOTH_UV)
+        previous = current
 
-    z, radius = COLLAR
-    collar = circle(z, radius, LIMB_COLUMNS, 'neck')
-    # 2:1 reduction across the shoulder deck: one quad and one triangle each.
+    collar_z = top_z + SHOULDER_RISE
+    collar = loop(collar_z, COLLAR_RADIUS, COLLAR_RADIUS, LIMB_COLUMNS, 'neck')
+    # 2:1 reduction at the top of the dome, where it reads least.
     for index in range(LIMB_COLUMNS):
-        a = rim[2 * index]
-        b = rim[(2 * index + 1) % COLUMNS]
-        c = rim[(2 * index + 2) % COLUMNS]
+        a = previous[2 * index]
+        b = previous[(2 * index + 1) % COLUMNS]
+        c = previous[(2 * index + 2) % COLUMNS]
         build.face((a, b, collar[index], collar[index - 1]), CLOTH_UV)
         build.face((b, c, collar[index]), CLOTH_UV)
 
     previous = collar
     for z, radius in NECK_ROWS:
-        current = circle(z, radius, LIMB_COLUMNS, 'neck')
+        current = loop(z, radius, radius, LIMB_COLUMNS, 'neck')
         build.bridge(previous, current, SKIN_UV)
         previous = current
     build.fan(previous, Vector((0, CENTRE_Y + .0045, NECK_ROWS[-1][0] + .04)),
@@ -370,7 +386,9 @@ def build_arms(build, loops, hands):
             _, normal, binormal = frame
             rings.append(ring(point, normal, binormal, radius, radius * ELLIPSE,
                               LIMB_COLUMNS))
-        build.relax.update(loop)
+        # The armhole boundary is torso surface and stays on it. Relaxing it
+        # averaged those vertices toward the arm's first ring and pulled them out
+        # to radius .416 against a torso radius of .300 - the shoulder lump.
         build.spines[side] = spine
         previous = loop
         for index, points in enumerate(rings):
