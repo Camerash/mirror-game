@@ -272,6 +272,9 @@ def main():
     drift = max((evaluated.data.vertices[i].co - mesh.vertices[i].co).length
                 for i in range(len(mesh.vertices)))
     print('### rest-pose drift (must be ~0):', round(drift, 6))
+    # 64 samples over 3-4 unit area lights dithers the soft shadows badly enough
+    # that render noise gets read as faceting. Review renders are cheap; raise it.
+    bpy.context.scene.eevee.taa_render_samples = 512
     body_builder.report(mesh, 'body')
     check_body.report(old_body, build)
     print('### clearance', check_body.clearance(old_body))

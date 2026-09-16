@@ -298,9 +298,13 @@ def build_legs(build, grid):
     hip = grid[-1]
     seam_z = TORSO_ROWS[-1]
     middles = {}
-    for side, column in (('R', 4), ('L', 5)):
-        point = build.points[hip[column]]
-        middles[side] = build.vertex(Vector((point.x, CENTRE_Y, seam_z)), 'torso')
+    for side, sign in (('R', 1), ('L', -1)):
+        # Pulled in to the leg's own inner edge, so the loop's inner side is a
+        # shallow arc matching the ring below it. Left on the chord it stayed a
+        # flat plane meeting a curve, which is what faceted beside the gap.
+        leg_x, leg_rx, _ = leg_centre(seam_z)
+        middles[side] = build.vertex(
+            Vector((sign * (leg_x - leg_rx), CENTRE_Y, seam_z)), 'torso')
     halves = {'R': [hip[(15 + n) % COLUMNS] for n in range(10)] + [middles['R']],
               'L': [hip[5 + n] for n in range(10)] + [middles['L']]}
     build.face((hip[4], hip[5], middles['L'], middles['R']))
