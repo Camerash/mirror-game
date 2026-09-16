@@ -3,9 +3,10 @@
 Run with:
     Blender --background --python art_sources/traveller/build_traveller.py
 
-The accepted Head, Hair and Boots are carried over untouched. The body mesh, the
-arm bones and the cloak are rebuilt. The cloak keeps its accepted shape and its
-eight hood keys, and gains `CloakArms` for the reaching animation.
+The accepted Head and Boots are carried over untouched. The body mesh, the arm
+bones, the cloak and the hair are rebuilt. The cloak keeps its accepted shape and
+its eight hood keys, and gains `CloakArms` for the reaching animation. The hair
+keeps its accepted hairline and its bun.
 """
 import math
 import os
@@ -20,6 +21,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import build_body as body_builder
 import build_cloak
+import build_hair
 import proportions
 import check_body
 import skin_body
@@ -278,6 +280,8 @@ def main():
     # that render noise gets read as faceting. Review renders are cheap; raise it.
     bpy.context.scene.eevee.taa_render_samples = 512
     print('### cloak keys', build_cloak.rebuild(bpy.data.objects['Garment']))
+    print('### hair faces', build_hair.build(bpy.data.objects['Hair'],
+                                             bpy.data.objects['Head']))
     body_builder.report(mesh, 'body')
     check_body.report(old_body, build)
     print('### clearance', check_body.clearance(old_body))

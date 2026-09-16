@@ -12,11 +12,12 @@ the accepted assets, rebuilds the body and the arm bones, and saves the result.
 
 ## What the build keeps and what it replaces
 
-Kept unchanged: `Head`, `Hair`, `Boots`, the two-material 1024 atlas, and the
-hand assembly of 102 vertices per arm (the folded open cuff and the hand).
+Kept unchanged: `Head`, `Boots`, the two-material 1024 atlas, and the hand
+assembly of 102 vertices per arm (the folded open cuff and the hand).
 
-Rebuilt: the `Body` mesh, the arm bones, and the `Garment` (the cloak). The cloak
-keeps its accepted shape and its eight hood keys, and gains a ninth, `CloakArms`.
+Rebuilt: the `Body` mesh, the arm bones, the `Garment` (the cloak) and the
+`Hair`. The cloak keeps its accepted shape and its eight hood keys, and gains a
+ninth, `CloakArms`. The hair keeps its accepted hairline and its bun.
 
 ## Why the body was rebuilt
 
@@ -70,6 +71,29 @@ shape by construction: it does not model the shape, it samples the old one.
   large movement such as the hood folding down (2.1 units) stays correct. A new
   key does not reliably start at zero, so each one is set to zero explicitly.
 
+## How the hair is built
+
+`build_hair.py` replaces the hair cap. The inherited cap was a smooth
+double-walled helmet: 964 triangles, 10 ngons, two 28-valence poles at the crown,
+one flat atlas point and no shape.
+
+- **The cap is fitted to the skull.** Every sample is a ray cast out of the
+  head's centre onto the head itself. The ear islands are left out of that cast:
+  a ray that hit an ear would stand the cap 0.08 further out and bulge over it.
+- **The hairline is measured, not invented.** It is found by casting at the old
+  hair's own silhouette and bisecting for the angle where the hair stops.
+  Reading it as the lowest hair vertex per azimuth does not work: near the face
+  one bin holds both the edge of the face opening and the side hair behind it,
+  so the lowest wins and drags a wedge down the cheek.
+- **The locks are tufts, not relief.** Each one is swept off a span of the cap's
+  own hairline and tapers to a point, by the same ring method the arms use.
+  Surface grooves were tried first and are invisible at this size, because chibi
+  hair reads by its outline. A lock shares its first ring with the cap, so the
+  hair stays one island.
+- **Each lock stops above the shoulders.** Its reach is cut to the room it has,
+  and a lock with no room is not grown at all. Locks are also kept off the face:
+  the face window is narrow, so any tuft there falls across an eye.
+
 ## Rig
 
 28 bones, all deform, all exportable. Each arm has four segments:
@@ -100,7 +124,12 @@ contact targets.
 | Cloak quads | 97% (was 0%) |
 | Cloak edge / face ratios | 27:1 and 71:1 (were 258:1 and 999:1) |
 | Cloak clearance, all nine keys | 0 overlaps |
-| triangles | 5,562, under the 6,000 target |
+| Hair triangles | 798 (was 964) |
+| Hair ngons / crown poles | 0 / none (were 10 / two 28-valence) |
+| Hair against the hood, all nine keys | 0 overlaps |
+| Hair against the body | 0 overlaps |
+| Hair against the head | 69, all of them the ears (was 136, 6 of them not) |
+| triangles | 5,396, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -135,6 +164,12 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
+- **The hair silhouette is only part way to the reference.** The cap now carries
+  pointed lock tips that read from the front and the three-quarter view, but from
+  the side it is still the inherited helmet shape. Reaching the chibi Link look
+  needs the lock count, their places and their directions chosen on a marked-up
+  drawing, the way the shoulder was corrected. Parameter search alone stopped
+  improving it.
 - **Retiring the old trials.** `traveller_rigify_trial` and
   `traveller_upper_body_trial` are superseded. Remove them once this file is
   accepted.
