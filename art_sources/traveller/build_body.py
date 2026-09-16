@@ -34,6 +34,7 @@ import proportions
 
 COLUMNS = 20
 LIMB_COLUMNS = 10
+LEG_COLUMNS = 11               # ten hip columns plus the split chord's midpoint
 # One atlas point per region. The inherited model interleaved cloth, trim and
 # skin by height through the cuff, which is what made it read as bare wrist.
 CLOTH_UV = (.375, .56)
@@ -57,13 +58,17 @@ TORSO = ()                     # (radius x, radius y), set by `use_chart`
 # exactly as tall as the arm is thick and its top edge sits on the torso's top
 # ring. The hole then matches the sleeve's cross-section and the bridge between
 # them is short and flush, instead of stretching to twice the height.
-TORSO_ROWS = [2.000, 1.878, 1.756, 1.630, 1.500, 1.370, 1.240, 1.120]
+TORSO_ROWS = [2.000, 1.878, 1.756, 1.630, 1.500, 1.370, 1.240, 1.170, 1.120]
+# Depth only, over the last two rows. Splitting a ring .464 deep into legs .286
+# across sheared the crotch into faces of aspect 5 that caught no light and read
+# as a dark wedge. Width (rx) is untouched, so the front stays a straight tube.
+CROTCH_TAPER = ((1.120, .64), (1.170, .85), (1.240, 1.00))   # ascending z
 ARMHOLE_ROWS = (0, 2)          # the hole opens at the very top of the torso
 ARMHOLE_COLUMNS = {'R': 18, 'L': 8}   # first of four vertex columns
 # Legs sit entirely under the cloak (only the boots show), so they are drawn in
 # to clear the hands that hang beside them.
 LEG_KEYS = []                  # set by `use_chart`
-LEG_ROWS = [1.02, .92, .80, .68, .56, .44, .32]
+LEG_ROWS = [1.07, 1.01, .93, .82, .70, .58, .45, .32]
 # The tunic stops at the shoulder line, level with the top of the arm, and a
 # short skin neck carries on into the head. Before this the cloth ran all the
 # way to z 2.35, which read as a high blue collar with no neck at all.
@@ -103,8 +108,9 @@ def use_chart(name):
 
 
 def design_radius(z):
-    """Constant. The torso is a tube; upper and lower body share one radius."""
-    return TORSO
+    """Constant width; depth closes only over the last rows, into the crotch."""
+    radius_x, radius_y = TORSO
+    return radius_x, radius_y * catmull_rom(CROTCH_TAPER, z)
 
 
 def armhole_centre():
@@ -282,17 +288,30 @@ def build_neck(build, grid):
 
 
 def build_legs(build, grid):
-    """Split the 20-column hip ring into two 10-column legs sharing a septum."""
+    """Split the hip ring into two legs across a two-quad septum.
+
+    Splitting the ring in half leaves each leg a D whose straight side is one
+    long chord - nine short segments and one of .297 - so that chord bridged to a
+    .09 leg segment and sheared into the dark wedge seen at the groin. A midpoint
+    on each chord halves it and makes the septum two square-ish quads.
+    """
     hip = grid[-1]
-    halves = {'R': [hip[(15 + n) % COLUMNS] for n in range(10)],
-              'L': [hip[5 + n] for n in range(10)]}
-    build.face((hip[4], hip[5], hip[14], hip[15]))
+    seam_z = TORSO_ROWS[-1]
+    middles = {}
+    for side, column in (('R', 4), ('L', 5)):
+        point = build.points[hip[column]]
+        middles[side] = build.vertex(Vector((point.x, CENTRE_Y, seam_z)), 'torso')
+    halves = {'R': [hip[(15 + n) % COLUMNS] for n in range(10)] + [middles['R']],
+              'L': [hip[5 + n] for n in range(10)] + [middles['L']]}
+    build.face((hip[4], hip[5], middles['L'], middles['R']))
+    build.face((middles['R'], middles['L'], hip[14], hip[15]))
     for side, sign in (('R', 1), ('L', -1)):
         previous = halves[side]
         for z in LEG_ROWS:
             x, rx, ry = leg_centre(z)
             centre = Vector((sign * x, CENTRE_Y, z))
-            points = ring(centre, Vector((sign, 0, 0)), Vector((0, 1, 0)), rx, ry, LIMB_COLUMNS)
+            points = ring(centre, Vector((sign, 0, 0)), Vector((0, 1, 0)), rx, ry,
+                          LEG_COLUMNS)
             ordered, _ = align([build.points[i] for i in previous], points)
             current = build.ring(ordered, 'leg' + side)
             build.bridge(previous, current, flip=(sign < 0))
