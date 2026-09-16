@@ -39,6 +39,7 @@ LIMB_COLUMNS = 10
 CLOTH_UV = (.375, .56)
 TRIM_UV = (.625, .73)
 HAND_UV = (.875, .56)
+SKIN_UV = HAND_UV
 PALETTE_UV = CLOTH_UV
 CENTRE_Y = -.0135
 
@@ -63,7 +64,14 @@ ARMHOLE_COLUMNS = {'R': 18, 'L': 8}   # first of four vertex columns
 # to clear the hands that hang beside them.
 LEG_KEYS = []                  # set by `use_chart`
 LEG_ROWS = [1.02, .92, .80, .68, .56, .44, .32]
-NECK_ROWS = [(2.15, .150), (2.21, .140), (2.27, .120), (2.31, .080)]
+# The tunic stops at the shoulder line, level with the top of the arm, and a
+# short skin neck carries on into the head. Before this the cloth ran all the
+# way to z 2.35, which read as a high blue collar with no neck at all.
+SHOULDER_CHAMFER = (2.020, .270)   # 20-column ring: rounds the tunic's top rim
+COLLAR = (2.035, .100)             # 10-column ring where the cloth ends
+# Head bottoms out at z 2.08 and only reaches radius .107 by 2.09, so a neck
+# this narrow is hidden from there up and the rest of it is the visible neck.
+NECK_ROWS = [(2.10, .098), (2.17, .090), (2.22, .070)]
 SLEEVE_RINGS = 11
 SLEEVE_RADIUS = ()             # set by `use_chart`
 ELLIPSE = .82                  # measured ry/rx of the sleeve, constant
@@ -227,25 +235,34 @@ def build_torso(build):
 
 
 def build_neck(build, grid):
-    """Reduce the 20-column torso top to a 10-column neck, then cap it."""
-    top = grid[0]
-    z, radius = NECK_ROWS[0]
-    centre = Vector((0, CENTRE_Y + .0045, z))
-    base = build.ring(ring(centre, Vector((1, 0, 0)), Vector((0, 1, 0)),
-                           radius, radius, LIMB_COLUMNS), 'neck')
-    # 2:1 reduction: one quad and one triangle per inner column.
-    for index in range(LIMB_COLUMNS):
-        a, b, c = top[2 * index], top[(2 * index + 1) % COLUMNS], top[(2 * index + 2) % COLUMNS]
-        build.face((a, b, base[index], base[index - 1]))
-        build.face((b, c, base[index]))
-    previous = base
-    for z, radius in NECK_ROWS[1:]:
+    """Close the tunic at the shoulder line, then carry a short skin neck up."""
+    def circle(z, radius, columns, part):
         centre = Vector((0, CENTRE_Y + .0045, z))
-        current = build.ring(ring(centre, Vector((1, 0, 0)), Vector((0, 1, 0)),
-                                  radius, radius, LIMB_COLUMNS), 'neck')
-        build.bridge(previous, current)
+        return build.ring(ring(centre, Vector((1, 0, 0)), Vector((0, 1, 0)),
+                               radius, radius, columns), part)
+
+    # A single chamfer so the tunic's top rim is defined but not a razor edge.
+    z, radius = SHOULDER_CHAMFER
+    rim = circle(z, radius, COLUMNS, 'torso')
+    build.bridge(grid[0], rim, CLOTH_UV)
+
+    z, radius = COLLAR
+    collar = circle(z, radius, LIMB_COLUMNS, 'neck')
+    # 2:1 reduction across the shoulder deck: one quad and one triangle each.
+    for index in range(LIMB_COLUMNS):
+        a = rim[2 * index]
+        b = rim[(2 * index + 1) % COLUMNS]
+        c = rim[(2 * index + 2) % COLUMNS]
+        build.face((a, b, collar[index], collar[index - 1]), CLOTH_UV)
+        build.face((b, c, collar[index]), CLOTH_UV)
+
+    previous = collar
+    for z, radius in NECK_ROWS:
+        current = circle(z, radius, LIMB_COLUMNS, 'neck')
+        build.bridge(previous, current, SKIN_UV)
         previous = current
-    build.fan(previous, Vector((0, CENTRE_Y + .0045, NECK_ROWS[-1][0] + .04)), 'neck')
+    build.fan(previous, Vector((0, CENTRE_Y + .0045, NECK_ROWS[-1][0] + .04)),
+              'neck', SKIN_UV)
 
 
 def build_legs(build, grid):
