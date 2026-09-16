@@ -303,17 +303,45 @@ def build_legs(build, grid):
 
 
 def hand_assembly(body):
-    """Pull the accepted cuff, hand and thumb off the existing body, per side.
+    """Pull the accepted hand off the existing body, per side, without the thumb.
 
-    Each arm island is 202 vertices: the first 100 are the ten sleeve rings that
-    this rebuild replaces, the remaining 102 are the folded open cuff, the hand
-    and the thumb, which are kept exactly as authored.
+    Each arm island is 202 vertices: the first 100 are the ten sleeve rings this
+    rebuild replaces, and of the rest the folded cuff is dropped (see
+    `CUFF_SPLIT_Z`) and the hand is kept as authored. The thumb is removed and
+    the patch it stood on is closed again.
     """
     mesh = body.data
     names = {group.index: group.name for group in body.vertex_groups}
+    thumb_groups = {index for index, name in names.items() if name.startswith('Thumb.')}
     work = bmesh.new()
     work.from_mesh(mesh)
+    deform = work.verts.layers.deform.active
+    uv_layer = work.loops.layers.uv.active
+
+    doomed = [v for v in work.verts
+              if any(v[deform].get(group, 0) > .5 for group in thumb_groups)]
+    if doomed:
+        bmesh.ops.delete(work, geom=doomed, context='VERTS')
+        holes = [e for e in work.edges if len(e.link_faces) < 2]
+        if holes:
+            # `sides` is a maximum, not a hint: the thumb seam is a six-sided
+            # hole, so sides=4 skipped it and left the mesh open. Fill without a
+            # limit, then split the six-gon back into the two quads the thumb was
+            # extruded from - its middle vertices are loop positions 1 and 4.
+            existing = set(work.faces)
+            bmesh.ops.holes_fill(work, edges=holes, sides=0)
+            work.faces.ensure_lookup_table()
+            patched = [f for f in work.faces if f not in existing]
+            for face in patched:
+                for loop in face.loops:
+                    loop[uv_layer].uv = HAND_UV
+            for face in patched:
+                if len(face.verts) == 6:
+                    corners = [loop.vert for loop in face.loops]
+                    bmesh.ops.connect_verts(work, verts=[corners[1], corners[4]])
     work.verts.ensure_lookup_table()
+    work.verts.index_update()
+
     seen, islands = set(), []
     for vertex in work.verts:
         if vertex.index in seen:
@@ -329,31 +357,32 @@ def hand_assembly(body):
                     seen.add(other.index)
                     stack.append(other)
         islands.append(sorted(island))
+
     result = {}
     for island in islands:
-        if len(island) != 202:
+        if not 180 <= len(island) <= 202:
             continue
-        side = 'R' if mesh.vertices[island[0]].co.x > 0 else 'L'
+        if abs(work.verts[island[0]].co.z - 1.82) > .5:
+            continue
+        side = 'R' if work.verts[island[0]].co.x > 0 else 'L'
         sleeve = set(island[:100])
         assembly = island[100:]
-        # Drop the inherited folded cuff; keep the hand and thumb as authored.
-        hand = [i for i in assembly if mesh.vertices[i].co.z <= CUFF_SPLIT_Z]
+        hand = [i for i in assembly if work.verts[i].co.z <= CUFF_SPLIT_Z]
         cuff = set(assembly) - set(hand)
         keep = set(hand)
         faces, uvs = [], []
-        for face in mesh.polygons:
-            if all(i in keep for i in face.vertices):
-                faces.append(tuple(face.vertices))
-                uvs.append(tuple(mesh.uv_layers.active.data[face.loop_indices[0]].uv))
-        # The new rim is the hand's own top ring: the kept vertices that used to
-        # carry faces up into the discarded cuff.
-        bridging = [f for f in mesh.polygons
-                    if any(i in cuff | sleeve for i in f.vertices)
-                    and any(i in keep for i in f.vertices)]
-        rim = [i for i in hand if any(i in f.vertices for f in bridging)]
+        for face in work.faces:
+            indices = [v.index for v in face.verts]
+            if all(i in keep for i in indices):
+                faces.append(tuple(indices))
+                uvs.append(tuple(face.loops[0][uv_layer].uv))
+        bridging = [f for f in work.faces
+                    if any(v.index in cuff | sleeve for v in f.verts)
+                    and any(v.index in keep for v in f.verts)]
+        rim = [i for i in hand if any(i in [v.index for v in f.verts] for f in bridging)]
         neighbours = {i: set() for i in rim}
-        for edge in mesh.edges:
-            a, b = edge.vertices
+        for edge in work.edges:
+            a, b = edge.verts[0].index, edge.verts[1].index
             if a in neighbours and b in neighbours:
                 neighbours[a].add(b)
                 neighbours[b].add(a)
@@ -364,10 +393,11 @@ def hand_assembly(body):
                 break
             order.append(following[0])
             current = following[0]
-        weights = {i: {names[g.group]: g.weight for g in mesh.vertices[i].groups if g.weight > 0}
+        weights = {i: {names[group]: value
+                       for group, value in work.verts[i][deform].items() if value > 0}
                    for i in hand}
         result[side] = {'verts': hand, 'faces': faces, 'uvs': uvs, 'rim': order,
-                        'points': {i: mesh.vertices[i].co.copy() for i in hand},
+                        'points': {i: work.verts[i].co.copy() for i in hand},
                         'weights': weights}
     work.free()
     return result

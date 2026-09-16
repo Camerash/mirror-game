@@ -122,7 +122,7 @@ def pose_idle(rig, angle=None):
     """
     angle = proportions.IDLE_ARM_ANGLE if angle is None else angle
     chain = ['UpperArm.%s', 'UpperArm.%s.001', 'Forearm.%s', 'Forearm.%s.001',
-             'Hand.%s', 'Fingers.%s', 'Thumb.%s']
+             'Hand.%s', 'Fingers.%s']
     for bone in rig.pose.bones:
         bone.rotation_mode = 'QUATERNION'
         bone.rotation_quaternion = (1, 0, 0, 0)
@@ -203,13 +203,16 @@ def extend_rig(rig, spines):
                 @ body_builder.hand_turn(1 if side == 'R' else -1)
                 @ Matrix.Translation(-pivot))
         inherited = Vector((1 if side == 'R' else -1, 1, 1))
-        for name in ('Hand.' + side, 'Fingers.' + side, 'Thumb.' + side):
+        for name in ('Hand.' + side, 'Fingers.' + side):
             bone = edit.get(name)
             if bone:
                 head, tail, roll = bone.head.copy(), bone.tail.copy(), bone.roll
                 offset = spine[-1] - Vector((inherited.x * .2997, -.0848, .6318))
                 bone.head = turn @ (head + offset)
                 bone.tail = turn @ (tail + offset)
+        # The thumb geometry is gone, so its bone would only be dead weight.
+        if edit.get('Thumb.' + side):
+            edit.remove(edit['Thumb.' + side])
         hand = edit['Hand.' + side]
         hand.parent = parent
         hand.use_connect = False
