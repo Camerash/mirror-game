@@ -3,8 +3,9 @@
 Run with:
     Blender --background --python art_sources/traveller/build_traveller.py
 
-The accepted Garment (with its nine hood shape keys), Head, Hair and Boots are
-carried over untouched. Only the body mesh and the arm bones are rebuilt.
+The accepted Head, Hair and Boots are carried over untouched. The body mesh, the
+arm bones and the cloak are rebuilt. The cloak keeps its accepted shape and its
+eight hood keys, and gains `CloakArms` for the reaching animation.
 """
 import math
 import os
@@ -18,6 +19,7 @@ from mathutils import Matrix, Vector
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import build_body as body_builder
+import build_cloak
 import proportions
 import check_body
 import skin_body
@@ -275,6 +277,7 @@ def main():
     # 64 samples over 3-4 unit area lights dithers the soft shadows badly enough
     # that render noise gets read as faceting. Review renders are cheap; raise it.
     bpy.context.scene.eevee.taa_render_samples = 512
+    print('### cloak keys', build_cloak.rebuild(bpy.data.objects['Garment']))
     body_builder.report(mesh, 'body')
     check_body.report(old_body, build)
     print('### clearance', check_body.clearance(old_body))

@@ -6,11 +6,13 @@ half its cost.
 
 The method keeps the accepted shape by construction. A regular grid is projected
 onto the old surface, so the new mesh follows the old one instead of guessing it.
-The nine shape keys move across by barycentric position on the old triangles, so
+The eight shape keys move across by barycentric position on the old triangles, so
 large movement such as the hood folding down (2.1 units) stays correct.
 
-At Basis the cape is closed. The front split comes only from the `CloakOpen` key,
-so the split moves across with the other keys.
+The front split is a real gap in the old cloak: it widens from 0.008 at the
+clasp to 0.050 at the hem. The grid leaves it open in the same way, so no face
+bridges it and the keys that part it have nothing to tear. `CloakOpen` stays the
+resting look, and a ninth key, `CloakArms`, stands the cloth off a reaching arm.
 """
 import math
 import sys
@@ -24,25 +26,45 @@ from mathutils.bvhtree import BVHTree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 COLUMNS = 24
+# Column 0 is at world +x, so column 18 falls on the front centre and column 6 on
+# the back centre. A ray down the front centre goes through the split and finds
+# nothing, which is what leaves the front open.
+FRONT = 3 * math.tau / 4
+# The hem is not level: it falls from z 0.241 at the sides to 0.193 at the
+# front, and the painted border follows it. So the first two rows follow the hem
+# as well: one just above the edge, one at the top of the border. One face row
+# then carries the whole border, the same way the old cloak did, and its atlas
+# gradient (dark, light, dark) comes out unbroken.
+HEM_LIFT = .002
 # Close together where the shape turns (collar, hood rim, crown) and further
 # apart down the smooth cape.
-ROWS = [0.20, 0.34, 0.52, 0.72, 0.92, 1.12, 1.22, 1.32, 1.41, 1.50, 1.58,
-        1.66, 1.73, 1.80, 1.86, 1.90, 1.95, 2.00, 2.06, 2.12, 2.19, 2.26,
-        2.34, 2.42, 2.50, 2.58, 2.66, 2.74, 2.82, 2.90, 3.03, 3.13, 3.21, 3.27]
+ROWS = [0.52, 0.72, 0.92, 1.12, 1.22, 1.32, 1.41, 1.50, 1.58,
+        1.66, 1.73, 1.80, 1.86, 1.90, 1.95, 2.00, 2.06, 2.12, 2.15, 2.19, 2.26,
+        2.34, 2.42, 2.50, 2.58, 2.66, 2.74, 2.82, 2.90, 2.96, 3.03, 3.13, 3.21, 3.27,
+        3.295]
 CAST_RADIUS = 1.6              # well outside the cloak's widest point, 0.88
-RIM = 0.0                      # thickness at the hem, the split and the face rim
+RIM = .010                     # thickness at the hem and the hood's face rim
 # A grid of chords sits inside the curved surface it samples, so the new cloak
 # would press into the body where the old one was already tight. Push each
 # sample out along the surface normal to pay that back.
-OUTSET = .012
-# The old cloak carries a seam down the front centre, and `CloakOpen` pulls the
-# two sides apart along it. A projected grid welds across that seam, so the
-# split could never open. These rows are ripped at the front so it can.
-SPLIT_RANGE = (0.45, 1.92)
-# Column 18 sits just right of the front centre, so its vertical edges are the
-# seam the two panels part along. A ray cast exactly down the centre grazes the
-# old seam plane and finds nothing, so the grid cannot have a column there.
-SEAM_COLUMN = 18
+OUTSET = .016
+# The flat cloth palette point. The atlas is a palette, not a texture, so a face
+# has to stay inside one region: a corner that reads across a region boundary
+# samples a colour that belongs somewhere else.
+CLOTH_UV = (.625, .56)
+
+
+def column_angle(column):
+    return column * math.tau / COLUMNS
+
+
+class Hit:
+    """Where a cast landed, and the atlas value the old cloak carries there."""
+
+    __slots__ = ('co', 'uv')
+
+    def __init__(self, co, uv):
+        self.co, self.uv = co, uv
 
 
 class OuterSurface:
@@ -59,9 +81,12 @@ class OuterSurface:
         evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
         mesh = evaluated.data
         mesh.calc_loop_triangles()
+        source = mesh.uv_layers.active.data
         self.points = [v.co.copy() for v in mesh.vertices]
         self.faces = [tuple(t.vertices) for t in mesh.loop_triangles]
-        self.uvs = [tuple(mesh.uv_layers.active.data[t.loops[0]].uv)
+        # All three corner UVs, not just the first. The painted hem border is a
+        # gradient across its faces, so one flat value per face loses it.
+        self.uvs = [tuple(tuple(source[loop].uv) for loop in t.loops)
                     for t in mesh.loop_triangles]
         self.tree = BVHTree.FromPolygons(self.points, self.faces, all_triangles=True)
 
@@ -72,43 +97,165 @@ class OuterSurface:
         origin = axis - direction * CAST_RADIUS
         travelled = 0.0
         while travelled < CAST_RADIUS:
-            location, normal, _, distance = self.tree.ray_cast(
+            location, normal, index, distance = self.tree.ray_cast(
                 origin, direction, CAST_RADIUS - travelled)
             if location is None:
                 return None
             if normal.dot(-direction) > 0:
-                return location + normal * OUTSET
+                return Hit(location + normal * OUTSET, self.uv_on(index, location))
             travelled += distance + 1e-4
             origin = location + direction * 1e-4
         return None
 
-    def uv_near(self, point):
-        location, normal, index, distance = self.tree.find_nearest(point)
-        return self.uvs[index] if index is not None else (.625, .56)
+    def top(self, x, y):
+        """The crown, found straight down the vertical, for the hood's cap."""
+        location, normal, index, _ = self.tree.ray_cast(
+            Vector((x, y, 5.0)), Vector((0, 0, -1)), 5.0)
+        if location is None:
+            return None
+        return Hit(location + normal * OUTSET, self.uv_on(index, location))
+
+    def uv_on(self, index, location):
+        """The old atlas value at a point on one old triangle, interpolated.
+
+        The value comes from the triangle the cast hit, never from a nearest
+        point. The old cloak is a double wall, so a nearest point can belong to
+        the inner wall or to the far panel, and the hem border breaks up.
+        """
+        if index is None:
+            return CLOTH_UV
+        a, b, c = (self.points[i] for i in self.faces[index])
+        u, v, w = barycentric(location, a, b, c)
+        corners = self.uvs[index]
+        return (corners[0][0] * u + corners[1][0] * v + corners[2][0] * w,
+                corners[0][1] * u + corners[1][1] * v + corners[2][1] * w)
+
+
+def hem_height(surface, angle, low=.05, high=.60):
+    """The lowest height with cloth at this angle, found by bisection."""
+    if surface.at(high, angle) is None:
+        return None
+    for _ in range(30):
+        middle = (low + high) / 2
+        if surface.at(middle, angle) is None:
+            low = middle
+        else:
+            high = middle
+    return high
+
+
+def band_top(surface, angle, low, high=.60):
+    """The height where the painted hem border ends, read from the old atlas."""
+    hit = surface.at(low, angle)
+    if hit is None or is_cloth(hit.uv):
+        return None
+    for _ in range(24):
+        middle = (low + high) / 2
+        hit = surface.at(middle, angle)
+        if hit is not None and not is_cloth(hit.uv):
+            low = middle
+        else:
+            high = middle
+    return low
 
 
 def build_grid(surface):
-    """Project the grid and keep the cells whose four corners all found cloth."""
-    grid = []
-    for z in ROWS:
-        row = []
-        for column in range(COLUMNS):
-            angle = (column + .5) * math.tau / COLUMNS
-            row.append(surface.at(z, angle))
+    """Project the grid: two rows that follow the hem border, then level rows."""
+    hems = [hem_height(surface, column_angle(c)) for c in range(COLUMNS)]
+    feet = [None if h is None else h + HEM_LIFT for h in hems]
+    tops = [None if feet[c] is None else band_top(surface, column_angle(c), feet[c])
+            for c in range(COLUMNS)]
+    grid, heights = [], []
+    for levels in (feet, tops):
+        row = [None if levels[c] is None else surface.at(levels[c], column_angle(c))
+               for c in range(COLUMNS)]
         grid.append(row)
+        found = [z for z in levels if z is not None]
+        heights.append(sum(found) / max(len(found), 1))
+    for z in ROWS:
+        grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
+        heights.append(z)
+    square_openings(grid)
+    snap_openings(surface, grid, heights)
     return grid
+
+
+def square_openings(grid):
+    """Give every row of an opening the same columns, before they are snapped.
+
+    A cell is dropped when any corner found no cloth. If one row stops at column
+    16 and the next at column 15, the cell between them goes as well and leaves a
+    tooth in the rim. Widening every partial row to the same columns removes the
+    teeth; the snap then puts each row's edge on the real rim.
+    """
+    block = []
+    for row in grid + [[0] * COLUMNS]:          # a full row closes the last block
+        if any(point is None for point in row):
+            block.append(row)
+            continue
+        if block:
+            # One block is one opening: the front split, or the hood's face. A
+            # union over both would open the front as wide as the face.
+            absent = {c for member in block for c in range(COLUMNS)
+                      if member[c] is None}
+            for member in block:
+                for column in absent:
+                    member[column] = None
+        block = []
+
+
+def snap_openings(surface, grid, heights):
+    """Put the vertices beside an opening on the real rim, not on a grid step.
+
+    Without this the hood's face opening follows whole cells and looks stepped.
+    """
+    step = math.tau / COLUMNS
+    for row, z in zip(grid, heights):
+        if all(p is None for p in row) or all(p is not None for p in row):
+            continue
+        moves = {}
+        for column in range(COLUMNS):
+            following = (column + 1) % COLUMNS
+            if (row[column] is None) == (row[following] is None):
+                continue
+            inside, direction = ((column, 1) if row[following] is None
+                                 else (following, -1))
+            low, high = 0.0, step
+            for _ in range(24):
+                middle = (low + high) / 2
+                if surface.at(z, column_angle(inside) + direction * middle) is None:
+                    high = middle
+                else:
+                    low = middle
+            hit = surface.at(z, column_angle(inside) + direction * low)
+            if hit is None:
+                continue
+            moves[inside] = (hit, low, direction)
+        for index, (hit, travel, direction) in moves.items():
+            row[index] = hit
+            # Share the travel with the next column inward. Without this the
+            # snapped vertex leaves a 3 degree cell beside a 27 degree one.
+            inner = (index - direction) % COLUMNS
+            if inner in moves or row[inner] is None:
+                continue
+            shared = surface.at(z, column_angle(inner) + direction * travel / 2)
+            if shared is not None:
+                row[inner] = shared
 
 
 def write(grid, surface, name='CloakShell'):
     mesh = bpy.data.meshes.new(name)
     work = bmesh.new()
-    verts = {}
+    verts, values, trim = {}, {}, set()
     for r, row in enumerate(grid):
-        for c, point in enumerate(row):
-            if point is not None:
-                verts[(r, c)] = work.verts.new(point)
+        for c, hit in enumerate(row):
+            if hit is not None:
+                vertex = work.verts.new(hit.co)
+                verts[(r, c)] = vertex
+                values[vertex] = hit.uv
     work.verts.index_update()
     uv_layer = work.loops.layers.uv.verify()
+    faces = []
     for r in range(len(grid) - 1):
         for c in range(COLUMNS):
             following = (c + 1) % COLUMNS
@@ -116,56 +263,96 @@ def write(grid, surface, name='CloakShell'):
             if any(k not in verts for k in corners):
                 continue
             face = work.faces.new([verts[k] for k in corners])
-            face.smooth = True
-            value = surface.uv_near(face.calc_center_median())
-            for loop in face.loops:
-                loop[uv_layer].uv = value
-    rip_front_seam(work, verts)
+            faces.append(face)
+            # Row 0 to row 1 is the hem border by construction, so it keeps the
+            # border values even where one corner reads the plain cloth.
+            if r == 0:
+                trim.add(face)
+    faces += cap_crown(work, grid, verts, values, surface)
+    for face in faces:
+        face.smooth = True
+        paint_face(face, values, uv_layer, face in trim)
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     work.to_mesh(mesh)
     work.free()
     return mesh
 
 
-def rip_front_seam(work, verts):
-    """Separate the two front panels so `CloakOpen` can part them.
+def is_cloth(uv):
+    return abs(uv[0] - CLOTH_UV[0]) < .02 and abs(uv[1] - CLOTH_UV[1]) < .02
 
-    The seam runs *down* the front, so it is the vertical edges of one column,
-    picked by index. Ripping horizontal edges instead parts the panels top from
-    bottom, which is why the split stayed shut.
+
+def paint_face(face, values, uv_layer, painted_row=False):
+    """Keep one face inside one atlas region, and interpolate inside it.
+
+    The hem border is a gradient, so its corners must keep their own values. A
+    face that straddles the border and the flat cloth takes the majority region,
+    because a corner on the wrong side of the boundary samples the wrong colour.
     """
-    low, high = SPLIT_RANGE
-    column = [verts[(r, SEAM_COLUMN)] for r in range(len(ROWS))
-              if (r, SEAM_COLUMN) in verts and low < ROWS[r] < high]
-    chain = set(column)
-    seam = [e for e in work.edges if e.verts[0] in chain and e.verts[1] in chain]
-    if seam:
-        bmesh.ops.split_edges(work, edges=seam, use_verts=False)
-    return len(seam)
+    corners = [values.get(loop.vert, CLOTH_UV) for loop in face.loops]
+    plain = [uv for uv in corners if is_cloth(uv)]
+    if not painted_row and plain and len(plain) * 2 >= len(corners):
+        for loop in face.loops:
+            loop[uv_layer].uv = CLOTH_UV
+        return
+    painted = [uv for uv in corners if not is_cloth(uv)]
+    spare = painted[0] if painted else CLOTH_UV
+    for loop, uv in zip(face.loops, corners):
+        loop[uv_layer].uv = spare if is_cloth(uv) else uv
+
+
+def cap_crown(work, grid, verts, values, surface):
+    """Close the top of the hood with a fan, so the crown is not a hole."""
+    ring = [verts[(len(grid) - 1, c)] for c in range(COLUMNS)
+            if (len(grid) - 1, c) in verts]
+    if len(ring) != COLUMNS:
+        return []
+    centre = sum((v.co for v in ring), Vector()) / COLUMNS
+    # The crown itself, not the middle of the last ring. The ring is level, so a
+    # fan to its own centre is flat and meets the dome at 180 degrees.
+    hit = surface.top(centre.x, centre.y)
+    apex = work.verts.new(hit.co if hit else centre)
+    values[apex] = hit.uv if hit else CLOTH_UV
+    return [work.faces.new([ring[c], ring[(c + 1) % COLUMNS], apex])
+            for c in range(COLUMNS)]
 
 
 def add_rim(mesh, surface):
-    """Give the open edges thickness, so the hem and the split are not paper."""
+    """Give the open edges thickness, so the hem and the face rim are not paper.
+
+    The normals must be read before the extrusion. A new boundary vertex carries
+    only the strip's own faces, so its normal points anywhere and the strip comes
+    out ragged.
+    """
     work = bmesh.new()
     work.from_mesh(mesh)
+    work.normal_update()
     uv_layer = work.loops.layers.uv.verify()
     border = [e for e in work.edges if e.is_boundary]
     if not border:
         work.free()
         return 0
+    normals, values = {}, {}
+    for edge in border:
+        for vertex in edge.verts:
+            key = tuple(round(n, 6) for n in vertex.co)
+            normals[key] = vertex.normal.copy()
+            values[vertex] = tuple(vertex.link_loops[0][uv_layer].uv)
+    carried = {tuple(round(n, 6) for n in v.co): uv for v, uv in values.items()}
     result = bmesh.ops.extrude_edge_only(work, edges=border)
-    moved = [g for g in result['geom'] if isinstance(g, bmesh.types.BMVert)]
-    for vertex in moved:
-        normal = vertex.normal.copy()
-        if normal.length < 1e-6:
+    for vertex in result['geom']:
+        if not isinstance(vertex, bmesh.types.BMVert):
+            continue
+        key = tuple(round(n, 6) for n in vertex.co)
+        values[vertex] = carried.get(key, CLOTH_UV)
+        normal = normals.get(key)
+        if normal is None or normal.length < 1e-6:
             normal = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
         vertex.co -= normal * RIM
     for face in result['geom']:
         if isinstance(face, bmesh.types.BMFace):
             face.smooth = True
-            value = surface.uv_near(face.calc_center_median())
-            for loop in face.loops:
-                loop[uv_layer].uv = value
+            paint_face(face, values, uv_layer)
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     count = len(work.faces)
     work.to_mesh(mesh)
@@ -190,9 +377,9 @@ def apply_keys(obj, captured):
     """Put every old key on the new mesh, by barycentric position."""
     triangles, points = captured['triangles'], captured['basis']
     tree = BVHTree.FromPolygons(points, triangles, all_triangles=True)
-    # Bias the lookup toward the vertex's own side of the mesh. Without it the
-    # two ripped seam vertices sit on top of each other, find the same old
-    # vertex, and move together instead of parting.
+    # Bias the lookup toward the vertex's own side of the mesh. A vertex on the
+    # edge of the front split is 0.008 from the far panel at the clasp, so an
+    # unbiased lookup reads the wrong panel and the split moves as one piece.
     neighbourhood = [Vector() for _ in obj.data.vertices]
     counts = [0] * len(obj.data.vertices)
     for polygon in obj.data.polygons:
@@ -207,7 +394,7 @@ def apply_keys(obj, captured):
             toward = neighbourhood[number] / counts[number] - vertex.co
             if toward.length > 1e-9:
                 probe = vertex.co + toward.normalized() * .030
-        location, normal, index, distance = tree.find_nearest(probe)
+        location, _, index, _ = tree.find_nearest(probe)
         if index is None:
             anchors.append(None)
             continue
@@ -228,6 +415,46 @@ def apply_keys(obj, captured):
     return len(captured['keys'])
 
 
+# `CloakOpen` is the resting look. The arms need more room than that, so a
+# second key pushes the cloth out along its own surface normal, over the sector
+# and the heights that a reaching arm passes through. The animation crossfades
+# between the two keys.
+#
+# The movement has to be outward. The cape is fitted to the body with no margin,
+# so a key that slides the cloth around the body (measured at swings from 25 to
+# 95 degrees) drives it into the chest and the shoulders instead of opening it.
+# The outward push costs nothing at rest: the body clearance stays at 0.
+ARMS_KEY = 'CloakArms'
+ARMS_PUSH = .22                 # how far the cloth stands off the arm's path
+ARMS_SECTOR = (math.radians(40), math.radians(62))   # centre and half width
+ARMS_HEIGHTS = (1.55, 1.25)                          # centre and half height
+
+
+def raised_cosine(value, centre, half):
+    """1.0 at the centre, 0.0 at the edge, smooth at both."""
+    distance = abs(value - centre) / half
+    return 0.0 if distance >= 1 else .5 * (1 + math.cos(math.pi * distance))
+
+
+def add_arms_key(obj):
+    """Stand the cloth off the arm's path, so a reaching arm comes through."""
+    blocks = obj.data.shape_keys.key_blocks
+    basis = blocks[0]
+    normals = [v.normal.copy() for v in obj.data.vertices]
+    key = obj.shape_key_add(name=ARMS_KEY, from_mix=False)
+    key.value = 0.0
+    centre, half = ARMS_SECTOR
+    height, reach = ARMS_HEIGHTS
+    for index in range(len(basis.data)):
+        rest = basis.data[index].co
+        angle = math.atan2(rest.y, rest.x)
+        offset = abs((angle - FRONT + math.pi) % math.tau - math.pi)
+        weight = (raised_cosine(offset, centre, half)
+                  * raised_cosine(rest.z, height, reach))
+        key.data[index].co = rest + normals[index] * (ARMS_PUSH * weight)
+    return key
+
+
 def barycentric(point, a, b, c):
     v0, v1, v2 = b - a, c - a, point - a
     d00, d01, d11 = v0.dot(v0), v0.dot(v1), v1.dot(v1)
@@ -246,9 +473,11 @@ def rebuild(obj):
     captured = capture_keys(obj)
     grid = build_grid(surface)
     mesh = write(grid, surface)
-    if RIM > 0: add_rim(mesh, surface)
+    if RIM > 0:
+        add_rim(mesh, surface)
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
     obj.data = mesh
     bpy.data.meshes.remove(old)
-    return apply_keys(obj, captured)
+    count = apply_keys(obj, captured)
+    return count + (1 if add_arms_key(obj) else 0)
