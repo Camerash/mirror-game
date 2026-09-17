@@ -78,9 +78,17 @@ step that read as a bar across the chest.
   own height gave them different angles, and the band ran 0.016 to 0.230 tall
   instead of an even 0.145.
 - **The paint is authored too.** The atlas is a flat palette, so the cloth is one
-  texel, the border is its two rows, and the clasp and the split's edging take
-  the border's dark blue. No UV is sampled, so no lookup can land on the wrong
-  wall.
+  texel, the border is its two rows, and the clasp and the seam take the border's
+  dark blue. No UV is sampled, so no lookup can land on the wrong wall.
+- **The seam is one colour, and it covers the opening.** Left open, the gap drew
+  whatever stood behind it, which is the body in the cloak's own shadow. That
+  made the seam three tones: a band at 83 of 255 each side of a core at 41, over
+  cloth at 116. The core's darkness was shadow, not paint, so a flat light turned
+  it the other way round and drew the core *brighter* than the cloth. The band
+  now covers the opening as well as the cloth each side of it, and the seam reads
+  83 to 88 across its whole width at every height. The two captures are
+  [before](traveller-cloak-review/seam_three_tones.png) and
+  [after](traveller-cloak-review/seam_one_colour.png), at the same framing.
 - **The cloth has no thickness.** It is a single sheet, which also keeps the
   animation simple. Its material must draw both sides; `TravellerDrawingBody`
   already does, and the export carries `doubleSided`.
@@ -149,14 +157,15 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,460 (was 3,332) |
+| Cloak triangles | 1,476 (was 3,332) |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cloak edge / face ratios | 17:1 and 132:1 (were 258:1 and 999:1) |
 | Cloak sharpest fold | 45° (the old cloak's was 116°) |
 | Cloak generator | 559 lines over two files (was 921) |
-| Front split, clasp to hem | 0.038 widening to 0.095 |
+| Front seam, brooch to hem | 0.098 widening to 0.150, one colour |
 | Cloak islands | 2: the cape and the clasp |
+| Cloak edges with three faces | 16, the seam's rails, where the band meets the cloth |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
@@ -166,7 +175,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,066, under the 6,000 target |
+| triangles | 5,082, under the 6,000 target |
 
 Export and re-check the result with:
 

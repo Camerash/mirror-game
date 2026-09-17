@@ -43,7 +43,7 @@ TIP_BELOW = math.radians(12)
 CLOTH_UV = (.625, .56)
 TRIM_FOOT = .02                 # the border's atlas rows, dark to light to dark
 TRIM_TOP = .105
-CLASP_UV = (.5, .02)
+DARK_UV = (.5, .02)             # the garment's one dark: the brooch and the seam
 
 CLASP_Z = 1.80
 CLASP_RADIUS = .078
@@ -53,8 +53,8 @@ CLASP_SIDES = 16
 CLASP_BAND = (.12, .50)
 SPLIT_TOP = 1.84
 SPLIT_FOOT = 0.19
-PLACKET = .034
-PLACKET_LIFT = .002
+SEAM_EDGE = .034                # how far the band reaches over the cloth each side
+SEAM_LIFT = .002
 ARMS_KEY = 'CloakArms'
 ARMS_PUSH = .22
 ARMS_SECTOR = (math.radians(40), math.radians(62))
@@ -173,7 +173,9 @@ def rebuild(obj):
     grid, kinds = build_grid()
     mesh = write(grid, kinds)
     clasp_from = attach_clasp(mesh)
-    attach_placket(mesh, clasp_from)
+    # 24: eight quads over the cloth each side, and eight over the opening. Less
+    # than that means the two rails did not pair off, and the opening is bare.
+    print('###   cloak: seam band %d faces' % attach_seam(mesh, clasp_from))
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
     obj.data = mesh
@@ -305,16 +307,22 @@ def barycentric(point, a, b, c):
     return 1.0 - v - w, v, w
 
 
-def attach_placket(mesh, clasp_from):
-    """Lay a narrow band down each side of the front split.
+def attach_seam(mesh, clasp_from):
+    """Draw the front opening as one band of the garment's dark.
 
-    The opening cannot draw itself. Over the chest the body behind it is the same
-    blue-grey as the cloak, so a gap has nothing to read against at any width:
-    0.105 looked as shut as 0.038. Painting the panel beside it does not work
-    either, because the nearest column is 15 degrees away and a 0.09 band reads
-    as a stripe. This is its own strip, so it can be as narrow as a seam without
-    the grid changing: packing extra columns against the front was tried and it
-    pulls the hood's own opening apart.
+    The opening cannot draw itself. Over the chest the body behind it is the
+    same blue-grey as the cloak, so a gap has nothing to read against at any
+    width: 0.105 looked as shut as 0.038. Painting the panel beside it does not
+    work either, because the nearest column is 15 degrees away and a 0.09 band
+    reads as a stripe. This is its own band, so it can be as narrow as a seam
+    without the grid changing: packing extra columns against the front was tried
+    and it pulls the hood's own opening apart.
+
+    The band covers the opening as well as the cloth each side of it. Left open,
+    the gap drew whatever stood behind it, which is the body in the cloak's own
+    shadow: near black here and lighter under other lights, so the seam came out
+    as three tones instead of one. Closed, the seam is one colour under any
+    light.
     """
     work = bmesh.new()
     work.from_mesh(mesh)
@@ -325,26 +333,23 @@ def attach_placket(mesh, clasp_from):
     edge = [v for v in {v for e in work.edges if e.is_boundary for v in e.verts}
             if v.index < clasp_from and abs(v.co.x) < .14 and v.co.y < -.28
             and SPLIT_FOOT < v.co.z < SPLIT_TOP]
+    rails = {side: sorted((v for v in edge if math.copysign(1, v.co.x) == side),
+                          key=lambda v: v.co.z)
+             for side in (-1, 1)}
+    if min(len(rail) for rail in rails.values()) < 2:
+        return 0
     made = []
-    for side in (-1, 1):
-        rail = sorted((v for v in edge if math.copysign(1, v.co.x) == side),
-                      key=lambda v: v.co.z)
-        if len(rail) < 2:
-            continue
+    for side, rail in rails.items():
         outer = []
         for vertex in rail:
             out = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
-            along = Vector((side, 0, 0))
-            outer.append(work.verts.new(vertex.co + along * PLACKET
-                                        + out * PLACKET_LIFT))
-        for lower, upper in zip(range(len(rail) - 1), range(1, len(rail))):
-            corners = [rail[lower], rail[upper], outer[upper], outer[lower]]
-            if len(set(corners)) < 4:
-                continue
-            try:
-                made.append(work.faces.new(corners))
-            except ValueError:
-                pass
+            outer.append(work.verts.new(vertex.co + Vector((side, 0, 0)) * SEAM_EDGE
+                                        + out * SEAM_LIFT))
+        made += strip(work, rail, outer)
+    # The opening itself. Both rails come from the same rows, so they pair off
+    # in order.
+    if len(rails[-1]) == len(rails[1]):
+        made += strip(work, rails[-1], rails[1])
     for face in made:
         face.smooth = True
         face.normal_update()
@@ -352,10 +357,24 @@ def attach_placket(mesh, clasp_from):
                                    face.calc_center_median().y, 0))) < 0:
             face.normal_flip()
         for loop in face.loops:
-            loop[uv_layer].uv = CLASP_UV
+            loop[uv_layer].uv = DARK_UV
     work.to_mesh(mesh)
     work.free()
     return len(made)
+
+
+def strip(work, near, far):
+    """Quads up two lines of vertices that run together."""
+    made = []
+    for lower, upper in zip(range(len(near) - 1), range(1, len(near))):
+        corners = [near[lower], near[upper], far[upper], far[lower]]
+        if len(set(corners)) < 4:
+            continue
+        try:
+            made.append(work.faces.new(corners))
+        except ValueError:
+            pass
+    return made
 
 
 def attach_clasp(mesh):
@@ -425,5 +444,5 @@ def add_clasp(work, uv_layer):
         if face.normal.dot(out) < 0:
             face.normal_flip()
         for loop in face.loops:
-            loop[uv_layer].uv = CLASP_UV
+            loop[uv_layer].uv = DARK_UV
     return faces
