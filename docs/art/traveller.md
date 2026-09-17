@@ -48,122 +48,45 @@ forearm used different axes so the frame kinked at the elbow.
 
 ## How the cloak is built
 
-`build_cloak.py` replaces the cloak with a quad grid, and keeps the accepted
-shape by construction: it does not model the shape, it samples the old one.
+The cloak's shape lives in `cloak_profile.py` as curves measured once off the
+accepted cloak. `build_cloak.py` only turns those curves into a mesh: no ray
+casting at build time, and nothing to correct afterwards.
 
-- **Projection.** A ray is cast inward at each row and column and stops at the
-  axis, so it reads the outer wall and never the far panel from inside. The hit
-  gives the point and the atlas value together. A nearest-point search cannot be
-  used: the old cloak is a double wall, so the nearest point often belongs to the
-  inner wall and the painted hem border breaks up.
-- **The hem border follows the hem.** The hem falls from z 0.241 at the sides to
-  0.193 at the front. The first two rows follow each column's own hem, so one
-  face row carries the whole border and its atlas gradient stays unbroken.
-- **The openings are real openings.** The front split is a true gap in the old
-  cloak, 0.008 wide at the clasp and 0.050 at the hem. A ray down the front
-  centre passes through it and finds nothing, which is what leaves the grid open
-  there. Nothing is welded and then torn.
-- **Opening edges sit on the real rim.** Each row's edge vertex is found by
-  bisection on the true rim angle, searching up to four columns out, because
-  where an opening narrows quickly the rim is several columns from the last
-  vertex that found cloth.
-- **Rows of different width are stitched, not squared.** A row that reaches a
-  column its neighbour does not gets a triangle instead of a quad. Widening every
-  row of an opening to the same columns also closes the surface, but it forced
-  the hood's face opening to stay as wide at its top as at its middle: 74 degrees
-  where the truth is 38, which squared off its corners.
-- **An opening's apex is capped by a fan, and only its apex.** A cell needs
-  three of its four corners to become a triangle, so where an opening ends, the
-  columns in the middle of it have two corners and nothing is built: the hood's
-  opening finished in a spike with a hole beside it. The gap is a polygon between
-  two rows, and each half of it is fanned to its own corner. The cap is limited
-  to gaps two columns wide: the hood's opening also *starts* against cloth, 55
-  degrees wide over 0.01 of height, because a horizontal ray cannot see the
-  collar's near-horizontal top, and fanning that bridged the whole throat with a
-  flat triangular patch. Fanned to one corner it comes out
-  as a long thin sheet and creases the throat at 121 degrees, against 116 in the
-  old cloak.
-- **An opening lets go of the rim gradually, in both directions.** The snap only
-  touches rows inside an opening, so the first full row beyond it sat back at the
-  plain column angle and the surface stepped there: the chest creased at 154
-  degrees and the hood's top corners at 134. Two corrections, and no new
-  geometry. Outward, the edge's shift carries into the next rows beyond the
-  opening and falls to zero. Inward, the edge backs off the rim in the last rows
-  of an opening, but only where the opening closes against cloth, never at the
-  hem, where the split is genuinely 0.05 wide and backing off would widen it.
-  The columns inward of an edge also take a share of its travel, so cell widths
-  grade instead of putting a sliver beside a wide quad.
-- **The border is one level ribbon.** Its height above the hem and its two atlas
-  rows are the same at every column. Read per column instead, the old border's
-  own zig-zag top landed at atlas row 0.105 in most columns and 0.037 in a few,
-  and those lost the dark-light-dark gradient and read as patches. The atlas
-  rows carry one colour across their whole width, so u holds nothing here and
-  only v had to be fixed. The zig-zag is lost; at 24 columns it was being
-  sampled at an arbitrary phase anyway.
-- **The clasp is kept out of the split's widening.** Its lower half sits inside
-  the split's own height range, and widened with it the brooch came out pulled
-  sideways rather than round.
-- **The clasp is built, not copied.** A small faceted brooch sits at the throat,
-  where the front opening is held shut. Its rim is cast onto the new cape a point
-  at a time, so it follows the curve instead of floating off it at the sides, and
-  it sets its own normals because it is an open shell with no volume for the
-  solver to work from. It takes the hem border's own dark blue, so the trim and
-  the clasp match and the atlas is unchanged. 24 triangles, its own island, and
-  the hem lip skips its rim so no cloth-coloured collar wraps it.
-- **The collar yoke keeps its shape and loses its paint.** It is eight old
-  triangles on the front centre plane, a flat V panel welded into the old shell.
-  Its four corner points read as cloth, but the atlas rows between them hold a
-  painted dark diamond, and a grid vertex landing at v 0.22 takes (0.19, 0.29,
-  0.36) and paints a bar across the chest. Its geometry cannot be copied across
-  either, at any offset: 0.034 proud its edges draw a hard V, and flush it cuts
-  through the cape it sits on. So the grid samples its shape like the rest of the
-  surface, skips its atlas band, and the chest is relaxed so the step a grazing
-  ray leaves does not read as a ledge. The clasp is modelled instead.
-- **The front split is widened after the keys, not before.** Moved in the basis
-  alone, the sideways shift becomes part of every key's offset and `CloakOpen`
-  swings it into the chest: 30 overlapping triangles at z 1.71 to 1.84. Applied
-  to the basis and to each key together, the widening is the same in all of them
-  and cannot rotate.
-- **The cloth has no thickness.** It is a single sheet, which is what cloth is,
-  and it keeps the animation simple. Every hard fold in the cloak was the lip
-  that used to give it thickness: the sharpest angle anywhere falls from 165
-  degrees to 58 with the lip gone, and 162 triangles go with it. Its material
-  must draw both sides; `TravellerDrawingBody` already does, and the export
-  carries `doubleSided`.
-- **The split's edging is its own strip.** A narrow band runs down each side of
-  the opening, welded to its boundary and painted in the hem border's dark blue,
-  so the front reads as a line from the clasp to the hem. The opening cannot draw
-  itself: over the chest the body behind it is the same blue-grey as the cloak,
-  so a gap has nothing to read against at any width, and 0.105 looked as shut as
-  0.038. Painting the panel beside it does not work either, because the nearest
-  column is 15 degrees away and a 0.09 band reads as a stripe. Packing four extra
-  columns against the front was tried, to make that panel narrow, and it pulls
-  the hood's own opening apart: everything from the snap's search span to the
-  sharing inward assumes the columns are evenly spaced.
-- **The split is a line, not a gap.** The character drawing shows the front as a
-  single line from the clasp to the hem, parting only at the feet, so it runs
-  0.030 under the brooch to 0.095 at the hem. Widening it does not help it read:
-  over the chest the body behind is the same blue-grey as the cloak, so a gap has
-  nothing to read against, and at 0.105 wide it still looked shut. A painted
-  facing draws it, but a band wide enough to see reads as a stripe rather than an
-  opening.
-- **The front split's width is set outright.** It opens at the clasp and widens
-  as it falls: 0.038 under the brooch to 0.095 at the hem. Held to the old
-  cloak's own rim it reads as shut, because that rim is 0.008 wide at the clasp,
-  and the wide dark chest in the old renders is not an opening at all: it is the
-  hood's shadow, which disappears when the lights are set to cast none. The old cloak's own
-  split is not even, because its panels wander, and held to the measured rim the
-  new one inherits that wobble: 0.109 at the hem, 0.001 at z 1.40 and 0.021 again
-  at the clasp. Closing the narrow rows instead sewed the cloak shut over the
-  chest. Setting the angle does not work either, because a ray crosses the panel
-  wherever the panel happens to be, so the angle and the gap are not the same
-  measure; the edge's own x is set, and the panel is flat enough across the front
-  to carry it. The split is also never capped at its top, because it should reach
-  the clasp, and a cap there is a sliver folding at 179 degrees. The hood's apex
-  sits on the front centre too, so the two are told apart by height.
-- **Shape keys move across by barycentric position** on the old triangles, so
-  large movement such as the hood folding down (2.1 units) stays correct. A new
-  key does not reliably start at zero, so each one is set to zero explicitly.
+The generator this replaced projected a grid onto the inherited mesh with a ray
+per vertex, and **336 of its 921 lines did nothing but correct the result**.
+Every fault came from that. A horizontal ray cannot see a near-horizontal rim,
+so the hood's throat jumped from closed to 55 degrees wide over 0.01 of height.
+The old split wanders, 0.008 at the clasp and 0.001 at z 1.40, so following it
+gave a slit that pinched in the middle. A grazing ray on the collar yoke left a
+step that read as a bar across the chest.
+
+- **An opening is a gap in the row's own spread of columns**, not a set of absent
+  cells. Each row spreads its columns over the cloth that row has, so the first
+  and last land exactly on the opening's edge and every cell between is the same
+  width. That one change removed the snapping, tapering, easing, squaring,
+  stitching and relaxing.
+- **A band across the front closes only where an opening ends** — one row shut
+  and the next barely open. Both rows open is the opening itself, however narrow:
+  the front split never exceeds 7 degrees, so judging it by width alone sews the
+  cloak shut.
+- **The front split is authored, not followed.** It starts at a point under the
+  brooch and opens quickly, which is the shape the user cut by hand. The accepted
+  cloak is no guide for it: its own panels wander.
+- **The hood's rim carries its own radius.** It curls inward, so it is measured
+  rather than read off the cloth beside it.
+- **The border's two rows share one spread of columns.** Distributing each at its
+  own height gave them different angles, and the band ran 0.016 to 0.230 tall
+  instead of an even 0.145.
+- **The paint is authored too.** The atlas is a flat palette, so the cloth is one
+  texel, the border is its two rows, and the clasp and the split's edging take
+  the border's dark blue. No UV is sampled, so no lookup can land on the wrong
+  wall.
+- **The cloth has no thickness.** It is a single sheet, which also keeps the
+  animation simple. Its material must draw both sides; `TravellerDrawingBody`
+  already does, and the export carries `doubleSided`.
+- **Shape keys move across by barycentric position** on the old triangles. The
+  curves are fitted to the accepted cloak, so the new surface stays near it:
+  measured, the median vertex sits 0.003 to 0.005 from the old surface.
 
 ## How the hair is built
 
@@ -226,11 +149,12 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,797 (was 3,332): a 48-triangle clasp and a 52-triangle edging |
+| Cloak triangles | 1,460 (was 3,332) |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
-| Cloak edge / face ratios | 21:1 and 144:1 (were 258:1 and 999:1) |
-| Cloak sharpest fold | 58° (the old cloak's was 116°) |
+| Cloak edge / face ratios | 17:1 and 132:1 (were 258:1 and 999:1) |
+| Cloak sharpest fold | 45° (the old cloak's was 116°) |
+| Cloak generator | 559 lines over two files (was 921) |
 | Front split, clasp to hem | 0.038 widening to 0.095 |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
@@ -242,7 +166,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,403, under the 6,000 target |
+| triangles | 5,066, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -277,17 +201,15 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
-- **The front line is faint over the chest.** The edging reaches the clasp,
-  measured at z 1.859 against the brooch's 1.722 to 1.878, so the line is drawn
-  the whole way. It still reads weakly above the waist, because below the waist
-  the opening is a real gap onto shadow between the legs and above it the line is
-  only paint. Matching the two needs the cloak to stand further off the chest, so
-  the gap has a shadowed cavity behind it, which is a silhouette change.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,
   which means raising `COLUMNS` from 24 to about 48 and roughly doubling the
   cloak's cost.
+- **The hood is still fitted, not authored.** Its profile tables are measured off
+  the accepted cloak, which is what keeps the eight hood keys working: the new
+  surface sits a median 0.003 from the old one, with a worst case of 0.039 at the
+  crown. Authoring the hood outright would need those keys re-made.
 - **The collar yoke reads as a soft step.** The old cloak shows a dark diamond at
   the chest, which is the yoke's own shape catching the light. The grid samples
   it as a gentle swell instead. The clasp now carries that read, so the yoke is
