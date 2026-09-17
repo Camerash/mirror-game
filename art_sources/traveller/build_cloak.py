@@ -64,10 +64,12 @@ EDGE_EASE = ()
 # The front split is never held tighter than this half angle, so it stays a
 # visible line under the clasp instead of pinching to a sliver. Only edges this
 # near the front centre belong to the split; the rest is the hood's face opening.
-SEAM_TOP = .030                 # the split's width just under the clasp
+SEAM_TOP = .038                 # the split's width just under the clasp
 SEAM_HEM = .095                 # and at the hem
 SPLIT_TOP = 1.84                # the heights the split runs between
 SPLIT_FOOT = 0.19
+PLACKET = .026                  # the lip's width down the split, where it is
+                                # the placket rather than a hem
 SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
@@ -82,7 +84,7 @@ CHEST_RELAX = 4
 # The brooch at the throat: where it sits, how wide, how far it stands proud,
 # and how far its facet ring is drawn in. It takes the hem border's own dark
 # blue, so the cloak's trim and its clasp match and the atlas is unchanged.
-CLASP_Z = 1.86                  # the top of the split, so it opens from under
+CLASP_Z = 1.80                  # the top of the split, so it opens from under
                                 # the brooch rather than a hand below it
 CLASP_RADIUS = .078
 CLASP_RISE = .026
@@ -745,15 +747,28 @@ def add_rim(mesh, surface):
         if normal is None or normal.length < 1e-6:
             normal = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
         width = RIM * room.get(key, 1.0)
+        # Down the front split the lip is the placket: wider, not rolled under,
+        # and painted, so it draws the opening as a line. The opening itself
+        # cannot: over the chest the body behind it is the same blue-grey as the
+        # cloak, and even 0.105 wide it read as shut.
+        on_split = (abs(vertex.co.x) < .14 and vertex.co.y < -.28
+                    and SPLIT_FOOT < vertex.co.z < SPLIT_TOP)
+        if on_split:
+            width = PLACKET
         # The hem is seen edge on, so a rolled lip shows there as a fold and a
         # square return does not. The hood's rim is seen face on, where the
         # square return is what shows.
-        roll = ROLL if vertex.co.z > ROLL_ABOVE else 0.0
+        roll = 0.0 if on_split else (ROLL if vertex.co.z > ROLL_ABOVE else 0.0)
         vertex.co += inward.get(key, Vector()) * (width * roll) - normal * width
     for face in result['geom']:
         if isinstance(face, bmesh.types.BMFace):
             face.smooth = True
             paint_face(face, values, uv_layer)
+            middle = face.calc_center_median()
+            if (abs(middle.x) < .14 and middle.y < -.28
+                    and SPLIT_FOOT < middle.z < SPLIT_TOP):
+                for loop in face.loops:
+                    loop[uv_layer].uv = CLASP_UV
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     count = len(work.faces)
     work.to_mesh(mesh)

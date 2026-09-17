@@ -124,6 +124,12 @@ shape by construction: it does not model the shape, it samples the old one.
   swings it into the chest: 30 overlapping triangles at z 1.71 to 1.84. Applied
   to the basis and to each key together, the widening is the same in all of them
   and cannot rotate.
+- **The split's edge is a placket.** Down the front the rim lip is wider, not
+  rolled under, and painted in the hem border's dark blue, so the opening has an
+  edge to read by. It draws the line from about z 1.37 down. Above that it is
+  intermittent, measured by scanning the render's own centre column: the gap is
+  only 0.038 wide there, so the two plackets face each other and neither catches
+  the camera.
 - **The split is a line, not a gap.** The character drawing shows the front as a
   single line from the clasp to the hem, parting only at the feet, so it runs
   0.030 under the brooch to 0.095 at the hem. Widening it does not help it read:
@@ -132,7 +138,7 @@ shape by construction: it does not model the shape, it samples the old one.
   facing draws it, but a band wide enough to see reads as a stripe rather than an
   opening.
 - **The front split's width is set outright.** It opens at the clasp and widens
-  as it falls: 0.030 under the brooch to 0.095 at the hem. Held to the old
+  as it falls: 0.038 under the brooch to 0.095 at the hem. Held to the old
   cloak's own rim it reads as shut, because that rim is 0.008 wide at the clasp,
   and the wide dark chest in the old renders is not an opening at all: it is the
   hood's shadow, which disappears when the lights are set to cast none. The old cloak's own
@@ -214,7 +220,7 @@ contact targets.
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cloak edge / face ratios | 26:1 and 200:1 (were 258:1 and 999:1) |
-| Front split, clasp to hem | 0.030 widening to 0.095 |
+| Front split, clasp to hem | 0.038 widening to 0.095 |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
@@ -260,6 +266,13 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
+- **The front line does not reach the brooch.** The split's hole and its placket
+  both run right up under the clasp, measured at z 1.834 against the brooch's
+  1.722 to 1.878, but a scan of the render shows the dark line only becoming
+  solid at z 1.366. At the top the gap is too narrow for either placket to face
+  the camera. Drawing it the whole way needs a painted band on the outward faces
+  beside the split, and to keep that band thin the grid needs extra columns at
+  the front: the nearest column is 15 degrees away, which is 0.09 of cloth.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,
