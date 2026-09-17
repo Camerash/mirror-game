@@ -27,7 +27,16 @@ import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+
+# The accepted Low bun style, from the earlier bust study. Its hairline is the
+# one the user approved: a side-swept fringe that sits higher on the forehead
+# than the inherited cap, and slightly longer sides. The head has changed shape
+# since that study, so the style is read in each head's own frame and re-fitted
+# rather than copied vertex for vertex.
+STYLE_FILE = HERE.parents[0] / 'traveller_painted/traveller_painted_study.blend'
+STYLE_PARTS = ('HairCap.Bun', 'Head')
 
 # The hairline turns hard where it leaves the face, from 56 degrees of polar
 # angle at the front to 143 at the side. Too few columns there cut the turn into
@@ -39,7 +48,12 @@ LOCKS = 8                       # an integer, so the locks mirror about the face
 # Half a period, so the fringe parts over the middle of the forehead instead of
 # dropping a lock across the face.
 LOCK_PHASE = math.pi
-RIDGE = .048                    # a lock's own offset from the skull
+RIDGE = .048                    # a lock's own offset from the skull, if the
+                                # accepted study is not available to measure
+THINNEST = .034                 # below this the shell cuts into the skull,
+                                # and it must stay above RIM so the lip is inside
+THICKEST = .110                 # above this it pushes through the hood
+SMOOTHING = 2                   # blur passes over the measured offsets
 GROOVE = .012                   # how deep the parting between two locks is cut
 # A lock may grow where the hairline already sits low. Over the face it may not:
 # the face window is narrow, so any tuft there falls across an eye.
@@ -65,6 +79,99 @@ BINS = 48                       # azimuth samples used to read the old hairline
 CAST_RANGE = 1.2                # outside the head, inside the far wall
 
 
+def head_frame(obj):
+    """The centre and half extents of an object's own biggest piece."""
+    indices = largest_island(obj)
+    points = [obj.matrix_world @ obj.data.vertices[i].co for i in indices]
+    low = Vector((min(p.x for p in points), min(p.y for p in points),
+                  min(p.z for p in points)))
+    high = Vector((max(p.x for p in points), max(p.y for p in points),
+                   max(p.z for p in points)))
+    return (low + high) / 2, (high - low) / 2
+
+
+def approved_style(head):
+    """The accepted bun hair, re-fitted to this head. None if the study is gone.
+
+    Both heads are read in their own frames and one is mapped onto the other, so
+    a hairline that sat a given way on the study head sits the same way here.
+    """
+    if not STYLE_FILE.exists():
+        return None, lambda: None
+    # Loading objects also pulls in their meshes and materials. Left behind they
+    # sit in the saved file with no users at all, so note what was there first.
+    collections = (bpy.data.objects, bpy.data.meshes, bpy.data.materials,
+                   bpy.data.images)
+    present = [{block.name for block in group} for group in collections]
+
+    def discard():
+        # By name, and one group at a time. Removing a datablock invalidates any
+        # other reference held to it, so a list of blocks goes stale mid loop.
+        for group, known in zip(collections, present):
+            for name in [b.name for b in group if b.name not in known and not b.users]:
+                block = group.get(name)
+                if block is not None and not block.users:
+                    group.remove(block)
+
+    with bpy.data.libraries.load(str(STYLE_FILE), link=False) as (source, target):
+        target.objects = list(STYLE_PARTS)
+    loaded = dict(zip(STYLE_PARTS, target.objects))
+    if any(obj is None for obj in loaded.values()):
+        for obj in loaded.values():
+            if obj:
+                bpy.data.objects.remove(obj, do_unlink=True)
+        discard()
+        return None, lambda: None
+    # An object outside every collection keeps an identity matrix_world, so its
+    # own placement would be lost. Link them before reading world positions.
+    for obj in loaded.values():
+        bpy.context.scene.collection.objects.link(obj)
+    bpy.context.view_layer.update()
+    here_centre, here_half = head_frame(head)
+    there_centre, there_half = head_frame(loaded['Head'])
+    cap = loaded['HairCap.Bun']
+    placed = [cap.matrix_world @ v.co for v in cap.data.vertices]
+    for vertex, point in zip(cap.data.vertices, placed):
+        local = point - there_centre
+        vertex.co = here_centre + Vector((local.x / there_half.x * here_half.x,
+                                          local.y / there_half.y * here_half.y,
+                                          local.z / there_half.z * here_half.z))
+    cap.matrix_world = head.matrix_world.copy()
+
+    def clean():
+        for obj in loaded.values():
+            bpy.data.objects.remove(obj, do_unlink=True)
+        discard()
+
+    return cap, clean
+
+
+class Style:
+    """The accepted hair's own thickness above the skull, in each direction.
+
+    Carving the locks with a wave was guesswork and read as nothing. The study
+    already holds the volume the user accepted, so the cap takes its offset from
+    there and reproduces whatever partings and side locks the grid can express.
+    """
+
+    def __init__(self, cap):
+        mesh = cap.data
+        mesh.calc_loop_triangles()
+        island = set(largest_island(cap))
+        self.tree = BVHTree.FromPolygons(
+            [cap.matrix_world @ v.co for v in mesh.vertices],
+            [tuple(t.vertices) for t in mesh.loop_triangles
+             if all(i in island for i in t.vertices)], all_triangles=True)
+
+    def offset(self, centre, direction, skin):
+        """How far the accepted hair stands off the skull along this ray."""
+        origin = centre + direction * CAST_RANGE
+        location, _, _, _ = self.tree.ray_cast(origin, -direction, CAST_RANGE)
+        if location is None:
+            return None
+        return (location - skin).dot(direction)
+
+
 class Skull:
     """The head surface, sampled by rays that leave its centre."""
 
@@ -84,12 +191,16 @@ class Skull:
 
     def at(self, azimuth, polar):
         """The skull point and its outward normal in this direction."""
-        direction = Vector((math.sin(polar) * math.cos(azimuth),
-                            math.sin(polar) * math.sin(azimuth), math.cos(polar)))
-        location, normal, _, _ = self.tree.ray_cast(self.centre, direction, 3.0)
+        location, normal, _, _ = self.tree.ray_cast(
+            self.centre, ray(azimuth, polar), 3.0)
         if location is None:
             return None, None
-        return location, (normal if normal.dot(direction) > 0 else -normal)
+        return location, (normal if normal.dot(ray(azimuth, polar)) > 0 else -normal)
+
+
+def ray(azimuth, polar):
+    return Vector((math.sin(polar) * math.cos(azimuth),
+                   math.sin(polar) * math.sin(azimuth), math.cos(polar)))
 
 
 def lock_wave(azimuth):
@@ -195,24 +306,36 @@ def bun_island(hair):
 def build(hair, head):
     """Replace the hair cap with a locked shell, and carry the bun over."""
     skull = Skull(head)
-    reach = read_hairline(hair, skull)
+    style, release = approved_style(head)
+    reach = read_hairline(style or hair, skull)
+    volume = Style(style) if style else None
     bun_points, bun_faces = bun_island(hair)
+
 
     mesh = bpy.data.meshes.new('TravellerHair')
     work = bmesh.new()
     uv_layer = work.loops.layers.uv.verify()
-    grid, skin = {}, {}
+    places, thickness = {}, {}
     for column in range(COLUMNS):
         azimuth = column * math.tau / COLUMNS
         limit = hairline_at(reach, azimuth)
-        thickness = RIDGE - GROOVE * (1 - lock_wave(azimuth))
         for ring in range(RINGS):
             polar = CROWN_POLAR + (limit - CROWN_POLAR) * ring / (RINGS - 1)
             location, normal = skull.at(azimuth, polar)
             if location is None:
                 continue
-            grid[(ring, column)] = work.verts.new(location + normal * thickness)
-            skin[(ring, column)] = location + normal * RIM
+            places[(ring, column)] = (location, normal)
+            measured = None
+            if volume is not None:
+                measured = volume.offset(skull.centre, ray(azimuth, polar), location)
+            if measured is None:
+                measured = RIDGE - GROOVE * (1 - lock_wave(azimuth))
+            thickness[(ring, column)] = max(THINNEST, min(THICKEST, measured))
+    thickness = smooth(thickness)
+    grid, skin = {}, {}
+    for key, (location, normal) in places.items():
+        grid[key] = work.verts.new(location + normal * thickness[key])
+        skin[key] = location + normal * RIM
     faces = []
     for ring in range(RINGS - 1):
         for column in range(COLUMNS):
@@ -239,7 +362,31 @@ def build(hair, head):
     old = hair.data
     hair.data = mesh
     bpy.data.meshes.remove(old)
+    # Only now: until the object holds it, the new mesh has no users either and
+    # the purge would take it.
+    release()
     return len(mesh.polygons)
+
+
+def smooth(thickness, passes=SMOOTHING):
+    """Blur the measured offsets over the grid.
+
+    The study's own side lock ends in a step. Copied straight across it folds the
+    new cap at 159 degrees, so the field is blurred: the volume stays, the crease
+    goes.
+    """
+    for _ in range(passes):
+        blurred = {}
+        for (ring, column), value in thickness.items():
+            total, weight = 2.0 * value, 2.0
+            for step in (-1, 1):
+                for key in ((ring, (column + step) % COLUMNS), (ring + step, column)):
+                    if key in thickness:
+                        total += thickness[key]
+                        weight += 1
+            blurred[(ring, column)] = total / weight
+        thickness = blurred
+    return thickness
 
 
 def cap_crown(work, grid, skull):

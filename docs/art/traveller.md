@@ -77,22 +77,34 @@ shape by construction: it does not model the shape, it samples the old one.
 double-walled helmet: 964 triangles, 10 ngons, two 28-valence poles at the crown,
 one flat atlas point and no shape.
 
+- **The style comes from the accepted Low bun**, `HairCap.Bun` in
+  [the painted bust study](../../art_sources/traveller_painted/traveller_painted_study.blend),
+  whose direction is recorded in [study 02](traveller-hair-study-02.md). The head
+  has changed shape since then, 1.360 tall and 0.980 deep against 1.080 and
+  0.850 now, so the style is read in each head's own frame and re-fitted rather
+  than copied vertex for vertex. Nothing about the shape is invented here.
 - **The cap is fitted to the skull.** Every sample is a ray cast out of the
   head's centre onto the head itself. The ear islands are left out of that cast:
   a ray that hit an ear would stand the cap 0.08 further out and bulge over it.
-- **The hairline is measured, not invented.** It is found by casting at the old
-  hair's own silhouette and bisecting for the angle where the hair stops.
-  Reading it as the lowest hair vertex per azimuth does not work: near the face
-  one bin holds both the edge of the face opening and the side hair behind it,
-  so the lowest wins and drags a wedge down the cheek.
-- **The locks are tufts, not relief.** Each one is swept off a span of the cap's
-  own hairline and tapers to a point, by the same ring method the arms use.
-  Surface grooves were tried first and are invisible at this size, because chibi
-  hair reads by its outline. A lock shares its first ring with the cap, so the
-  hair stays one island.
-- **Each lock stops above the shoulders.** Its reach is cut to the room it has,
-  and a lock with no room is not grown at all. Locks are also kept off the face:
-  the face window is narrow, so any tuft there falls across an eye.
+- **The hairline is found by casting at the accepted silhouette** and bisecting
+  for the angle where the hair stops. Reading it as the lowest hair vertex per
+  azimuth does not work: near the face one bin holds both the edge of the face
+  opening and the side hair behind it, so the lowest wins and drags a wedge down
+  the cheek.
+- **The volume is measured, not carved.** Each sample takes its offset from the
+  accepted hair along the same ray, then the field is blurred twice. Carving the
+  locks with a wave was guesswork and read as nothing; the raw measured field
+  keeps the study's own step at the side lock and folds the cap at 159 degrees.
+  Blurring keeps the volume and loses the crease.
+- **The lock tufts are swept off the cap's own hairline** and taper to a point,
+  by the same ring method the arms use. Each shares its first ring with the cap,
+  so the hair stays one island. A lock stops above the shoulders, is not grown at
+  all where there is no room, and never crosses the face, where the window is
+  narrow enough that any tuft falls across an eye.
+- **The borrowed datablocks are purged.** Loading objects from the study pulls
+  in their meshes and materials, and left behind they sit in the saved file with
+  no users. The purge runs after the new mesh is on the object, because until
+  then the new mesh has no users either.
 
 ## Rig
 
@@ -124,12 +136,12 @@ contact targets.
 | Cloak quads | 97% (was 0%) |
 | Cloak edge / face ratios | 27:1 and 71:1 (were 258:1 and 999:1) |
 | Cloak clearance, all nine keys | 0 overlaps |
-| Hair triangles | 798 (was 964) |
+| Hair triangles | 728 (was 964) |
 | Hair ngons / crown poles | 0 / none (were 10 / two 28-valence) |
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
-| Hair against the head | 69, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,396, under the 6,000 target |
+| Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
+| triangles | 5,326, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -164,12 +176,11 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
-- **The hair silhouette is only part way to the reference.** The cap now carries
-  pointed lock tips that read from the front and the three-quarter view, but from
-  the side it is still the inherited helmet shape. Reaching the chibi Link look
-  needs the lock count, their places and their directions chosen on a marked-up
-  drawing, the way the shoulder was corrected. Parameter search alone stopped
-  improving it.
+- **The hair still simplifies the accepted style.** 32 columns by 8 rings cannot
+  hold the study's separated side lock, so the cap reads its volume as a swell
+  rather than a parted lock. The fringe, the forehead line and the back volume do
+  carry across. Going further means more rows and columns at the side, or the
+  side lock built as its own tuft aimed at the study's own measurement.
 - **Retiring the old trials.** `traveller_rigify_trial` and
   `traveller_upper_body_trial` are superseded. Remove them once this file is
   accepted.
