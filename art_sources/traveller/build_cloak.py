@@ -68,13 +68,19 @@ CAP_COLUMNS = 2
 # How much of a snapped edge's shift the rows beyond the opening keep, so the
 # surface returns to its plain columns over two rows instead of in one step.
 TAPER = (.75, .45, .20)
+# The heights the collar yoke crosses, and how many passes even it out.
+CHEST_BAND = (1.82, 2.20)
+CHEST_RELAX = 2
 # The flat cloth palette point. The atlas is a palette, not a texture, so a face
 # has to stay inside one region: a corner that reads across a region boundary
 # samples a colour that belongs somewhere else.
 CLOTH_UV = (.625, .56)
-# The atlas rows the clasp uses, which nothing else on the cloak does.
-CLASP_BAND = (.12, .50)
-CLASP_LIFT = .034               # how far the brooch stands off the old surface
+# The collar yoke is a flat V panel welded into the old shell, on atlas rows
+# 0.12 to 0.50. It carries no colour of its own: every one of its points reads
+# (0.294, 0.408, 0.522), the same as the cloth, so it is a shape and the grid
+# samples it like the rest of the surface. Copying its triangles across instead
+# cannot work at any offset: 0.034 proud puts its edges in the light and draws a
+# hard V over the chest, and flush it cuts through the cape it sits on.
 
 
 def column_angle(column):
@@ -208,6 +214,40 @@ def build_grid(surface):
         heights.append([z] * COLUMNS)
     taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
     level_trim(grid)
+    relax_chest(grid, heights)
+    return grid
+
+
+def relax_chest(grid, heights):
+    """Even out the radius across the chest, where the collar yoke sits.
+
+    The yoke is a flat V panel standing proud of the cape, welded into the same
+    shell. A horizontal ray grazes its edges, so the sampled radius jumps: at 285
+    degrees it reads 0.4241 at z 1.90, 0.4015 at 1.95 and 0.4021 at 2.00, one
+    sample out of line. That step ran across the chest as a bar. The yoke carries
+    no colour of its own, so nothing is lost by letting the surface average it.
+    """
+    low, high = CHEST_BAND
+    inside = [r for r, row in enumerate(grid)
+              if any(h is not None and low < h < high for h in heights[r])]
+    for _ in range(CHEST_RELAX):
+        radii = {}
+        for r in inside:
+            for c in range(COLUMNS):
+                hit = grid[r][c]
+                if hit is None:
+                    continue
+                near = [grid[r][(c + step) % COLUMNS] for step in (-1, 1)]
+                near += [grid[r + step][c] for step in (-1, 1)
+                         if 0 <= r + step < len(grid)]
+                spread = [math.hypot(n.co.x, n.co.y) for n in near if n is not None]
+                own = math.hypot(hit.co.x, hit.co.y)
+                radii[(r, c)] = (2 * own + sum(spread)) / (2 + len(spread))
+        for (r, c), radius in radii.items():
+            hit = grid[r][c]
+            angle = math.atan2(hit.co.y, hit.co.x)
+            hit.co = Vector((radius * math.cos(angle), radius * math.sin(angle),
+                             hit.co.z))
     return grid
 
 
@@ -412,10 +452,7 @@ def write(grid, surface, name='CloakShell'):
             if hit is not None:
                 vertex = work.verts.new(hit.co)
                 verts[(r, c)] = vertex
-                # The clasp is carried across whole, so the grid must not try to
-                # paint it as well. Its own columns are too narrow to hold it and
-                # the value spread into a bar beside the split.
-                values[vertex] = CLOTH_UV if is_clasp(hit.uv) else hit.uv
+                values[vertex] = hit.uv
     work.verts.index_update()
     uv_layer = work.loops.layers.uv.verify()
     faces = []
@@ -443,47 +480,10 @@ def write(grid, surface, name='CloakShell'):
     for face in faces:
         face.smooth = True
         paint_face(face, values, uv_layer, face in trim)
-    carry_clasp(work, surface, uv_layer)
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     work.to_mesh(mesh)
     work.free()
     return mesh
-
-
-def carry_clasp(work, surface, uv_layer):
-    """Re-emit the old clasp, which the grid is too coarse to hold.
-
-    The clasp is eight triangles on the front centre plane, and the grid leaves
-    that centre open for the split. Its atlas value therefore landed on the two
-    narrow columns beside the slit and read as a bar rather than a brooch, so the
-    old triangles are carried across whole, the way the hair carries its bun.
-    """
-    wanted = [index for index, corners in enumerate(surface.uvs)
-              if all(CLASP_BAND[0] < corner[1] < CLASP_BAND[1] for corner in corners)]
-    if not wanted:
-        return []
-    remap, faces = {}, []
-    for index in wanted:
-        for vertex in surface.faces[index]:
-            if vertex not in remap:
-                point = surface.points[vertex]
-                # The cape moved out by OUTSET and its chords cut inside the
-                # curve it samples, so the brooch needs more than that or it
-                # sinks into the cloth it is supposed to sit on. Measured: the
-                # clasp ran 0.429 to 0.447 against a cape at 0.442.
-                outward = Vector((point.x, point.y, 0))
-                if outward.length > 1e-6:
-                    point = point + outward.normalized() * CLASP_LIFT
-                remap[vertex] = work.verts.new(point)
-        corners = [remap[i] for i in surface.faces[index]]
-        if len(set(corners)) < 3:
-            continue
-        face = work.faces.new(corners)
-        face.smooth = True
-        for loop, value in zip(face.loops, surface.uvs[index]):
-            loop[uv_layer].uv = value
-        faces.append(face)
-    return faces
 
 
 def column_runs(columns):
@@ -547,10 +547,6 @@ def close_ends(work, verts, rows):
                     except ValueError:
                         pass                      # the face is already there
     return made
-
-
-def is_clasp(uv):
-    return CLASP_BAND[0] < uv[1] < CLASP_BAND[1]
 
 
 def is_cloth(uv):
