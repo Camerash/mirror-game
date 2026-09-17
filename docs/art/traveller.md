@@ -72,11 +72,15 @@ shape by construction: it does not model the shape, it samples the old one.
   row of an opening to the same columns also closes the surface, but it forced
   the hood's face opening to stay as wide at its top as at its middle: 74 degrees
   where the truth is 38, which squared off its corners.
-- **An opening's ends are capped by a fan.** A cell needs three of its four
-  corners to become a triangle, so where an opening ends, the columns in the
-  middle of it have two corners and nothing is built: the hood's opening finished
-  in a spike with a hole beside it. The gap is a polygon between two rows, and
-  each half of it is fanned to its own corner. Fanned to one corner it comes out
+- **An opening's apex is capped by a fan, and only its apex.** A cell needs
+  three of its four corners to become a triangle, so where an opening ends, the
+  columns in the middle of it have two corners and nothing is built: the hood's
+  opening finished in a spike with a hole beside it. The gap is a polygon between
+  two rows, and each half of it is fanned to its own corner. The cap is limited
+  to gaps two columns wide: the hood's opening also *starts* against cloth, 55
+  degrees wide over 0.01 of height, because a horizontal ray cannot see the
+  collar's near-horizontal top, and fanning that bridged the whole throat with a
+  flat triangular patch. Fanned to one corner it comes out
   as a long thin sheet and creases the throat at 121 degrees, against 116 in the
   old cloak.
 - **An opening lets go of the rim gradually, in both directions.** The snap only

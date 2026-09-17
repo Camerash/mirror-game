@@ -63,6 +63,8 @@ SNAP_REACH = 4
 EDGE_EASE = (.92, .97)
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
+# The widest gap, in columns, that counts as an apex worth capping.
+CAP_COLUMNS = 2
 # How much of a snapped edge's shift the rows beyond the opening keep, so the
 # surface returns to its plain columns over two rows instead of in one step.
 TAPER = (.75, .45, .20)
@@ -518,6 +520,11 @@ def close_ends(work, verts, rows):
             gaps = [c for c in range(COLUMNS)
                     if (far, c) in verts and (near, c) not in verts]
             for run in column_runs(gaps):
+                # Only an apex. At its other end the hood's opening starts 55
+                # degrees wide over 0.01 of height, and fanning that bridged the
+                # whole throat with a flat triangular patch.
+                if len(run) > CAP_COLUMNS:
+                    continue
                 left = (run[0] - 1) % COLUMNS
                 right = (run[-1] + 1) % COLUMNS
                 if (near, left) not in verts or (near, right) not in verts:
