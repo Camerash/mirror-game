@@ -48,10 +48,22 @@ RIM = .010                     # thickness at the hem and the hood's face rim
 # would press into the body where the old one was already tight. Push each
 # sample out along the surface normal to pay that back.
 OUTSET = .016
+# How much of a snapped edge's travel the columns inward of it take, so the cell
+# widths grade instead of putting a sliver next to a wide quad.
+INWARD = (.55, .25)
+# How much of its travel an opening's edge keeps in its last rows, where the
+# opening closes to nothing and a hard snap pinches against the closed row.
+EDGE_EASE = (.55, .80)
+# How much of a snapped edge's shift the rows beyond the opening keep, so the
+# surface returns to its plain columns over two rows instead of in one step.
+TAPER = (.75, .45, .20)
 # The flat cloth palette point. The atlas is a palette, not a texture, so a face
 # has to stay inside one region: a corner that reads across a region boundary
 # samples a colour that belongs somewhere else.
 CLOTH_UV = (.625, .56)
+# The atlas rows the clasp uses, which nothing else on the cloak does.
+CLASP_BAND = (.12, .50)
+CLASP_LIFT = .034               # how far the brooch stands off the old surface
 
 
 def column_angle(column):
@@ -163,8 +175,14 @@ def build_grid(surface):
     """Project the grid: two rows that follow the hem border, then level rows."""
     hems = [hem_height(surface, column_angle(c)) for c in range(COLUMNS)]
     feet = [None if h is None else h + HEM_LIFT for h in hems]
-    tops = [None if feet[c] is None else band_top(surface, column_angle(c), feet[c])
-            for c in range(COLUMNS)]
+    found = [band_top(surface, column_angle(c), feet[c]) - feet[c]
+             for c in range(COLUMNS)
+             if feet[c] is not None and band_top(surface, column_angle(c), feet[c])]
+    # One height for the whole border, not one per column. The old border's top
+    # zig-zags, and sampled at 24 columns that becomes a ragged ribbon whose
+    # gradient is squashed in some columns and stretched in others.
+    height = sorted(found)[len(found) // 2] if found else .05
+    tops = [None if feet[c] is None else feet[c] + height for c in range(COLUMNS)]
     grid, heights = [], []
     for levels in (feet, tops):
         row = [None if levels[c] is None else surface.at(levels[c], column_angle(c))
@@ -176,7 +194,8 @@ def build_grid(surface):
         grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
         heights.append(z)
     square_openings(grid)
-    snap_openings(surface, grid, heights)
+    taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
+    level_trim(grid)
     return grid
 
 
@@ -208,9 +227,11 @@ def snap_openings(surface, grid, heights):
     """Put the vertices beside an opening on the real rim, not on a grid step.
 
     Without this the hood's face opening follows whole cells and looks stepped.
+    Returns the angle each column was moved by, for the taper that follows.
     """
     step = math.tau / COLUMNS
-    for row, z in zip(grid, heights):
+    shifts = {}
+    for number, (row, z) in enumerate(zip(grid, heights)):
         if all(p is None for p in row) or all(p is not None for p in row):
             continue
         moves = {}
@@ -231,16 +252,123 @@ def snap_openings(surface, grid, heights):
             if hit is None:
                 continue
             moves[inside] = (hit, low, direction)
+        applied = {}
         for index, (hit, travel, direction) in moves.items():
             row[index] = hit
-            # Share the travel with the next column inward. Without this the
-            # snapped vertex leaves a 3 degree cell beside a 27 degree one.
-            inner = (index - direction) % COLUMNS
-            if inner in moves or row[inner] is None:
+            applied[index] = direction * travel
+            # Share the travel with the columns inward of the edge. Without it
+            # the snapped vertex leaves a 3 degree cell beside a 27 degree one,
+            # and the two widths fold against each other.
+            for depth, share in enumerate(INWARD, start=1):
+                inner = (index - direction * depth) % COLUMNS
+                if inner in moves or row[inner] is None:
+                    continue
+                shared = surface.at(z, column_angle(inner) + direction * travel * share)
+                if shared is not None:
+                    row[inner] = shared
+                    applied[inner] = direction * travel * share
+        if applied:
+            shifts[number] = applied
+    return ease_ends(surface, grid, heights, shifts)
+
+
+def ease_ends(surface, grid, heights, shifts):
+    """Let the edge back off the rim in the last rows of an opening.
+
+    The front split closes to a slit 0.008 wide. Snapped hard onto that, the last
+    open row pinches against the first closed row and creased the chest at 154
+    degrees. Backing the edge off by a fraction widens the slit invisibly and
+    lets the two rows meet.
+    """
+    numbers = sorted(shifts)
+    runs, first = [], None
+    for index, number in enumerate(numbers):
+        if first is None:
+            first = number
+        if index + 1 == len(numbers) or numbers[index + 1] != number + 1:
+            runs.append((first, number))
+            first = None
+    for low, high in runs:
+        for source, step in ((low, 1), (high, -1)):
+            # Only where the opening ends because the cloth closes over it. At
+            # the hem it ends because the mesh does, and the split is genuinely
+            # 0.05 wide there, so backing the edge off would widen the hem.
+            beyond = source - step
+            if not 0 <= beyond < len(grid) or any(p is None for p in grid[beyond]):
                 continue
-            shared = surface.at(z, column_angle(inner) + direction * travel / 2)
-            if shared is not None:
-                row[inner] = shared
+            for depth, share in enumerate(EDGE_EASE):
+                number = source + step * depth
+                if number not in shifts or not low <= number <= high:
+                    continue
+                for column, offset in list(shifts[number].items()):
+                    hit = surface.at(heights[number],
+                                     column_angle(column) + offset * share)
+                    if hit is not None:
+                        grid[number][column] = hit
+                        shifts[number][column] = offset * share
+    return shifts
+
+
+def taper_openings(surface, grid, heights, shifts):
+    """Let a snapped edge come back to its column over the next rows.
+
+    The snap only touches rows that belong to an opening, so the first full row
+    beyond it sits back at the plain column angle and the surface steps there.
+    Measured before this: the front split's edge runs at 247 degrees at z 1.80
+    and jumps to 255 at z 1.86, which creases the chest at 154 degrees; the hood
+    opening does the same at its top corners, at 134 degrees.
+    """
+    runs, first = [], None
+    for number in range(len(grid)):
+        if number in shifts:
+            first = number if first is None else first
+        elif first is not None:
+            runs.append((first, number - 1))
+            first = None
+    if first is not None:
+        runs.append((first, len(grid) - 1))
+    for low, high in runs:
+        for source, step in ((low, -1), (high, 1)):
+            for depth, share in enumerate(TAPER, start=1):
+                number = source + step * depth
+                if not 0 <= number < len(grid) or number in shifts:
+                    continue
+                for column, offset in shifts[source].items():
+                    if grid[number][column] is None:
+                        continue
+                    hit = surface.at(heights[number],
+                                     column_angle(column) + offset * share)
+                    if hit is not None:
+                        grid[number][column] = hit
+
+
+def level_trim(grid):
+    """Give the hem border the same band of atlas rows all the way round.
+
+    The border is a gradient across the atlas rows, dark to light to dark, and
+    the rows carry the same colour at every u, so u holds no information here.
+    What broke the band was v: `band_top` found 0.105 at most columns but only
+    0.037 at a few, where the old border's own zig-zag runs short, and those
+    columns lost the gradient and read as patches. Levelling the two rows gives
+    an even band; the zig-zag is lost, and at 24 columns it was being sampled at
+    an arbitrary phase anyway.
+    """
+    foot, band = grid[0], grid[1]
+    carried = [(n, hit) for n, hit in enumerate(band)
+               if hit is not None and not is_cloth(hit.uv)]
+    if not carried or any(hit is None for hit in foot):
+        return
+    bottom = min(hit.uv[1] for hit in foot if not is_cloth(hit.uv))
+    top = max(hit.uv[1] for _, hit in carried)
+    for column in range(COLUMNS):
+        if foot[column] is None or band[column] is None:
+            continue
+        # A column that read the plain cloth takes its u from the nearest column
+        # that did read the border.
+        near = min(carried, key=lambda item: abs(item[0] - column))[1].uv[0]
+        value = near if is_cloth(band[column].uv) else band[column].uv[0]
+        foot[column].uv = (value, bottom)
+        band[column].uv = (value, top)
 
 
 def write(grid, surface, name='CloakShell'):
@@ -252,7 +380,10 @@ def write(grid, surface, name='CloakShell'):
             if hit is not None:
                 vertex = work.verts.new(hit.co)
                 verts[(r, c)] = vertex
-                values[vertex] = hit.uv
+                # The clasp is carried across whole, so the grid must not try to
+                # paint it as well. Its own columns are too narrow to hold it and
+                # the value spread into a bar beside the split.
+                values[vertex] = CLOTH_UV if is_clasp(hit.uv) else hit.uv
     work.verts.index_update()
     uv_layer = work.loops.layers.uv.verify()
     faces = []
@@ -272,10 +403,51 @@ def write(grid, surface, name='CloakShell'):
     for face in faces:
         face.smooth = True
         paint_face(face, values, uv_layer, face in trim)
+    carry_clasp(work, surface, uv_layer)
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     work.to_mesh(mesh)
     work.free()
     return mesh
+
+
+def carry_clasp(work, surface, uv_layer):
+    """Re-emit the old clasp, which the grid is too coarse to hold.
+
+    The clasp is eight triangles on the front centre plane, and the grid leaves
+    that centre open for the split. Its atlas value therefore landed on the two
+    narrow columns beside the slit and read as a bar rather than a brooch, so the
+    old triangles are carried across whole, the way the hair carries its bun.
+    """
+    wanted = [index for index, corners in enumerate(surface.uvs)
+              if all(CLASP_BAND[0] < corner[1] < CLASP_BAND[1] for corner in corners)]
+    if not wanted:
+        return []
+    remap, faces = {}, []
+    for index in wanted:
+        for vertex in surface.faces[index]:
+            if vertex not in remap:
+                point = surface.points[vertex]
+                # The cape moved out by OUTSET and its chords cut inside the
+                # curve it samples, so the brooch needs more than that or it
+                # sinks into the cloth it is supposed to sit on. Measured: the
+                # clasp ran 0.429 to 0.447 against a cape at 0.442.
+                outward = Vector((point.x, point.y, 0))
+                if outward.length > 1e-6:
+                    point = point + outward.normalized() * CLASP_LIFT
+                remap[vertex] = work.verts.new(point)
+        corners = [remap[i] for i in surface.faces[index]]
+        if len(set(corners)) < 3:
+            continue
+        face = work.faces.new(corners)
+        face.smooth = True
+        for loop, value in zip(face.loops, surface.uvs[index]):
+            loop[uv_layer].uv = value
+        faces.append(face)
+    return faces
+
+
+def is_clasp(uv):
+    return CLASP_BAND[0] < uv[1] < CLASP_BAND[1]
 
 
 def is_cloth(uv):

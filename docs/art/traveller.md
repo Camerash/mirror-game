@@ -67,6 +67,29 @@ shape by construction: it does not model the shape, it samples the old one.
   the same columns first, because a row that stops one column short of its
   neighbour loses the cell between them and leaves a tooth in the rim. Each row's
   edge vertex is then found by bisection on the true rim angle.
+- **An opening lets go of the rim gradually, in both directions.** The snap only
+  touches rows inside an opening, so the first full row beyond it sat back at the
+  plain column angle and the surface stepped there: the chest creased at 154
+  degrees and the hood's top corners at 134. Two corrections, and no new
+  geometry. Outward, the edge's shift carries into the next rows beyond the
+  opening and falls to zero. Inward, the edge backs off the rim in the last rows
+  of an opening, but only where the opening closes against cloth, never at the
+  hem, where the split is genuinely 0.05 wide and backing off would widen it.
+  The columns inward of an edge also take a share of its travel, so cell widths
+  grade instead of putting a sliver beside a wide quad.
+- **The border is one level ribbon.** Its height above the hem and its two atlas
+  rows are the same at every column. Read per column instead, the old border's
+  own zig-zag top landed at atlas row 0.105 in most columns and 0.037 in a few,
+  and those lost the dark-light-dark gradient and read as patches. The atlas
+  rows carry one colour across their whole width, so u holds nothing here and
+  only v had to be fixed. The zig-zag is lost; at 24 columns it was being
+  sampled at an arbitrary phase anyway.
+- **The clasp is carried across whole.** It is eight old triangles on the front
+  centre plane, and the grid leaves that centre open for the split, so its atlas
+  value landed on the two narrow columns beside the slit and read as a bar. The
+  old triangles are copied instead, the way the hair carries its bun, and lifted
+  0.034 so they sit on the new cape rather than inside it. The cloak therefore
+  has two islands, which is what a brooch is.
 - **Shape keys move across by barycentric position** on the old triangles, so
   large movement such as the hood folding down (2.1 units) stays correct. A new
   key does not reliably start at zero, so each one is set to zero explicitly.
@@ -132,16 +155,19 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,720 (was 3,332) |
-| Cloak quads | 97% (was 0%) |
-| Cloak edge / face ratios | 27:1 and 71:1 (were 258:1 and 999:1) |
+| Cloak triangles | 1,744 (was 3,332): 1,720 cape and 24 clasp |
+| Cloak quads | 96% (was 0%) |
+| Cape edge / face ratios | 26:1 and 104:1 (were 258:1 and 999:1) |
+| Cloak sharpest fold | 112° (the old cloak's was 116°) |
+| Chest fold / hood corner fold | 104° and 96° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
+| Hair against the cloak | 0 overlaps |
 | Hair triangles | 728 (was 964) |
 | Hair ngons / crown poles | 0 / none (were 10 / two 28-valence) |
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,326, under the 6,000 target |
+| triangles | 5,350, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -176,6 +202,14 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
+- **The hem border no longer zig-zags.** The old border's top edge stepped up
+  and down around the hem. Levelling it was what stopped the band breaking into
+  patches. Bringing the zig-zag back needs enough columns to sample it in phase,
+  which means raising `COLUMNS` from 24 to about 48 and roughly doubling the
+  cloak's cost.
+- **The clasp keeps the old mesh's own triangles**, so its edge and area ratios
+  are 159:1 and 974:1 against the cape's 26:1 and 104:1. It is 24 triangles of
+  inherited geometry; rebuilding it would be a separate small job.
 - **The hair still simplifies the accepted style.** 32 columns by 8 rings cannot
   hold the study's separated side lock, so the cap reads its volume as a swell
   rather than a parted lock. The fringe, the forehead line and the back volume do
