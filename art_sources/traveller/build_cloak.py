@@ -22,6 +22,7 @@ import bmesh
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
+from mathutils.kdtree import KDTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -44,18 +45,22 @@ ROWS = [0.52, 0.72, 0.92, 1.12, 1.22, 1.32, 1.41, 1.50, 1.58,
         3.295]
 CAST_RADIUS = 1.6              # well outside the cloak's widest point, 0.88
 RIM = .010                     # thickness at the hem and the hood's face rim
+ROLL = 1.0                     # how far the lip rolls back under the cloth, as
+                               # a share of RIM, so its fold is not square
+ROLL_ABOVE = 0.50              # and only above this height: not at the hem
+LIP_FLOOR = .40                # the least of RIM a lip may be thinned to
 # A grid of chords sits inside the curved surface it samples, so the new cloak
 # would press into the body where the old one was already tight. Push each
 # sample out along the surface normal to pay that back.
 OUTSET = .016
-# How much of a snapped edge's travel the columns inward of it take, so the cell
+# How many columns inward of an edge share its travel, evenly, so the cell
 # widths grade instead of putting a sliver next to a wide quad.
-INWARD = (.55, .25)
+SPREAD = 4
 # How many columns an opening's edge may travel to reach the real rim.
 SNAP_REACH = 4
 # How much of its travel an opening's edge keeps in its last rows, where the
 # opening closes to nothing and a hard snap pinches against the closed row.
-EDGE_EASE = (.55, .80)
+EDGE_EASE = (.92, .97)
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
 # How much of a snapped edge's shift the rows beyond the opening keep, so the
@@ -188,15 +193,17 @@ def build_grid(surface):
     height = sorted(found)[len(found) // 2] if found else .05
     tops = [None if feet[c] is None else feet[c] + height for c in range(COLUMNS)]
     grid, heights = [], []
+    # One height per column, not one per row. The first two rows follow each
+    # column's own hem, and re-projecting them at the row's average put the two
+    # columns beside the split 0.022 out, which squashed their border faces to
+    # slivers and read as dark notches in the band.
     for levels in (feet, tops):
-        row = [None if levels[c] is None else surface.at(levels[c], column_angle(c))
-               for c in range(COLUMNS)]
-        grid.append(row)
-        found = [z for z in levels if z is not None]
-        heights.append(sum(found) / max(len(found), 1))
+        grid.append([None if levels[c] is None else surface.at(levels[c], column_angle(c))
+                     for c in range(COLUMNS)])
+        heights.append(list(levels))
     for z in ROWS:
         grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
-        heights.append(z)
+        heights.append([z] * COLUMNS)
     taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
     level_trim(grid)
     return grid
@@ -225,17 +232,20 @@ def snap_openings(surface, grid, heights):
             # search bounded at one step stops short: the hood's opening came out
             # 74 degrees wide at its top where the truth is 38, which gave it a
             # flat top and two sharp corners.
+            level = z[inside]
+            if level is None:
+                continue
             low, high = 0.0, step
             while (high < SNAP_REACH * step
-                   and surface.at(z, column_angle(inside) + direction * high) is not None):
+                   and surface.at(level, column_angle(inside) + direction * high) is not None):
                 low, high = high, high + step
             for _ in range(24):
                 middle = (low + high) / 2
-                if surface.at(z, column_angle(inside) + direction * middle) is None:
+                if surface.at(level, column_angle(inside) + direction * middle) is None:
                     high = middle
                 else:
                     low = middle
-            hit = surface.at(z, column_angle(inside) + direction * low)
+            hit = surface.at(level, column_angle(inside) + direction * low)
             if hit is None:
                 continue
             moves[inside] = (hit, low, direction)
@@ -246,19 +256,22 @@ def snap_openings(surface, grid, heights):
             # Share the travel with the columns inward of the edge. Without it
             # the snapped vertex leaves a 3 degree cell beside a 27 degree one,
             # and the two widths fold against each other.
-            # Share at most one column's worth. The edge may now travel four
-            # columns to reach the rim, and passing that whole distance inward
-            # dragged the neighbours out of place and built a shoulder into the
-            # hood's opening.
+            # Spread the travel evenly over the columns inward of the edge, so
+            # the cells all take the same share of it. A fixed profile instead
+            # left the spacing running 15, 17, 17, 20 degrees into the rim, and
+            # the widening cells read as faint creases along the hood.
             spread = min(travel, math.tau / COLUMNS)
-            for depth, share in enumerate(INWARD, start=1):
+            for depth in range(1, SPREAD):
                 inner = (index - direction * depth) % COLUMNS
                 if inner in moves or row[inner] is None:
                     continue
-                shared = surface.at(z, column_angle(inner) + direction * spread * share)
+                offset = direction * spread * (1 - depth / SPREAD)
+                if z[inner] is None:
+                    continue
+                shared = surface.at(z[inner], column_angle(inner) + offset)
                 if shared is not None:
                     row[inner] = shared
-                    applied[inner] = direction * spread * share
+                    applied[inner] = offset
         if applied:
             shifts[number] = applied
     return ease_ends(surface, grid, heights, shifts)
@@ -300,7 +313,9 @@ def ease_ends(surface, grid, heights, shifts):
                 if width is None or width > EASE_BELOW:
                     continue
                 for column, offset in list(shifts[number].items()):
-                    hit = surface.at(heights[number],
+                    if heights[number][column] is None:
+                        continue
+                    hit = surface.at(heights[number][column],
                                      column_angle(column) + offset * share)
                     if hit is not None:
                         grid[number][column] = hit
@@ -333,9 +348,9 @@ def taper_openings(surface, grid, heights, shifts):
                 if not 0 <= number < len(grid) or number in shifts:
                     continue
                 for column, offset in shifts[source].items():
-                    if grid[number][column] is None:
+                    if grid[number][column] is None or heights[number][column] is None:
                         continue
-                    hit = surface.at(heights[number],
+                    hit = surface.at(heights[number][column],
                                      column_angle(column) + offset * share)
                     if hit is not None:
                         grid[number][column] = hit
@@ -585,13 +600,24 @@ def add_rim(mesh, surface):
     if not border:
         work.free()
         return 0
-    normals, values = {}, {}
+    normals, inward, values = {}, {}, {}
     for edge in border:
         for vertex in edge.verts:
             key = tuple(round(n, 6) for n in vertex.co)
             normals[key] = vertex.normal.copy()
             values[vertex] = tuple(vertex.link_loops[0][uv_layer].uv)
+            # The way back into the cloth, so the lip can be chamfered instead
+            # of returned square. A square return folds at 90 degrees, and that
+            # read as a faint crease running along the hood's opening.
+            behind = [other for other in (e.other_vert(vertex) for e in vertex.link_edges)
+                      if not any(f.calc_area() < 1e-9 for f in ())
+                      and not other.is_boundary]
+            if behind:
+                step = sum(((other.co - vertex.co).normalized() for other in behind),
+                           Vector()) / len(behind)
+                inward[key] = step.normalized() if step.length > 1e-6 else Vector()
     carried = {tuple(round(n, 6) for n in v.co): uv for v, uv in values.items()}
+    room = lip_room(border)
     result = bmesh.ops.extrude_edge_only(work, edges=border)
     for vertex in result['geom']:
         if not isinstance(vertex, bmesh.types.BMVert):
@@ -601,7 +627,12 @@ def add_rim(mesh, surface):
         normal = normals.get(key)
         if normal is None or normal.length < 1e-6:
             normal = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
-        vertex.co -= normal * RIM
+        width = RIM * room.get(key, 1.0)
+        # The hem is seen edge on, so a rolled lip shows there as a fold and a
+        # square return does not. The hood's rim is seen face on, where the
+        # square return is what shows.
+        roll = ROLL if vertex.co.z > ROLL_ABOVE else 0.0
+        vertex.co += inward.get(key, Vector()) * (width * roll) - normal * width
     for face in result['geom']:
         if isinstance(face, bmesh.types.BMFace):
             face.smooth = True
@@ -611,6 +642,34 @@ def add_rim(mesh, surface):
     work.to_mesh(mesh)
     work.free()
     return count
+
+
+def lip_room(border):
+    """How much of the lip each boundary vertex has space for, 0 to 1.
+
+    The front split closes to a hairline. Two full lips across a gap that narrow
+    meet and fold back on each other, which measured 174 degrees. Each vertex
+    gets only what the nearest unrelated boundary vertex leaves it.
+    """
+    points = list({vertex for edge in border for vertex in edge.verts})
+    tree = KDTree(len(points))
+    for index, vertex in enumerate(points):
+        tree.insert(vertex.co, index)
+    tree.balance()
+    room = {}
+    for vertex in points:
+        linked = {edge.other_vert(vertex) for edge in vertex.link_edges}
+        spare = RIM * 4
+        for _, index, distance in tree.find_range(vertex.co, RIM * 4):
+            other = points[index]
+            if other is vertex or other in linked:
+                continue
+            spare = min(spare, distance)
+        key = tuple(round(n, 6) for n in vertex.co)
+        # Never below a floor: a lip thinned to nothing is a sliver face, which
+        # costs more in the edge ratio than the overlap it avoids.
+        room[key] = max(LIP_FLOOR, min(1.0, .45 * spare / RIM))
+    return room
 
 
 def capture_keys(obj):

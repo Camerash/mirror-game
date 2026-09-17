@@ -171,7 +171,7 @@ contact targets.
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cape edge / face ratios | 26:1 and 104:1 (were 258:1 and 999:1) |
-| Cloak sharpest fold | 112° (the old cloak's was 116°) |
+| Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
 | Hair against the cloak | 0 overlaps |
