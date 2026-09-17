@@ -64,10 +64,11 @@ EDGE_EASE = ()
 # The front split is never held tighter than this half angle, so it stays a
 # visible line under the clasp instead of pinching to a sliver. Only edges this
 # near the front centre belong to the split; the rest is the hood's face opening.
-SEAM_TOP = .055                 # the split's width just under the clasp
-SEAM_HEM = .130                 # and at the hem
+SEAM_TOP = .105                 # the split's width just under the clasp
+SEAM_HEM = .165                 # and at the hem
 SPLIT_TOP = 1.84                # the heights the split runs between
 SPLIT_FOOT = 0.19
+FACING_REACH = .12              # how far from the centre the split's facing runs
 SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
@@ -87,7 +88,7 @@ CLASP_Z = 1.86                  # the top of the split, so it opens from under
 CLASP_RADIUS = .078
 CLASP_RISE = .026
 CLASP_WAIST = .55
-CLASP_SIDES = 8
+CLASP_SIDES = 16
 CLASP_UV = (.5, .02)
 # The flat cloth palette point. The atlas is a palette, not a texture, so a face
 # has to stay inside one region: a corner that reads across a region boundary
@@ -515,6 +516,15 @@ def write(grid, surface, name='CloakShell'):
     for face in faces:
         face.smooth = True
         paint_face(face, values, uv_layer, face in trim)
+        # The front split's facing, in the hem border's dark blue. Over the chest
+        # the body behind the opening is the same blue-grey as the cloak, so the
+        # gap cannot read as one however wide it is. A facing down each side
+        # draws the opening whatever is behind it.
+        middle = face.calc_center_median()
+        if (abs(middle.x) < FACING_REACH and middle.y < -.28
+                and SPLIT_FOOT < middle.z < SPLIT_TOP):
+            for loop in face.loops:
+                loop[uv_layer].uv = CLASP_UV
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     work.to_mesh(mesh)
     work.free()
@@ -747,6 +757,15 @@ def add_rim(mesh, surface):
         if isinstance(face, bmesh.types.BMFace):
             face.smooth = True
             paint_face(face, values, uv_layer)
+            # The front split's own facing, in the hem border's dark blue. Over
+            # the chest the body behind the opening is the same blue-grey as the
+            # cloak, so the gap cannot read as one however wide it is; a facing
+            # draws its edges whatever is behind.
+            middle = face.calc_center_median()
+            if (abs(middle.x) < FACING_REACH and middle.y < -.28
+                    and SPLIT_FOOT < middle.z < SPLIT_TOP):
+                for loop in face.loops:
+                    loop[uv_layer].uv = CLASP_UV
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     count = len(work.faces)
     work.to_mesh(mesh)
