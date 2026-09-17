@@ -62,9 +62,16 @@ RIM = [(2.145, 0.378), (2.16, 0.385), (2.20, 0.398), (2.30, 0.444), (2.45, 0.508
 # at the clasp, 0.001 at z 1.40 and 0.101 at the hem, so following it gives a
 # slit that pinches in the middle. It starts at a point under the brooch and
 # opens quickly, which is the shape the user cut by hand.
+#
+# The two panels nearly touch. The opening is real, because the arms come out
+# through it, but at rest it must read as a line: 1.1 percent of the cloak's
+# width under the brooch, 2.4 percent at the hem. It is dark without any paint,
+# because the space behind it is 0.22 deep at the chest and 0.57 at the legs, so
+# a slot this narrow lets in almost no light and the near edge hides it from any
+# angle but head on.
 SPLIT_APEX = 1.74
-SPLIT = [(0.19, .060), (0.50, .052), (0.90, .044), (1.30, .036), (1.60, .028),
-         (1.70, .018), (SPLIT_APEX, 0.0)]
+SPLIT = [(0.19, .020), (0.50, .018), (0.90, .015), (1.30, .012), (1.60, .009),
+         (1.70, .006), (SPLIT_APEX, 0.0)]
 
 
 def at(keys, x):

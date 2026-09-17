@@ -43,7 +43,7 @@ TIP_BELOW = math.radians(12)
 CLOTH_UV = (.625, .56)
 TRIM_FOOT = .02                 # the border's atlas rows, dark to light to dark
 TRIM_TOP = .105
-DARK_UV = (.5, .02)             # the garment's one dark: the brooch and the seam
+DARK_UV = (.5, .02)             # the garment's one dark, which the brooch takes
 
 CLASP_Z = 1.80
 CLASP_RADIUS = .078
@@ -51,8 +51,6 @@ CLASP_RISE = .026
 CLASP_WAIST = .55
 CLASP_SIDES = 16
 CLASP_BAND = (.12, .50)
-SPLIT_TOP = 1.84
-SPLIT_FOOT = 0.19
 ARMS_KEY = 'CloakArms'
 ARMS_PUSH = .22
 ARMS_SECTOR = (math.radians(40), math.radians(62))
@@ -170,10 +168,7 @@ def rebuild(obj):
     captured = capture_keys(obj)
     grid, kinds = build_grid()
     mesh = write(grid, kinds)
-    clasp_from = attach_clasp(mesh)
-    # Eight quads, one between each pair of rows the opening crosses. Fewer means
-    # the two rails did not pair off, and the opening is bare.
-    print('###   cloak: seam band %d faces' % attach_seam(mesh, clasp_from))
+    attach_clasp(mesh)
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
     obj.data = mesh
@@ -303,63 +298,6 @@ def barycentric(point, a, b, c):
     v = (d11 * d20 - d01 * d21) / denominator
     w = (d00 * d21 - d01 * d20) / denominator
     return 1.0 - v - w, v, w
-
-
-def attach_seam(mesh, clasp_from):
-    """Fill the front opening with the garment's dark, so it draws as a seam.
-
-    The opening cannot draw itself. Left open it showed whatever stood behind
-    it, which is the body in the cloak's own shadow: near black under these
-    lights and lighter under others, so the seam read as three tones and could
-    invert. Filled, it is one colour under any light.
-
-    The opening's own curve is the seam's width, and nothing is added to it. A
-    band was laid over the cloth each side of it first, 0.034 wide, to make the
-    old shadow core easier to see. That padding does not taper, so the seam came
-    out a near constant 10.5 percent of the cloak's width at every height, which
-    reads as a strap. Without it the curve shows through: 3.3 percent under the
-    brooch, 7.1 percent at the hem.
-    """
-    work = bmesh.new()
-    work.from_mesh(mesh)
-    uv_layer = work.loops.layers.uv.verify()
-    work.verts.ensure_lookup_table()
-    # Not the brooch. Its rim is a boundary near the front too.
-    edge = [v for v in {v for e in work.edges if e.is_boundary for v in e.verts}
-            if v.index < clasp_from and abs(v.co.x) < .14 and v.co.y < -.28
-            and SPLIT_FOOT < v.co.z < SPLIT_TOP]
-    rails = [sorted((v for v in edge if math.copysign(1, v.co.x) == side),
-                    key=lambda v: v.co.z)
-             for side in (-1, 1)]
-    # Both rails come from the same rows, so they pair off in order.
-    if min(len(rail) for rail in rails) < 2 or len(rails[0]) != len(rails[1]):
-        return 0
-    made = strip(work, *rails)
-    for face in made:
-        face.smooth = True
-        face.normal_update()
-        if face.normal.dot(Vector((face.calc_center_median().x,
-                                   face.calc_center_median().y, 0))) < 0:
-            face.normal_flip()
-        for loop in face.loops:
-            loop[uv_layer].uv = DARK_UV
-    work.to_mesh(mesh)
-    work.free()
-    return len(made)
-
-
-def strip(work, near, far):
-    """Quads up two lines of vertices that run together."""
-    made = []
-    for lower, upper in zip(range(len(near) - 1), range(1, len(near))):
-        corners = [near[lower], near[upper], far[upper], far[lower]]
-        if len(set(corners)) < 4:
-            continue
-        try:
-            made.append(work.faces.new(corners))
-        except ValueError:
-            pass
-    return made
 
 
 def attach_clasp(mesh):

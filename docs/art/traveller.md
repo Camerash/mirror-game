@@ -67,7 +67,7 @@ step that read as a bar across the chest.
   stitching and relaxing.
 - **A band across the front closes only where an opening ends** — one row shut
   and the next barely open. Both rows open is the opening itself, however narrow:
-  the front split never exceeds 7 degrees, so judging it by width alone sews the
+  the front seam never exceeds 2 degrees, so judging it by width alone sews the
   cloak shut.
 - **The front split is authored, not followed.** It starts at a point under the
   brooch and opens quickly, which is the shape the user cut by hand. The accepted
@@ -78,21 +78,28 @@ step that read as a bar across the chest.
   own height gave them different angles, and the band ran 0.016 to 0.230 tall
   instead of an even 0.145.
 - **The paint is authored too.** The atlas is a flat palette, so the cloth is one
-  texel, the border is its two rows, and the clasp and the seam take the border's
-  dark blue. No UV is sampled, so no lookup can land on the wrong wall.
-- **The seam is the opening, filled.** Left open, the gap drew whatever stood
-  behind it, which is the body in the cloak's own shadow. That made the seam
-  three tones: a band at 83 of 255 each side of a core at 41, over cloth at 116.
-  The core's darkness was shadow, not paint, so a flat light turned it the other
-  way round and drew the core *brighter* than the cloth. Filled with the same
-  dark, the seam reads 83 to 88 across its whole width at every height.
-- **Nothing is added to the opening's width.** The band over the cloth each side
-  of it, 0.034 wide, came from the days of the shadow core. That padding does not
-  taper, so it held the seam at a near constant 10.5% of the cloak at every
-  height, which reads as a strap. Without it the curve shows: 3.3% under the
-  brooch, 7.1% at the hem. The captures are
-  [three tones](traveller-cloak-review/seam_three_tones.png) and
-  [one colour](traveller-cloak-review/seam_one_colour.png), at the same framing.
+  texel, the border is its two rows, and the clasp takes the border's dark blue.
+  No UV is sampled, so no lookup can land on the wrong wall.
+- **The front seam is a real opening, and nothing draws it.** The two panels
+  nearly touch: 0.012 apart under the brooch and 0.036 at the hem, which is 1.1%
+  of the cloak's width falling to 2.4%. It is dark without paint or a filler,
+  because the space behind it is 0.22 deep at the chest and 0.57 at the legs, so
+  a slot this narrow lets in almost no light and the near edge hides it from any
+  angle but head on. Measured down the render it runs 29 to 49 of 255, against
+  cloth at 96 to 121. See [the line](traveller-cloak-review/seam_line.png).
+- **The opening has to stay real**, because the arms come out through it.
+  `CloakOpen` parts the panels from 0.012 to 0.147 with no drift of the centre,
+  and the seven hood keys leave the opening alone.
+- **Two attempts to draw the seam are recorded here, because both failed.** A
+  band over the cloth each side made the gap easier to see, but the gap still
+  showed the body in the cloak's shadow, so the seam read as three tones: 83
+  each side of a core at 41, over cloth at 116. That core was shadow, not paint,
+  and a flat light drew it *brighter* than the cloth
+  ([capture](traveller-cloak-review/seam_three_tones.png)). Filling the gap with
+  the band's dark made it one colour but left the band's 0.034 of padding, which
+  does not taper, so the seam held a near constant 10.5% of the cloak at every
+  height and read as a strap. The width was never a decision; it was the sum of
+  two workarounds.
 - **The cloth has no thickness.** It is a single sheet, which also keeps the
   animation simple. Its material must draw both sides; `TravellerDrawingBody`
   already does, and the export carries `doubleSided`.
@@ -161,13 +168,14 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,444 (was 3,332) |
+| Cloak triangles | 1,428 (was 3,332) |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
-| Cloak edge / face ratios | 17:1 and 132:1 (were 258:1 and 999:1) |
+| Cloak edge / face ratios | 23:1 and 134:1 (were 258:1 and 999:1) |
 | Cloak sharpest fold | 45° (the old cloak's was 116°) |
-| Cloak generator | 570 lines over two files (was 921) |
-| Front seam, brooch to hem | 3.3% of the cloak widening to 7.1%, one colour |
+| Cloak generator | 515 lines over two files (was 921) |
+| Front seam, brooch to hem | 0.012 widening to 0.036, a real opening |
+| Front seam under `CloakOpen` | 0.147, centre drift 0.000 |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
@@ -178,7 +186,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,050, under the 6,000 target |
+| triangles | 5,034, under the 6,000 target |
 
 Export and re-check the result with:
 
