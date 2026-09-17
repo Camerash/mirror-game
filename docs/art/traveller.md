@@ -63,10 +63,15 @@ shape by construction: it does not model the shape, it samples the old one.
   cloak, 0.008 wide at the clasp and 0.050 at the hem. A ray down the front
   centre passes through it and finds nothing, which is what leaves the grid open
   there. Nothing is welded and then torn.
-- **Opening edges sit on the real rim.** Every row of one opening is widened to
-  the same columns first, because a row that stops one column short of its
-  neighbour loses the cell between them and leaves a tooth in the rim. Each row's
-  edge vertex is then found by bisection on the true rim angle.
+- **Opening edges sit on the real rim.** Each row's edge vertex is found by
+  bisection on the true rim angle, searching up to four columns out, because
+  where an opening narrows quickly the rim is several columns from the last
+  vertex that found cloth.
+- **Rows of different width are stitched, not squared.** A row that reaches a
+  column its neighbour does not gets a triangle instead of a quad. Widening every
+  row of an opening to the same columns also closes the surface, but it forced
+  the hood's face opening to stay as wide at its top as at its middle: 74 degrees
+  where the truth is 38, which squared off its corners.
 - **An opening lets go of the rim gradually, in both directions.** The snap only
   touches rows inside an opening, so the first full row beyond it sat back at the
   plain column angle and the surface stepped there: the chest creased at 154
@@ -155,11 +160,12 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,744 (was 3,332): 1,720 cape and 24 clasp |
-| Cloak quads | 96% (was 0%) |
+| Cloak triangles | 1,836 (was 3,332) |
+| Cloak quads | 95% (was 0%) |
+| Hood opening width against the true rim | within 4 degrees at every row |
 | Cape edge / face ratios | 26:1 and 104:1 (were 258:1 and 999:1) |
 | Cloak sharpest fold | 112° (the old cloak's was 116°) |
-| Chest fold / hood corner fold | 104° and 96° (were 154° and 134°) |
+| Chest fold / hood corner fold | 94° and 104° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
 | Hair against the cloak | 0 overlaps |
 | Hair triangles | 728 (was 964) |
@@ -167,7 +173,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,350, under the 6,000 target |
+| triangles | 5,442, under the 6,000 target |
 
 Export and re-check the result with:
 

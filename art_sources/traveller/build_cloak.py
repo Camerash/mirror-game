@@ -39,8 +39,8 @@ HEM_LIFT = .002
 # Close together where the shape turns (collar, hood rim, crown) and further
 # apart down the smooth cape.
 ROWS = [0.52, 0.72, 0.92, 1.12, 1.22, 1.32, 1.41, 1.50, 1.58,
-        1.66, 1.73, 1.80, 1.86, 1.90, 1.95, 2.00, 2.06, 2.12, 2.15, 2.19, 2.26,
-        2.34, 2.42, 2.50, 2.58, 2.66, 2.74, 2.82, 2.90, 2.96, 3.03, 3.13, 3.21, 3.27,
+        1.66, 1.73, 1.80, 1.86, 1.90, 1.95, 2.00, 2.06, 2.12, 2.15, 2.17, 2.19, 2.26,
+        2.34, 2.42, 2.50, 2.58, 2.66, 2.74, 2.82, 2.90, 2.96, 3.03, 3.06, 3.13, 3.21, 3.27,
         3.295]
 CAST_RADIUS = 1.6              # well outside the cloak's widest point, 0.88
 RIM = .010                     # thickness at the hem and the hood's face rim
@@ -51,9 +51,13 @@ OUTSET = .016
 # How much of a snapped edge's travel the columns inward of it take, so the cell
 # widths grade instead of putting a sliver next to a wide quad.
 INWARD = (.55, .25)
+# How many columns an opening's edge may travel to reach the real rim.
+SNAP_REACH = 4
 # How much of its travel an opening's edge keeps in its last rows, where the
 # opening closes to nothing and a hard snap pinches against the closed row.
 EDGE_EASE = (.55, .80)
+# The widest opening that counts as a slit worth easing.
+EASE_BELOW = math.radians(12)
 # How much of a snapped edge's shift the rows beyond the opening keep, so the
 # surface returns to its plain columns over two rows instead of in one step.
 TAPER = (.75, .45, .20)
@@ -193,34 +197,9 @@ def build_grid(surface):
     for z in ROWS:
         grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
         heights.append(z)
-    square_openings(grid)
     taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
     level_trim(grid)
     return grid
-
-
-def square_openings(grid):
-    """Give every row of an opening the same columns, before they are snapped.
-
-    A cell is dropped when any corner found no cloth. If one row stops at column
-    16 and the next at column 15, the cell between them goes as well and leaves a
-    tooth in the rim. Widening every partial row to the same columns removes the
-    teeth; the snap then puts each row's edge on the real rim.
-    """
-    block = []
-    for row in grid + [[0] * COLUMNS]:          # a full row closes the last block
-        if any(point is None for point in row):
-            block.append(row)
-            continue
-        if block:
-            # One block is one opening: the front split, or the hood's face. A
-            # union over both would open the front as wide as the face.
-            absent = {c for member in block for c in range(COLUMNS)
-                      if member[c] is None}
-            for member in block:
-                for column in absent:
-                    member[column] = None
-        block = []
 
 
 def snap_openings(surface, grid, heights):
@@ -241,7 +220,15 @@ def snap_openings(surface, grid, heights):
                 continue
             inside, direction = ((column, 1) if row[following] is None
                                  else (following, -1))
+            # Reach past one column. Where an opening narrows quickly the real
+            # rim is several columns from the last one that found cloth, and a
+            # search bounded at one step stops short: the hood's opening came out
+            # 74 degrees wide at its top where the truth is 38, which gave it a
+            # flat top and two sharp corners.
             low, high = 0.0, step
+            while (high < SNAP_REACH * step
+                   and surface.at(z, column_angle(inside) + direction * high) is not None):
+                low, high = high, high + step
             for _ in range(24):
                 middle = (low + high) / 2
                 if surface.at(z, column_angle(inside) + direction * middle) is None:
@@ -259,14 +246,19 @@ def snap_openings(surface, grid, heights):
             # Share the travel with the columns inward of the edge. Without it
             # the snapped vertex leaves a 3 degree cell beside a 27 degree one,
             # and the two widths fold against each other.
+            # Share at most one column's worth. The edge may now travel four
+            # columns to reach the rim, and passing that whole distance inward
+            # dragged the neighbours out of place and built a shoulder into the
+            # hood's opening.
+            spread = min(travel, math.tau / COLUMNS)
             for depth, share in enumerate(INWARD, start=1):
                 inner = (index - direction * depth) % COLUMNS
                 if inner in moves or row[inner] is None:
                     continue
-                shared = surface.at(z, column_angle(inner) + direction * travel * share)
+                shared = surface.at(z, column_angle(inner) + direction * spread * share)
                 if shared is not None:
                     row[inner] = shared
-                    applied[inner] = direction * travel * share
+                    applied[inner] = direction * spread * share
         if applied:
             shifts[number] = applied
     return ease_ends(surface, grid, heights, shifts)
@@ -299,6 +291,13 @@ def ease_ends(surface, grid, heights, shifts):
             for depth, share in enumerate(EDGE_EASE):
                 number = source + step * depth
                 if number not in shifts or not low <= number <= high:
+                    continue
+                # Only a slit. The hood's face opening also ends against cloth,
+                # but it closes from 38 degrees to a point, and easing it there
+                # widened the rim where it should narrow and cut two sharp
+                # corners into the top of the opening.
+                width = opening_width(grid[number])
+                if width is None or width > EASE_BELOW:
                     continue
                 for column, offset in list(shifts[number].items()):
                     hit = surface.at(heights[number],
@@ -340,6 +339,22 @@ def taper_openings(surface, grid, heights, shifts):
                                      column_angle(column) + offset * share)
                     if hit is not None:
                         grid[number][column] = hit
+
+
+def opening_width(row):
+    """The angle across an opening in one row, or None if it has no two edges."""
+    edges = []
+    for column in range(COLUMNS):
+        following = (column + 1) % COLUMNS
+        if (row[column] is None) == (row[following] is None):
+            continue
+        inside = column if row[following] is None else following
+        edges.append(row[inside].co)
+    if len(edges) != 2:
+        return None
+    first = math.atan2(edges[0].y, edges[0].x)
+    second = math.atan2(edges[1].y, edges[1].x)
+    return abs((first - second + math.pi) % math.tau - math.pi)
 
 
 def level_trim(grid):
@@ -391,9 +406,16 @@ def write(grid, surface, name='CloakShell'):
         for c in range(COLUMNS):
             following = (c + 1) % COLUMNS
             corners = [(r, c), (r, following), (r + 1, following), (r + 1, c)]
-            if any(k not in verts for k in corners):
+            here = [k for k in corners if k in verts]
+            if len(here) < 3:
                 continue
-            face = work.faces.new([verts[k] for k in corners])
+            # Three corners means one row reaches a column the other does not,
+            # where an opening narrows. Bridging it with a triangle keeps the
+            # surface closed while each row keeps its own true width. Widening
+            # every row of an opening to the same columns also closed it, but it
+            # forced the hood's face opening to stay as wide at its top as at its
+            # middle, which is what squared off its corners.
+            face = work.faces.new([verts[k] for k in here])
             faces.append(face)
             # Row 0 to row 1 is the hem border by construction, so it keeps the
             # border values even where one corner reads the plain cloth.
