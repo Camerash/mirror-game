@@ -130,6 +130,16 @@ shape by construction: it does not model the shape, it samples the old one.
   degrees to 58 with the lip gone, and 162 triangles go with it. Its material
   must draw both sides; `TravellerDrawingBody` already does, and the export
   carries `doubleSided`.
+- **The split's edging is its own strip.** A narrow band runs down each side of
+  the opening, welded to its boundary and painted in the hem border's dark blue,
+  so the front reads as a line from the clasp to the hem. The opening cannot draw
+  itself: over the chest the body behind it is the same blue-grey as the cloak,
+  so a gap has nothing to read against at any width, and 0.105 looked as shut as
+  0.038. Painting the panel beside it does not work either, because the nearest
+  column is 15 degrees away and a 0.09 band reads as a stripe. Packing four extra
+  columns against the front was tried, to make that panel narrow, and it pulls
+  the hood's own opening apart: everything from the snap's search span to the
+  sharing inward assumes the columns are evenly spaced.
 - **The split is a line, not a gap.** The character drawing shows the front as a
   single line from the clasp to the hem, parting only at the feet, so it runs
   0.030 under the brooch to 0.095 at the hem. Widening it does not help it read:
@@ -216,7 +226,7 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,745 (was 3,332), including a 48-triangle clasp |
+| Cloak triangles | 1,797 (was 3,332): a 48-triangle clasp and a 52-triangle edging |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cloak edge / face ratios | 21:1 and 144:1 (were 258:1 and 999:1) |
@@ -232,7 +242,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,351, under the 6,000 target |
+| triangles | 5,403, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -267,14 +277,12 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
-- **The front line does not reach the brooch.** The split's hole runs right up
-  under the clasp, measured at z 1.834 against the brooch's 1.722 to 1.878, but a
-  scan of the render shows the line only becoming solid at z 1.366. Over the
-  chest the body behind the opening is the same blue-grey as the cloak, so a gap
-  there has nothing to read against, at any width: 0.105 looked as shut as 0.038.
-  Drawing it the whole way needs a painted band on the outward faces beside the
-  split, and to keep that band thin the grid needs extra columns at the front:
-  the nearest column is 15 degrees away, which is 0.09 of cloth.
+- **The front line is faint over the chest.** The edging reaches the clasp,
+  measured at z 1.859 against the brooch's 1.722 to 1.878, so the line is drawn
+  the whole way. It still reads weakly above the waist, because below the waist
+  the opening is a real gap onto shadow between the legs and above it the line is
+  only paint. Matching the two needs the cloak to stand further off the chest, so
+  the gap has a shadowed cavity behind it, which is a silhouette change.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,

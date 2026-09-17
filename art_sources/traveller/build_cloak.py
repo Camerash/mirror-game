@@ -66,6 +66,8 @@ SEAM_TOP = .038                 # the split's width just under the clasp
 SEAM_HEM = .095                 # and at the hem
 SPLIT_TOP = 1.84                # the heights the split runs between
 SPLIT_FOOT = 0.19
+PLACKET = .034                  # the band's width down each side of the split
+PLACKET_LIFT = .002             # and how far it sits off the cloth
 SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
@@ -519,6 +521,59 @@ def write(grid, surface, name='CloakShell'):
     return mesh
 
 
+def attach_placket(mesh, clasp_from):
+    """Lay a narrow band down each side of the front split.
+
+    The opening cannot draw itself. Over the chest the body behind it is the same
+    blue-grey as the cloak, so a gap has nothing to read against at any width:
+    0.105 looked as shut as 0.038. Painting the panel beside it does not work
+    either, because the nearest column is 15 degrees away and a 0.09 band reads
+    as a stripe. This is its own strip, so it can be as narrow as a seam without
+    the grid changing: packing extra columns against the front was tried and it
+    pulls the hood's own opening apart.
+    """
+    work = bmesh.new()
+    work.from_mesh(mesh)
+    uv_layer = work.loops.layers.uv.verify()
+    work.verts.ensure_lookup_table()
+    # Not the brooch. Its rim is a boundary near the front too, and a band grown
+    # off it wraps the brooch instead of the split.
+    edge = [v for v in {v for e in work.edges if e.is_boundary for v in e.verts}
+            if v.index < clasp_from and abs(v.co.x) < .14 and v.co.y < -.28
+            and SPLIT_FOOT < v.co.z < SPLIT_TOP]
+    made = []
+    for side in (-1, 1):
+        rail = sorted((v for v in edge if math.copysign(1, v.co.x) == side),
+                      key=lambda v: v.co.z)
+        if len(rail) < 2:
+            continue
+        outer = []
+        for vertex in rail:
+            out = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
+            along = Vector((side, 0, 0))
+            outer.append(work.verts.new(vertex.co + along * PLACKET
+                                        + out * PLACKET_LIFT))
+        for lower, upper in zip(range(len(rail) - 1), range(1, len(rail))):
+            corners = [rail[lower], rail[upper], outer[upper], outer[lower]]
+            if len(set(corners)) < 4:
+                continue
+            try:
+                made.append(work.faces.new(corners))
+            except ValueError:
+                pass
+    for face in made:
+        face.smooth = True
+        face.normal_update()
+        if face.normal.dot(Vector((face.calc_center_median().x,
+                                   face.calc_center_median().y, 0))) < 0:
+            face.normal_flip()
+        for loop in face.loops:
+            loop[uv_layer].uv = CLASP_UV
+    work.to_mesh(mesh)
+    work.free()
+    return len(made)
+
+
 def attach_clasp(mesh):
     """Add the brooch to a finished mesh, in its own pass.
 
@@ -856,6 +911,7 @@ def rebuild(obj):
     # so telling the two apart by colour catches hem vertices as well and costs
     # the hem its own lip.
     clasp_from = attach_clasp(mesh)
+    attach_placket(mesh, clasp_from)
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
     obj.data = mesh
