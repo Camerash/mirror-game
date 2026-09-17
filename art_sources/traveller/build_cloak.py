@@ -421,6 +421,7 @@ def write(grid, surface, name='CloakShell'):
             # border values even where one corner reads the plain cloth.
             if r == 0:
                 trim.add(face)
+    faces += close_ends(work, verts, len(grid))
     faces += cap_crown(work, grid, verts, values, surface)
     for face in faces:
         face.smooth = True
@@ -466,6 +467,64 @@ def carry_clasp(work, surface, uv_layer):
             loop[uv_layer].uv = value
         faces.append(face)
     return faces
+
+
+def column_runs(columns):
+    """Group column indices into runs, joining one that wraps past column 0."""
+    present = sorted(columns)
+    if not present:
+        return []
+    runs, current = [], [present[0]]
+    for column in present[1:]:
+        if column == current[-1] + 1:
+            current.append(column)
+        else:
+            runs.append(current)
+            current = [column]
+    runs.append(current)
+    if len(runs) > 1 and runs[0][0] == 0 and runs[-1][-1] == COLUMNS - 1:
+        runs[0] = runs[-1] + runs[0]
+        runs.pop()
+    return runs
+
+
+def close_ends(work, verts, rows):
+    """Cap an opening where it ends, so its last row does not leave a notch.
+
+    A cell needs three of its four corners to become a triangle. Where an opening
+    ends, the columns in the middle of it have no vertex in one row and two in
+    the next, so those cells have two corners and nothing is built at all: the
+    hood's opening finished in a spike with a hole beside it. The gap is a
+    polygon between the two rows, and a fan closes it.
+    """
+    made = []
+    for row in range(rows - 1):
+        for near, far in ((row, row + 1), (row + 1, row)):
+            gaps = [c for c in range(COLUMNS)
+                    if (far, c) in verts and (near, c) not in verts]
+            for run in column_runs(gaps):
+                left = (run[0] - 1) % COLUMNS
+                right = (run[-1] + 1) % COLUMNS
+                if (near, left) not in verts or (near, right) not in verts:
+                    continue
+                # Fanned to one corner the patch comes out as a long thin sheet
+                # and creases: measured 121 degrees at the throat, against 116
+                # in the old cloak. Each half goes to its own corner instead.
+                start, end = verts[(near, left)], verts[(near, right)]
+                chain = [verts[(far, c)] for c in run]
+                middle = len(chain) // 2
+                patch = [(start, chain[n], chain[n + 1]) for n in range(middle)]
+                patch.append((start, chain[middle], end))
+                patch += [(end, chain[n], chain[n + 1])
+                          for n in range(middle, len(chain) - 1)]
+                for corners in patch:
+                    if len(set(corners)) < 3:
+                        continue
+                    try:
+                        made.append(work.faces.new(corners))
+                    except ValueError:
+                        pass                      # the face is already there
+    return made
 
 
 def is_clasp(uv):

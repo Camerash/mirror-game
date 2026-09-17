@@ -72,6 +72,13 @@ shape by construction: it does not model the shape, it samples the old one.
   row of an opening to the same columns also closes the surface, but it forced
   the hood's face opening to stay as wide at its top as at its middle: 74 degrees
   where the truth is 38, which squared off its corners.
+- **An opening's ends are capped by a fan.** A cell needs three of its four
+  corners to become a triangle, so where an opening ends, the columns in the
+  middle of it have two corners and nothing is built: the hood's opening finished
+  in a spike with a hole beside it. The gap is a polygon between two rows, and
+  each half of it is fanned to its own corner. Fanned to one corner it comes out
+  as a long thin sheet and creases the throat at 121 degrees, against 116 in the
+  old cloak.
 - **An opening lets go of the rim gradually, in both directions.** The snap only
   touches rows inside an opening, so the first full row beyond it sat back at the
   plain column angle and the surface stepped there: the chest creased at 154
@@ -160,12 +167,12 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,836 (was 3,332) |
+| Cloak triangles | 1,831 (was 3,332) |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cape edge / face ratios | 26:1 and 104:1 (were 258:1 and 999:1) |
 | Cloak sharpest fold | 112° (the old cloak's was 116°) |
-| Chest fold / hood corner fold | 94° and 104° (were 154° and 134°) |
+| Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
 | Hair against the cloak | 0 overlaps |
 | Hair triangles | 728 (was 964) |
@@ -173,7 +180,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,442, under the 6,000 target |
+| triangles | 5,437, under the 6,000 target |
 
 Export and re-check the result with:
 
