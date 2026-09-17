@@ -71,6 +71,15 @@ TAPER = (.75, .45, .20)
 # The heights the collar yoke crosses, and how many passes even it out.
 CHEST_BAND = (1.82, 2.20)
 CHEST_RELAX = 2
+# The brooch at the throat: where it sits, how wide, how far it stands proud,
+# and how far its facet ring is drawn in. It takes the hem border's own dark
+# blue, so the cloak's trim and its clasp match and the atlas is unchanged.
+CLASP_Z = 1.90
+CLASP_RADIUS = .078
+CLASP_RISE = .026
+CLASP_WAIST = .55
+CLASP_SIDES = 8
+CLASP_UV = (.5, .02)
 # The flat cloth palette point. The atlas is a palette, not a texture, so a face
 # has to stay inside one region: a corner that reads across a region boundary
 # samples a colour that belongs somewhere else.
@@ -481,9 +490,65 @@ def write(grid, surface, name='CloakShell'):
         face.smooth = True
         paint_face(face, values, uv_layer, face in trim)
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
+    add_clasp(work, uv_layer)
     work.to_mesh(mesh)
     work.free()
     return mesh
+
+
+def add_clasp(work, uv_layer):
+    """A brooch at the throat, holding the front opening shut.
+
+    Built onto the new cape, not copied off the old one. The old cloak's own
+    clasp is its collar yoke, a flat panel welded into that shell, and copying
+    those triangles across fails at every offset: proud, their edges draw a hard
+    V over the chest; flush, they cut through the cape.
+
+    Its rim is cast onto the cape a point at a time, so it follows the curve
+    instead of floating off it at the sides. It runs after the normals are
+    recalculated and sets its own, because it is an open shell and the solver
+    has no volume to work from.
+    """
+    tree = BVHTree.FromBMesh(work)
+
+    def onto(z, angle):
+        direction = Vector((-math.cos(angle), -math.sin(angle), 0))
+        location, normal, _, _ = tree.ray_cast(
+            Vector((0, 0, z)) - direction * CAST_RADIUS, direction, CAST_RADIUS)
+        return location, normal
+
+    seat, out = onto(CLASP_Z, FRONT)
+    if seat is None:
+        return []
+    out = out.normalized()
+    if out.dot(Vector((seat.x, seat.y, 0))) < 0:
+        out = -out
+    across = math.hypot(seat.x, seat.y)
+    rim = []
+    for step in range(CLASP_SIDES):
+        turn = step * math.tau / CLASP_SIDES
+        point, normal = onto(CLASP_Z + CLASP_RADIUS * math.sin(turn),
+                             FRONT + CLASP_RADIUS * math.cos(turn) / across)
+        if point is None:
+            return []
+        rim.append(work.verts.new(point + out * .0015))
+    inner = [work.verts.new(seat + (v.co - seat) * CLASP_WAIST + out * (CLASP_RISE * .62))
+             for v in rim]
+    crown = work.verts.new(seat + out * CLASP_RISE)
+    faces = []
+    for step in range(CLASP_SIDES):
+        following = (step + 1) % CLASP_SIDES
+        faces.append(work.faces.new([rim[step], rim[following],
+                                     inner[following], inner[step]]))
+        faces.append(work.faces.new([inner[step], inner[following], crown]))
+    for face in faces:
+        face.smooth = True
+        face.normal_update()
+        if face.normal.dot(out) < 0:
+            face.normal_flip()
+        for loop in face.loops:
+            loop[uv_layer].uv = CLASP_UV
+    return faces
 
 
 def column_runs(columns):
@@ -599,7 +664,9 @@ def add_rim(mesh, surface):
     work.from_mesh(mesh)
     work.normal_update()
     uv_layer = work.loops.layers.uv.verify()
-    border = [e for e in work.edges if e.is_boundary]
+    # The brooch is its own open shell, so its rim is a boundary too. Left in,
+    # the lip wraps a cloth-coloured collar around it.
+    border = [e for e in work.edges if e.is_boundary and not on_clasp(e, uv_layer)]
     if not border:
         work.free()
         return 0
@@ -645,6 +712,11 @@ def add_rim(mesh, surface):
     work.to_mesh(mesh)
     work.free()
     return count
+
+
+def on_clasp(edge, uv_layer):
+    return any(tuple(round(n, 3) for n in loop[uv_layer].uv) == CLASP_UV
+               for face in edge.link_faces for loop in face.loops)
 
 
 def lip_room(border):

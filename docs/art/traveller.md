@@ -100,6 +100,13 @@ shape by construction: it does not model the shape, it samples the old one.
   rows carry one colour across their whole width, so u holds nothing here and
   only v had to be fixed. The zig-zag is lost; at 24 columns it was being
   sampled at an arbitrary phase anyway.
+- **The clasp is built, not copied.** A small faceted brooch sits at the throat,
+  where the front opening is held shut. Its rim is cast onto the new cape a point
+  at a time, so it follows the curve instead of floating off it at the sides, and
+  it sets its own normals because it is an open shell with no volume for the
+  solver to work from. It takes the hem border's own dark blue, so the trim and
+  the clasp match and the atlas is unchanged. 24 triangles, its own island, and
+  the hem lip skips its rim so no cloth-coloured collar wraps it.
 - **The collar yoke is left to the grid.** It is eight old triangles on the front
   centre plane, a flat V panel welded into the old shell. It carries no colour:
   every one of its atlas points reads (0.294, 0.408, 0.522), the same as the
@@ -173,11 +180,11 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,810 (was 3,332) |
+| Cloak triangles | 1,830 (was 3,332), including a 24-triangle clasp |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cloak edge / face ratios | 47:1 and 145:1 (were 258:1 and 999:1) |
-| Cloak islands | 1 |
+| Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
@@ -187,7 +194,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,416, under the 6,000 target |
+| triangles | 5,436, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -227,10 +234,11 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,
   which means raising `COLUMNS` from 24 to about 48 and roughly doubling the
   cloak's cost.
-- **The chest has no brooch.** The old cloak shows a dark diamond there, which is
-  the collar yoke's own shape catching the light. The grid reads the yoke as a
-  soft step instead. Giving it back means building it into the grid as real rows
-  and columns, not copying the old panel in, which fails at every offset.
+- **The collar yoke reads as a soft step.** The old cloak shows a dark diamond at
+  the chest, which is the yoke's own shape catching the light. The grid samples
+  it as a gentle swell instead. The clasp now carries that read, so the yoke is
+  left alone; sharpening it would mean building it into the grid as real rows and
+  columns following its V edges.
 - **The hair still simplifies the accepted style.** 32 columns by 8 rings cannot
   hold the study's separated side lock, so the cap reads its volume as a swell
   rather than a parted lock. The fringe, the forehead line and the back volume do
