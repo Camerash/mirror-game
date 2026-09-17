@@ -107,14 +107,21 @@ shape by construction: it does not model the shape, it samples the old one.
   solver to work from. It takes the hem border's own dark blue, so the trim and
   the clasp match and the atlas is unchanged. 24 triangles, its own island, and
   the hem lip skips its rim so no cloth-coloured collar wraps it.
-- **The collar yoke is left to the grid.** It is eight old triangles on the front
-  centre plane, a flat V panel welded into the old shell. It carries no colour:
-  every one of its atlas points reads (0.294, 0.408, 0.522), the same as the
-  cloth, so it is a shape, not paint. Copying its triangles across cannot work at
-  any offset, because they are a separate panel: 0.034 proud puts their edges in
-  the light and draws a hard V over the chest, and flush they cut through the
-  cape they sit on. The grid samples the yoke like the rest of the surface, and
-  the chest is relaxed so the step a grazing ray leaves does not read as a bar.
+- **The collar yoke keeps its shape and loses its paint.** It is eight old
+  triangles on the front centre plane, a flat V panel welded into the old shell.
+  Its four corner points read as cloth, but the atlas rows between them hold a
+  painted dark diamond, and a grid vertex landing at v 0.22 takes (0.19, 0.29,
+  0.36) and paints a bar across the chest. Its geometry cannot be copied across
+  either, at any offset: 0.034 proud its edges draw a hard V, and flush it cuts
+  through the cape it sits on. So the grid samples its shape like the rest of the
+  surface, skips its atlas band, and the chest is relaxed so the step a grazing
+  ray leaves does not read as a ledge. The clasp is modelled instead.
+- **The front seam closes as it rises.** A cloak's seam is a line at the top and
+  opens as it falls, so any row where the split is narrower than 0.045 is closed:
+  measured, the gap now runs 0.069 at the hem to nothing under the clasp. The
+  columns beside a closed row go back to their own angles as well, because the
+  snap had pulled them onto the free edge where the panel curls inward, and left
+  there they sat below the filled centre and creased the front at 179 degrees.
 - **Shape keys move across by barycentric position** on the old triangles, so
   large movement such as the hood folding down (2.1 units) stays correct. A new
   key does not reliably start at zero, so each one is set to zero explicitly.
@@ -180,10 +187,10 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,830 (was 3,332), including a 24-triangle clasp |
+| Cloak triangles | 1,878 (was 3,332), including a 24-triangle clasp |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
-| Cloak edge / face ratios | 47:1 and 145:1 (were 258:1 and 999:1) |
+| Cloak edge / face ratios | 26:1 and 105:1 (were 258:1 and 999:1) |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
@@ -194,7 +201,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,436, under the 6,000 target |
+| triangles | 5,484, under the 6,000 target |
 
 Export and re-check the result with:
 

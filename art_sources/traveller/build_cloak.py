@@ -40,7 +40,7 @@ HEM_LIFT = .002
 # Close together where the shape turns (collar, hood rim, crown) and further
 # apart down the smooth cape.
 ROWS = [0.52, 0.72, 0.92, 1.12, 1.22, 1.32, 1.41, 1.50, 1.58,
-        1.66, 1.73, 1.80, 1.86, 1.90, 1.95, 2.00, 2.06, 2.12, 2.15, 2.17, 2.19, 2.26,
+        1.66, 1.73, 1.80, 1.86, 1.90, 1.95, 2.00, 2.06, 2.10, 2.125, 2.145, 2.16, 2.19, 2.26,
         2.34, 2.42, 2.50, 2.58, 2.66, 2.74, 2.82, 2.90, 2.96, 3.03, 3.06, 3.13, 3.21, 3.27,
         3.295]
 CAST_RADIUS = 1.6              # well outside the cloak's widest point, 0.88
@@ -60,7 +60,12 @@ SPREAD = 4
 SNAP_REACH = 4
 # How much of its travel an opening's edge keeps in its last rows, where the
 # opening closes to nothing and a hard snap pinches against the closed row.
-EDGE_EASE = (.92, .97)
+EDGE_EASE = ()
+# A front split narrower than this is a seam, not a gap, so those rows close and
+# the split starts lower. Cast this far to each side of the centre to find the
+# surface there, because a ray down the middle goes through the slit.
+SEAM_PINCH = .045
+SEAM_PROBE = math.radians(3)
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
 # The widest gap, in columns, that counts as an apex worth capping.
@@ -69,8 +74,8 @@ CAP_COLUMNS = 2
 # surface returns to its plain columns over two rows instead of in one step.
 TAPER = (.75, .45, .20)
 # The heights the collar yoke crosses, and how many passes even it out.
-CHEST_BAND = (1.82, 2.20)
-CHEST_RELAX = 2
+CHEST_BAND = (1.82, 2.30)
+CHEST_RELAX = 4
 # The brooch at the throat: where it sits, how wide, how far it stands proud,
 # and how far its facet ring is drawn in. It takes the hem border's own dark
 # blue, so the cloak's trim and its clasp match and the atlas is unchanged.
@@ -84,12 +89,14 @@ CLASP_UV = (.5, .02)
 # has to stay inside one region: a corner that reads across a region boundary
 # samples a colour that belongs somewhere else.
 CLOTH_UV = (.625, .56)
-# The collar yoke is a flat V panel welded into the old shell, on atlas rows
-# 0.12 to 0.50. It carries no colour of its own: every one of its points reads
-# (0.294, 0.408, 0.522), the same as the cloth, so it is a shape and the grid
-# samples it like the rest of the surface. Copying its triangles across instead
-# cannot work at any offset: 0.034 proud puts its edges in the light and draws a
-# hard V over the chest, and flush it cuts through the cape it sits on.
+# The collar yoke's atlas rows. Its four corner points read as cloth, but the
+# rows between them hold a painted dark diamond, and a grid vertex landing at
+# v 0.22 takes (0.19, 0.29, 0.36) and paints a bar across the chest. Its
+# geometry is a flat V panel welded into the old shell, which cannot be copied
+# across at any offset either: proud, its edges draw a hard V; flush, it cuts
+# through the cape. So the grid keeps the yoke's shape and drops its paint, and
+# the clasp is modelled instead.
+CLASP_BAND = (.12, .50)
 
 
 def column_angle(column):
@@ -222,9 +229,64 @@ def build_grid(surface):
         grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
         heights.append([z] * COLUMNS)
     taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
+    close_seam(surface, grid, heights)
     level_trim(grid)
     relax_chest(grid, heights)
     return grid
+
+
+def opening_gap(row):
+    """The distance across an opening in one row, or None if it has no edges."""
+    edges = []
+    for column in range(COLUMNS):
+        following = (column + 1) % COLUMNS
+        if (row[column] is None) == (row[following] is None):
+            continue
+        edges.append(row[column if row[following] is None else following].co)
+    return None if len(edges) != 2 else (edges[0] - edges[1]).length
+
+
+def close_seam(surface, grid, heights):
+    """Close the front split where it is narrower than a seam should be.
+
+    A cloak's seam is closed at the top and opens as it falls. The old cloak's
+    slit is 0.008 wide at the clasp, which is a line, not a gap, so the rows
+    where it is that narrow are closed and the split begins lower. It also takes
+    away the sliver the cap triangle made there, which folded at 174 degrees.
+
+    A ray down the centre passes through the slit and finds nothing, so the two
+    sides of it are cast separately and the middle of them is used.
+    """
+    for row, levels in zip(grid, heights):
+        gap = opening_gap(row)
+        if gap is None or gap > SEAM_PINCH:
+            continue
+        filled = []
+        for column in range(COLUMNS):
+            if row[column] is not None or levels[column] is None:
+                continue
+            angle = column_angle(column)
+            left = surface.at(levels[column], angle - SEAM_PROBE)
+            right = surface.at(levels[column], angle + SEAM_PROBE)
+            if left is None or right is None:
+                continue
+            middle = (left.co + right.co) / 2
+            middle.x = 0.0
+            row[column] = Hit(middle, left.uv)
+            filled.append(column)
+        # The snap pulled the columns beside the split onto the free edge, where
+        # the panel curls inward. With the split closed they sit below the
+        # filled centre and crease the front at 179 degrees, so they go back to
+        # their own angles.
+        for column in filled:
+            for depth in range(1, SPREAD + 1):
+                for side in (-1, 1):
+                    near = (column + side * depth) % COLUMNS
+                    if near in filled or row[near] is None or levels[near] is None:
+                        continue
+                    hit = surface.at(levels[near], column_angle(near))
+                    if hit is not None:
+                        row[near] = hit
 
 
 def relax_chest(grid, heights):
@@ -461,7 +523,11 @@ def write(grid, surface, name='CloakShell'):
             if hit is not None:
                 vertex = work.verts.new(hit.co)
                 verts[(r, c)] = vertex
-                values[vertex] = hit.uv
+                # Keep the grid out of the yoke's atlas band. It is painted: a
+                # dark diamond runs through it, and a vertex landing at v 0.22
+                # picks up (0.19, 0.29, 0.36) and draws a bar across the chest.
+                # The clasp is modelled now, so the chest is plain cloth.
+                values[vertex] = CLOTH_UV if is_clasp(hit.uv) else hit.uv
     work.verts.index_update()
     uv_layer = work.loops.layers.uv.verify()
     faces = []
@@ -712,6 +778,10 @@ def add_rim(mesh, surface):
     work.to_mesh(mesh)
     work.free()
     return count
+
+
+def is_clasp(uv):
+    return CLASP_BAND[0] < uv[1] < CLASP_BAND[1]
 
 
 def on_clasp(edge, uv_layer):
