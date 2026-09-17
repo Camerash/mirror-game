@@ -53,8 +53,6 @@ CLASP_SIDES = 16
 CLASP_BAND = (.12, .50)
 SPLIT_TOP = 1.84
 SPLIT_FOOT = 0.19
-SEAM_EDGE = .034                # how far the band reaches over the cloth each side
-SEAM_LIFT = .002
 ARMS_KEY = 'CloakArms'
 ARMS_PUSH = .22
 ARMS_SECTOR = (math.radians(40), math.radians(62))
@@ -173,8 +171,8 @@ def rebuild(obj):
     grid, kinds = build_grid()
     mesh = write(grid, kinds)
     clasp_from = attach_clasp(mesh)
-    # 24: eight quads over the cloth each side, and eight over the opening. Less
-    # than that means the two rails did not pair off, and the opening is bare.
+    # Eight quads, one between each pair of rows the opening crosses. Fewer means
+    # the two rails did not pair off, and the opening is bare.
     print('###   cloak: seam band %d faces' % attach_seam(mesh, clasp_from))
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
@@ -308,48 +306,35 @@ def barycentric(point, a, b, c):
 
 
 def attach_seam(mesh, clasp_from):
-    """Draw the front opening as one band of the garment's dark.
+    """Fill the front opening with the garment's dark, so it draws as a seam.
 
-    The opening cannot draw itself. Over the chest the body behind it is the
-    same blue-grey as the cloak, so a gap has nothing to read against at any
-    width: 0.105 looked as shut as 0.038. Painting the panel beside it does not
-    work either, because the nearest column is 15 degrees away and a 0.09 band
-    reads as a stripe. This is its own band, so it can be as narrow as a seam
-    without the grid changing: packing extra columns against the front was tried
-    and it pulls the hood's own opening apart.
+    The opening cannot draw itself. Left open it showed whatever stood behind
+    it, which is the body in the cloak's own shadow: near black under these
+    lights and lighter under others, so the seam read as three tones and could
+    invert. Filled, it is one colour under any light.
 
-    The band covers the opening as well as the cloth each side of it. Left open,
-    the gap drew whatever stood behind it, which is the body in the cloak's own
-    shadow: near black here and lighter under other lights, so the seam came out
-    as three tones instead of one. Closed, the seam is one colour under any
-    light.
+    The opening's own curve is the seam's width, and nothing is added to it. A
+    band was laid over the cloth each side of it first, 0.034 wide, to make the
+    old shadow core easier to see. That padding does not taper, so the seam came
+    out a near constant 10.5 percent of the cloak's width at every height, which
+    reads as a strap. Without it the curve shows through: 3.3 percent under the
+    brooch, 7.1 percent at the hem.
     """
     work = bmesh.new()
     work.from_mesh(mesh)
     uv_layer = work.loops.layers.uv.verify()
     work.verts.ensure_lookup_table()
-    # Not the brooch. Its rim is a boundary near the front too, and a band grown
-    # off it wraps the brooch instead of the split.
+    # Not the brooch. Its rim is a boundary near the front too.
     edge = [v for v in {v for e in work.edges if e.is_boundary for v in e.verts}
             if v.index < clasp_from and abs(v.co.x) < .14 and v.co.y < -.28
             and SPLIT_FOOT < v.co.z < SPLIT_TOP]
-    rails = {side: sorted((v for v in edge if math.copysign(1, v.co.x) == side),
-                          key=lambda v: v.co.z)
-             for side in (-1, 1)}
-    if min(len(rail) for rail in rails.values()) < 2:
+    rails = [sorted((v for v in edge if math.copysign(1, v.co.x) == side),
+                    key=lambda v: v.co.z)
+             for side in (-1, 1)]
+    # Both rails come from the same rows, so they pair off in order.
+    if min(len(rail) for rail in rails) < 2 or len(rails[0]) != len(rails[1]):
         return 0
-    made = []
-    for side, rail in rails.items():
-        outer = []
-        for vertex in rail:
-            out = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
-            outer.append(work.verts.new(vertex.co + Vector((side, 0, 0)) * SEAM_EDGE
-                                        + out * SEAM_LIFT))
-        made += strip(work, rail, outer)
-    # The opening itself. Both rails come from the same rows, so they pair off
-    # in order.
-    if len(rails[-1]) == len(rails[1]):
-        made += strip(work, rails[-1], rails[1])
+    made = strip(work, *rails)
     for face in made:
         face.smooth = True
         face.normal_update()
