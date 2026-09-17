@@ -4,6 +4,10 @@ The old cloak was 3,332 triangles with no quads at all, edge lengths in a 258:1
 range and face areas in a 999:1 range. It was also a closed double wall, which is
 half its cost.
 
+The cloth has no thickness. It is a single sheet, as cloth is, which also keeps
+it simple to animate. Its material must draw both sides, or the inside of the
+hood and the far side of the front split will not be there.
+
 The method keeps the accepted shape by construction. A regular grid is projected
 onto the old surface, so the new mesh follows the old one instead of guessing it.
 The eight shape keys move across by barycentric position on the old triangles, so
@@ -22,7 +26,6 @@ import bmesh
 import bpy
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
-from mathutils.kdtree import KDTree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -44,11 +47,6 @@ ROWS = [0.52, 0.72, 0.92, 1.12, 1.22, 1.32, 1.41, 1.50, 1.58,
         2.34, 2.42, 2.50, 2.58, 2.66, 2.74, 2.82, 2.90, 2.96, 3.03, 3.06, 3.13, 3.21, 3.27,
         3.295]
 CAST_RADIUS = 1.6              # well outside the cloak's widest point, 0.88
-RIM = .010                     # thickness at the hem and the hood's face rim
-ROLL = 1.0                     # how far the lip rolls back under the cloth, as
-                               # a share of RIM, so its fold is not square
-ROLL_ABOVE = 0.50              # and only above this height: not at the hem
-LIP_FLOOR = .40                # the least of RIM a lip may be thinned to
 # A grid of chords sits inside the curved surface it samples, so the new cloak
 # would press into the body where the old one was already tight. Push each
 # sample out along the surface normal to pay that back.
@@ -68,8 +66,6 @@ SEAM_TOP = .038                 # the split's width just under the clasp
 SEAM_HEM = .095                 # and at the hem
 SPLIT_TOP = 1.84                # the heights the split runs between
 SPLIT_FOOT = 0.19
-PLACKET = .026                  # the lip's width down the split, where it is
-                                # the placket rather than a hem
 SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
@@ -704,108 +700,8 @@ def cap_crown(work, grid, verts, values, surface):
             for c in range(COLUMNS)]
 
 
-def add_rim(mesh, surface):
-    """Give the open edges thickness, so the hem and the face rim are not paper.
-
-    The normals must be read before the extrusion. A new boundary vertex carries
-    only the strip's own faces, so its normal points anywhere and the strip comes
-    out ragged.
-    """
-    work = bmesh.new()
-    work.from_mesh(mesh)
-    work.normal_update()
-    uv_layer = work.loops.layers.uv.verify()
-    border = [e for e in work.edges if e.is_boundary]
-    if not border:
-        work.free()
-        return 0
-    normals, inward, values = {}, {}, {}
-    for edge in border:
-        for vertex in edge.verts:
-            key = tuple(round(n, 6) for n in vertex.co)
-            normals[key] = vertex.normal.copy()
-            values[vertex] = tuple(vertex.link_loops[0][uv_layer].uv)
-            # The way back into the cloth, so the lip can be chamfered instead
-            # of returned square. A square return folds at 90 degrees, and that
-            # read as a faint crease running along the hood's opening.
-            behind = [other for other in (e.other_vert(vertex) for e in vertex.link_edges)
-                      if not any(f.calc_area() < 1e-9 for f in ())
-                      and not other.is_boundary]
-            if behind:
-                step = sum(((other.co - vertex.co).normalized() for other in behind),
-                           Vector()) / len(behind)
-                inward[key] = step.normalized() if step.length > 1e-6 else Vector()
-    carried = {tuple(round(n, 6) for n in v.co): uv for v, uv in values.items()}
-    room = lip_room(border)
-    result = bmesh.ops.extrude_edge_only(work, edges=border)
-    for vertex in result['geom']:
-        if not isinstance(vertex, bmesh.types.BMVert):
-            continue
-        key = tuple(round(n, 6) for n in vertex.co)
-        values[vertex] = carried.get(key, CLOTH_UV)
-        normal = normals.get(key)
-        if normal is None or normal.length < 1e-6:
-            normal = Vector((vertex.co.x, vertex.co.y, 0)).normalized()
-        width = RIM * room.get(key, 1.0)
-        # Down the front split the lip is the placket: wider, not rolled under,
-        # and painted, so it draws the opening as a line. The opening itself
-        # cannot: over the chest the body behind it is the same blue-grey as the
-        # cloak, and even 0.105 wide it read as shut.
-        on_split = (abs(vertex.co.x) < .14 and vertex.co.y < -.28
-                    and SPLIT_FOOT < vertex.co.z < SPLIT_TOP)
-        if on_split:
-            width = PLACKET
-        # The hem is seen edge on, so a rolled lip shows there as a fold and a
-        # square return does not. The hood's rim is seen face on, where the
-        # square return is what shows.
-        roll = 0.0 if on_split else (ROLL if vertex.co.z > ROLL_ABOVE else 0.0)
-        vertex.co += inward.get(key, Vector()) * (width * roll) - normal * width
-    for face in result['geom']:
-        if isinstance(face, bmesh.types.BMFace):
-            face.smooth = True
-            paint_face(face, values, uv_layer)
-            middle = face.calc_center_median()
-            if (abs(middle.x) < .14 and middle.y < -.28
-                    and SPLIT_FOOT < middle.z < SPLIT_TOP):
-                for loop in face.loops:
-                    loop[uv_layer].uv = CLASP_UV
-    bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
-    count = len(work.faces)
-    work.to_mesh(mesh)
-    work.free()
-    return count
-
-
 def is_clasp(uv):
     return CLASP_BAND[0] < uv[1] < CLASP_BAND[1]
-
-
-def lip_room(border):
-    """How much of the lip each boundary vertex has space for, 0 to 1.
-
-    The front split closes to a hairline. Two full lips across a gap that narrow
-    meet and fold back on each other, which measured 174 degrees. Each vertex
-    gets only what the nearest unrelated boundary vertex leaves it.
-    """
-    points = list({vertex for edge in border for vertex in edge.verts})
-    tree = KDTree(len(points))
-    for index, vertex in enumerate(points):
-        tree.insert(vertex.co, index)
-    tree.balance()
-    room = {}
-    for vertex in points:
-        linked = {edge.other_vert(vertex) for edge in vertex.link_edges}
-        spare = RIM * 4
-        for _, index, distance in tree.find_range(vertex.co, RIM * 4):
-            other = points[index]
-            if other is vertex or other in linked:
-                continue
-            spare = min(spare, distance)
-        key = tuple(round(n, 6) for n in vertex.co)
-        # Never below a floor: a lip thinned to nothing is a sliver face, which
-        # costs more in the edge ratio than the overlap it avoids.
-        room[key] = max(LIP_FLOOR, min(1.0, .45 * spare / RIM))
-    return room
 
 
 def capture_keys(obj):
@@ -955,8 +851,6 @@ def rebuild(obj):
     captured = capture_keys(obj)
     grid = build_grid(surface)
     mesh = write(grid, surface)
-    if RIM > 0:
-        add_rim(mesh, surface)
     # After the rim, not before. The brooch is its own open shell, so the lip
     # would wrap a collar around it; and it shares the hem border's atlas row,
     # so telling the two apart by colour catches hem vertices as well and costs

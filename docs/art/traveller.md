@@ -124,12 +124,12 @@ shape by construction: it does not model the shape, it samples the old one.
   swings it into the chest: 30 overlapping triangles at z 1.71 to 1.84. Applied
   to the basis and to each key together, the widening is the same in all of them
   and cannot rotate.
-- **The split's edge is a placket.** Down the front the rim lip is wider, not
-  rolled under, and painted in the hem border's dark blue, so the opening has an
-  edge to read by. It draws the line from about z 1.37 down. Above that it is
-  intermittent, measured by scanning the render's own centre column: the gap is
-  only 0.038 wide there, so the two plackets face each other and neither catches
-  the camera.
+- **The cloth has no thickness.** It is a single sheet, which is what cloth is,
+  and it keeps the animation simple. Every hard fold in the cloak was the lip
+  that used to give it thickness: the sharpest angle anywhere falls from 165
+  degrees to 58 with the lip gone, and 162 triangles go with it. Its material
+  must draw both sides; `TravellerDrawingBody` already does, and the export
+  carries `doubleSided`.
 - **The split is a line, not a gap.** The character drawing shows the front as a
   single line from the clasp to the hem, parting only at the feet, so it runs
   0.030 under the brooch to 0.095 at the hem. Widening it does not help it read:
@@ -216,10 +216,11 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,907 (was 3,332), including a 48-triangle clasp |
+| Cloak triangles | 1,745 (was 3,332), including a 48-triangle clasp |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
-| Cloak edge / face ratios | 26:1 and 200:1 (were 258:1 and 999:1) |
+| Cloak edge / face ratios | 21:1 and 144:1 (were 258:1 and 999:1) |
+| Cloak sharpest fold | 58° (the old cloak's was 116°) |
 | Front split, clasp to hem | 0.038 widening to 0.095 |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
@@ -231,7 +232,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,513, under the 6,000 target |
+| triangles | 5,351, under the 6,000 target |
 
 Export and re-check the result with:
 
@@ -266,13 +267,14 @@ These were fixed here. They also exist in `traveller_animated.blend`.
   swings from 25 to 95 degrees and is worse in every case, because the cape is
   fitted to the body with no margin. Full clearance needs the front panels
   weighted to the arm bones, which belongs with the animation work.
-- **The front line does not reach the brooch.** The split's hole and its placket
-  both run right up under the clasp, measured at z 1.834 against the brooch's
-  1.722 to 1.878, but a scan of the render shows the dark line only becoming
-  solid at z 1.366. At the top the gap is too narrow for either placket to face
-  the camera. Drawing it the whole way needs a painted band on the outward faces
-  beside the split, and to keep that band thin the grid needs extra columns at
-  the front: the nearest column is 15 degrees away, which is 0.09 of cloth.
+- **The front line does not reach the brooch.** The split's hole runs right up
+  under the clasp, measured at z 1.834 against the brooch's 1.722 to 1.878, but a
+  scan of the render shows the line only becoming solid at z 1.366. Over the
+  chest the body behind the opening is the same blue-grey as the cloak, so a gap
+  there has nothing to read against, at any width: 0.105 looked as shut as 0.038.
+  Drawing it the whole way needs a painted band on the outward faces beside the
+  split, and to keep that band thin the grid needs extra columns at the front:
+  the nearest column is 15 degrees away, which is 0.09 of cloth.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,
