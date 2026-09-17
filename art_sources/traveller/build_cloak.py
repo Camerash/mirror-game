@@ -64,9 +64,10 @@ EDGE_EASE = ()
 # The front split is never held tighter than this half angle, so it stays a
 # visible line under the clasp instead of pinching to a sliver. Only edges this
 # near the front centre belong to the split; the rest is the hood's face opening.
-SEAM_TOP = .014                 # the split's width just under the clasp
-SEAM_HEM = .072                 # and at the hem
-SEAM_REACH = math.radians(10)
+SEAM_TOP = .055                 # the split's width just under the clasp
+SEAM_HEM = .130                 # and at the hem
+SPLIT_TOP = 1.84                # the heights the split runs between
+SPLIT_FOOT = 0.19
 SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
@@ -81,7 +82,8 @@ CHEST_RELAX = 4
 # The brooch at the throat: where it sits, how wide, how far it stands proud,
 # and how far its facet ring is drawn in. It takes the hem border's own dark
 # blue, so the cloak's trim and its clasp match and the atlas is unchanged.
-CLASP_Z = 1.90
+CLASP_Z = 1.86                  # the top of the split, so it opens from under
+                                # the brooch rather than a hand below it
 CLASP_RADIUS = .078
 CLASP_RISE = .026
 CLASP_WAIST = .55
@@ -231,7 +233,6 @@ def build_grid(surface):
         grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
         heights.append([z] * COLUMNS)
     taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
-    taper_seam(surface, grid, heights)
     level_trim(grid)
     relax_chest(grid, heights)
     return grid
@@ -246,44 +247,6 @@ def opening_gap(row):
             continue
         edges.append(row[column if row[following] is None else following].co)
     return None if len(edges) != 2 else (edges[0] - edges[1]).length
-
-
-def taper_seam(surface, grid, heights):
-    """Open the front split evenly, narrow at the clasp and wide at the hem.
-
-    The old cloak's own split is not even: its gap runs 0.109 at the hem, 0.001
-    at z 1.40 and 0.021 again at the clasp, because its panels wander. Held to
-    the measured rim the new split inherits that wobble, and closing the narrow
-    rows instead sewed the cloak shut over the chest. The width is set outright
-    instead, so the seam reads as one opening that widens as it falls.
-    """
-    edges = []
-    for number, (row, levels) in enumerate(zip(grid, heights)):
-        for column in range(COLUMNS):
-            following = (column + 1) % COLUMNS
-            if (row[column] is None) == (row[following] is None):
-                continue
-            inside = column if row[following] is None else following
-            if row[inside] is None or levels[inside] is None:
-                continue
-            here = row[inside].co
-            offset = (math.atan2(here.y, here.x) - FRONT + math.pi) % math.tau - math.pi
-            if abs(offset) > SEAM_REACH:
-                continue                      # that is the hood's face opening
-            edges.append((number, inside, 1 if offset >= 0 else -1, here.z))
-    if not edges:
-        return
-    top = max(z for _, _, _, z in edges)
-    foot = min(z for _, _, _, z in edges)
-    for number, column, side, z in edges:
-        along = 0.0 if top - foot < 1e-6 else (top - z) / (top - foot)
-        half = (SEAM_TOP + (SEAM_HEM - SEAM_TOP) * along) / 2
-        # Set the width outright. Re-projecting at the matching angle does not
-        # do it: the ray crosses the panel wherever the panel happens to be, so
-        # the angle and the gap are not the same measure. The panel is almost
-        # flat across the front, so moving the edge a few millimetres in x keeps
-        # it on the cloth.
-        grid[number][column].co.x = side * half
 
 
 def relax_chest(grid, heights):
@@ -553,10 +516,18 @@ def write(grid, surface, name='CloakShell'):
         face.smooth = True
         paint_face(face, values, uv_layer, face in trim)
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
-    add_clasp(work, uv_layer)
     work.to_mesh(mesh)
     work.free()
     return mesh
+
+
+def attach_clasp(mesh):
+    """Add the brooch to a finished mesh, in its own pass."""
+    work = bmesh.new()
+    work.from_mesh(mesh)
+    add_clasp(work, work.loops.layers.uv.verify())
+    work.to_mesh(mesh)
+    work.free()
 
 
 def add_clasp(work, uv_layer):
@@ -735,9 +706,7 @@ def add_rim(mesh, surface):
     work.from_mesh(mesh)
     work.normal_update()
     uv_layer = work.loops.layers.uv.verify()
-    # The brooch is its own open shell, so its rim is a boundary too. Left in,
-    # the lip wraps a cloth-coloured collar around it.
-    border = [e for e in work.edges if e.is_boundary and not on_clasp(e, uv_layer)]
+    border = [e for e in work.edges if e.is_boundary]
     if not border:
         work.free()
         return 0
@@ -787,11 +756,6 @@ def add_rim(mesh, surface):
 
 def is_clasp(uv):
     return CLASP_BAND[0] < uv[1] < CLASP_BAND[1]
-
-
-def on_clasp(edge, uv_layer):
-    return any(tuple(round(n, 3) for n in loop[uv_layer].uv) == CLASP_UV
-               for face in edge.link_faces for loop in face.loops)
 
 
 def lip_room(border):
@@ -917,6 +881,38 @@ def add_arms_key(obj):
     return key
 
 
+def widen_split(obj):
+    """Open the front split evenly, narrow at the clasp and wide at the hem.
+
+    After the keys, not before. Moved in the basis alone, the sideways shift
+    becomes part of every key's offset, and `CloakOpen` swings it into the chest:
+    30 overlapping triangles at z 1.71 to 1.84. Applied to the basis and to each
+    key together, the widening is the same in all of them and cannot rotate.
+
+    The old cloak's own split is no guide here. It is 0.008 wide at the clasp and
+    0.101 at the hem, and its panels wander, so held to that rim the new split
+    reads as shut. Its width is set outright instead.
+    """
+    blocks = obj.data.shape_keys.key_blocks
+    basis = blocks[0]
+    chosen = [v.index for v in obj.data.vertices
+              if abs(v.co.x) < .14 and v.co.y < -.30 and SPLIT_FOOT <= v.co.z <= SPLIT_TOP]
+    if not chosen:
+        return 0
+    top = max(basis.data[i].co.z for i in chosen)
+    foot = min(basis.data[i].co.z for i in chosen)
+    for index in chosen:
+        here = basis.data[index].co
+        if abs(here.x) < 1e-6:
+            continue                        # on the centre line, not an edge
+        along = 0.0 if top - foot < 1e-6 else (top - here.z) / (top - foot)
+        half = (SEAM_TOP + (SEAM_HEM - SEAM_TOP) * along) / 2
+        shift = math.copysign(half, here.x) - here.x
+        for block in blocks:
+            block.data[index].co.x += shift
+    return len(chosen)
+
+
 def barycentric(point, a, b, c):
     v0, v1, v2 = b - a, c - a, point - a
     d00, d01, d11 = v0.dot(v0), v0.dot(v1), v1.dot(v1)
@@ -937,9 +933,15 @@ def rebuild(obj):
     mesh = write(grid, surface)
     if RIM > 0:
         add_rim(mesh, surface)
+    # After the rim, not before. The brooch is its own open shell, so the lip
+    # would wrap a collar around it; and it shares the hem border's atlas row,
+    # so telling the two apart by colour catches hem vertices as well and costs
+    # the hem its own lip.
+    attach_clasp(mesh)
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
     obj.data = mesh
     bpy.data.meshes.remove(old)
     count = apply_keys(obj, captured)
+    widen_split(obj)
     return count + (1 if add_arms_key(obj) else 0)

@@ -116,8 +116,16 @@ shape by construction: it does not model the shape, it samples the old one.
   through the cape it sits on. So the grid samples its shape like the rest of the
   surface, skips its atlas band, and the chest is relaxed so the step a grazing
   ray leaves does not read as a ledge. The clasp is modelled instead.
+- **The front split is widened after the keys, not before.** Moved in the basis
+  alone, the sideways shift becomes part of every key's offset and `CloakOpen`
+  swings it into the chest: 30 overlapping triangles at z 1.71 to 1.84. Applied
+  to the basis and to each key together, the widening is the same in all of them
+  and cannot rotate.
 - **The front split's width is set outright.** It opens at the clasp and widens
-  as it falls: 0.014 under the brooch to 0.072 at the hem. The old cloak's own
+  as it falls: 0.055 under the brooch to 0.130 at the hem. Held to the old
+  cloak's own rim it reads as shut, because that rim is 0.008 wide at the clasp,
+  and the wide dark chest in the old renders is not an opening at all: it is the
+  hood's shadow, which disappears when the lights are set to cast none. The old cloak's own
   split is not even, because its panels wander, and held to the measured rim the
   new one inherits that wobble: 0.109 at the hem, 0.001 at z 1.40 and 0.021 again
   at the clasp. Closing the narrow rows instead sewed the cloak shut over the
@@ -192,11 +200,11 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,879 (was 3,332), including a 24-triangle clasp |
+| Cloak triangles | 1,883 (was 3,332), including a 24-triangle clasp |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cloak edge / face ratios | 26:1 and 200:1 (were 258:1 and 999:1) |
-| Front split, clasp to hem | 0.021 widening to 0.072 |
+| Front split, clasp to hem | 0.055 widening to 0.130 |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
@@ -207,7 +215,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,485, under the 6,000 target |
+| triangles | 5,489, under the 6,000 target |
 
 Export and re-check the result with:
 
