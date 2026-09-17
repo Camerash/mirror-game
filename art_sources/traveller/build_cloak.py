@@ -61,11 +61,13 @@ SNAP_REACH = 4
 # How much of its travel an opening's edge keeps in its last rows, where the
 # opening closes to nothing and a hard snap pinches against the closed row.
 EDGE_EASE = ()
-# A front split narrower than this is a seam, not a gap, so those rows close and
-# the split starts lower. Cast this far to each side of the centre to find the
-# surface there, because a ray down the middle goes through the slit.
-SEAM_PINCH = .045
-SEAM_PROBE = math.radians(3)
+# The front split is never held tighter than this half angle, so it stays a
+# visible line under the clasp instead of pinching to a sliver. Only edges this
+# near the front centre belong to the split; the rest is the hood's face opening.
+SEAM_TOP = .014                 # the split's width just under the clasp
+SEAM_HEM = .072                 # and at the hem
+SEAM_REACH = math.radians(10)
+SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
 # The widest gap, in columns, that counts as an apex worth capping.
@@ -229,7 +231,7 @@ def build_grid(surface):
         grid.append([surface.at(z, column_angle(c)) for c in range(COLUMNS)])
         heights.append([z] * COLUMNS)
     taper_openings(surface, grid, heights, snap_openings(surface, grid, heights))
-    close_seam(surface, grid, heights)
+    taper_seam(surface, grid, heights)
     level_trim(grid)
     relax_chest(grid, heights)
     return grid
@@ -246,47 +248,42 @@ def opening_gap(row):
     return None if len(edges) != 2 else (edges[0] - edges[1]).length
 
 
-def close_seam(surface, grid, heights):
-    """Close the front split where it is narrower than a seam should be.
+def taper_seam(surface, grid, heights):
+    """Open the front split evenly, narrow at the clasp and wide at the hem.
 
-    A cloak's seam is closed at the top and opens as it falls. The old cloak's
-    slit is 0.008 wide at the clasp, which is a line, not a gap, so the rows
-    where it is that narrow are closed and the split begins lower. It also takes
-    away the sliver the cap triangle made there, which folded at 174 degrees.
-
-    A ray down the centre passes through the slit and finds nothing, so the two
-    sides of it are cast separately and the middle of them is used.
+    The old cloak's own split is not even: its gap runs 0.109 at the hem, 0.001
+    at z 1.40 and 0.021 again at the clasp, because its panels wander. Held to
+    the measured rim the new split inherits that wobble, and closing the narrow
+    rows instead sewed the cloak shut over the chest. The width is set outright
+    instead, so the seam reads as one opening that widens as it falls.
     """
-    for row, levels in zip(grid, heights):
-        gap = opening_gap(row)
-        if gap is None or gap > SEAM_PINCH:
-            continue
-        filled = []
+    edges = []
+    for number, (row, levels) in enumerate(zip(grid, heights)):
         for column in range(COLUMNS):
-            if row[column] is not None or levels[column] is None:
+            following = (column + 1) % COLUMNS
+            if (row[column] is None) == (row[following] is None):
                 continue
-            angle = column_angle(column)
-            left = surface.at(levels[column], angle - SEAM_PROBE)
-            right = surface.at(levels[column], angle + SEAM_PROBE)
-            if left is None or right is None:
+            inside = column if row[following] is None else following
+            if row[inside] is None or levels[inside] is None:
                 continue
-            middle = (left.co + right.co) / 2
-            middle.x = 0.0
-            row[column] = Hit(middle, left.uv)
-            filled.append(column)
-        # The snap pulled the columns beside the split onto the free edge, where
-        # the panel curls inward. With the split closed they sit below the
-        # filled centre and crease the front at 179 degrees, so they go back to
-        # their own angles.
-        for column in filled:
-            for depth in range(1, SPREAD + 1):
-                for side in (-1, 1):
-                    near = (column + side * depth) % COLUMNS
-                    if near in filled or row[near] is None or levels[near] is None:
-                        continue
-                    hit = surface.at(levels[near], column_angle(near))
-                    if hit is not None:
-                        row[near] = hit
+            here = row[inside].co
+            offset = (math.atan2(here.y, here.x) - FRONT + math.pi) % math.tau - math.pi
+            if abs(offset) > SEAM_REACH:
+                continue                      # that is the hood's face opening
+            edges.append((number, inside, 1 if offset >= 0 else -1, here.z))
+    if not edges:
+        return
+    top = max(z for _, _, _, z in edges)
+    foot = min(z for _, _, _, z in edges)
+    for number, column, side, z in edges:
+        along = 0.0 if top - foot < 1e-6 else (top - z) / (top - foot)
+        half = (SEAM_TOP + (SEAM_HEM - SEAM_TOP) * along) / 2
+        # Set the width outright. Re-projecting at the matching angle does not
+        # do it: the ray crosses the panel wherever the panel happens to be, so
+        # the angle and the gap are not the same measure. The panel is almost
+        # flat across the front, so moving the edge a few millimetres in x keeps
+        # it on the cloth.
+        grid[number][column].co.x = side * half
 
 
 def relax_chest(grid, heights):
@@ -660,6 +657,14 @@ def close_ends(work, verts, rows):
                 right = (run[-1] + 1) % COLUMNS
                 if (near, left) not in verts or (near, right) not in verts:
                     continue
+                # Never the front split. It should reach the clasp, and a cap
+                # there is a sliver between two rows that folds at 179 degrees.
+                # The hood's apex sits on the front centre too, so they are told
+                # apart by height, not by angle.
+                anchor = verts[(near, left)] if (near, left) in verts else None
+                if anchor is not None and anchor.co.z < SEAM_CEILING:
+                    continue
+
                 # Fanned to one corner the patch comes out as a long thin sheet
                 # and creases: measured 121 degrees at the throat, against 116
                 # in the old cloak. Each half goes to its own corner instead.
