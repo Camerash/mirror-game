@@ -64,11 +64,10 @@ EDGE_EASE = ()
 # The front split is never held tighter than this half angle, so it stays a
 # visible line under the clasp instead of pinching to a sliver. Only edges this
 # near the front centre belong to the split; the rest is the hood's face opening.
-SEAM_TOP = .105                 # the split's width just under the clasp
-SEAM_HEM = .165                 # and at the hem
+SEAM_TOP = .030                 # the split's width just under the clasp
+SEAM_HEM = .095                 # and at the hem
 SPLIT_TOP = 1.84                # the heights the split runs between
 SPLIT_FOOT = 0.19
-FACING_REACH = .12              # how far from the centre the split's facing runs
 SEAM_CEILING = 2.00             # above this a front-centre gap is the hood, not the split
 # The widest opening that counts as a slit worth easing.
 EASE_BELOW = math.radians(12)
@@ -516,15 +515,6 @@ def write(grid, surface, name='CloakShell'):
     for face in faces:
         face.smooth = True
         paint_face(face, values, uv_layer, face in trim)
-        # The front split's facing, in the hem border's dark blue. Over the chest
-        # the body behind the opening is the same blue-grey as the cloak, so the
-        # gap cannot read as one however wide it is. A facing down each side
-        # draws the opening whatever is behind it.
-        middle = face.calc_center_median()
-        if (abs(middle.x) < FACING_REACH and middle.y < -.28
-                and SPLIT_FOOT < middle.z < SPLIT_TOP):
-            for loop in face.loops:
-                loop[uv_layer].uv = CLASP_UV
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     work.to_mesh(mesh)
     work.free()
@@ -532,12 +522,19 @@ def write(grid, surface, name='CloakShell'):
 
 
 def attach_clasp(mesh):
-    """Add the brooch to a finished mesh, in its own pass."""
+    """Add the brooch to a finished mesh, in its own pass.
+
+    Returns the first index it used, so the split's widening can leave it alone.
+    The brooch's lower half sits inside the split's own height range, and widened
+    with it the brooch came out pulled sideways instead of round.
+    """
+    first = len(mesh.vertices)
     work = bmesh.new()
     work.from_mesh(mesh)
     add_clasp(work, work.loops.layers.uv.verify())
     work.to_mesh(mesh)
     work.free()
+    return first
 
 
 def add_clasp(work, uv_layer):
@@ -757,15 +754,6 @@ def add_rim(mesh, surface):
         if isinstance(face, bmesh.types.BMFace):
             face.smooth = True
             paint_face(face, values, uv_layer)
-            # The front split's own facing, in the hem border's dark blue. Over
-            # the chest the body behind the opening is the same blue-grey as the
-            # cloak, so the gap cannot read as one however wide it is; a facing
-            # draws its edges whatever is behind.
-            middle = face.calc_center_median()
-            if (abs(middle.x) < FACING_REACH and middle.y < -.28
-                    and SPLIT_FOOT < middle.z < SPLIT_TOP):
-                for loop in face.loops:
-                    loop[uv_layer].uv = CLASP_UV
     bmesh.ops.recalc_face_normals(work, faces=list(work.faces))
     count = len(work.faces)
     work.to_mesh(mesh)
@@ -900,7 +888,7 @@ def add_arms_key(obj):
     return key
 
 
-def widen_split(obj):
+def widen_split(obj, clasp_from=None):
     """Open the front split evenly, narrow at the clasp and wide at the hem.
 
     After the keys, not before. Moved in the basis alone, the sideways shift
@@ -914,8 +902,10 @@ def widen_split(obj):
     """
     blocks = obj.data.shape_keys.key_blocks
     basis = blocks[0]
+    limit = len(obj.data.vertices) if clasp_from is None else clasp_from
     chosen = [v.index for v in obj.data.vertices
-              if abs(v.co.x) < .14 and v.co.y < -.30 and SPLIT_FOOT <= v.co.z <= SPLIT_TOP]
+              if v.index < limit and abs(v.co.x) < .14 and v.co.y < -.30
+              and SPLIT_FOOT <= v.co.z <= SPLIT_TOP]
     if not chosen:
         return 0
     top = max(basis.data[i].co.z for i in chosen)
@@ -956,11 +946,11 @@ def rebuild(obj):
     # would wrap a collar around it; and it shares the hem border's atlas row,
     # so telling the two apart by colour catches hem vertices as well and costs
     # the hem its own lip.
-    attach_clasp(mesh)
+    clasp_from = attach_clasp(mesh)
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
     obj.data = mesh
     bpy.data.meshes.remove(old)
     count = apply_keys(obj, captured)
-    widen_split(obj)
+    widen_split(obj, clasp_from)
     return count + (1 if add_arms_key(obj) else 0)

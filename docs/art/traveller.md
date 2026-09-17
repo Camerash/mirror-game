@@ -100,6 +100,9 @@ shape by construction: it does not model the shape, it samples the old one.
   rows carry one colour across their whole width, so u holds nothing here and
   only v had to be fixed. The zig-zag is lost; at 24 columns it was being
   sampled at an arbitrary phase anyway.
+- **The clasp is kept out of the split's widening.** Its lower half sits inside
+  the split's own height range, and widened with it the brooch came out pulled
+  sideways rather than round.
 - **The clasp is built, not copied.** A small faceted brooch sits at the throat,
   where the front opening is held shut. Its rim is cast onto the new cape a point
   at a time, so it follows the curve instead of floating off it at the sides, and
@@ -121,13 +124,15 @@ shape by construction: it does not model the shape, it samples the old one.
   swings it into the chest: 30 overlapping triangles at z 1.71 to 1.84. Applied
   to the basis and to each key together, the widening is the same in all of them
   and cannot rotate.
-- **The split has a facing.** Over the chest the body behind the opening is the
-  same blue-grey as the cloak, so the gap cannot read as one however wide it is:
-  measured 0.105 wide there and still looking shut. A band of the hem border's
-  dark blue runs down each side of it, which draws the opening whatever is behind
-  it. The rim lip alone is 0.010 wide and shows nothing.
+- **The split is a line, not a gap.** The character drawing shows the front as a
+  single line from the clasp to the hem, parting only at the feet, so it runs
+  0.030 under the brooch to 0.095 at the hem. Widening it does not help it read:
+  over the chest the body behind is the same blue-grey as the cloak, so a gap has
+  nothing to read against, and at 0.105 wide it still looked shut. A painted
+  facing draws it, but a band wide enough to see reads as a stripe rather than an
+  opening.
 - **The front split's width is set outright.** It opens at the clasp and widens
-  as it falls: 0.105 under the brooch to 0.165 at the hem. Held to the old
+  as it falls: 0.030 under the brooch to 0.095 at the hem. Held to the old
   cloak's own rim it reads as shut, because that rim is 0.008 wide at the clasp,
   and the wide dark chest in the old renders is not an opening at all: it is the
   hood's shadow, which disappears when the lights are set to cast none. The old cloak's own
@@ -209,7 +214,7 @@ contact targets.
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
 | Cloak edge / face ratios | 26:1 and 200:1 (were 258:1 and 999:1) |
-| Front split, clasp to hem | 0.105 widening to 0.165 |
+| Front split, clasp to hem | 0.030 widening to 0.095 |
 | Cloak islands | 2: the cape and the clasp |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
