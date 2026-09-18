@@ -65,15 +65,32 @@ step that read as a bar across the chest.
   and last land exactly on the opening's edge and every cell between is the same
   width. That one change removed the snapping, tapering, easing, squaring,
   stitching and relaxing.
-- **A band across the front closes only where an opening ends** — one row shut
-  and the next barely open. Both rows open is the opening itself, however narrow:
-  the front seam never exceeds 2 degrees, so judging it by width alone sews the
-  cloak shut.
+- **An opening closes on one vertex.** A row with no opening beside a row that
+  has one is its *apex*: it takes the open spread with nothing removed, so its
+  first and last column land on the same angle and share a vertex. The cells
+  around them meet there in a fan. Treated as a shut row instead, its columns
+  stay 15 degrees apart, so the opening bottoms out on a flat edge half a cell
+  off centre. Three apexes exist: the top of the hood's face, its foot at the
+  gem, and the top of the front seam.
+- **The band across the front is left out wherever a row beside it is open.** An
+  apex is inside the opening it closes, so one open row either side is enough.
+  Judging it by the opening's width instead sews the cloak shut, because the
+  front seam never exceeds 2 degrees.
 - **The front split is authored, not followed.** It starts at a point under the
   brooch and opens quickly, which is the shape the user cut by hand. The accepted
   cloak is no guide for it: its own panels wander.
+- **The hood's opening runs to the gem.** It falls from 27 degrees at the throat
+  to a point at 1.88, which is 0.010 above the gem's top edge, so the gem covers
+  where the two edges meet. It used to stop on a flat bib across the throat. See
+  [the throat](traveller-cloak-review/throat_to_the_gem.png).
 - **The hood's rim carries its own radius.** It curls inward, so it is measured
-  rather than read off the cloth beside it.
+  rather than read off the cloth beside it. Only the hood proper: below 2.145 the
+  opening is a plain cut, so its edge follows the cape's own front radius.
+- **The gem reads its seat off the profile, not off the mesh.** It used to cast a
+  ray per corner. Its lowest corner sits on the middle of the front, and once the
+  seam came together that ray went down the pinch and out the other side, so the
+  gem vanished. The profile answers everywhere, including where there is no cloth
+  to hit.
 - **The border's two rows share one spread of columns.** Distributing each at its
   own height gave them different angles, and the band ran 0.016 to 0.230 tall
   instead of an even 0.145.
@@ -168,15 +185,16 @@ contact targets.
 | Garment clearance, hood up and down | 0 overlaps |
 | max bone influences | 3 |
 | rest-pose drift | 0.0 |
-| Cloak triangles | 1,428 (was 3,332) |
+| Cloak triangles | 1,386 (was 3,332) |
 | Cloak quads | 95% (was 0%) |
 | Hood opening width against the true rim | within 4 degrees at every row |
-| Cloak edge / face ratios | 23:1 and 134:1 (were 258:1 and 999:1) |
-| Cloak sharpest fold | 45° (the old cloak's was 116°) |
-| Cloak generator | 515 lines over two files (was 921) |
+| Cloak edge / face ratios | 9:1 and 64:1 (were 258:1 and 999:1) |
+| Cloak sharpest fold | 40° (the old cloak's was 116°) |
+| Cloak generator | 560 lines over two files (was 921) |
 | Front seam, brooch to hem | 0.012 widening to 0.036, a real opening |
 | Front seam under `CloakOpen` | 0.147, centre drift 0.000 |
-| Cloak islands | 2: the cape and the clasp |
+| Cloak islands | 2: the cape and the gem |
+| Gem | seven sides, lone corner at x 0.0000 z 1.7220, straight down |
 | Hood shell folds | p90 23°, max 50° (were 35° and 92°) |
 | Chest fold / hood corner fold | 109° and 93° (were 154° and 134°) |
 | Cloak clearance, all nine keys | 0 overlaps |
@@ -186,7 +204,7 @@ contact targets.
 | Hair against the hood, all nine keys | 0 overlaps |
 | Hair against the body | 0 overlaps |
 | Hair against the head | 44, all of them the ears (was 136, 6 of them not) |
-| triangles | 5,034, under the 6,000 target |
+| triangles | 4,992, under the 6,000 target |
 
 Export and re-check the result with:
 

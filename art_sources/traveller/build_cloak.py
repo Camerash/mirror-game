@@ -35,10 +35,11 @@ ROWS = [0.50, 0.72, 0.95, 1.18, 1.40, 1.58, 1.70, 1.74, 1.80, 1.88, 1.96, 2.04,
         2.11, 2.145, 2.18, 2.26, 2.36, 2.48, 2.62, 2.76, 2.88, 2.97, 3.03,
         3.065, 3.09, 3.15, 3.21, 3.26]
 HEM_LIFT = .002
-# An opening this narrow is a tip, and the band across it is closed: that makes
-# the point at the top of the front split and the top of the hood's face. Wider
-# than this and the band stays open, which is what leaves the hood's throat.
-TIP_BELOW = math.radians(12)
+# What an opening does to a row. SHUT is cloth all the way round. OPEN is a row
+# the opening crosses. APEX is the height where it closes on a point, which is
+# the top of the hood's face, the foot of that face at the brooch, and the top
+# of the front seam.
+SHUT, OPEN, APEX = 'shut', 'open', 'apex'
 
 CLOTH_UV = (.625, .56)
 TRIM_FOOT = .02                 # the border's atlas rows, dark to light to dark
@@ -49,56 +50,73 @@ CLASP_Z = 1.80
 CLASP_RADIUS = .078
 CLASP_RISE = .026
 CLASP_WAIST = .55
-CLASP_SIDES = 16
-CLASP_BAND = (.12, .50)
+CLASP_SIDES = 7                 # a gem, not a dome
+CLASP_POINT = 3 * math.tau / 4  # with one corner straight down
 ARMS_KEY = 'CloakArms'
 ARMS_PUSH = .22
 ARMS_SECTOR = (math.radians(40), math.radians(62))
 ARMS_HEIGHTS = (1.55, 1.25)
 
 
-def row_columns(z):
+def row_columns(half, kind):
     """Where this row's columns sit, as angles.
 
-    A closed row spreads them evenly round the whole ring. An open row spreads
-    them over the cloth it has, so its first and last land exactly on the
-    opening's edge and every cell between is the same width.
+    A shut row spreads them evenly round the whole ring. A row an opening
+    crosses spreads them over the cloth it has, so its first and last land
+    exactly on the opening's edge and every cell between is the same width.
+
+    An apex takes the same spread with nothing removed, so its first and last
+    column land on the same angle. `write` then gives them one vertex, and the
+    opening closes on a point. Treating an apex as a shut row instead leaves the
+    columns 15 degrees apart there, so the opening bottoms out on a flat edge
+    that is off centre by half a cell.
     """
-    half = profile.opening_half(z)
-    if half <= 0:
-        return [FRONT + step * math.tau / COLUMNS for step in range(COLUMNS)], False
+    if kind is SHUT:
+        return [FRONT + step * math.tau / COLUMNS for step in range(COLUMNS)]
     span = math.tau - 2 * half
-    return [FRONT + half + step * span / (COLUMNS - 1)
-            for step in range(COLUMNS)], True
+    return [FRONT + half + step * span / (COLUMNS - 1) for step in range(COLUMNS)]
 
 
-def place(z, angle, open_row, edge):
+def place(z, angle, kind, edge):
     """One vertex. An opening's own edge takes the rim's radius, which curls in
     on the hood and so is measured rather than read off the cloth beside it."""
-    across = profile.edge_radius(z) if (open_row and edge) else profile.radius(z, angle)
+    across = (profile.edge_radius(z) if (kind is not SHUT and edge)
+              else profile.radius(z, angle))
     return Vector((across * math.cos(angle), across * math.sin(angle), z))
+
+
+def row_kinds(heights):
+    """What each row is. A row with no opening is an apex when a row beside it
+    has one, because that is where the opening closes."""
+    halves = [profile.opening_half(z) for z in heights]
+    kinds = []
+    for index, half in enumerate(halves):
+        beside = [halves[near] for near in (index - 1, index + 1)
+                  if 0 <= near < len(halves)]
+        kinds.append(OPEN if half > 0
+                     else APEX if any(value > 0 for value in beside)
+                     else SHUT)
+    return halves, kinds
 
 
 def build_grid():
     """Every row, from the border up to the crown."""
-    grid, kinds = [], []
     # Both border rows share one spread of columns. Distributing each at its own
     # height gives them slightly different angles, and the band then runs
     # anywhere from 0.016 to 0.230 tall instead of an even 0.145.
     settle = sum(profile.HEM) / len(profile.HEM) + HEM_LIFT
-    angles, open_row = row_columns(settle)
+    heights = [settle, settle] + list(ROWS)
+    halves, kinds = row_kinds(heights)
+    grid = []
+    angles = row_columns(halves[0], kinds[0])
     for lift in (HEM_LIFT, profile.TRIM_HEIGHT):
-        row = []
-        for index, angle in enumerate(angles):
-            z = profile.hem_at(angle) + lift
-            row.append(place(z, angle, open_row, index in (0, COLUMNS - 1)))
-        grid.append(row)
-        kinds.append(open_row)
-    for z in ROWS:
-        angles, open_row = row_columns(z)
-        grid.append([place(z, angle, open_row, index in (0, COLUMNS - 1))
+        grid.append([place(profile.hem_at(angle) + lift, angle, kinds[0],
+                           index in (0, COLUMNS - 1))
                      for index, angle in enumerate(angles)])
-        kinds.append(open_row)
+    for index, z in enumerate(ROWS, start=2):
+        angles = row_columns(halves[index], kinds[index])
+        grid.append([place(z, angle, kinds[index], column in (0, COLUMNS - 1))
+                     for column, angle in enumerate(angles)])
     return grid, kinds
 
 
@@ -112,29 +130,48 @@ def write(grid, kinds, name='CloakShell'):
     mesh = bpy.data.meshes.new(name)
     work = bmesh.new()
     verts = [[work.verts.new(point) for point in row] for row in grid]
+    # An apex closes on one vertex: its first and last column sit on the same
+    # angle, so they share a vertex and the cells around them meet in a fan.
+    for row, kind in zip(verts, kinds):
+        if kind is APEX:
+            work.verts.remove(row[COLUMNS - 1])
+            row[COLUMNS - 1] = row[0]
     work.verts.index_update()
     uv_layer = work.loops.layers.uv.verify()
     faces, border = [], set()
+
+    def cell(*corners):
+        """One face, with any repeated corner dropped. A cell against an apex
+        has two corners on the shared vertex, and comes out as a triangle."""
+        kept = []
+        for corner in corners:
+            if corner not in kept:
+                kept.append(corner)
+        return work.faces.new(kept) if len(kept) > 2 else None
+
     for r in range(len(grid) - 1):
         for c in range(COLUMNS - 1):
-            face = work.faces.new([verts[r][c], verts[r][c + 1],
-                                   verts[r + 1][c + 1], verts[r + 1][c]])
+            face = cell(verts[r][c], verts[r][c + 1],
+                        verts[r + 1][c + 1], verts[r + 1][c])
+            if face is None:
+                continue
             faces.append(face)
             if r == 0:
                 border.add(face)
-        # The band across the front. Closed where both rows are shut, and where
-        # an opening ends: one row shut and the next barely open is a tip, which
-        # is the point at the top of the split and the top of the hood's face.
-        # Both rows open is the opening itself, however narrow it is: the split
-        # never exceeds 7 degrees, so judging by width alone sews it up.
-        tips = [profile.opening_half(grid[n][0].z) for n in (r, r + 1)]
-        shut = [half <= 0 for half in tips]
-        if all(shut) or (any(shut) and max(tips) < TIP_BELOW):
-            face = work.faces.new([verts[r][COLUMNS - 1], verts[r][0],
-                                   verts[r + 1][0], verts[r + 1][COLUMNS - 1]])
-            faces.append(face)
-            if r == 0:
-                border.add(face)
+        # The band across the front: the cloth between the last column and the
+        # first. An opening leaves it out, and an apex is inside the opening it
+        # closes, so one open row either side is enough to leave it out. Where an
+        # apex meets shut cloth the band comes out as the triangle that finishes
+        # the point.
+        if OPEN in (kinds[r], kinds[r + 1]):
+            continue
+        face = cell(verts[r][COLUMNS - 1], verts[r][0],
+                    verts[r + 1][0], verts[r + 1][COLUMNS - 1])
+        if face is None:
+            continue
+        faces.append(face)
+        if r == 0:
+            border.add(face)
     faces += cap_crown(work, verts)
     for face in faces:
         face.smooth = True
@@ -160,7 +197,6 @@ def cap_crown(work, verts):
 
 
 CROWN_RISE = .045               # how far the crown stands above the last ring
-CAST_RADIUS = 1.6               # outside the cloak, for seating the brooch
 
 
 def rebuild(obj):
@@ -317,41 +353,40 @@ def attach_clasp(mesh):
 
 
 def add_clasp(work, uv_layer):
-    """A brooch at the throat, holding the front opening shut.
+    """A seven sided gem at the throat, holding the front opening shut.
+
+    Its corners start straight down, so the lone corner points at the seam and
+    the flat top edge sits under the hood's own point. Its faces are flat, not
+    smooth, because a gem is read by its facets and the rest of the character is
+    smooth ceramic.
 
     Built onto the new cape, not copied off the old one. The old cloak's own
     clasp is its collar yoke, a flat panel welded into that shell, and copying
     those triangles across fails at every offset: proud, their edges draw a hard
     V over the chest; flush, they cut through the cape.
 
-    Its rim is cast onto the cape a point at a time, so it follows the curve
-    instead of floating off it at the sides. It runs after the normals are
-    recalculated and sets its own, because it is an open shell and the solver
-    has no volume to work from.
+    Each corner is read off the cape's own profile, so the gem follows the curve
+    instead of floating off it at the sides. It used to find the cape by ray
+    instead, which stopped working when the seam came together: the lowest
+    corner sits on the middle of the front, and its ray went straight down the
+    pinch and out the other side, so the gem disappeared. The profile answers
+    everywhere, including where there is no cloth to hit.
+
+    It runs after the normals are recalculated and sets its own, because it is an
+    open shell and the solver has no volume to work from.
     """
-    tree = BVHTree.FromBMesh(work)
-
     def onto(z, angle):
-        direction = Vector((-math.cos(angle), -math.sin(angle), 0))
-        location, normal, _, _ = tree.ray_cast(
-            Vector((0, 0, z)) - direction * CAST_RADIUS, direction, CAST_RADIUS)
-        return location, normal
+        across = profile.radius(z, angle)
+        return Vector((across * math.cos(angle), across * math.sin(angle), z))
 
-    seat, out = onto(CLASP_Z, FRONT)
-    if seat is None:
-        return []
-    out = out.normalized()
-    if out.dot(Vector((seat.x, seat.y, 0))) < 0:
-        out = -out
+    seat = onto(CLASP_Z, FRONT)
+    out = Vector((seat.x, seat.y, 0)).normalized()
     across = math.hypot(seat.x, seat.y)
-    rim = []
-    for step in range(CLASP_SIDES):
-        turn = step * math.tau / CLASP_SIDES
-        point, normal = onto(CLASP_Z + CLASP_RADIUS * math.sin(turn),
-                             FRONT + CLASP_RADIUS * math.cos(turn) / across)
-        if point is None:
-            return []
-        rim.append(work.verts.new(point + out * .0015))
+    rim = [work.verts.new(onto(CLASP_Z + CLASP_RADIUS * math.sin(turn),
+                               FRONT + CLASP_RADIUS * math.cos(turn) / across)
+                          + out * .0015)
+           for turn in (CLASP_POINT + step * math.tau / CLASP_SIDES
+                        for step in range(CLASP_SIDES))]
     inner = [work.verts.new(seat + (v.co - seat) * CLASP_WAIST + out * (CLASP_RISE * .62))
              for v in rim]
     crown = work.verts.new(seat + out * CLASP_RISE)
@@ -362,7 +397,7 @@ def add_clasp(work, uv_layer):
                                      inner[following], inner[step]]))
         faces.append(work.faces.new([inner[step], inner[following], crown]))
     for face in faces:
-        face.smooth = True
+        face.smooth = False
         face.normal_update()
         if face.normal.dot(out) < 0:
             face.normal_flip()

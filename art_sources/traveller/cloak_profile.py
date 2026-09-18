@@ -50,10 +50,20 @@ RADIUS = [
 # The hood's face opening: half angle either side of the front, and the radius at
 # its rim. The rim curls inward, so it is measured rather than taken from the
 # surface beside it.
-FACE = [(2.145, 0.0), (2.16, 27.5), (2.20, 30.2), (2.30, 36.8), (2.45, 40.2),
+#
+# The opening runs the whole way down to the brooch and closes there on one
+# vertex, so the throat is a V and not the flat bib it used to end on. Below
+# 2.145 the opening is a plain cut in the cape, so its edge follows the cape's
+# own front radius; above it the hood's roll starts and the rim carries its own.
+# The apex sits at 1.88, which is 0.010 above the gem's top corners, so the gem
+# covers the point where the two edges meet.
+FACE_APEX = 1.88
+FACE = [(FACE_APEX, 0.0), (1.96, 8.2), (2.04, 16.3), (2.11, 23.4), (2.145, 27.0),
+        (2.16, 27.5), (2.20, 30.2), (2.30, 36.8), (2.45, 40.2),
         (2.60, 40.8), (2.75, 38.5), (2.90, 33.0), (2.98, 26.0), (3.03, 18.2),
         (3.06, 8.5), (3.08, 0.0)]
-RIM = [(2.145, 0.378), (2.16, 0.385), (2.20, 0.398), (2.30, 0.444), (2.45, 0.508),
+RIM = [(FACE_APEX, 0.419), (1.96, 0.397), (2.04, 0.371), (2.11, 0.355),
+       (2.145, 0.378), (2.16, 0.385), (2.20, 0.398), (2.30, 0.444), (2.45, 0.508),
        (2.60, 0.544), (2.75, 0.544), (2.90, 0.540), (2.98, 0.514), (3.03, 0.495),
        (3.06, 0.479), (3.08, 0.470)]
 
