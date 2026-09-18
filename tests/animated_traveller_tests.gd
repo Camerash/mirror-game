@@ -103,7 +103,7 @@ func check_clips(study: Node) -> void:
 		if not study.player.has_animation(name):
 			continue
 		var clip: Animation = study.player.get_animation(name)
-		check(is_equal_approx(clip.length, 2.0) and clip.loop_mode == Animation.LOOP_NONE, name + " is a two-second nonlooping clip")
+		check(is_equal_approx(clip.length, 1.0) and clip.loop_mode == Animation.LOOP_NONE, name + " is a one-second nonlooping clip")
 		var has_bones := false
 		var has_shapes := false
 		var lower_body_fixed := true
@@ -114,7 +114,7 @@ func check_clips(study: Node) -> void:
 			for part: String in ["leg", "foot", "toe", "boot", "pelvis", "hip", "thigh", "shin", "root"]:
 				lower_body_fixed = lower_body_fixed and not part in path.to_lower()
 		check(has_bones and has_shapes, name + " has bone and garment shape tracks")
-		check(lower_body_fixed, name + " has no lower-body or root tracks")
+		check(lower_body_fixed, name + " keeps the root, pelvis, legs, and feet fixed")
 		for time: float in [0.0, clip.length]:
 			study.active_clip = name
 			study.scrub_to(time)
@@ -144,13 +144,13 @@ func check_playback(study: Node) -> void:
 	study.scrub_to(0.0)
 	study.start_action(false)
 	check(study.active_clip == study.HOOD_DOWN and study.action_active, "Seeking to the start keeps the action locked until completion")
-	study.scrub_to(1.0)
-	check(not study.player.is_playing() and study.action_active and study.player.current_animation_position == 1.0, "Scrub pauses at the chosen time")
+	study.scrub_to(0.5)
+	check(not study.player.is_playing() and study.action_active and study.player.current_animation_position == 0.5, "Scrub pauses at the chosen time")
 	study.set_playback_speed(0.5)
 	check(study.speed_button.text == "Speed: 0.5x", "The speed control shows the selected speed")
 	study.toggle_playback()
-	study.player.advance(0.5)
-	check(is_equal_approx(study.player.current_animation_position, 1.25), "Playback speed controls the native time step")
+	study.player.advance(0.25)
+	check(is_equal_approx(study.player.current_animation_position, 0.625), "Playback speed controls the native time step")
 	study.player.advance(2.0)
 	check(study.hood_lowered and not study.action_active and not study.player.is_playing(), "Hood Down completes and stays folded")
 	study.start_action(false)
@@ -171,10 +171,10 @@ func check_bounds(study: Node) -> void:
 	for clip: String in [study.HOOD_DOWN, study.HOOD_UP]:
 		study.active_clip = clip
 		for sample: int in 9:
-			study.scrub_to(sample * 0.25)
+			study.scrub_to(sample * 0.125)
 			check(study.bounds == bounds and study.camera.size == camera_size and study.camera.transform == camera_transform, "Animation preserves the common camera fit")
 			for mesh: MeshInstance3D in study.meshes:
-				check(_sample_fits(mesh, study.skeleton, bounds), "Animated vertices fit camera and culling bounds: %s %.2f %s" % [clip, sample * 0.25, mesh.name])
+				check(_sample_fits(mesh, study.skeleton, bounds), "Animated vertices fit camera and culling bounds: %s %.3f %s" % [clip, sample * 0.125, mesh.name])
 
 
 func _sample_fits(mesh: MeshInstance3D, skeleton: Skeleton3D, bounds: AABB) -> bool:

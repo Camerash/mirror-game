@@ -79,6 +79,10 @@ step that read as a bar across the chest.
 - **The front split is authored, not followed.** It starts at a point under the
   brooch and opens quickly, which is the shape the user cut by hand. The accepted
   cloak is no guide for it: its own panels wander.
+- **The cloak is skinned, not hung off one bone.** Weights run along `Pelvis`,
+  `Spine` and `Chest`, from the same chain blender the body uses, so the body's
+  lean reaches the hood and stops before the hem. Everything from the chest up
+  clamps to `Chest` at 1.0, which is what leaves the eight hood keys untouched.
 - **The hood's opening runs to the gem.** It falls from 27 degrees at the throat
   to a point at 1.88, which is 0.010 above the gem's top edge, so the gem covers
   where the two edges meet. It used to stop on a flat bib across the throat. See
@@ -183,7 +187,11 @@ contact targets.
 | ngons | 4, all end caps inside the accepted hand |
 | self-intersections | **0** (inherited source had 567) |
 | Garment clearance, hood up and down | 0 overlaps |
-| max bone influences | 3 |
+| max bone influences | 3 on the body, 2 on the cloak |
+| Hem travel under a 2 degree chest turn | 0.0000 (was 0.029 bone-parented) |
+| Wrist on its authored path, both clips | error 0.0000 at every frame |
+| Clip length | 1.000 s, with bone and morph tracks |
+| Missing animation targets on export | 0 (was 14) |
 | rest-pose drift | 0.0 |
 | Cloak triangles | 1,386 (was 3,332) |
 | Cloak quads | 95% (was 0%) |
@@ -225,20 +233,21 @@ These were fixed here. They also exist in `traveller_animated.blend`.
 
 ## Not done yet
 
-- **Animation.** `HoodUp` and `HoodDown` still hold their old rotations. The arm
-  bones changed, so the actions need re-authoring before they mean anything.
-- **Clip length.** The actions are two seconds. `art_trial/animated_traveller_study.gd`
-  and `tests/animated_traveller_tests.gd` were already changed to expect one
-  second, so the viewer and the asset disagree.
-- **The arm cannot leave the cloak above the chest.** `CloakArms` pushes the
-  cloth out along its own normal over the sector and the heights a reaching arm
-  passes through. It removes every crossing at the lowest waypoint (48 to 0) and
-  lowers the rest. It cannot clear the upper arm, which starts at the shoulder
-  under the cloth: at the collar and the hood rim, 47 and 50 arm/cloth triangle
-  pairs remain. Movement that slides the cloth around the body was measured at
-  swings from 25 to 95 degrees and is worse in every case, because the cape is
-  fitted to the body with no margin. Full clearance needs the front panels
-  weighted to the arm bones, which belongs with the animation work.
+- **The gait.** `HoodUp` and `HoodDown` are authored; see
+  [the animation notes](traveller-animation.md). The walk, and the three cloak
+  deformations that go with it, are the next pass.
+- **`CloakArms` is a morph nothing drives.** It was authored to stand the cloth
+  off a reaching arm. Driven to 1 it splits the garment open instead, and the
+  crossings it exists to remove stay where they are. Weighting the front panels
+  to `UpperArm` was then tried, as the note here used to propose, and measured
+  *worse*: 147 crossings against 139 at the moment of contact. It cannot work.
+  The arm turns by its whole angle and cloth on a share of it turns by less, so
+  the arm overtakes the cloth however the share is set. Only pushing the cloth
+  out ahead of the arm would clear it, and nothing that moves a vertex along one
+  fixed path can do that. The key should probably be removed.
+- **Gameplay still uses the old character.** `world/character_visual.gd` loads
+  `assets/character/ceramic_traveller.glb`. Nothing in the game reads
+  `assets/studies/traveller.glb` yet; only the trial scene does.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,

@@ -9,6 +9,8 @@ cannot bleed across the gap.
 Within a chain, weight follows arc length with a smooth window at each joint,
 so segments blend instead of creasing.
 """
+import math
+
 import bpy
 from mathutils import Vector
 
@@ -76,6 +78,14 @@ def cloak(garment, rig):
     The same chain blender the body uses gives the gradient for free. Everything
     from the chest up clamps to `Chest` at 1.0, so the hood deforms exactly as it
     did and the eight accepted hood keys are untouched.
+
+    The arms are deliberately not in this chain. Giving the front panels a share
+    of `UpperArm` was tried, to make the cloth travel with a lifting arm, and it
+    made the crossings slightly worse: 147 against 139 at the moment of contact.
+    It cannot help. The arm turns by its whole angle and cloth on a share of it
+    turns by less, so the arm overtakes the cloth however the share is set. Only
+    pushing the cloth out ahead of the arm would clear it, and nothing that moves
+    a vertex along one fixed path can do that.
     """
     chain = ['Pelvis', 'Spine', 'Chest']
     points = chain_points(rig, chain)

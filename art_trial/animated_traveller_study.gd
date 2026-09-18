@@ -1,7 +1,7 @@
 extends "res://art_trial/full_traveller_study.gd"
 ## Isolated hood animation review. Native clips own the skeleton and garment.
 
-const BOUNDS_PATH := "res://assets/studies/traveller_animated_bounds.json"
+const BOUNDS_PATH := "res://assets/studies/traveller_bounds.json"
 const HOOD_DOWN := "HoodDown"
 const HOOD_UP := "HoodUp"
 
@@ -80,7 +80,7 @@ func _build_controls() -> void:
 	seek_slider = HSlider.new()
 	seek_slider.custom_minimum_size = Vector2(112, 48)
 	seek_slider.step = 0.01
-	seek_slider.max_value = 2.0
+	seek_slider.max_value = 1.0
 	seek_slider.tooltip_text = "Animation time. Seeking pauses playback."
 	seek_slider.value_changed.connect(scrub_to)
 	controls.add_child(seek_slider)
@@ -176,7 +176,7 @@ func _update_playback_controls() -> void:
 	play_button.text = "Pause" if player != null and player.is_playing() else "Play"
 	if hood_button != null:
 		hood_button.text = "Hood: Moving" if action_active else ("Hood: Folded" if hood_lowered else "Hood: Raised")
-	var duration := player.get_animation(active_clip).length if player != null and player.has_animation(active_clip) else 2.0
+	var duration := player.get_animation(active_clip).length if player != null and player.has_animation(active_clip) else 1.0
 	if player != null and not player.current_animation.is_empty():
 		animation_time = player.current_animation_position
 	seek_slider.max_value = duration

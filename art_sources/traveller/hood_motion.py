@@ -69,11 +69,18 @@ BULGE = Vector((0.55, -0.45, -0.70)).normalized()
 CHEST_TILT = ((0, 0.0), (CONTACT, -1.6), (SETTLED, -2.0), (LAST, 0.0))
 HEAD_TILT = ((0, 0.0), (CONTACT, 3.2), (SETTLED, 4.0), (LAST, 0.0))
 
-# `CloakOpen` parts the front so the hands can come out, and `CloakArms` stands
-# the cloth off the arm's path. Both must be back at zero on the last frame:
-# the tests require every shape except `HoodLowered` to be clear at both ends.
+# `CloakOpen` parts the front so the hands can come out. It must be back at zero
+# on the last frame: the tests require every shape except `HoodLowered` to be
+# clear at both ends.
+#
+# `CloakArms` is left at zero. It was authored to stand the cloth off a lifting
+# arm, on a cloak whose front was a broad slit, and on this one it does the
+# opposite: driven to 1 it splits the garment open and the legs show through,
+# while the crossings it is meant to remove stay where they are. Rendered side by
+# side at 0 and at 1, the reach reads as a figure raising its hands at 0 and as
+# an inflating cloak at 1.
 OPEN = ((0, 0.0), (3, 1.0), (SETTLED, 1.0), (55, 1.0), (LAST, 0.0))
-ARMS = ((0, 0.0), (CONTACT, 1.0), (SETTLED, 1.0), (55, 0.4), (LAST, 0.0))
+ARMS = ((0, 0.0), (LAST, 0.0))
 
 
 def at(keys, x):
