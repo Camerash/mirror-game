@@ -25,6 +25,7 @@ import build_hair
 import proportions
 import check_body
 import skin_body
+import build_animation
 
 SOURCE = HERE.parents[0] / 'traveller_animated/traveller_animated.blend'
 TARGET = HERE / 'traveller.blend'
@@ -312,6 +313,7 @@ def main():
     print('### measured ', check_body.measure())   # in the idle pose
     print('### posed crossings', check_body.crossings(old_body)[0])
     clear_pose(rig)
+    print('### clips    ', build_animation.build(rig, bpy.data.objects['Garment']))
     print('### palette  ', dict(check_body.palette_regions()))
     print('### rig bones', len(rig.data.bones),
           [b.name for b in rig.data.bones if 'Arm' in b.name])

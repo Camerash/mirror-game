@@ -52,6 +52,13 @@ CLASP_RISE = .026
 CLASP_WAIST = .55
 CLASP_SIDES = 7                 # a gem, not a dome
 CLASP_POINT = 3 * math.tau / 4  # with one corner straight down
+OPEN_KEY = 'CloakOpen'
+OPEN_SECTOR = math.radians(55)  # how far round the front the parting reaches
+OPEN_TURN = math.radians(7.5)   # how far the seam's own edge swings, each side
+# How much of that swing each height takes. Nothing above the seam's apex, most
+# where the hands come out, and a little at the hem so the panels do not pinch.
+OPEN_HEIGHTS = [(0.19, .35), (0.80, .60), (1.30, .95), (1.60, 1.0), (1.70, .85),
+                (profile.SPLIT_APEX, 0.0)]
 ARMS_KEY = 'CloakArms'
 ARMS_PUSH = .22
 ARMS_SECTOR = (math.radians(40), math.radians(62))
@@ -210,6 +217,7 @@ def rebuild(obj):
     obj.data = mesh
     bpy.data.meshes.remove(old)
     count = apply_keys(obj, captured)
+    set_open_key(obj)
     widen = weld(obj)
     print('###   cloak: merged %d vertices by distance' % widen)
     return count + (1 if add_arms_key(obj) else 0)
@@ -293,6 +301,13 @@ def apply_keys(obj, captured):
 # so a key that slides the cloth around the body (measured at swings from 25 to
 # 95 degrees) drives it into the chest and the shoulders instead of opening it.
 # The outward push costs nothing at rest: the body clearance stays at 0.
+OPEN_KEY = 'CloakOpen'
+OPEN_SECTOR = math.radians(55)  # how far round the front the parting reaches
+OPEN_TURN = math.radians(7.5)   # how far the seam's own edge swings, each side
+# How much of that swing each height takes. Nothing above the seam's apex, most
+# where the hands come out, and a little at the hem so the panels do not pinch.
+OPEN_HEIGHTS = [(0.19, .35), (0.80, .60), (1.30, .95), (1.60, 1.0), (1.70, .85),
+                (profile.SPLIT_APEX, 0.0)]
 ARMS_KEY = 'CloakArms'
 ARMS_PUSH = .22                 # how far the cloth stands off the arm's path
 ARMS_SECTOR = (math.radians(40), math.radians(62))   # centre and half width
@@ -322,6 +337,41 @@ def add_arms_key(obj):
                   * raised_cosine(rest.z, height, reach))
         key.data[index].co = rest + normals[index] * (ARMS_PUSH * weight)
     return key
+
+
+def set_open_key(obj):
+    """Rewrite `CloakOpen` so it parts the seam instead of swinging the cloak.
+
+    The inherited key opened the whole garment like a coat: both panels swung
+    wide and the legs showed through from frame to frame. It came from a cloak
+    whose front was a broad slit, and it makes no sense on one whose seam is a
+    line.
+
+    This parts the cloth around the body instead of pulling it off the body: each
+    vertex turns about the up axis, away from the seam, by an amount that falls
+    off with angle and follows a curve in height. The radius never changes, so
+    the cloak stays fitted and only the seam opens.
+    """
+    blocks = obj.data.shape_keys.key_blocks
+    if OPEN_KEY not in blocks:
+        return 0
+    basis, key = blocks[0], blocks[OPEN_KEY]
+    moved = 0
+    for index in range(len(basis.data)):
+        rest = basis.data[index].co
+        angle = math.atan2(rest.y, rest.x)
+        offset = abs((angle - FRONT + math.pi) % math.tau - math.pi)
+        share = raised_cosine(offset, 0.0, OPEN_SECTOR)
+        height = profile.at(OPEN_HEIGHTS, rest.z) if rest.z < profile.SPLIT_APEX else 0.0
+        turn = math.copysign(1, rest.x) * OPEN_TURN * share * height
+        if abs(turn) < 1e-9:
+            key.data[index].co = rest
+            continue
+        cos, sin = math.cos(turn), math.sin(turn)
+        key.data[index].co = Vector((rest.x * cos - rest.y * sin,
+                                     rest.x * sin + rest.y * cos, rest.z))
+        moved += 1
+    return moved
 
 
 def barycentric(point, a, b, c):
