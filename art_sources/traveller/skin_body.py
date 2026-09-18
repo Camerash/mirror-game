@@ -64,6 +64,36 @@ def chain_weights(point, points, chain):
     return weights
 
 
+def cloak(garment, rig):
+    """Weight the cloak along the spine, so the body's lean reaches it.
+
+    The cloak used to be a rigid child of the `Chest` bone, which made it a cone
+    hanging off one joint: a 2 degree chest rotation swung the whole garment
+    about z 1.60, and the hem sits 1.4 below that, so it travelled 0.049 - more
+    than the 0.032 the design allows, and the wrong way, because the hem is under
+    the pivot.
+
+    The same chain blender the body uses gives the gradient for free. Everything
+    from the chest up clamps to `Chest` at 1.0, so the hood deforms exactly as it
+    did and the eight accepted hood keys are untouched.
+    """
+    chain = ['Pelvis', 'Spine', 'Chest']
+    points = chain_points(rig, chain)
+    into_rig = rig.matrix_world.inverted() @ garment.matrix_world
+    garment.vertex_groups.clear()
+    for name in chain:
+        garment.vertex_groups.new(name=name)
+    widest = 0
+    for index, vertex in enumerate(garment.data.vertices):
+        weights = chain_weights(into_rig @ vertex.co, points, chain)
+        weights = {k: v for k, v in weights.items() if v > 1e-4}
+        total = sum(weights.values())
+        for name, value in weights.items():
+            garment.vertex_groups[name].add([index], value / total, 'REPLACE')
+        widest = max(widest, len(weights))
+    return widest
+
+
 def apply(body, rig, build):
     """Write one weight set per vertex, restricted to that vertex's own part."""
     chains = {'torso': ['Pelvis', 'Spine', 'Chest'], 'neck': ['Neck', 'Head']}

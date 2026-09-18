@@ -145,6 +145,28 @@ def pose_idle(rig, angle=None):
                 bpy.context.view_layer.update()
 
 
+def bind_cloak(garment, rig):
+    """Skin the cloak instead of hanging it off one bone.
+
+    It runs after the cloak is rebuilt, because that replaces the mesh and the
+    vertex indices with it. The swap keeps the garment exactly where it was: the
+    world matrix is put back after the parent changes, so the rest pose is
+    untouched and the bind comes out as identity.
+    """
+    world = garment.matrix_world.copy()
+    garment.parent = bpy.data.objects['TravellerAnimated']
+    garment.parent_type = 'OBJECT'
+    garment.parent_bone = ''
+    garment.matrix_parent_inverse = garment.parent.matrix_world.inverted()
+    garment.matrix_world = world
+    influences = skin_body.cloak(garment, rig)
+    for modifier in [m for m in garment.modifiers if m.type == 'ARMATURE']:
+        garment.modifiers.remove(modifier)
+    modifier = garment.modifiers.new('Cloak skin', 'ARMATURE')
+    modifier.object = rig
+    return influences
+
+
 def store_idle_action(rig):
     """Keep the idle pose in the file as an action, so it is reproducible."""
     pose_idle(rig)
@@ -280,6 +302,7 @@ def main():
     # that render noise gets read as faceting. Review renders are cheap; raise it.
     bpy.context.scene.eevee.taa_render_samples = 512
     print('### cloak keys', build_cloak.rebuild(bpy.data.objects['Garment']))
+    print('### cloak influences', bind_cloak(bpy.data.objects['Garment'], rig))
     print('### hair faces', build_hair.build(bpy.data.objects['Hair'],
                                              bpy.data.objects['Head']))
     body_builder.report(mesh, 'body')
