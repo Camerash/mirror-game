@@ -233,6 +233,10 @@ These were fixed here. They also exist in `traveller_animated.blend`.
 
 ## Not done yet
 
+For the next agent, read [the handoff](traveller-handoff.md) first: it holds
+the commands, the traps in the tools, and the approaches already measured and
+failed.
+
 - **The gait.** `HoodUp` and `HoodDown` are authored; see
   [the animation notes](traveller-animation.md). The walk, and the three cloak
   deformations that go with it, are the next pass.

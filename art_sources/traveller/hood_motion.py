@@ -14,11 +14,13 @@ fold happens early on the way up and late on the way down.
 
 The hand paths are authored against measurements, not guessed. The arm reaches
 0.663 from the shoulder at (0.282, -0.013, 1.878), and the raised hood's rim runs
-from 0.414 away at the throat to 1.294 at the crown. Only the rim below z 2.48 is
-reachable at all, so the grips sit at z 2.42 going up and z 1.99 at the collar.
-The design asks for a grip near eye height; on this head, eye height is z 2.73
-and the highest rim the hand can hold is 0.25 below it. The arm reach wins, as
-the same paragraph says it should.
+from 0.414 away at the throat to 1.294 at the crown, so only the rim below z 2.48
+is in reach at all. The wrist points below follow from that, and every one of
+them stays between 0.59 and 1.00 of the arm's reach.
+
+The design asks for a grip near eye height. On this head eye height is z 2.73,
+and the highest rim a hand can hold is 0.25 below it. The arm reach wins, as the
+same paragraph says it should.
 """
 import math
 

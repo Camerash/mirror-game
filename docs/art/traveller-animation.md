@@ -24,6 +24,8 @@ Verify exported bone and morph tracks, bounds, asset limits, pause, seek, Reset,
 
 ## Current result
 
+[The handoff](traveller-handoff.md) has the commands and the failed approaches.
+
 Both clips are authored on [the single source](../../art_sources/traveller/).
 The motion is data in
 [`hood_motion.py`](../../art_sources/traveller/hood_motion.py) and
