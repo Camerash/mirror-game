@@ -112,13 +112,15 @@ SPLIT = [(0.19, .020), (0.50, .018), (0.90, .015), (1.30, .012), (1.60, .009),
 # the two edges meet, share one vertex, and the rows above and below carry the
 # same column count. Outside the hole `ARM_SEAM` carries on as the line where
 # those two columns sit together.
-ARM_LOW, ARM_HIGH = 1.28, 2.18
+ARM_LOW, ARM_HIGH = 1.28, 2.26
 ARM_SEAM = [(0.19, 60.0), (ARM_LOW, 62.0), (1.44, 61.0), (1.60, 64.0),
             (1.68, 72.0), (1.76, 74.0), (1.84, 75.0), (1.92, 76.0),
-            (2.00, 77.0), (2.08, 78.0), (ARM_HIGH, 78.0), (3.28, 78.0)]
+            (2.00, 77.0), (2.08, 80.0), (2.145, 86.0), (2.18, 90.0),
+            (ARM_HIGH, 90.0), (3.28, 90.0)]
 ARM_HALF = [(ARM_LOW, 0.0), (1.36, 30.0), (1.44, 30.0), (1.60, 36.0),
             (1.68, 43.0), (1.76, 44.0), (1.84, 45.0), (1.92, 45.0),
-            (2.00, 43.0), (2.08, 40.0), (2.145, 24.0), (ARM_HIGH, 0.0)]
+            (2.00, 43.0), (2.08, 42.0), (2.145, 38.0), (2.18, 32.0),
+            (ARM_HIGH, 0.0)]
 
 
 def arm_seam(z):

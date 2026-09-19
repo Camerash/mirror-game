@@ -71,20 +71,32 @@ be run at all.
   reads as a figure raising its hands at 0 and as an inflating cloak at 1, and
   the crossings it exists to remove do not move. It is now an undriven morph and
   a candidate for removal.
-- **The arms cross the cloth during the reach.** This is open, and the user has
-  rejected it. Measured at every frame by
-  [`check_clearance.py`](../../art_sources/traveller/check_clearance.py), it is
-  78 to 374 triangle pairs on **58 of the 61 frames of each clip**. The figure
-  this note used to carry, "122 to 262", was taken at two frames and was not the
-  worst case.
+- **The cape no longer crosses the arms.** It was a closed cone with no way
+  out, and the arms crossed it on 58 of the 61 frames of each clip, 78 to 374
+  triangle pairs. The cape now has armholes, and
+  [`check_clearance.py`](../../art_sources/traveller/check_clearance.py) reports
+  **no cape crossing at any frame of either clip**.
 
-  The cause is the garment, not the motion. The cape is a closed cone fitted to
-  the body with 0.066 of clearance at the shoulder and no armhole, so a raised
-  arm has to leave through the wall and the wall is continuous. Crossings start
-  8 degrees above the idle pose, and no reachable wrist target is clear: swept
-  over azimuth, elevation and reach, the floor is 72 to 94 pairs at every raised
-  pose. See the handoff for the four mechanisms that are now measured and
-  failed.
+  The hole is measured, not guessed: the arm's own axis leaves the cape between
+  z 1.60 and 2.00, and the hole is fitted to that plus the sleeve's radius. It
+  closes on a point at each end, so the rows above and below keep their own
+  column spread and the rest of the cape is unchanged.
+
+- **The wrist path runs through the corridor that measures clear.** Swept over
+  azimuth, height and reach, the clear region is narrow: the arm leaves at the
+  side, rises, and comes in to the hood's lower rim near 30 degrees off the
+  front. The grip sits outboard of the rim. It used to sit 0.12 back toward the
+  shoulder, which put it 0.03 *inside* the hood's own surface, and that was
+  every crossing above z 2.1.
+
+- **The lowered hood still crosses the arms, on 31 of the 122 frames.** This is
+  open. Lowered, 229 of the hood's 312 vertices fall into the arms' own band at
+  z 1.60 to 2.10 and wrap from 29 degrees off the front all the way round the
+  back. The armholes at that height run 30 to 120, so the folded hood covers
+  them completely and the arms come out underneath it. The design asks for
+  "broad, flat folds across the upper back"; 29 degrees off the front is not
+  the upper back. Either the fold moves behind the holes, or a clearance target
+  lifts it while the hands pass.
 
 ## Previous two-second trial evidence
 
