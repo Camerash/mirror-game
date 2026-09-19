@@ -71,13 +71,20 @@ be run at all.
   reads as a figure raising its hands at 0 and as an inflating cloak at 1, and
   the crossings it exists to remove do not move. It is now an undriven morph and
   a candidate for removal.
-- **The arms cross the cloth during the reach**, 122 to 262 triangle pairs
-  against 82 in the bind pose and 0 at rest. Weighting the front panels to
-  `UpperArm` was tried and measured *worse*, 147 against 139 at contact: the arm
-  turns by its whole angle and cloth on a share of it turns by less, so the arm
-  overtakes the cloth however the share is set. The crossings are the arm inside
-  the cape where it emerges at the shoulder, which is the asset's established
-  look, and they do not read in any view checked.
+- **The arms cross the cloth during the reach.** This is open, and the user has
+  rejected it. Measured at every frame by
+  [`check_clearance.py`](../../art_sources/traveller/check_clearance.py), it is
+  78 to 374 triangle pairs on **58 of the 61 frames of each clip**. The figure
+  this note used to carry, "122 to 262", was taken at two frames and was not the
+  worst case.
+
+  The cause is the garment, not the motion. The cape is a closed cone fitted to
+  the body with 0.066 of clearance at the shoulder and no armhole, so a raised
+  arm has to leave through the wall and the wall is continuous. Crossings start
+  8 degrees above the idle pose, and no reachable wrist target is clear: swept
+  over azimuth, elevation and reach, the floor is 72 to 94 pairs at every raised
+  pose. See the handoff for the four mechanisms that are now measured and
+  failed.
 
 ## Previous two-second trial evidence
 

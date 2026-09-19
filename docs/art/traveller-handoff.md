@@ -25,6 +25,7 @@ upstream and rebuilds everything from Python.
 | Wrist on its authored path, both clips | error 0.0000 at every frame |
 | Hem travel under a 2 degree chest turn | 0.0000 |
 | Cloak | 1,386 triangles, 0 ngons, sharpest fold 39.9 degrees |
+| `check_clearance` | **FAIL.** Arms cross the cloak on 58 of 61 frames, both clips |
 
 ## How to build and prove a change
 
@@ -36,6 +37,7 @@ rtk /Applications/Blender.app/Contents/MacOS/Blender --background --python art_s
 rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/review_mesh.py
 rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/export.py
 rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/bounds.py
+rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/check_clearance.py
 rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --editor --quit
 rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --script tests/animated_traveller_tests.gd
 rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --script tests/run_tests.gd
@@ -61,6 +63,7 @@ Keep that split. It is what removed 336 lines of correction code.
 | [`build_animation.py`](../../art_sources/traveller/build_animation.py) | turns that into actions and NLA tracks |
 | [`skin_body.py`](../../art_sources/traveller/skin_body.py) | weights for the body and the cloak |
 | [`bounds.py`](../../art_sources/traveller/bounds.py) | the sampled culling box the viewer needs |
+| [`check_clearance.py`](../../art_sources/traveller/check_clearance.py) | arm against garment, at every frame of both clips |
 
 Two rules that hold the whole thing together:
 
@@ -74,28 +77,44 @@ Two rules that hold the whole thing together:
 
 ## Open work, most useful first
 
-1. **The gait.** `GAME_DESIGN.md` line 102 asks for a restrained walk with three
+1. **The arms cross the cloak, and the user has rejected it.** Prove any change
+   with `check_clearance.py`. It is 78 to 374 triangle pairs on 58 of the 61
+   frames of each clip, both clips.
+
+   The cause is the garment, not the motion. The cape is a closed cone fitted to
+   the body with 0.066 of clearance at the shoulder and no armhole. A raised arm
+   has to leave through the wall, and the wall is continuous: crossings start 8
+   degrees above the idle pose, and swept over azimuth, elevation and reach, no
+   reachable wrist target is clear. The floor is 72 to 94 pairs at every raised
+   pose, and it is always the upper arm against the cape at z 1.76 to 2.06.
+
+   All four mechanisms that leave the resting shape alone are measured and
+   failed; they are in the list below. What is left changes the garment: give
+   the cape enough radius to hold a raised arm, give it armholes or end it above
+   the elbow, or drop the two-handed grip and move the hood without the hands.
+   The user owns that choice.
+2. **The gait.** `GAME_DESIGN.md` line 102 asks for a restrained walk with three
    authored cloak deformations, side, forward and twist, damped at runtime.
    Nothing of this exists. The cloak is now skinned along the spine, so a body
    lean already reaches it; measure what the skin gives you before you author a
    morph for it.
-2. **Gameplay still uses the old character.** `world/character_visual.gd` line 5
+3. **Gameplay still uses the old character.** `world/character_visual.gd` line 5
    loads `ceramic_traveller.glb`, which has no skin and no clips, and binds by
    node name at lines 22 to 24, with feet and hem posed from code at lines 58 to
    72. Moving gameplay to `traveller.glb` replaces all of that.
-3. **Remove `CloakArms`.** It is a morph that nothing drives. See the failed
+4. **Remove `CloakArms`.** It is a morph that nothing drives. See the failed
    approaches below for why it cannot be used. Removing it drops the cloak from
    nine morph targets to eight and removes `add_arms_key` from `build_cloak.py`.
-4. **Orphaned files.** Nothing reads `assets/studies/traveller_animated.glb`,
+5. **Orphaned files.** Nothing reads `assets/studies/traveller_animated.glb`,
    `assets/studies/traveller_animated_bounds.json`, or the three
    `*_checks.json` reports in `art_sources/traveller_animated/`. They are the
    record of the retired two-second study. Delete them or keep them on purpose.
-5. **The two old trials.** `GAME_DESIGN.md` disagrees with itself:
+6. **The two old trials.** `GAME_DESIGN.md` disagrees with itself:
    line 97 says to keep the Rigify trial as a failed trial for review, line 98
    says to remove it and the upper-body study when this source is accepted. The
    source is now accepted, so ask the user which line wins. No Godot scene or
    script refers to either trial.
-6. **The hood is fitted, not authored.** Its profile tables are measured off the
+7. **The hood is fitted, not authored.** Its profile tables are measured off the
    accepted cloak. That is what keeps the eight hood keys working, median 0.003
    from the old surface, worst 0.039 at the crown. Authoring the hood outright
    means re-making those keys.
@@ -118,6 +137,26 @@ Do not repeat these. Each cost real time.
   moment of contact. It cannot work. The arm turns by its whole angle and cloth
   on a share of it turns by less, so the arm overtakes the cloth however the
   share is set. The reason is written into `skin_body.cloak`.
+- **Weighting the cloak's shoulder cap to the deltoid**, the way the body's own
+  shoulder ring is weighted. This is a different region from the front panels,
+  so it was worth one measurement. It removes nothing at any radius or share,
+  and it breaks the resting pose: the arm rests 78 degrees down from the bind
+  pose, so cloth that follows `UpperArm` swings down with it and collapses into
+  the body. At radius 0.60 and share 0.85 the idle pose goes from 0 crossings to
+  76.
+- **Parting the front wider during the reach.** The opening turns the panels
+  about the up axis, so a wider swing sweeps cloth *around* the body and into
+  the arms. Measured over both clips at 19, 30, 40, 50, 60 and 75 degrees, the
+  worst frame grows from 374 to 452 and the number of crossing frames never
+  moves off 116. `build_cloak` already records the same effect against the
+  chest; it holds against the arms as well.
+- **A clearance morph fitted to the arms' own swept envelope.** Not the same as
+  `CloakArms`, which pushed the whole garment out over a band 2.5 tall. This one
+  is fitted, pass by pass, to the measured envelope of both clips. It does not
+  converge: after four passes it still leaves 50 of the 122 frames crossing,
+  and by then it moves 542 of the cloak's 733 vertices by up to 0.398. A morph
+  moves a vertex along one fixed path, and the arm passes on both sides of the
+  cloth it has to clear.
 - **Driving `CloakArms`.** At 1 it splits the garment open and the legs show
   through, and the crossings it exists to remove do not move.
 - **Holding the hood's rim all the way down.** Folded, the rim is 0.42 of the

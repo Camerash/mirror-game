@@ -52,17 +52,6 @@ CLASP_RISE = .026
 CLASP_WAIST = .55
 CLASP_SIDES = 7                 # a gem, not a dome
 CLASP_POINT = 3 * math.tau / 4  # with one corner straight down
-OPEN_KEY = 'CloakOpen'
-OPEN_SECTOR = math.radians(55)  # how far round the front the parting reaches
-OPEN_TURN = math.radians(7.5)   # how far the seam's own edge swings, each side
-# How much of that swing each height takes. Nothing above the seam's apex, most
-# where the hands come out, and a little at the hem so the panels do not pinch.
-OPEN_HEIGHTS = [(0.19, .35), (0.80, .60), (1.30, .95), (1.60, 1.0), (1.70, .85),
-                (profile.SPLIT_APEX, 0.0)]
-ARMS_KEY = 'CloakArms'
-ARMS_PUSH = .22
-ARMS_SECTOR = (math.radians(40), math.radians(62))
-ARMS_HEIGHTS = (1.55, 1.25)
 
 
 def row_columns(half, kind):
