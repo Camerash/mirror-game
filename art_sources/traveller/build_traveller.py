@@ -314,6 +314,7 @@ def main():
     print('### posed crossings', check_body.crossings(old_body)[0])
     clear_pose(rig)
     print('### clips    ', build_animation.build(rig, bpy.data.objects['Garment']))
+    print('### walk      %.3f s' % build_animation.build_walk(rig))
     print('### palette  ', dict(check_body.palette_regions()))
     print('### rig bones', len(rig.data.bones),
           [b.name for b in rig.data.bones if 'Arm' in b.name])

@@ -55,6 +55,51 @@ be run at all.
   [the source notes](traveller.md).
 - 241 viewer checks pass, from 228 with 5 failing.
 
+## The walk
+
+One looping second on the same 0 to 60 frame space, authored as
+[`walk_motion.py`](../../art_sources/traveller/walk_motion.py) with the
+generator beside the hood clips in
+[`build_animation.py`](../../art_sources/traveller/build_animation.py).
+[`check_walk.py`](../../art_sources/traveller/check_walk.py) proves it.
+
+- **It loops with no seam.** Frame 0 and frame 60 are the same pose, checked in
+  Blender and again on every exported track in Godot.
+- **The legs clear the cloth at every frame.** They are also nearly invisible:
+  the cloak reaches the ankle, so only the boots show below the hem. The gait
+  reads through the cloak, not the legs, which is why the design asks for three
+  authored cloak deformations rather than a livelier stride.
+- **`Root` is never touched.** Gameplay owns where the character is; the clip
+  only bobs and turns the pelvis in place.
+- **No arm swing**, as line 100 of `GAME_DESIGN.md` asks. The arms are held at
+  the resting pose as a body-relative rotation, so they ride the pelvis instead
+  of counter-moving against it.
+
+### The three cloak deformations
+
+`CloakSide`, `CloakForward` and `CloakTwist` carry no keys in any clip. The
+study viewer drives them from movement and turning and damps them, because the
+one thing a skinned rotation cannot do is lag: a bone turns the cloth with it at
+the same instant, and cloth trails.
+
+Each reads exactly its cap at a weight of 1, so clamping the weight is the whole
+of clamping the deformation and the runtime needs no geometry: **0.0320 at the
+hem** for side and forward, **6.00 degrees** for twist, and **0.0000 above the
+collar**, which is what pins the shoulders.
+
+The driver damps on a 0.18 s half-life, freezes when paused, clears on Reset,
+and cuts any step longer than 0.1 s so a long frame gap cannot be paid back as
+one lurch. All of that is checked.
+
+### Why the deformations are needed at all
+
+The pelvis already reaches the hem, and too well. Measured on this rig, two
+degrees of pelvis lean moves the hem 0.0291 and two degrees of pelvis twist
+moves it 0.0417, against the design's budget of 0.032, while `Spine` and `Chest`
+move it by exactly 0.0000. So the gait itself has to stay near one degree at the
+pelvis, and the travel the walk reads by comes from the morphs, where it can be
+clamped and can lag. The gait's own sway measures 0.0252, inside the cap.
+
 ### Where this departs from the specification above
 
 - **The grip is not at eye height.** Eye height on this head is z 2.73 and the

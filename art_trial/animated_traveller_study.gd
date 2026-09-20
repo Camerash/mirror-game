@@ -4,6 +4,25 @@ extends "res://art_trial/full_traveller_study.gd"
 const BOUNDS_PATH := "res://assets/studies/traveller_bounds.json"
 const HOOD_DOWN := "HoodDown"
 const HOOD_UP := "HoodUp"
+const WALK := "Walk"
+
+## The three cloak deformations GAME_DESIGN.md line 102 asks for. They carry no
+## keys in any clip: the cloth lags the body, and a keyed track cannot lag
+## anything. Each one reads its own cap at a weight of 1, so clamping the weight
+## is the whole of clamping the deformation and this script needs no geometry.
+const DRIFT_SHAPES := ["CloakSide", "CloakForward", "CloakTwist"]
+## Seconds for the cloth to close half the distance to where the body has gone.
+const DRIFT_HALF_LIFE := 0.18
+## The longest step the damping will act on. A long frame gap, a breakpoint or a
+## dragged window must not be paid back as one lurch, so time past this is
+## dropped rather than accumulated.
+const DRIFT_MAX_STEP := 0.1
+## How far each input drives its deformation, at the study's own walking speed
+## and turn rate. Weights are clamped to one, which is the design's cap.
+const DRIFT_PER_SPEED := 1.0
+const DRIFT_PER_TURN := 0.9
+const TURN_NAMES := ["Turn: None", "Turn: Left", "Turn: Right"]
+const TURN_RATES := [0.0, -1.0, 1.0]
 
 var player: AnimationPlayer
 var skeleton: Skeleton3D
@@ -17,6 +36,15 @@ var play_button: Button
 var speed_button: Button
 var seek_slider: HSlider
 var time_label: Label
+var walk_button: Button
+var turn_button: Button
+var drift_label: Label
+var walking := false
+var turn_index := 0
+## Current and wanted weights, as (side, forward, twist).
+var drift := Vector3.ZERO
+var drift_target := Vector3.ZERO
+var drift_shapes: PackedInt32Array = PackedInt32Array()
 
 
 func _ready() -> void:
@@ -35,10 +63,19 @@ func _bind_model() -> void:
 	if player == null or skeleton == null:
 		push_error("Animated traveller needs an AnimationPlayer and Skeleton3D.")
 		return
-	for clip: String in [HOOD_DOWN, HOOD_UP]:
+	for clip: String in [HOOD_DOWN, HOOD_UP, WALK]:
 		if not player.has_animation(clip):
 			push_error("Animated traveller needs " + clip + ".")
 			return
+	# The walk is a cycle. glTF carries no loop flag, so it is set here.
+	player.get_animation(WALK).loop_mode = Animation.LOOP_LINEAR
+	drift_shapes = PackedInt32Array()
+	for name: String in DRIFT_SHAPES:
+		var index := hood.find_blend_shape_by_name(name) if hood != null else -1
+		if index < 0:
+			push_error("Animated traveller needs the " + name + " shape.")
+			return
+		drift_shapes.append(index)
 	player.animation_finished.connect(_animation_finished)
 	_load_animation_bounds()
 
@@ -88,11 +125,86 @@ func _build_controls() -> void:
 	time_label.custom_minimum_size = Vector2(112, 48)
 	time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	controls.add_child(time_label)
+	_button("Walk", func(): set_walking(not walking))
+	walk_button = controls.get_child(-1) as Button
+	_button(TURN_NAMES[0], _cycle_turn)
+	turn_button = controls.get_child(-1) as Button
+	drift_label = Label.new()
+	drift_label.custom_minimum_size = Vector2(176, 48)
+	drift_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	drift_label.tooltip_text = "Cloak side / forward / twist, as driven weights."
+	controls.add_child(drift_label)
+
+
+func set_walking(active: bool) -> void:
+	## The walk and the hood actions are exclusive here. Blending them needs an
+	## AnimationTree, which this review tool deliberately does not have.
+	if player == null or not player.has_animation(WALK):
+		return
+	walking = active
+	if walking:
+		action_active = false
+		player.play(WALK)
+	elif player.current_animation == WALK:
+		player.stop(true)
+		_sample_pose(active_clip, 0.0 if not hood_lowered else player.get_animation(active_clip).length)
+		player.stop(true)
+	_update_playback_controls()
+
+
+func _cycle_turn() -> void:
+	turn_index = (turn_index + 1) % TURN_NAMES.size()
+	if turn_button != null:
+		turn_button.text = TURN_NAMES[turn_index]
+
+
+func drift_inputs() -> Vector2:
+	"""Speed and turn rate the study is asking for, both -1 to 1."""
+	return Vector2(1.0 if walking else 0.0, TURN_RATES[turn_index])
+
+
+func advance_drift(delta: float) -> void:
+	"""Damp the three cloak weights toward what the body is doing.
+
+	Paused means frozen, so nothing moves while the pose is being inspected. A
+	step longer than DRIFT_MAX_STEP is cut rather than carried, which is what
+	stops a long frame gap arriving as one jump.
+	"""
+	var inputs := drift_inputs()
+	drift_target = Vector3(
+		clampf(inputs.y * DRIFT_PER_TURN, -1.0, 1.0),
+		clampf(-inputs.x * DRIFT_PER_SPEED, -1.0, 1.0),
+		clampf(-inputs.y * DRIFT_PER_TURN, -1.0, 1.0))
+	if player != null and not player.is_playing() and not walking:
+		# Frozen: hold the weights where they are.
+		apply_drift()
+		return
+	var step := minf(maxf(delta, 0.0), DRIFT_MAX_STEP)
+	var closed := 1.0 - pow(0.5, step / DRIFT_HALF_LIFE)
+	drift = drift.lerp(drift_target, closed)
+	apply_drift()
+
+
+func apply_drift() -> void:
+	if hood == null or drift_shapes.size() != DRIFT_SHAPES.size():
+		return
+	var weights := [drift.x, drift.y, drift.z]
+	for index: int in drift_shapes.size():
+		hood.set_blend_shape_value(drift_shapes[index],
+			clampf(weights[index], -1.0, 1.0))
+
+
+func clear_drift() -> void:
+	drift = Vector3.ZERO
+	drift_target = Vector3.ZERO
+	apply_drift()
 
 
 func start_action(lowered: bool) -> void:
 	if player == null or action_active or hood_lowered == lowered:
 		return
+	if walking:
+		set_walking(false)
 	active_clip = HOOD_DOWN if lowered else HOOD_UP
 	action_active = true
 	animation_time = 0.0
@@ -182,14 +294,24 @@ func _update_playback_controls() -> void:
 	seek_slider.max_value = duration
 	seek_slider.set_value_no_signal(animation_time)
 	time_label.text = "%.2f / %.2f s" % [animation_time, duration]
+	if walk_button != null:
+		walk_button.text = "Walking" if walking else "Walk"
+	if drift_label != null:
+		drift_label.text = "Cloak %+.2f %+.2f %+.2f" % [drift.x, drift.y, drift.z]
 
 
 func reset_study() -> void:
 	super.reset_study()
 	set_playback_speed(1.0)
+	walking = false
+	turn_index = 0
+	if turn_button != null:
+		turn_button.text = TURN_NAMES[0]
+	clear_drift()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	advance_drift(delta)
 	_update_playback_controls()
 
 
@@ -204,5 +326,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			KEY_I:
 				start_action(false)
+				return
+			KEY_W:
+				set_walking(not walking)
+				return
+			KEY_T:
+				_cycle_turn()
 				return
 	super._unhandled_input(event)

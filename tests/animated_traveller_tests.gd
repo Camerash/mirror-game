@@ -27,6 +27,8 @@ func run() -> void:
 		check_clips(study)
 		await check_playback(study)
 		check_bounds(study)
+		check_walk(study)
+		check_drift(study)
 		check_isolation_and_reset(study)
 	study.free()
 	print("Animated traveller: %d checks, %d failures" % [checks, failures])
@@ -111,8 +113,8 @@ func check_clips(study: Node) -> void:
 			var path := String(clip.track_get_path(track))
 			has_bones = has_bones or clip.track_get_type(track) in [Animation.TYPE_POSITION_3D, Animation.TYPE_ROTATION_3D, Animation.TYPE_SCALE_3D]
 			has_shapes = has_shapes or clip.track_get_type(track) == Animation.TYPE_BLEND_SHAPE
-			for part: String in ["leg", "foot", "toe", "boot", "pelvis", "hip", "thigh", "shin", "root"]:
-				lower_body_fixed = lower_body_fixed and not part in path.to_lower()
+			if _names_lower_body(path):
+				lower_body_fixed = lower_body_fixed and _track_is_still(clip, track)
 		check(has_bones and has_shapes, name + " has bone and garment shape tracks")
 		check(lower_body_fixed, name + " keeps the root, pelvis, legs, and feet fixed")
 		for time: float in [0.0, clip.length]:
@@ -161,6 +163,119 @@ func check_playback(study: Node) -> void:
 	study.player.advance(0.5)
 	study.set_hood_lowered(true)
 	check(not study.player.is_playing() and not study.action_active and study.hood.get_blend_shape_value(study.hood_shape) == 1.0, "The endpoint switch stops motion immediately")
+
+
+func check_walk(study: Node) -> void:
+	var name: String = study.WALK
+	check(study.player.has_animation(name), "The asset has " + name)
+	if not study.player.has_animation(name):
+		return
+	var clip: Animation = study.player.get_animation(name)
+	check(is_equal_approx(clip.length, 1.0), name + " is one second long")
+	check(clip.loop_mode == Animation.LOOP_LINEAR, name + " loops")
+	# The walk is the one clip that must move the lower body.
+	var legs_move := false
+	var shoulders_pinned := true
+	for track: int in clip.get_track_count():
+		var path := String(clip.track_get_path(track))
+		if _names_lower_body(path):
+			legs_move = legs_move or not _track_is_still(clip, track)
+		if "clavicle" in path.to_lower():
+			shoulders_pinned = shoulders_pinned and _track_is_still(clip, track)
+	check(legs_move, name + " drives the legs")
+	check(shoulders_pinned, name + " keeps the shoulders pinned")
+	# It has to start and end on the same pose, or the loop shows a seam.
+	for track: int in clip.get_track_count():
+		var keys := clip.track_get_key_count(track)
+		if keys < 2:
+			continue
+		var first: Variant = clip.track_get_key_value(track, 0)
+		var last: Variant = clip.track_get_key_value(track, keys - 1)
+		if first is Quaternion and last is Quaternion:
+			check(absf((first as Quaternion).dot(last as Quaternion)) > 0.999,
+				name + " loops without a seam on " + String(clip.track_get_path(track)))
+		elif first is Vector3 and last is Vector3:
+			check((first as Vector3).distance_to(last as Vector3) < 0.0005,
+				name + " loops without a seam on " + String(clip.track_get_path(track)))
+
+
+func check_drift(study: Node) -> void:
+	## The three cloak deformations are driven here, not keyed, so what is
+	## checked is the driver: that it damps, freezes, clamps, clears, and does
+	## not pay back a long frame gap as one jump.
+	study.reset_study()
+	check(study.drift == Vector3.ZERO, "Reset clears the cloak deformation")
+	for name: String in study.DRIFT_SHAPES:
+		check(study.hood.find_blend_shape_by_name(name) >= 0,
+			"The garment has the " + name + " shape")
+	study.set_walking(true)
+	study.advance_drift(0.016)
+	var first: Vector3 = study.drift
+	check(first.length() > 0.0, "Walking starts the cloak moving")
+	study.advance_drift(0.016)
+	var second: Vector3 = study.drift
+	check(second.length() > first.length(), "The cloak keeps closing on its target")
+	# A long gap must be cut to the cap, not paid back in full.
+	var before: Vector3 = study.drift
+	study.advance_drift(5.0)
+	var after_gap: Vector3 = study.drift
+	var jumped := (after_gap - before).length()
+	study.drift = before
+	study.advance_drift(study.DRIFT_MAX_STEP)
+	var after_step: Vector3 = study.drift
+	var capped := (after_step - before).length()
+	check(is_equal_approx(jumped, capped),
+		"A long frame gap moves the cloak no further than one capped step")
+	# Settled, every weight stays inside the design's cap of one.
+	for step: int in 200:
+		study.advance_drift(0.016)
+	var settled: Vector3 = study.drift
+	check(absf(settled.x) <= 1.0 and absf(settled.y) <= 1.0
+		and absf(settled.z) <= 1.0, "The cloak weights stay inside their cap")
+	for index: int in study.drift_shapes.size():
+		var value: float = study.hood.get_blend_shape_value(study.drift_shapes[index])
+		check(absf(value) <= 1.0, "The driven " + study.DRIFT_SHAPES[index] + " stays inside its cap")
+	# Turning drives the twist the other way from a straight walk.
+	var straight: float = study.drift.z
+	study.turn_index = 2
+	for step: int in 200:
+		study.advance_drift(0.016)
+	var turned: Vector3 = study.drift
+	check(absf(turned.z - straight) > 0.05, "Turning drives the cloak twist")
+	study.set_walking(false)
+	study.reset_study()
+	check(study.drift == Vector3.ZERO, "Reset clears the cloak deformation again")
+
+
+func _names_lower_body(path: String) -> bool:
+	for part: String in ["leg", "foot", "toe", "boot", "pelvis", "hip", "thigh", "shin", "root"]:
+		if part in path.to_lower():
+			return true
+	return false
+
+
+func _track_is_still(clip: Animation, track: int) -> bool:
+	## The hood clips must not move the lower body. They used to be checked by
+	## banning these bones from a track path at all, which stopped being the
+	## same question once the walk was added: Godot's glTF import gives every
+	## clip a track for every bone any clip animates, so the hood clips now
+	## carry lower-body tracks that hold the rest pose. Holding still is the
+	## property that was always meant, so it is the one measured here.
+	var keys := clip.track_get_key_count(track)
+	if keys < 2:
+		return true
+	var first: Variant = clip.track_get_key_value(track, 0)
+	for key: int in range(1, keys):
+		var value: Variant = clip.track_get_key_value(track, key)
+		if first is Quaternion and value is Quaternion:
+			if absf((first as Quaternion).dot(value as Quaternion)) < 0.999999:
+				return false
+		elif first is Vector3 and value is Vector3:
+			if (first as Vector3).distance_to(value as Vector3) > 0.000001:
+				return false
+		elif first != value:
+			return false
+	return true
 
 
 func check_bounds(study: Node) -> void:

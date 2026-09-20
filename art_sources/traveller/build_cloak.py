@@ -209,7 +209,7 @@ def rebuild(obj):
     set_open_key(obj)
     widen = weld(obj)
     print('###   cloak: merged %d vertices by distance' % widen)
-    return count + (1 if add_arms_key(obj) else 0)
+    return count + (1 if add_arms_key(obj) else 0) + add_drift_keys(obj)
 
 
 def weld(obj, limit=.0008):
@@ -361,6 +361,65 @@ def set_open_key(obj):
                                      rest.x * sin + rest.y * cos, rest.z))
         moved += 1
     return moved
+
+
+# The three cloak deformations `GAME_DESIGN.md` line 102 asks for. They are not
+# keyed in any clip. The viewer drives them from movement and turning with a
+# damped response, which is the one thing a skinned rotation cannot do: cloth
+# lags the body, and a bone turns the cloth with it at the same instant.
+#
+# They are needed even though the pelvis already reaches the hem, and *because*
+# it reaches it too well. Measured on this rig, two degrees of pelvis lean moves
+# the hem 0.0291 and two degrees of pelvis twist moves it 0.0417, against a
+# budget of 0.032, so the gait itself has to stay near one degree. The travel
+# the walk reads by comes from here, where it can be clamped and damped.
+SWAY_KEY = 'CloakSide'
+SURGE_KEY = 'CloakForward'
+TWIST_KEY = 'CloakTwist'
+SWAY = .032                     # GAME_DESIGN.md line 102, world units at the hem
+TWIST = math.radians(6)         # the same line's cap on turn
+# How much of the full travel each height takes. Nothing at the collar, because
+# the design pins the shoulders, and all of it at the hem. Heights ascend
+# because `profile.at` needs them to; the shares fall.
+DRAPE = [(0.19, 1.0), (0.50, .92), (0.90, .70), (1.30, .42), (1.60, .18),
+         (1.90, 0.0)]
+
+
+def add_drift_keys(obj):
+    """The three damped deformations, as shape keys that nothing drives here.
+
+    Each one reads exactly its cap at a value of 1, so the viewer can clamp by
+    clamping the weight and does not have to know the geometry. Side and forward
+    move the cloth; twist turns it about the body's own axis, which is why it is
+    written as a rotation rather than as an offset along y.
+    """
+    blocks = obj.data.shape_keys.key_blocks
+    basis = blocks[0]
+    for name in (SWAY_KEY, SURGE_KEY, TWIST_KEY):
+        if name in blocks:
+            obj.shape_key_remove(blocks[name])
+    made = 0
+    for name in (SWAY_KEY, SURGE_KEY, TWIST_KEY):
+        key = obj.shape_key_add(name=name, from_mix=False)
+        key.value = 0.0
+        for index in range(len(basis.data)):
+            rest = basis.data[index].co
+            share = profile.at(DRAPE, rest.z)
+            if share <= 0:
+                key.data[index].co = rest
+                continue
+            if name == SWAY_KEY:
+                moved = rest + Vector((SWAY * share, 0, 0))
+            elif name == SURGE_KEY:
+                moved = rest + Vector((0, -SWAY * share, 0))
+            else:
+                angle = TWIST * share
+                cos, sin = math.cos(angle), math.sin(angle)
+                moved = Vector((rest.x * cos - rest.y * sin,
+                                rest.x * sin + rest.y * cos, rest.z))
+            key.data[index].co = moved
+        made += 1
+    return made
 
 
 def barycentric(point, a, b, c):

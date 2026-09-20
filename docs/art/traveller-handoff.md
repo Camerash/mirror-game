@@ -13,12 +13,15 @@ upstream and rebuilds everything from Python.
 
 - The mesh is accepted at tag **`traveller-mesh-v1`** (`46a632c`).
 - The two hood clips are authored and pass. 4,992 triangles, 1.000 s each.
+- **The walk is authored.** One looping second, and the three cloak
+  deformations the design asks for, driven and damped in the study viewer.
 - `assets/studies/traveller.glb` is the export. Only the trial scene reads it.
   **Gameplay still loads `assets/character/ceramic_traveller.glb`.**
 
 | check | result |
 | --- | --- |
-| `animated_traveller_tests` | 241 checks, 0 failures |
+| `animated_traveller_tests` | 281 checks, 0 failures |
+| `check_walk` | 4 of 4 pass |
 | `drawing` / `full` / `painted` / `ceramic` | 90 / 92 / 137 / 14, all 0 failures |
 | `run_tests` (gameplay) | 0 failures. The check count varies run to run, 521 to 524; this is not new |
 | Export | PASS, no missing animation targets |
@@ -38,6 +41,7 @@ rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/tr
 rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/export.py
 rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/bounds.py
 rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/check_clearance.py
+rtk /Applications/Blender.app/Contents/MacOS/Blender --background art_sources/traveller/traveller.blend --python art_sources/traveller/check_walk.py
 rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --editor --quit
 rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --script tests/animated_traveller_tests.gd
 rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --script tests/run_tests.gd
@@ -59,11 +63,13 @@ Keep that split. It is what removed 336 lines of correction code.
 | --- | --- |
 | [`cloak_profile.py`](../../art_sources/traveller/cloak_profile.py) | the cloak's shape as fitted curves |
 | [`build_cloak.py`](../../art_sources/traveller/build_cloak.py) | turns those curves into the mesh |
-| [`hood_motion.py`](../../art_sources/traveller/hood_motion.py) | the clips as data: phases, wrist path, tilts, morph weights |
+| [`hood_motion.py`](../../art_sources/traveller/hood_motion.py) | the hood clips as data: phases, wrist path, tilts, morph weights |
+| [`walk_motion.py`](../../art_sources/traveller/walk_motion.py) | the walk cycle as data: leg angles, pelvis channels, counter-turns |
 | [`build_animation.py`](../../art_sources/traveller/build_animation.py) | turns that into actions and NLA tracks |
 | [`skin_body.py`](../../art_sources/traveller/skin_body.py) | weights for the body and the cloak |
 | [`bounds.py`](../../art_sources/traveller/bounds.py) | the sampled culling box the viewer needs |
 | [`check_clearance.py`](../../art_sources/traveller/check_clearance.py) | arm against garment, at every frame of both clips |
+| [`check_walk.py`](../../art_sources/traveller/check_walk.py) | the walk: it loops, it clears the cloth, it holds the design's caps |
 
 Two rules that hold the whole thing together:
 
@@ -93,11 +99,20 @@ Two rules that hold the whole thing together:
    the cape enough radius to hold a raised arm, give it armholes or end it above
    the elbow, or drop the two-handed grip and move the hood without the hands.
    The user owns that choice.
-2. **The gait.** `GAME_DESIGN.md` line 102 asks for a restrained walk with three
-   authored cloak deformations, side, forward and twist, damped at runtime.
-   Nothing of this exists. The cloak is now skinned along the spine, so a body
-   lean already reaches it; measure what the skin gives you before you author a
-   morph for it.
+2. **The gait is authored, but only the study drives it.** One looping second
+   on `Walk`, plus `CloakSide`, `CloakForward` and `CloakTwist`, damped in
+   `art_trial/animated_traveller_study.gd`. Gameplay drives none of it, because
+   gameplay still loads the old character; see the next item.
+
+   Two numbers to keep in mind if you change it. **Only `Pelvis` reaches the
+   cloak's hem** - `Spine` and `Chest` move the waist and leave the hem at
+   exactly 0.0000, because `skin_body.cloak` clamps the lower bands to
+   `Pelvis`. And **the pelvis over-drives the hem**: two degrees of lean moves
+   it 0.0291 against a budget of 0.032, and two degrees of twist moves it
+   0.0417, which is already over. That is why the pelvis angles in
+   `walk_motion.py` are near one degree. `check_walk.py` measures the gait's
+   own hem sway against the cap, so it will tell you if you push them.
+
 3. **Gameplay still uses the old character.** `world/character_visual.gd` line 5
    loads `ceramic_traveller.glb`, which has no skin and no clips, and binds by
    node name at lines 22 to 24, with feet and hem posed from code at lines 58 to

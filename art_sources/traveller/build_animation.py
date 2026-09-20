@@ -1,4 +1,4 @@
-"""Author the two hood clips on the single source.
+"""Author the clips on the single source: the two hood actions and the walk.
 
 The clips this replaces were inherited and had stopped meaning anything: 2.0 s
 against a viewer that expects 1.0 s, keys on twelve bones of which two no longer
@@ -24,6 +24,7 @@ import bpy
 from mathutils import Matrix, Vector
 
 import hood_motion as motion
+import walk_motion as walk
 
 ARM = ['UpperArm.%s', 'UpperArm.%s.001', 'Forearm.%s', 'Forearm.%s.001']
 WRIST = ['Hand.%s', 'Fingers.%s']
@@ -174,6 +175,92 @@ def pose_frame(rig, path, frame, rests):
         here = target if side == 'R' else Vector((-target.x, target.y, target.z))
         worst = max(worst, pose_arm(rig, side, here))
     return worst
+
+
+# The axes a walk turns about, in world terms. The character faces -y, so a leg
+# swings about world x and the body twists about world z.
+SIDEWAYS = Vector((1, 0, 0))
+UPRIGHT = Vector((0, 0, 1))
+FORWARD = Vector((0, -1, 0))
+LEGS = ['Thigh.%s', 'Shin.%s', 'Foot.%s']
+WALK_BONES = ['Pelvis', 'Chest', 'Head'] + [t % s for s in ('L', 'R')
+                                            for t in LEGS + ['UpperArm.%s']]
+
+
+def local_axis(rig, name, world_axis):
+    """`world_axis` written in this bone's own rest space.
+
+    A pose rotation is read in the bone's space, and these bones do not share an
+    orientation: the spine points up, a thigh points down, an arm points out. So
+    the axis is converted rather than named, and 'twist about z' means the same
+    thing on every one of them. Converting from the rest matrix is right for a
+    chain as well: once a parent turns, the child's axes turn with it, which is
+    what makes a knee bend against its own thigh.
+    """
+    matrix = rig.data.bones[name].matrix_local.to_3x3().inverted()
+    return (matrix @ world_axis).normalized()
+
+
+def turn(rig, name, angle, world_axis):
+    """Turn one bone about a world axis, replacing any turn it already has."""
+    rig.pose.bones[name].rotation_quaternion = Matrix.Rotation(
+        angle, 3, local_axis(rig, name, world_axis)).to_quaternion()
+
+
+def pose_idle_arms(rig):
+    """The resting arms, as a body-relative pose.
+
+    `idle_wrist` gives the same pose as a world point, which is right for the
+    hood clips because they aim the arm at world targets. It is wrong here: the
+    pelvis moves under the walk, and an arm aimed at a fixed world point would
+    counter-move against its own body. A straight arm dropped by the idle angle
+    is a chord at full reach, so the solver's answer for it is a turn of zero on
+    every joint, which is one rotation on `UpperArm` and nothing below it.
+    """
+    for side in ('L', 'R'):
+        sign = 1 if side == 'R' else -1
+        turn(rig, 'UpperArm.' + side,
+             math.radians(motion.IDLE_ARM_ANGLE * sign), Vector((0, 1, 0)))
+
+
+def pose_walk(rig, frame):
+    """The whole body at one frame of the walk."""
+    clear_pose(rig)
+    pelvis = rig.pose.bones['Pelvis']
+    # Two turns on one bone, so they are composed rather than assigned.
+    twist = Matrix.Rotation(walk.tilt(walk.PELVIS_TWIST, frame), 3,
+                            local_axis(rig, 'Pelvis', UPRIGHT)).to_quaternion()
+    lean = Matrix.Rotation(walk.tilt(walk.PELVIS_SIDE, frame), 3,
+                           local_axis(rig, 'Pelvis', FORWARD)).to_quaternion()
+    pelvis.rotation_quaternion = twist @ lean
+    pelvis.location = local_axis(rig, 'Pelvis', UPRIGHT) * walk.at(
+        walk.PELVIS_RISE, frame)
+    turn(rig, 'Chest', walk.tilt(walk.CHEST_TWIST, frame), UPRIGHT)
+    turn(rig, 'Head', walk.tilt(walk.HEAD_TWIST, frame), UPRIGHT)
+    for side in ('L', 'R'):
+        for template, angle in zip(LEGS, walk.leg(frame, side)):
+            turn(rig, template % side, math.radians(angle), SIDEWAYS)
+    pose_idle_arms(rig)
+    bpy.context.view_layer.update()
+
+
+def build_walk(rig):
+    """One looping walk cycle, as a bone action under its own NLA track.
+
+    Bones only. The three cloak deformations the design asks for are driven at
+    runtime from movement and turning, not keyed here, so that they can be
+    damped and clamped against what the character is actually doing.
+    """
+    action = action_for(rig, 'Walk.Rig')
+    for frame in range(walk.LAST + 1):
+        pose_walk(rig, frame)
+        for name in WALK_BONES:
+            rig.pose.bones[name].keyframe_insert('rotation_quaternion', frame=frame)
+        rig.pose.bones['Pelvis'].keyframe_insert('location', frame=frame)
+    linear(action)
+    track(rig, action, 'Walk')
+    clear_pose(rig)
+    return walk.LAST / walk.FPS
 
 
 def action_for(owner, name):
