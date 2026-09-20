@@ -3,15 +3,8 @@
 The study writes these into each `MeshInstance3D.custom_aabb` and fits its camera
 to the global box, so the camera cannot drift while a clip plays and a skinned
 mesh cannot be culled when its pose leaves the rest box. The test checks every
-sampled vertex against them.
-
-They are sampled at every half frame, because the test steps 0.125 s and a clip
-is 60 frames, so it lands on 7.5, 22.5, 37.5 and 52.5 as well as on whole
-frames. Whole frames are not enough: a vertex does not move linearly between
-two bone rotations, so it can leave the box that two neighbouring frames span.
-That went unnoticed while the arms stayed near the body and the 0.002 margin
-covered the error. It stopped being covered when the arms began to reach
-outside the cape.
+sampled vertex against them, so they are sampled here at every frame, which is
+finer than the test's own step.
 
 Written in Godot's axes, not Blender's: the exporter turns Z-up into Y-up, so
 (x, y, z) here is (x, z, -y) there.
@@ -50,8 +43,8 @@ def sample():
     boxes = {}
     for clip in CLIPS:
         bind(clip)
-        for step in range(2 * LAST + 1):
-            bpy.context.scene.frame_set(step // 2, subframe=.5 * (step % 2))
+        for frame in range(LAST + 1):
+            bpy.context.scene.frame_set(frame)
             bpy.context.view_layer.update()
             depsgraph = bpy.context.evaluated_depsgraph_get()
             for name in PARTS:

@@ -53,26 +53,12 @@ def surface(obj, keep=None):
     return points, triangles
 
 
-# Cloth above this height in the garment's own rest shape is the hood. The two
-# are worth separating: a hole in the cape can clear the cape, and only the
-# hood's own fold can clear the hood.
-HOOD_REST_Z = 2.20
-
-
 def crossings(body, garment, keep):
-    """How many arm triangles meet cloth, split into cape and hood."""
     points, triangles = surface(body, keep)
     cloth_points, cloth_triangles = surface(garment)
     arms = BVHTree.FromPolygons(points, triangles, all_triangles=True)
     cloth = BVHTree.FromPolygons(cloth_points, cloth_triangles, all_triangles=True)
-    rest = garment.data.shape_keys.key_blocks[0].data
-    cape = hood = 0
-    for _, index in arms.overlap(cloth):
-        if max(rest[i].co.z for i in cloth_triangles[index]) > HOOD_REST_Z:
-            hood += 1
-        else:
-            cape += 1
-    return cape, hood
+    return len(arms.overlap(cloth))
 
 
 def clip_counts(rig, body, garment, keep, phases, path, rests):
@@ -98,26 +84,20 @@ def main():
     keep = arm_vertices(body)
     rests = {'R': anim.idle_wrist(rig, 'R')}
     print('### arm vertices %d' % len(keep))
-    failures = {'cape': 0, 'hood': 0}
+    failures = 0
     for name, (phases, path) in anim.CLIPS.items():
         counts = clip_counts(rig, body, garment, keep, phases, path, rests)
-        for which, column in (('cape', 0), ('hood', 1)):
-            bad = [f for f, c in enumerate(counts) if c[column]]
-            failures[which] += len(bad)
-            if not bad:
-                print('### %s %s: clear at every frame' % (name, which))
-                continue
-            worst = max(c[column] for c in counts)
-            print('### %s %s: %d of %d frames cross, worst %d at frame %d'
-                  % (name, which, len(bad), len(counts), worst,
-                     [c[column] for c in counts].index(worst)))
-            print('    frames %s'
-                  % ' '.join('%d:%d' % (f, counts[f][column]) for f in bad))
+        bad = [f for f, c in enumerate(counts) if c]
+        worst = max(counts)
+        failures += len(bad)
+        print('### %s: %d of %d frames cross, worst %d at frame %d'
+              % (name, len(bad), len(counts), worst, counts.index(worst)))
+        if bad:
+            print('    frames %s' % ' '.join('%d:%d' % (f, counts[f]) for f in bad))
     anim.clear_pose(rig)
     for block in garment.data.shape_keys.key_blocks[1:]:
         block.value = 0.0
-    print('### arm crossing frames: cape %d, hood %d  (both must be 0)'
-          % (failures['cape'], failures['hood']))
+    print('### arm/garment crossing frames: %d  (must be 0)' % failures)
 
 
 if __name__ == '__main__':

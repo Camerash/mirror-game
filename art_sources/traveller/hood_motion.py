@@ -39,31 +39,31 @@ UP_PHASES = ((0, 'HoodLowered'), (12, 'HoodLowered'), (15, 'HoodSettle'),
              (17, 'HoodTurnLow'), (19, 'HoodTurnHigh'), (21, 'HoodBack'),
              (31, 'HoodClear'), (39, 'HoodLift'), (45, 'Basis'), (60, 'Basis'))
 
-# Where the right wrist goes, by frame. The left is the mirror.
-#
-# These are wrist points, not grips. The wrist sits *outboard* of the cloth it
-# holds, by about the width of a hand. It used to sit 0.12 back toward the
-# shoulder instead, which put it 0.03 inside the hood's own surface: the hand
-# and the forearm then held the rim from inside the cloth, and that is what the
-# crossings above z 2.1 were. The grip is on the rim's own edge, where the face
-# opening ends, rather than on the cloth past it.
+# Where the right wrist goes, by frame. The left is the mirror. These are wrist
+# points, not grips: each one is its rim point pulled 0.12 back toward the
+# shoulder, which is where the wrist sits when the palm is on the cloth.
 #
 # Frame 0 and frame 60 are left out. The clip starts and ends at the idle pose,
 # and `build_animation` fills those two frames from the rig itself rather than
 # from a number written here that could drift away from it.
-RAISED = Vector((0.310, -0.537, 2.150))     # the grip, outboard of the rim, 0.89 of reach
-SWEPT = Vector((0.467, -0.467, 2.200))      # carried out and back, 0.88
-LOOSE = Vector((0.320, -0.554, 2.000))      # where the hand leaves the cloth, 0.84
-EMERGE = Vector((0.537, -0.310, 1.750))     # out through the armhole, at the side, 0.62
+RAISED = Vector((0.309, -0.313, 2.321))     # on the raised hood's rim, 0.81 of reach
+SWEPT = Vector((0.452, -0.330, 2.285))      # carried out and back, 0.85
+LOOSE = Vector((0.470, -0.300, 2.120))      # where the hand leaves the cloth, 0.70
+THROUGH = Vector((0.150, -0.520, 1.640))    # clear of the seam, in front of the chest
 
-# The elbow lifts away from the body, forward and a little down, so the arm
-# curves outward instead of folding across the chest. Pushing it further out was
-# measured and is worse: out is where the hood's cowl is widest, so an elbow
-# carried out rises into the cowl instead of clearing it.
-BULGE = Vector((0.80, -0.50, -0.35)).normalized()
+# The hands do not follow the hood all the way down. Folded, its rim sits 0.42 of
+# the arm's reach from the shoulder, and no arc of one curvature reaches that far
+# in without coiling: at that range the arm would have to turn 68 degrees at
+# every joint, which is a scroll and not an arm. So the hands take the rim back
+# and outward, let go while they are still comfortable, and the hood finishes
+# folding on its own. That is what the design's release-and-settle phase is for,
+# and it is how a hood is actually pushed back.
+DOWN_WRIST = ((4, THROUGH), (CONTACT, RAISED), (26, SWEPT), (38, LOOSE), (52, THROUGH))
+UP_WRIST = ((4, THROUGH), (CONTACT, LOOSE), (26, SWEPT), (SETTLED, RAISED), (52, THROUGH))
 
-DOWN_WRIST = ((4, EMERGE), (CONTACT, RAISED), (26, SWEPT), (38, LOOSE), (52, EMERGE))
-UP_WRIST = ((4, EMERGE), (CONTACT, LOOSE), (26, SWEPT), (SETTLED, RAISED), (52, EMERGE))
+# The elbow lifts away from the body and a little forward, so the arm curves
+# outward instead of folding across the chest.
+BULGE = Vector((0.55, -0.45, -0.70)).normalized()
 
 # Small body rotations, in degrees, by frame. The design caps the head at 4 and
 # the chest at 2; these stay inside that. The chest leads the reach and the head

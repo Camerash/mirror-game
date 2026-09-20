@@ -11,9 +11,8 @@ The character has one source: [`art_sources/traveller/`](../../art_sources/trave
 It opens `art_sources/traveller_animated/traveller_animated.blend` as its mesh
 upstream and rebuilds everything from Python.
 
-- The mesh was accepted at tag **`traveller-mesh-v1`** (`46a632c`). The cape
-  has since gained armholes, so the tag no longer describes it.
-- The two hood clips are authored and pass. 5,072 triangles, 1.000 s each.
+- The mesh is accepted at tag **`traveller-mesh-v1`** (`46a632c`).
+- The two hood clips are authored and pass. 4,992 triangles, 1.000 s each.
 - `assets/studies/traveller.glb` is the export. Only the trial scene reads it.
   **Gameplay still loads `assets/character/ceramic_traveller.glb`.**
 
@@ -25,8 +24,8 @@ upstream and rebuilds everything from Python.
 | Export | PASS, no missing animation targets |
 | Wrist on its authored path, both clips | error 0.0000 at every frame |
 | Hem travel under a 2 degree chest turn | 0.0000 |
-| Cloak | 1,466 triangles, 0 ngons, sharpest fold 45.6 degrees |
-| `check_clearance` | Cape clear at every frame. Lowered hood crosses on 31 of 122 |
+| Cloak | 1,386 triangles, 0 ngons, sharpest fold 39.9 degrees |
+| `check_clearance` | **FAIL.** Arms cross the cloak on 58 of 61 frames, both clips |
 
 ## How to build and prove a change
 
@@ -78,20 +77,22 @@ Two rules that hold the whole thing together:
 
 ## Open work, most useful first
 
-1. **The lowered hood crosses the arms**, on 31 of the 122 frames. Prove any
-   change with `check_clearance.py`, which names the cloth in each crossing.
+1. **The arms cross the cloak, and the user has rejected it.** Prove any change
+   with `check_clearance.py`. It is 78 to 374 triangle pairs on 58 of the 61
+   frames of each clip, both clips.
 
-   The cape is done and clear. Lowered, 229 of the hood's 312 vertices fall
-   into the arms' band at z 1.60 to 2.10 and wrap from 29 degrees off the front
-   round to the back, while the armholes there run 30 to 120. The folded hood
-   covers the holes, so the arms leave underneath it.
+   The cause is the garment, not the motion. The cape is a closed cone fitted to
+   the body with 0.066 of clearance at the shoulder and no armhole. A raised arm
+   has to leave through the wall, and the wall is continuous: crossings start 8
+   degrees above the idle pose, and swept over azimuth, elevation and reach, no
+   reachable wrist target is clear. The floor is 72 to 94 pairs at every raised
+   pose, and it is always the upper arm against the cape at z 1.76 to 2.06.
 
-   Two ways out. Fold the hood behind the holes, which also reads closer to
-   `GAME_DESIGN.md`'s "broad, flat folds across the upper back" than 29 degrees
-   off the front does; or add the clearance target the animation notes already
-   allow, driven only while the hands pass. The first changes an accepted
-   endpoint and the second adds a tenth morph. The user owns that choice.
-
+   All four mechanisms that leave the resting shape alone are measured and
+   failed; they are in the list below. What is left changes the garment: give
+   the cape enough radius to hold a raised arm, give it armholes or end it above
+   the elbow, or drop the two-handed grip and move the hood without the hands.
+   The user owns that choice.
 2. **The gait.** `GAME_DESIGN.md` line 102 asks for a restrained walk with three
    authored cloak deformations, side, forward and twist, damped at runtime.
    Nothing of this exists. The cloak is now skinned along the spine, so a body
@@ -149,6 +150,26 @@ Do not repeat these. Each cost real time.
   worst frame grows from 374 to 452 and the number of crossing frames never
   moves off 116. `build_cloak` already records the same effect against the
   chest; it holds against the arms as well.
+- **Cutting armholes in the cape.** Built, measured and **rejected on the
+  look**, at `4742501` and `adaf41e`, both reverted. It *worked*: the cape came
+  out clear at every frame of both clips, with the wrist path re-routed through
+  the corridor that measures clear and the grip moved outboard of the hood's
+  lower rim. It is the only thing tried that cleared the cape.
+
+  It was rejected because of what it costs to look at. The hole cannot be
+  small: the arm is anchored 0.282 out on a cape of radius 0.47, so near the
+  shoulder it subtends a wide angle, and the hole has to run from 30 to 120
+  degrees off the front at shoulder height. At that height the cape is then a
+  front bib and a back panel, which reads from the side as an open-sided
+  garment rather than a cloak.
+
+  It also did not finish the job. Lowered, 229 of the hood's 312 vertices fall
+  into the arms' own band at z 1.60 to 2.10 and wrap from 29 degrees off the
+  front round to the back, so the folded hood covers the holes and the arms
+  still crossed it on 31 of the 122 frames. Clearing that needed either a
+  re-authored `HoodLowered` or a tenth morph.
+
+  Do not rebuild this without the user asking for it by name.
 - **A clearance morph fitted to the arms' own swept envelope.** Not the same as
   `CloakArms`, which pushed the whole garment out over a band 2.5 tall. This one
   is fitted, pass by pass, to the measured envelope of both clips. It does not

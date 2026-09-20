@@ -79,73 +79,9 @@ RIM = [(FACE_APEX, 0.419), (1.96, 0.397), (2.04, 0.371), (2.11, 0.355),
 # because the space behind it is 0.22 deep at the chest and 0.57 at the legs, so
 # a slot this narrow lets in almost no light and the near edge hides it from any
 # angle but head on.
-# The split runs to the hood's own apex, so the front is one opening from the
-# hem to the crown and closes only on the point the gem covers. It used to stop
-# at 1.74 and leave 0.14 of continuous cloth between the two apexes. That band
-# sits inside the armholes' own height range, and a row there would have the
-# front shut and the armholes open, which is a third column layout for one row
-# of the mesh. Running the split through removes that row.
-#
-# The extra height costs nothing at rest. Its width there falls from 0.005 to
-# zero, which is narrower than the seam below it, and the gem covers all of it.
-SPLIT_APEX = FACE_APEX
+SPLIT_APEX = 1.74
 SPLIT = [(0.19, .020), (0.50, .018), (0.90, .015), (1.30, .012), (1.60, .009),
-         (1.70, .006), (1.74, .005), (1.80, .004), (1.86, .002),
-         (SPLIT_APEX, 0.0)]
-
-
-# The armholes. The cape is a closed cone fitted to the body with 0.066 of
-# clearance at the shoulder, so a lifted arm had to leave through the wall and
-# the wall was continuous. Measured over both clips, the arms crossed the cloth
-# on 58 of the 61 frames of each clip, and every fix that left the cape closed
-# failed: see the handoff. The arm leaves through a hole instead, which is what
-# a cloak with arm slits does.
-#
-# The hole is sized off the arm, not guessed. The arm's own axis leaves the cape
-# between z 1.60 and 2.00, at 23 to 70 degrees from the front, and it slants:
-# low and forward at the start of the reach, high and to the side at the grip.
-# `ARM_HALF` adds the sleeve's own radius to that, so the cloth clears the arm
-# and not only its centre line.
-#
-# The hole closes on a point at each end, the same way the front opening does.
-# That is what keeps the column spread continuous from row to row: at an apex
-# the two edges meet, share one vertex, and the rows above and below carry the
-# same column count. Outside the hole `ARM_SEAM` carries on as the line where
-# those two columns sit together.
-ARM_LOW, ARM_HIGH = 1.28, 2.26
-ARM_SEAM = [(0.19, 60.0), (ARM_LOW, 62.0), (1.44, 61.0), (1.60, 64.0),
-            (1.68, 72.0), (1.76, 74.0), (1.84, 75.0), (1.92, 76.0),
-            (2.00, 77.0), (2.08, 80.0), (2.145, 86.0), (2.18, 90.0),
-            (ARM_HIGH, 90.0), (3.28, 90.0)]
-ARM_HALF = [(ARM_LOW, 0.0), (1.36, 30.0), (1.44, 30.0), (1.60, 36.0),
-            (1.68, 43.0), (1.76, 44.0), (1.84, 45.0), (1.92, 45.0),
-            (2.00, 43.0), (2.08, 42.0), (2.145, 38.0), (2.18, 32.0),
-            (ARM_HIGH, 0.0)]
-
-
-def arm_seam(z):
-    """Where the armhole sits, as an angle from the front."""
-    return math.radians(at(ARM_SEAM, z))
-
-
-def arm_half(z):
-    """Half the armhole's angle at this height. 0 above and below the hole."""
-    if z <= ARM_LOW or z >= ARM_HIGH:
-        return 0.0
-    return math.radians(at(ARM_HALF, z))
-
-
-def openings(z):
-    """Every opening this row has, as (centre angle, half angle).
-
-    The front one, then the two armholes. An opening of zero half angle is a
-    closed one: its two edges meet on a point and the row carries them as one
-    vertex. Every row reports all three, so the column spread has the same shape
-    at every height and the cells line up from row to row.
-    """
-    seam, half = arm_seam(z), arm_half(z)
-    return [(FRONT, opening_half(z)),
-            (FRONT + seam, half), (FRONT - seam, half)]
+         (1.70, .006), (SPLIT_APEX, 0.0)]
 
 
 def at(keys, x):

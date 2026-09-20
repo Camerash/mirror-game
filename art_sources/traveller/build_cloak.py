@@ -31,13 +31,9 @@ COLUMNS = 24
 FRONT = profile.FRONT
 # Heights above the border. Close together where a profile turns: the collar, the
 # hood's throat, its rim and its crown.
-ROWS = [0.50, 0.72, 0.95, 1.18, 1.28, 1.36, 1.40, 1.46, 1.58, 1.70, 1.74, 1.80, 1.88, 1.96,
-        2.04, 2.11, 2.145, 2.18, 2.26, 2.36, 2.48, 2.62, 2.76, 2.88, 2.97, 3.03,
+ROWS = [0.50, 0.72, 0.95, 1.18, 1.40, 1.58, 1.70, 1.74, 1.80, 1.88, 1.96, 2.04,
+        2.11, 2.145, 2.18, 2.26, 2.36, 2.48, 2.62, 2.76, 2.88, 2.97, 3.03,
         3.065, 3.09, 3.15, 3.21, 3.26]
-# How the columns divide between the cloth the armholes leave: this many on each
-# front panel and the rest around the back. Chosen so the cells stay near even
-# at the hole's widest, where the panels hold 24 degrees and the back 200.
-PANEL_COLUMNS = 3
 HEM_LIFT = .002
 # What an opening does to a row. SHUT is cloth all the way round. OPEN is a row
 # the opening crosses. APEX is the height where it closes on a point, which is
@@ -58,14 +54,7 @@ CLASP_SIDES = 7                 # a gem, not a dome
 CLASP_POINT = 3 * math.tau / 4  # with one corner straight down
 
 
-def spread(lo, hi, count):
-    """`count` angles from `lo` to `hi`, both ends included."""
-    if count < 2:
-        return [lo]
-    return [lo + step * (hi - lo) / (count - 1) for step in range(count)]
-
-
-def row_columns(half, kind, z=None):
+def row_columns(half, kind):
     """Where this row's columns sit, as angles.
 
     A shut row spreads them evenly round the whole ring. A row an opening
@@ -77,50 +66,11 @@ def row_columns(half, kind, z=None):
     opening closes on a point. Treating an apex as a shut row instead leaves the
     columns 15 degrees apart there, so the opening bottoms out on a flat edge
     that is off centre by half a cell.
-
-    Inside the armholes' own height range the row has three pieces of cloth
-    rather than one, so the columns are dealt out to each piece instead: a front
-    panel, the back, and the other front panel. The count per piece is fixed, so
-    a column means the same place on the garment at every height and the cells
-    line up from row to row. Outside that range the armholes are shut and the
-    row spreads evenly again, which keeps the rest of the cape exactly as it was.
     """
     if kind is SHUT:
         return [FRONT + step * math.tau / COLUMNS for step in range(COLUMNS)]
-    if z is None or not in_arm_band(z):
-        span = math.tau - 2 * half
-        return [FRONT + half + step * span / (COLUMNS - 1) for step in range(COLUMNS)]
-    seam, arm = profile.arm_seam(z), profile.arm_half(z)
-    back = COLUMNS - 2 * PANEL_COLUMNS
-    return (spread(FRONT + half, FRONT + seam - arm, PANEL_COLUMNS)
-            + spread(FRONT + seam + arm, FRONT + math.tau - seam - arm, back)
-            + spread(FRONT + math.tau - seam + arm, FRONT + math.tau - half,
-                     PANEL_COLUMNS))
-
-
-def in_arm_band(z):
-    """Is this row inside the armholes' own height range?
-
-    The two ends count as inside. The hole has no width there, so the row lays
-    its columns out the same way as the rows above and below it and the hole
-    closes on a point.
-    """
-    return profile.ARM_LOW <= z <= profile.ARM_HIGH
-
-
-def row_gaps(z, half):
-    """The columns this row has no cloth after, so `write` leaves those out.
-
-    The front opening sits between the last column and the first. Each armhole
-    sits at the end of a front panel.
-    """
-    gaps = set()
-    if half > 0:
-        gaps.add(COLUMNS - 1)
-    if profile.arm_half(z) > 0:
-        gaps.add(PANEL_COLUMNS - 1)
-        gaps.add(COLUMNS - PANEL_COLUMNS - 1)
-    return gaps
+    span = math.tau - 2 * half
+    return [FRONT + half + step * span / (COLUMNS - 1) for step in range(COLUMNS)]
 
 
 def place(z, angle, kind, edge):
@@ -146,26 +96,24 @@ def row_kinds(heights):
 
 
 def build_grid():
-    """Every row, from the border up to the crown, and where each row is cut."""
+    """Every row, from the border up to the crown."""
     # Both border rows share one spread of columns. Distributing each at its own
     # height gives them slightly different angles, and the band then runs
     # anywhere from 0.016 to 0.230 tall instead of an even 0.145.
     settle = sum(profile.HEM) / len(profile.HEM) + HEM_LIFT
     heights = [settle, settle] + list(ROWS)
     halves, kinds = row_kinds(heights)
-    grid, gaps = [], []
-    angles = row_columns(halves[0], kinds[0], heights[0])
+    grid = []
+    angles = row_columns(halves[0], kinds[0])
     for lift in (HEM_LIFT, profile.TRIM_HEIGHT):
         grid.append([place(profile.hem_at(angle) + lift, angle, kinds[0],
                            index in (0, COLUMNS - 1))
                      for index, angle in enumerate(angles)])
-        gaps.append(row_gaps(heights[0], halves[0]))
     for index, z in enumerate(ROWS, start=2):
-        angles = row_columns(halves[index], kinds[index], z)
+        angles = row_columns(halves[index], kinds[index])
         grid.append([place(z, angle, kinds[index], column in (0, COLUMNS - 1))
                      for column, angle in enumerate(angles)])
-        gaps.append(row_gaps(z, halves[index]))
-    return grid, gaps
+    return grid, kinds
 
 
 def trim_value(row, column):
@@ -174,26 +122,16 @@ def trim_value(row, column):
     return (CLOTH_UV[0], TRIM_FOOT if row == 0 else TRIM_TOP)
 
 
-def write(grid, gaps, name='CloakShell'):
+def write(grid, kinds, name='CloakShell'):
     mesh = bpy.data.meshes.new(name)
     work = bmesh.new()
     verts = [[work.verts.new(point) for point in row] for row in grid]
-    # An opening closes on one vertex: at its apex the two edges sit on the same
-    # angle, so they share a vertex and the cells around them meet in a fan. The
-    # front opening and both armholes all close this way, so the rule is read
-    # off the positions rather than written down once per opening.
-    for row in verts:
-        for column in range(COLUMNS):
-            following = (column + 1) % COLUMNS
-            if row[column] is row[following]:
-                continue
-            if (row[column].co - row[following].co).length > 1e-6:
-                continue
-            dead = row[following]
-            work.verts.remove(dead)
-            for index in range(COLUMNS):
-                if row[index] is dead:
-                    row[index] = row[column]
+    # An apex closes on one vertex: its first and last column sit on the same
+    # angle, so they share a vertex and the cells around them meet in a fan.
+    for row, kind in zip(verts, kinds):
+        if kind is APEX:
+            work.verts.remove(row[COLUMNS - 1])
+            row[COLUMNS - 1] = row[0]
     work.verts.index_update()
     uv_layer = work.loops.layers.uv.verify()
     faces, border = [], set()
@@ -207,22 +145,29 @@ def write(grid, gaps, name='CloakShell'):
                 kept.append(corner)
         return work.faces.new(kept) if len(kept) > 2 else None
 
-    # A cell is left out where either of its two rows has an opening after that
-    # column. One open row either side is enough, because an apex sits inside
-    # the opening it closes. Where an apex meets shut cloth the cell comes out
-    # as the triangle that finishes the point.
     for r in range(len(grid) - 1):
-        cut = gaps[r] | gaps[r + 1]
-        for c in range(COLUMNS):
-            if c in cut:
-                continue
-            d = (c + 1) % COLUMNS
-            face = cell(verts[r][c], verts[r][d], verts[r + 1][d], verts[r + 1][c])
+        for c in range(COLUMNS - 1):
+            face = cell(verts[r][c], verts[r][c + 1],
+                        verts[r + 1][c + 1], verts[r + 1][c])
             if face is None:
                 continue
             faces.append(face)
             if r == 0:
                 border.add(face)
+        # The band across the front: the cloth between the last column and the
+        # first. An opening leaves it out, and an apex is inside the opening it
+        # closes, so one open row either side is enough to leave it out. Where an
+        # apex meets shut cloth the band comes out as the triangle that finishes
+        # the point.
+        if OPEN in (kinds[r], kinds[r + 1]):
+            continue
+        face = cell(verts[r][COLUMNS - 1], verts[r][0],
+                    verts[r + 1][0], verts[r + 1][COLUMNS - 1])
+        if face is None:
+            continue
+        faces.append(face)
+        if r == 0:
+            border.add(face)
     faces += cap_crown(work, verts)
     for face in faces:
         face.smooth = True
@@ -253,8 +198,8 @@ CROWN_RISE = .045               # how far the crown stands above the last ring
 def rebuild(obj):
     """Replace the cloak mesh, keeping its keys, material and atlas."""
     captured = capture_keys(obj)
-    grid, gaps = build_grid()
-    mesh = write(grid, gaps)
+    grid, kinds = build_grid()
+    mesh = write(grid, kinds)
     attach_clasp(mesh)
     mesh.materials.append(obj.data.materials[0])
     old = obj.data
