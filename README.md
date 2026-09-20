@@ -107,7 +107,7 @@ The `i-have-adhd` skill is installed in `~/.codex/skills/i-have-adhd`. It is ava
 
 Level 1 uses ceramic B, porcelain R3 reflections, and carved jade S1. The compact Blender character has a patterned hem and restrained motion; the mirror uses a thin metal frame and clear glass. The current fog is hidden in this trial. Other levels keep their simple presentation.
 
-Asset source and regeneration instructions are in [art_sources/README.md](art_sources/README.md). Run the focused art checks with `rtk godot --headless --path . --script tests/ceramic_trial_tests.gd`. Stop the runtime MCP session before any headless checks.
+Asset source and regeneration instructions are in [art_sources/README.md](art_sources/README.md). Run the focused art checks with `rtk godot --headless --path . --script tests/ceramic_trial_tests.gd`. For the traveller in the game, `rtk godot --path . --script tests/traveller_gameplay_review.gd` without `--headless` walks and turns the character on the spot and saves frames to `test-output/`. Stop the runtime MCP session before any headless checks.
 
 ## Separate reference scene
 

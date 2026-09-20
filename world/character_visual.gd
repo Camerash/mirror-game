@@ -1,31 +1,74 @@
 class_name CharacterVisual
 extends Node3D
-## Presentation-only motion for the ceramic traveller.
+## Presentation-only motion for the traveller.
+##
+## The character used to be `ceramic_traveller.glb`, which had no skin and no
+## clips: the feet were two nodes this script rotated by a sine, and the cloak
+## had two hem morphs it drove directly. All of that is gone. The traveller is
+## skinned, carries its own walk cycle, and carries the three cloak
+## deformations the design asks for, so this script now does two things only:
+## it runs the walk at the speed the character is moving, and it damps the
+## cloak against what the body is doing.
 
-const TravellerScene := preload("res://assets/character/ceramic_traveller.glb")
-const STEP_RATE := 9.0
-const FOOT_SWING := 0.32
-const HEM_SWAY_LIMIT := 0.035
+const Geometry := preload("res://core/world_geometry.gd")
+const TravellerScene := preload("res://assets/studies/traveller.glb")
+const WALK := "Walk"
+const GARMENT := "Garment"
 
-var left_foot: Node3D
-var right_foot: Node3D
+## The three cloak deformations, authored in `build_cloak.py`. Each reads its
+## own cap at a weight of 1, so clamping the weight is the whole of clamping
+## the deformation and nothing here needs to know the geometry.
+const DRIFT_SHAPES := ["CloakSide", "CloakForward", "CloakTwist"]
+## Seconds for the cloth to close half the distance to where the body has gone.
+const DRIFT_HALF_LIFE := 0.18
+## The longest step the damping acts on. A long frame gap must not be paid back
+## as one lurch, so time past this is dropped rather than carried.
+const DRIFT_MAX_STEP := 0.1
+## How hard movement and turning drive the cloth. Weights clamp to one, which is
+## the design's cap.
+const DRIFT_PER_SPEED := 1.0
+const DRIFT_PER_TURN := 0.55
+## Yaw rate, in radians a second, that counts as a full turn.
+const FULL_TURN_RATE := 2.4
+## The speed the cycle is authored for: `MirrorWalker.SPEED`.
+const WALK_SPEED := 2.0
+## Below this the character is standing, not walking.
+const MOVING_SPEED := 0.05
+## Where in the cycle the legs pass each other. Standing holds here rather than
+## wherever the walk happened to stop, which would be mid-stride.
+const STAND_TIME := 0.25
+## The model measures this tall with its feet at the origin. The walker's
+## capsule is the authority on size, so the model is scaled to match it.
+const MODEL_HEIGHT := 3.428
+
 var primary_mesh: MeshInstance3D
-var gait_phase := 0.0
-var hem_offset := Vector2.ZERO
-var last_planar_velocity := Vector2.ZERO
-var left_foot_rest := Transform3D.IDENTITY
-var right_foot_rest := Transform3D.IDENTITY
+var player: AnimationPlayer
+var drift := Vector3.ZERO
+var drift_shapes: PackedInt32Array = PackedInt32Array()
+var facing := 0.0
+var turn_rate := 0.0
+
 
 func _ready() -> void:
 	var traveller := TravellerScene.instantiate() as Node3D
+	traveller.scale = Vector3.ONE * (Geometry.HEIGHT / MODEL_HEIGHT)
 	add_child(traveller)
-	left_foot = traveller.find_child("FootLeft", true, false) as Node3D
-	right_foot = traveller.find_child("FootRight", true, false) as Node3D
-	primary_mesh = traveller.find_child("Cloak", true, false) as MeshInstance3D
-	if left_foot != null:
-		left_foot_rest = left_foot.transform
-	if right_foot != null:
-		right_foot_rest = right_foot.transform
+	primary_mesh = traveller.find_child(GARMENT, true, false) as MeshInstance3D
+	for node: Node in traveller.find_children("*", "AnimationPlayer", true, false):
+		player = node as AnimationPlayer
+		break
+	if player != null and player.has_animation(WALK):
+		# glTF carries no loop flag, so the cycle is closed here.
+		player.get_animation(WALK).loop_mode = Animation.LOOP_LINEAR
+		player.play(WALK)
+		player.seek(STAND_TIME, true)
+		player.pause()
+	if primary_mesh != null:
+		for name: String in DRIFT_SHAPES:
+			drift_shapes.append(primary_mesh.find_blend_shape_by_name(name))
+	facing = rotation.y
+	_apply_drift()
+
 
 func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused: bool) -> void:
 	if is_paused:
@@ -34,39 +77,65 @@ func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused
 	var planar_speed := planar_velocity.length()
 	if planar_speed > 0.01:
 		rotation.y = lerp_angle(rotation.y, atan2(movement.x, movement.z), minf(delta * 12.0, 1.0))
-	if is_grounded:
-		gait_phase += delta * STEP_RATE * minf(planar_speed / 2.0, 1.0)
-	var local_velocity: Vector3 = transform.basis.inverse() * movement
-	var world_acceleration := (planar_velocity - last_planar_velocity) / maxf(delta, 0.001)
-	var acceleration := transform.basis.inverse() * Vector3(world_acceleration.x, 0.0, world_acceleration.y)
-	var target_offset := Vector2(-local_velocity.x, -local_velocity.z) * 0.009 - Vector2(acceleration.x, acceleration.z) * 0.0015
-	hem_offset = hem_offset.lerp(target_offset.limit_length(HEM_SWAY_LIMIT), minf(delta * 7.0, 1.0))
-	last_planar_velocity = planar_velocity
-	_apply_hem()
-	var step := sin(gait_phase) * FOOT_SWING * minf(planar_speed / 2.0, 1.0)
-	_set_foot_step(left_foot, step)
-	_set_foot_step(right_foot, -step)
+	var step := minf(maxf(delta, 0.0), DRIFT_MAX_STEP)
+	turn_rate = angle_difference(facing, rotation.y) / maxf(step, 0.001)
+	facing = rotation.y
+	_advance_walk(step, planar_speed, is_grounded)
+	_advance_drift(step, movement, planar_speed)
+
 
 func reset_motion() -> void:
-	gait_phase = 0.0
-	hem_offset = Vector2.ZERO
-	last_planar_velocity = Vector2.ZERO
-	_apply_hem()
-	_set_foot_step(left_foot, 0.0)
-	_set_foot_step(right_foot, 0.0)
+	drift = Vector3.ZERO
+	turn_rate = 0.0
+	facing = rotation.y
+	if player != null and player.has_animation(WALK):
+		player.play(WALK)
+		player.seek(STAND_TIME, true)
+		player.pause()
+	_apply_drift()
 
-func _set_foot_step(foot: Node3D, step: float) -> void:
-	if foot == null:
-		return
-	var rest := left_foot_rest if foot == left_foot else right_foot_rest
-	foot.transform = rest
-	foot.position.y += maxf(step, 0.0) * 0.018
-	foot.rotation.x += step
 
-func _apply_hem() -> void:
-	if primary_mesh == null:
+func _advance_walk(step: float, planar_speed: float, is_grounded: bool) -> void:
+	## The cycle runs at the speed the character is actually moving. Off the
+	## ground there are no steps to take, so it holds where it is.
+	if player == null or not player.has_animation(WALK):
 		return
-	for pair: Array in [["HemX", hem_offset.x], ["HemZ", hem_offset.y]]:
-		var index := primary_mesh.find_blend_shape_by_name(pair[0])
-		if index >= 0:
-			primary_mesh.set_blend_shape_value(index, float(pair[1]) / HEM_SWAY_LIMIT)
+	if not is_grounded:
+		player.pause()
+		return
+	if planar_speed <= MOVING_SPEED:
+		player.play(WALK)
+		player.seek(STAND_TIME, true)
+		player.pause()
+		return
+	player.speed_scale = clampf(planar_speed / WALK_SPEED, 0.25, 2.0)
+	if not player.is_playing():
+		player.play(WALK)
+	player.advance(step)
+
+
+func _advance_drift(step: float, movement: Vector3, planar_speed: float) -> void:
+	## The cloth trails what the body has already done, so the target is where
+	## the body is going and the damping is what makes the cloth late.
+	var local: Vector3 = transform.basis.inverse() * movement
+	var forward_share := clampf(local.z / WALK_SPEED, -1.0, 1.0)
+	var turn_share := clampf(turn_rate / FULL_TURN_RATE, -1.0, 1.0)
+	if planar_speed <= MOVING_SPEED:
+		forward_share = 0.0
+	var target := Vector3(
+		clampf(-turn_share * DRIFT_PER_TURN, -1.0, 1.0),
+		clampf(-forward_share * DRIFT_PER_SPEED, -1.0, 1.0),
+		clampf(-turn_share * DRIFT_PER_TURN, -1.0, 1.0))
+	var closed := 1.0 - pow(0.5, step / DRIFT_HALF_LIFE)
+	drift = drift.lerp(target, closed)
+	_apply_drift()
+
+
+func _apply_drift() -> void:
+	if primary_mesh == null or drift_shapes.size() != DRIFT_SHAPES.size():
+		return
+	var weights := [drift.x, drift.y, drift.z]
+	for index: int in drift_shapes.size():
+		if drift_shapes[index] >= 0:
+			primary_mesh.set_blend_shape_value(drift_shapes[index],
+				clampf(weights[index], -1.0, 1.0))

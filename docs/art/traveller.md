@@ -249,9 +249,12 @@ failed.
   the arm overtakes the cloth however the share is set. Only pushing the cloth
   out ahead of the arm would clear it, and nothing that moves a vertex along one
   fixed path can do that. The key should probably be removed.
-- **Gameplay still uses the old character.** `world/character_visual.gd` loads
-  `assets/character/ceramic_traveller.glb`. Nothing in the game reads
-  `assets/studies/traveller.glb` yet; only the trial scene does.
+- **Gameplay uses this character.** `world/character_visual.gd` loads
+  `assets/studies/traveller.glb`, scales it to the walker's capsule, runs the
+  walk cycle at the speed the character is moving, and damps the three cloak
+  deformations against movement and turning. It no longer poses feet or hem
+  from code: the asset carries both. `assets/character/ceramic_traveller.glb`
+  is now read by nothing.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,

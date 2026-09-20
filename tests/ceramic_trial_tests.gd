@@ -27,17 +27,35 @@ func _run() -> void:
 	var collider: CapsuleShape3D = game.walker.get_child(0).shape
 	check(is_equal_approx(collider.radius, Queries.RADIUS) and is_equal_approx(collider.height, Queries.HEIGHT), "Art does not change character collision")
 	var character = game.walker.character_visual
-	var hood: Node3D = character.find_child("Hood", true, false)
-	var hood_rest := hood.transform
+	# The character is the skinned traveller now. The feet are keyed in its own
+	# walk cycle and the cloak carries the three deformations, so the checks
+	# below ask the same questions of the asset instead of of this script.
+	var head: Node3D = character.find_child("Head", true, false)
+	check(head != null, "The traveller carries its own head")
+	var head_rest := head.transform if head != null else Transform3D.IDENTITY
+	var box := AABB()
+	var measured := false
+	for node: Node in character.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		var local: AABB = character.global_transform.affine_inverse() * mesh.global_transform * mesh.mesh.get_aabb()
+		box = local if not measured else box.merge(local)
+		measured = true
+	check(measured and absf(box.size.y - Queries.HEIGHT) < 0.02, "The traveller is scaled to the walker's capsule")
+	check(character.player != null and character.player.has_animation(character.WALK), "The traveller carries its own walk cycle")
 	for tick: int in 12:
 		character.update_motion(0.016, Vector3(2,0,0), true, false)
-	check(character.primary_mesh.get_blend_shape_count() == 2 and character.hem_offset.length() <= character.HEM_SWAY_LIMIT, "Hem deforms within its limit")
-	check(hood.transform.is_equal_approx(hood_rest), "Hem movement leaves the hood attached")
-	var paused_offset: Vector2 = character.hem_offset
+	var drift: Vector3 = character.drift
+	check(drift.length() > 0.0 and absf(drift.x) <= 1.0 and absf(drift.y) <= 1.0
+		and absf(drift.z) <= 1.0, "Cloak deforms within its limit")
+	check(character.primary_mesh.find_blend_shape_by_name("HoodLowered") >= 0,
+		"Hood and cloak are one skinned mesh, so the hood cannot detach")
+	check(head == null or head.transform.is_equal_approx(head_rest), "Cloak movement leaves the head attached")
+	var paused_drift: Vector3 = character.drift
 	character.update_motion(1.0, Vector3.ZERO, true, true)
-	check(character.hem_offset == paused_offset, "Editing freezes cloth motion")
+	check(character.drift == paused_drift, "Editing freezes cloth motion")
 	character.reset_motion()
-	check(character.hem_offset == Vector2.ZERO and character.left_foot.transform.is_equal_approx(character.left_foot_rest), "Restoration resets cloth and feet")
+	check(character.drift == Vector3.ZERO, "Restoration resets the cloak")
+	check(character.player != null and not character.player.is_playing(), "Restoration leaves the walk standing")
 	var bounds := AABB(Vector3(-0.5,-0.5,-0.5), Vector3.ONE)
 	var faces := Display.clip(Display.box_faces(bounds), Plane(Vector3(1,1,0).normalized(), 0.1))
 	var solid := {"source_bounds": bounds, "material_to_world":Transform3D.IDENTITY}

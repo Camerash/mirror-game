@@ -15,12 +15,15 @@ upstream and rebuilds everything from Python.
 - The two hood clips are authored and pass. 4,992 triangles, 1.000 s each.
 - **The walk is authored.** One looping second, and the three cloak
   deformations the design asks for, driven and damped in the study viewer.
-- `assets/studies/traveller.glb` is the export. Only the trial scene reads it.
-  **Gameplay still loads `assets/character/ceramic_traveller.glb`.**
+- `assets/studies/traveller.glb` is the export. **Gameplay loads it**: the
+  walker and the fall ghost are the skinned traveller, running its own walk
+  cycle with the three cloak deformations damped against movement and turning.
+- `assets/character/ceramic_traveller.glb` is no longer read by anything.
 
 | check | result |
 | --- | --- |
 | `animated_traveller_tests` | 281 checks, 0 failures |
+| `ceramic_trial_tests` | 19 checks, 0 failures |
 | `check_walk` | 4 of 4 pass |
 | `drawing` / `full` / `painted` / `ceramic` | 90 / 92 / 137 / 14, all 0 failures |
 | `run_tests` (gameplay) | 0 failures. The check count varies run to run, 521 to 524; this is not new |
@@ -113,10 +116,11 @@ Two rules that hold the whole thing together:
    `walk_motion.py` are near one degree. `check_walk.py` measures the gait's
    own hem sway against the cap, so it will tell you if you push them.
 
-3. **Gameplay still uses the old character.** `world/character_visual.gd` line 5
-   loads `ceramic_traveller.glb`, which has no skin and no clips, and binds by
-   node name at lines 22 to 24, with feet and hem posed from code at lines 58 to
-   72. Moving gameplay to `traveller.glb` replaces all of that.
+3. **The old character is orphaned.** Nothing reads
+   `assets/character/ceramic_traveller.glb` any more, nor its atlas, nor
+   `art_sources/character/build_ceramic_traveller.py`. Delete them or keep them
+   on purpose; this was not decided.
+
 4. **Remove `CloakArms`.** It is a morph that nothing drives. See the failed
    approaches below for why it cannot be used. Removing it drops the cloak from
    nine morph targets to eight and removes `add_arms_key` from `build_cloak.py`.
