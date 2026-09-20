@@ -22,7 +22,8 @@ const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
 const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
-const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json"]
+const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json",
+	"res://levels/11_aperture.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
 	"res://levels/03_source.json", "res://levels/04_absolute.json", "res://levels/05_restore.json",
 	"res://levels/06_wall.json", "res://levels/07_horizontal.json", "res://levels/09_movement.json", "res://levels/10_extent.json"]

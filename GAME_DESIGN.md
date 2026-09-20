@@ -55,7 +55,9 @@ Eight selectable test fixtures cover natural diagonal walking, obstacle detours,
 
 Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe restoration on ordinary ground. Original platforms occupy 0–2 and 5–7; the absolute goal is at 8. The intended route starts with the X orientation at offset 2.5; its position is freely adjustable within the broad level area. Enable it, walk to 5, then disable it: the original platform replaces reflected support and the final approach returns. The goal stays visible throughout. This layout is a playtest candidate; no new object or goal rules are needed.
 
-Completing Level 1 shows **Next**. Level 2 ends the current puzzle sequence. The menu also gives direct access to both puzzles and the eight fixtures. Entering a level clears previous movement and Undo history.
+Level 3, “Only the ground” (`11_aperture`), teaches Resize, which no level or fixture covered. A ledge carries a tower at one end; the goal sits across a five-unit gap. Reflecting the ledge bridges the gap, but a full-height aperture carries the tower across with it and stands it between the bridge and the goal. Shortening the aperture to the ground band brings only the ledge. The wrong answer is reachable and visibly wrong, which is the point: the player builds the wall themselves, then unbuilds it. `tests/level_solvability_tests.gd` checks all three states.
+
+Completing Level 1 shows **Next**. Level 3 ends the current puzzle sequence. The menu also gives direct access to both puzzles and the eight fixtures. Entering a level clears previous movement and Undo history.
 
 Later level:
 

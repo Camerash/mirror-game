@@ -229,7 +229,15 @@ func _test_reveal() -> void:
 	_check(game.request_walk(Vector3(8, 0, 0)), "Restored approach connects to the visible absolute goal")
 	await _walk_finished()
 	_check(game.phase == "complete", "Shared player commands complete Level 2")
-	_check(not game.advance_level() and not game.hud.get_touch_control_bounds().has("next_level"), "Final puzzle does not advance into test fixtures")
+	# Level 2 used to be the last puzzle, so this asked whether it advanced at
+	# all. The sequence is longer now, and the property worth protecting was
+	# never "Level 2 is last" but "the sequence never runs into a test room".
+	for path: String in game.PUZZLE_PATHS:
+		_check(not Levels.load_level(path).get("is_test", false),
+			"The puzzle sequence holds no test fixture: " + path)
+	_check(game.PUZZLE_PATHS.size() < game.LEVEL_PATHS.size()
+		and game.LEVEL_PATHS.slice(0, game.PUZZLE_PATHS.size()) == game.PUZZLE_PATHS,
+		"The puzzles are the front of the level list, so Next never reaches a fixture")
 	_check(game.undo(), "Level 2 completion can be undone")
 	await _frames(5)
 	_check(game.phase == "play" and not game.mirror["enabled"] and game.walker.position.distance_to(before) < 0.01, "Undo restores the pre-goal state")
