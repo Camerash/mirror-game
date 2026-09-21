@@ -1,5 +1,7 @@
 # Mirror
 
+[`HANDOFF.md`](HANDOFF.md) has the current state, what is blocked, and the traps. Read it before changing a level, the character, or the level sequence.
+
 A small Godot 4.7.2 prototype. Play **A place to stand**, then **The path beneath**. The gear panel also opens either puzzle or one of eight technical fixtures. The current rules and pending stories are in [GAME_DESIGN.md](GAME_DESIGN.md).
 
 ## Run on Mac
