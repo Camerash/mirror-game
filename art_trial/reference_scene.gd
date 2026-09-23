@@ -1,16 +1,12 @@
 extends Node3D
 const Stage := preload("res://art_trial/reference_stage.gd")
 const Lighting := preload("res://art_trial/reference_lighting.gd")
-const Character := preload("res://art_trial/reference_character.gd")
 const Cut := preload("res://art_trial/reference_cut.gd")
 var stage := Stage.new()
-var character := Character.new()
 var camera := Camera3D.new()
 var controls := HFlowContainer.new()
 var angle := 0
 var view := 0
-var moving := false
-var motion_time := 0.0
 var sliced := false
 var cap_inspection := false
 var original_meshes: Dictionary = {}
@@ -20,9 +16,6 @@ var intact_mirror := Transform3D.IDENTITY
 func _ready() -> void:
  add_child(Lighting.new())
  add_child(stage)
- add_child(character)
- character.position = Vector3(0,0.7,0)
- character.rotation.y = PI/4
  camera.projection = Camera3D.PROJECTION_ORTHOGONAL
  camera.near = 0.02
  camera.far = 80
@@ -33,7 +26,6 @@ func _ready() -> void:
  get_viewport().size_changed.connect(fit_camera)
  intact_mirror=stage.mirror.transform
  if "--record" in OS.get_cmdline_user_args():
-  moving=true
   controls.hide()
  fit_camera()
 
@@ -45,7 +37,7 @@ func _controls() -> void:
  controls.offset_top = -64
  controls.offset_left = 16
  controls.offset_right = -16
- for item: Array in [["View",func(): angle=(angle+1)%4; fit_camera()],["Detail",func(): view=(view+1)%4; fit_camera()],["Walk",func(): moving=not moving; motion_time=0.0; character.reset_motion()],["Cut",toggle_cut],["Caps",toggle_caps],["Hide",func(): controls.hide()]]:
+ for item: Array in [["View",func(): angle=(angle+1)%4; fit_camera()],["Detail",func(): view=(view+1)%4; fit_camera()],["Cut",toggle_cut],["Caps",toggle_caps],["Hide",func(): controls.hide()]]:
   var button := Button.new()
   button.text = item[0]
   button.custom_minimum_size = Vector2(64,48)
@@ -58,7 +50,7 @@ func fit_camera() -> void:
  controls.offset_top = -ceilf(6.0/columns)*52.0-16.0
  var centre := Vector3(3.65,0.9,0)
  var width := 8.9
- if view == 1: centre=character.position+Vector3.UP*0.4; width=1.65
+ if view == 1: centre=Vector3(0,1.1,0); width=1.65
  if view == 2: centre=Vector3(1.0,0.4,0); width=2.4
  if view == 3: centre=Vector3(6.1,0.4,0); width=2.4
  if sliced:
@@ -80,28 +72,14 @@ func fit_camera() -> void:
 func _unhandled_input(event:InputEvent)->void:
  if event is InputEventKey and event.pressed:
   if event.keycode == KEY_H: controls.visible=not controls.visible
-  if event.keycode == KEY_SPACE: moving=not moving
   if event.keycode == KEY_C: toggle_cut()
   if event.keycode in [KEY_Q,KEY_E]: angle=posmod(angle+(1 if event.keycode==KEY_E else -1),4); fit_camera()
  if event is InputEventScreenTouch and event.pressed and not controls.visible: controls.show()
-
-func _process(delta:float)->void:
- if not moving: character.update_motion(delta,Vector3.ZERO); return
- motion_time += delta
- var t := fmod(motion_time,8.0)
- var old := character.position
- if t < 3.0: character.position.x=t*0.65
- elif t < 4.0: character.position.x=1.95
- elif t < 7.0: character.position.x=1.95-(t-4.0)*0.65
- else: character.position.x=0
- character.update_motion(delta,(character.position-old)/maxf(delta,0.001))
 
 func toggle_cut()->void:
  cap_inspection=false
  stage.mirror.show()
  sliced=not sliced
- moving=false
- character.visible=not sliced
  for index: int in stage.blocks.size(): stage.blocks[index].visible=not sliced or index in [2,3]
  var normal := Vector3(1,0.35,0.2).normalized()
  var source_centre := stage.blocks[2].position+Vector3.UP*0.35

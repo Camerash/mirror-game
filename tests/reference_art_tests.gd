@@ -10,11 +10,6 @@ func check(value:bool,message:String)->void:
   failures+=1
   push_error(message)
 func run()->void:
- if "--motion-only" in OS.get_cmdline_user_args():
-  check_character_motion()
-  print("Reference motion: %d checks, %d failures"%[count,failures])
-  quit(1 if failures else 0)
-  return
  check(ProjectSettings.get_setting("rendering/renderer/rendering_method")=="mobile","Mobile must be the sole renderer")
  var source := (load("res://assets/reference/ceramic_block.glb") as PackedScene).instantiate()
  var core := source.find_child("*core*",true,false) as MeshInstance3D
@@ -35,7 +30,6 @@ func run()->void:
  for point: Vector3 in cap[Mesh.ARRAY_VERTEX]: check(absf(plane.distance_to(point))<0.0001,"Cap lies on cut plane")
  source.free()
  check_baked_maps()
- check_character_motion()
  var materials := preload("res://art_trial/reference_materials.gd")
  var original := materials.build("ceramic",2)
  var reflected := materials.build("reflected",2)
@@ -63,67 +57,3 @@ func check_baked_maps() -> void:
    var flat := normal.get_pixel(512,128)
    if family=="ceramic" and face=="side":
     check(absf(flat.r-0.5)<0.12 and absf(flat.g-0.5)<0.12,"Normal data is linear, not sRGB")
-
-func check_character_motion() -> void:
- var character := preload("res://art_trial/reference_character.gd").new()
- root.add_child(character)
- check(character.cloak != null, "Cloak node exists")
- if character.cloak != null:
-  check(character.cloak.mesh.get_blend_shape_count()==3, "Cloak has sway and twist shapes")
-  var imported := character.CharacterScene.instantiate()
-  var source_cloak := imported.find_child("Cloak", true, false) as MeshInstance3D
-  check(character.cloak.mesh != source_cloak.mesh, "Art material changes use a local mesh resource")
-  var soft_material := character.cloak.mesh.surface_get_material(0) as StandardMaterial3D
-  check(soft_material != source_cloak.mesh.surface_get_material(0), "Imported cloak material remains separate")
-  check(soft_material.roughness >= 0.72, "Soft cloak keeps a matte finish")
-  check(_triangle_count(imported) <= 8000, "Traveller stays within 8000 triangles")
-  check(_triangle_count(source_cloak) <= 1500, "Moving cloak stays within 1500 triangles")
-  imported.free()
-  for step: int in 60: character.update_motion(1.0/60.0,Vector3(0,0,0.65))
-  check(character.hem_offset.length()>0.005 and character.hem_offset.length()<=character.HEM_SWAY_LIMIT,"Walking produces restrained cloth motion")
-  for step: int in 180: character.update_motion(1.0/60.0,Vector3.ZERO)
-  check(character.hem_offset.length()<0.0001, "Cloak settles at rest")
-  character.reset_motion()
-  check(character.hem_offset==Vector2.ZERO,"Reset clears cloth motion")
-  _check_motion_transitions(character)
- character.free()
-
-
-func _triangle_count(node: Node) -> int:
- var total := 0
- if node is MeshInstance3D:
-  for surface: int in node.mesh.get_surface_count():
-   var arrays: Array = node.mesh.surface_get_arrays(surface)
-   total += arrays[Mesh.ARRAY_INDEX].size() / 3 if arrays[Mesh.ARRAY_INDEX].size() else arrays[Mesh.ARRAY_VERTEX].size() / 3
- for child: Node in node.get_children(): total += _triangle_count(child)
- return total
-
-
-func _check_motion_transitions(character: ReferenceCharacter) -> void:
- character.rotation.y = 0.0
- for frame: int in 30: character.update_motion(1.0/60.0, Vector3(0.65,0,0))
- check(absf(character.hem_twist) > 0.001, "Turning gives the hem a small lag")
- var held := Vector3(character.hem_offset.x, character.hem_offset.y, character.hem_twist)
- var facing := character.rotation.y
- var gait := character.gait_phase
- character.update_motion(10.0, Vector3(-100,0,100), true, true)
- check(held == Vector3(character.hem_offset.x, character.hem_offset.y, character.hem_twist) and facing == character.rotation.y and gait == character.gait_phase, "Pause freezes pose and gait")
- character.update_motion(10.0, Vector3(0.65,0,0))
- check(character.hem_offset.distance_to(Vector2(held.x,held.y)) < 0.01, "Resume discards stalled time")
- var within_limits := true
- for frame: int in 180:
-  character.update_motion(1.0/30.0, Vector3(100 if frame%2 else -100,0,100))
-  within_limits = within_limits and character.hem_offset.length() <= character.HEM_SWAY_LIMIT + 0.00001 and absf(character.hem_twist) <= character.HEM_TWIST_LIMIT + 0.00001
- check(within_limits, "Rapid direction changes keep cloth within its limits")
- for frame: int in 180: character.update_motion(1.0/60.0, Vector3.ZERO)
- check(character.hem_offset.length() < 0.0001 and absf(character.hem_twist) < 0.0001, "Cloth settles after a turn and stop")
- character.reset_motion()
- check(character.cloth_velocity == Vector3.ZERO and character.previous_velocity == Vector3.ZERO and not character.has_motion_history and character.hem_twist == 0.0, "Reset clears all cloth history")
- character.rotation.y = 0.0
- for frame: int in 30: character.update_motion(1.0/30.0, Vector3(0,0,0.65))
- var at_30 := character.hem_offset
- character.reset_motion()
- character.rotation.y = 0.0
- for frame: int in 60: character.update_motion(1.0/60.0, Vector3(0,0,0.65))
- check(character.hem_offset.distance_to(at_30) < 0.001, "Cloth response is consistent at 30 and 60 Hz")
- character.reset_motion()
