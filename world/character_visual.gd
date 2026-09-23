@@ -2,11 +2,8 @@ class_name CharacterVisual
 extends Node3D
 ## Presentation-only motion for the traveller.
 ##
-## The character used to be `ceramic_traveller.glb`, which had no skin and no
-## clips: the feet were two nodes this script rotated by a sine, and the cloak
-## had two hem morphs it drove directly. All of that is gone. The traveller is
-## skinned, carries its own walk cycle, and carries the three cloak
-## deformations the design asks for, so this script now does two things only:
+## The traveller is skinned, carries its own walk cycle, and carries the three
+## cloak deformations the design asks for, so this script does two things only:
 ## it runs the walk at the speed the character is moving, and it damps the
 ## cloak against what the body is doing.
 
