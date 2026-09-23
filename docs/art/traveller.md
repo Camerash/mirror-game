@@ -253,8 +253,8 @@ failed.
   `assets/studies/traveller.glb`, scales it to the walker's capsule, runs the
   walk cycle at the speed the character is moving, and damps the three cloak
   deformations against movement and turning. It no longer poses feet or hem
-  from code: the asset carries both. `assets/character/ceramic_traveller.glb`
-  is now read by nothing.
+  from code: the asset carries both. The earlier `ceramic_traveller.glb` was
+  removed in `b1d2b6d`.
 - **The hem border no longer zig-zags.** The old border's top edge stepped up
   and down around the hem. Levelling it was what stopped the band breaking into
   patches. Bringing the zig-zag back needs enough columns to sample it in phase,
@@ -274,6 +274,6 @@ failed.
   rather than a parted lock. The fringe, the forehead line and the back volume do
   carry across. Going further means more rows and columns at the side, or the
   side lock built as its own tuft aimed at the study's own measurement.
-- **Retiring the old trials.** `traveller_rigify_trial` and
-  `traveller_upper_body_trial` are superseded. Remove them once this file is
-  accepted.
+- **The old trials are retired.** `traveller_rigify_trial` and
+  `traveller_upper_body_trial` were superseded by this source and removed in
+  `b1d2b6d`.

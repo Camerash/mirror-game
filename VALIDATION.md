@@ -1,3 +1,6 @@
+Entries before commit `b1d2b6d` name studies that were removed. Git history
+keeps them; this log is not rewritten to match.
+
 # Latest check: simple reference traveller — 2026-09-12
 
 - Refined the isolated traveller against the supplied close image. Kept simple mesh construction: **2,144 triangles total**, **560 cloak**, **600 hood**, one 512×512 atlas. Changed the sloped hood/opening, charcoal, triangular hem, feet, and three cloak shapes. Gameplay assets remain unchanged.

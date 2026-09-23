@@ -29,9 +29,7 @@ The one piece worth keeping was the phase tables, and they are copied into
 ## What is still here
 
 - `traveller_animated.blend` — the mesh upstream. Do not delete it.
-- `animation_checks.json`, `endpoint_checks.json`, `export_checks.json` — the
-  last reports the retired checks wrote, kept as the record of the two-second
-  study. Nothing regenerates them.
-- `../../assets/studies/traveller_animated.glb` and its bounds sidecar are the
-  old export. Nothing loads them now: the trial scene reads
-  `assets/studies/traveller.glb`.
+
+The old two-second export, its bounds sidecar, and the retired checks'
+`*_checks.json` reports were removed in `b1d2b6d`. The trial scene reads
+`assets/studies/traveller.glb`.

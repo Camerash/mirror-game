@@ -18,12 +18,12 @@ upstream and rebuilds everything from Python.
 - `assets/studies/traveller.glb` is the export. **Gameplay loads it**: the
   walker and the fall ghost are the skinned traveller, running its own walk
   cycle with the three cloak deformations damped against movement and turning.
-- `assets/character/ceramic_traveller.glb` is no longer read by anything.
+- `assets/character/ceramic_traveller.glb` was removed in `b1d2b6d`.
 
 | check | result |
 | --- | --- |
 | `animated_traveller_tests` | 281 checks, 0 failures |
-| `ceramic_trial_tests` | 19 checks, 0 failures |
+| `gameplay_art_tests` | 62 checks, 0 failures |
 | `check_walk` | 4 of 4 pass |
 | `drawing` / `full` / `painted` / `ceramic` | 90 / 92 / 137 / 14, all 0 failures |
 | `run_tests` (gameplay) | 0 failures. The check count varies run to run, 521 to 524; this is not new |
@@ -116,36 +116,31 @@ Two rules that hold the whole thing together:
    `walk_motion.py` are near one degree. `check_walk.py` measures the gait's
    own hem sway against the cap, so it will tell you if you push them.
 
-3. **The old character is orphaned.** Nothing reads
-   `assets/character/ceramic_traveller.glb` any more, nor its atlas, nor
-   `art_sources/character/build_ceramic_traveller.py`. Delete them or keep them
-   on purpose; this was not decided.
+3. **The old character is gone.** `assets/character/ceramic_traveller.glb`, its
+   atlas, and `art_sources/character/build_ceramic_traveller.py` were removed
+   in `b1d2b6d`.
 
 4. **Remove `CloakArms`.** It is a morph that nothing drives. See the failed
    approaches below for why it cannot be used. Removing it drops the cloak from
    nine morph targets to eight and removes `add_arms_key` from `build_cloak.py`.
-5. **Orphaned files.** Nothing reads `assets/studies/traveller_animated.glb`,
-   `assets/studies/traveller_animated_bounds.json`, or the three
-   `*_checks.json` reports in `art_sources/traveller_animated/`. They are the
-   record of the retired two-second study. Delete them or keep them on purpose.
-6. **The two old trials.** `GAME_DESIGN.md` disagrees with itself:
-   line 97 says to keep the Rigify trial as a failed trial for review, line 98
-   says to remove it and the upper-body study when this source is accepted. The
-   source is now accepted, so ask the user which line wins. No Godot scene or
-   script refers to either trial.
+5. **The retired two-second study's files are gone.** `assets/studies/traveller_animated.glb`,
+   its bounds sidecar, and the three `*_checks.json` reports in
+   `art_sources/traveller_animated/` were removed in `b1d2b6d`.
+6. **The two old trials are gone.** The Rigify trial and the upper-body study
+   were removed in `b1d2b6d`, resolving the disagreement `GAME_DESIGN.md` used
+   to carry between keeping the Rigify trial for review and removing both once
+   this source was accepted.
 7. **The hood is fitted, not authored.** Its profile tables are measured off the
    accepted cloak. That is what keeps the eight hood keys working, median 0.003
    from the old surface, worst 0.039 at the crown. Authoring the hood outright
    means re-making those keys.
 
-## Two files that belong to the user
+## One file that belongs to the user
 
-Neither is committed. Do not commit them without asking.
-
-- `art_sources/traveller_animated/traveller_animated.blend` is **modified in the
-  working tree**. The build reads it, so the current asset depends on that edit.
-- `art_sources/traveller/traveller_esmond_split.blend` is untracked. It is a
-  hand edit of the front seam, kept for reference.
+`art_sources/traveller_animated/traveller_animated.blend` belongs to the user.
+The build reads it, so the current asset depends on it. Do not change or commit
+it without asking. `art_sources/traveller/traveller_esmond_split.blend`, the
+user's hand edit of the front seam, was removed in `b1d2b6d`.
 
 ## Approaches that are already measured and failed
 

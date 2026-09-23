@@ -2,29 +2,11 @@
 
 See [the reference scene record](reference-scene.md) for the new standalone scene, native captures, and motion recording. The earlier Level 1 art remains in gameplay pending review.
 
-## Little girl with long hair — Blender shape study
-
-The [girl concept](traveller-girl-01.png) is the target for a separate simple Blender blockout. The user approved trying its long chestnut hair, visible face, hood, and blue-grey cloak in Blender. Shape approval is still pending. Keep the RiME-led rounded-face direction. See the [native blockout views and review](traveller-girl-blockout-01.md), [concept record](traveller-girl-01.md), and [Blender workflow](blender-workflow.md). Existing runtime assets remain unchanged.
-
-## Earlier rounded traveller faces
-
-The [rounded-face board](traveller-rounded-faces-01.png) follows the selected RiME direction, with Jusant as a secondary face-style reference. A — Gentle, B — Quiet, and C — Mature compare rounded face shapes with visible lids, a simple nose and mouth, and matte shading. Each has a bust and full-body view with the same blue-grey costume. Exact character, age, eye size, palette, and proportions remain proposals. The eyes in this board are still somewhat larger than the RiME reference.
-
-Generated with the built-in image tool without image attachments. See the [prompt and review record](traveller-rounded-faces-01.md). This is a concept board, not a native render or an approved model sheet. No Blender or gameplay assets were changed.
-
-## Earlier new traveller concepts
-
-The [new concept board](traveller-new-concepts-01.png) starts from a visible face, hood, and cloak, without previous character image references. Rows compare A — Small wanderer, B — Slender traveller, and C — Grounded traveller. Column 1 has a simple stylised human face; column 2 has a minimal expressive face. Both have eyes and a mouth. Each matched pair keeps the same clothing, pose, and palette. Figure and face selection remain open. These are generated concepts, not Blender renders or an approved construction sheet.
-
-The selected figure and face will receive front, side, back, three-quarter, and elevated game-camera views for approval before modeling. Keep current runtime assets intact until replacement approval. Approve a simple untextured model before adding materials or cloth motion. Earlier character targets no longer define the replacement design.
-
-Generated with the built-in image tool; see the [prompt and review record](traveller-new-concepts-01.md). The rejected comparison board, its generated draft, duplicate generated output, and prompt record were deleted. No runtime, export, or game tests were run for this image study.
-
 # Current trial — Ceramic B, porcelain R3, carved jade S1
 
 The selected references are [ceramic-style-board.png](ceramic-style-board.png), [porcelain-reflection-board.png](porcelain-reflection-board.png), and [jade-absolute-board.png](jade-absolute-board.png). These boards were generated with the built-in image tool for appearance comparison. They are not runtime screenshots or exact level layouts.
 
-Level 1 uses ivory ceramic with shallow arch relief, source-preserving porcelain reflections, carved jade, a thin metallic glass frame, and a compact dark traveller with a small pale oval and patterned hem. Fog is absent. Broad studio highlights and source-bound material coordinates keep moving and sliced surfaces stable. Cut caps remain opaque and plain. See [asset instructions](../../art_sources/README.md).
+Level 1 uses ivory ceramic with shallow arch relief, source-preserving porcelain reflections, carved jade, a thin metallic glass frame, and the golden traveller. Fog is absent. Broad studio highlights and source-bound material coordinates keep moving and sliced surfaces stable. Cut caps remain opaque and plain. See [asset instructions](../../art_sources/README.md).
 
 The implementation keeps exact collision boxes; rounded edges are a shading effect. It therefore does not reproduce the reference's rounded silhouette or baked soft lighting pixel for pixel. The character's hidden sides and hem animation are authored interpretations. Match and review the complete game at its normal camera scale before extending this treatment.
 
@@ -131,11 +113,3 @@ Use C for softness and colour only. Its mirror orientation is incorrect; runtime
 `prism-guides-06.png` is the selected revised **B: Soft ribbons** mockup, made with the built-in image generator. Prompt: retain B's scene and contact glow, reduce the four corner rays to faint, narrow pale blue-grey wisps with an earlier smooth fade, and keep platform contact light stronger. No filled prism faces or far cap.
 
 This is an approximate visual reference. Runtime lines follow the four actual panel corners and reflected normal. Contact contours cover the panel and four side boundaries at any depth. The six-unit guide fade does not limit replacement or contact light.
-
-## Native trial captures
-
-- [Level 1](ceramic-trial-in-game.png)
-- [Character close view](ceramic-character-in-game.png)
-- [Fall preview](ceramic-fall-in-game.png)
-
-These are Godot Compatibility viewport captures, not generated mockups.

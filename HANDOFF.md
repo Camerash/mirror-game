@@ -90,8 +90,7 @@ cycle where the legs pass; airborne holds still; paused freezes; a frame gap
 longer than 0.1 s is cut rather than paid back.
 
 `assets/character/ceramic_traveller.glb`, its atlas and
-`art_sources/character/build_ceramic_traveller.py` are now read by nothing.
-Deleting them was not decided.
+`art_sources/character/build_ceramic_traveller.py` were removed in `b1d2b6d`.
 
 ### Hood and unhood — partial, and blocked
 
@@ -282,10 +281,9 @@ rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --editor --
 | --- | --- |
 | `tests/run_tests.gd` | 532 checks, 0 failures |
 | `tests/level_solvability_tests.gd` | 6 checks, 0 failures |
-| `tests/ceramic_trial_tests.gd` | 19 checks, 0 failures |
+| `tests/gameplay_art_tests.gd` | 62 checks, 0 failures |
 | `tests/animated_traveller_tests.gd` | 281 checks, 0 failures |
-| `tests/reference_art_tests.gd` | 643 checks, 0 failures |
-| `tests/painted_traveller_tests.gd` | 137 checks, 0 failures |
+| `tests/reference_art_tests.gd` | 626 checks, 0 failures |
 | `tests/extent_tests.gd` | 68 checks, 0 failures |
 | `tests/constellation_tuning_tests.gd` | 25 checks, 0 failures |
 | `check_walk.py` | 4 of 4 pass |
@@ -303,6 +301,8 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
 
 ## Traps. Each of these produced a wrong answer at least once
 
+- **`run_tests.gd`'s check count varies by one between runs.** It reports
+  531 or 532, seen before this change too. Compare failures, not the count.
 - **A resize is silently dropped while the camera is blending.** `_resize_to`
   returns early on `camera.busy`, and every `change_preview` re-triggers a
   camera fit. Any scripted solve must wait between steps, or the size never
@@ -323,8 +323,8 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
   `animation_data.action_slot` after assigning an action or nothing plays.
 - **`rtk grep` reads the working directory, not a pipe.** Use `rtk proxy grep`
   when the input comes from a pipe or a redirect.
-- **Two blend files belong to the user.** The build reads
-  `art_sources/traveller_animated/traveller_animated.blend`.
-  `art_sources/traveller/traveller_esmond_split.blend` is the user's split copy.
-  The user committed both in `337b50d`. Do not change or commit them without
-  asking.
+- **One blend file belongs to the user.** The build reads
+  `art_sources/traveller_animated/traveller_animated.blend`. The user
+  committed it in `337b50d`. Do not change or commit it without asking.
+  `art_sources/traveller/traveller_esmond_split.blend`, the user's split copy,
+  was removed in `b1d2b6d`.
