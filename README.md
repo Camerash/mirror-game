@@ -51,7 +51,7 @@ Open **Bounded mirror workshop** from the level list. Its three ledges, side obs
 
 ## First art trial
 
-Absolutes use jade green with dark stripes. Level 1 uses the holographic stone and atmosphere trial. The bounded workshop also uses detailed materials to check texture cuts; other puzzles and fixtures retain the simpler test materials. [Board 04](docs/art/mirror-direction-contact-04.png) is the current approximate visual reference: a clear centre, a one-sided light skirt, sparse outward particles, and narrow contact bands on original and absolute surfaces. A mirror’s own reflected structures have no contact glow. Hologram edges, the perimeter light, and prism guides are unchanged. Absolutes remain solid. [The art record](docs/art/README.md) explains its limits. Documentation images are excluded from imports and game exports.
+One ceramic block set is used on every stage, puzzle and fixture alike; look follows the kind of solid, not the level index. `levels/12_block_gallery.json`, reviewed by `tests/block_gallery_review.gd`, is the demo ground showing every original, reflected, and absolute look together. [Board 04](docs/art/mirror-direction-contact-04.png) is the current approximate visual reference: a clear centre, a one-sided light skirt, sparse outward particles, and narrow contact bands on original and absolute surfaces. A mirror’s own reflected structures have no contact glow. Hologram edges, the perimeter light, and prism guides are unchanged. Absolutes remain solid. [The art record](docs/art/README.md) explains its limits. Documentation images are excluded from imports and game exports.
 
 ## Checks
 
@@ -105,11 +105,11 @@ Godot MCP Runtime **3.3.0** is installed outside this repository in `~/.local/sh
 
 The `i-have-adhd` skill is installed in `~/.codex/skills/i-have-adhd`. It is available on the next turn; use `$i-have-adhd` to activate it. If the new MCP server is not listed in the current session, reload Codex to load its saved configuration.
 
-## Level 1 ceramic art trial
+## The ceramic block set
 
-Level 1 uses ceramic B, porcelain R3 reflections, and carved jade S1. The golden traveller has a hooded cloak and a damped walk cycle; the mirror uses a thin metal frame and clear glass. The current fog is hidden in this trial. Other levels keep their simple presentation.
+Every stage uses ceramic B, porcelain R3 reflections, and carved jade S1. The golden traveller has a hooded cloak and a damped walk cycle; the mirror uses a thin metal frame and clear glass. `levels/12_block_gallery.json` is the demo ground for this block set: an original block whole, a tall original, a whole reflected copy, an original the mirror plane cuts, a reflected piece cut at the aperture edge, and the jade start and goal platforms, all on one stage.
 
-Asset source and regeneration instructions are in [art_sources/README.md](art_sources/README.md). Run the focused art checks with `rtk godot --headless --path . --script tests/gameplay_art_tests.gd`. For the traveller in the game, `rtk godot --path . --script tests/traveller_gameplay_review.gd` without `--headless` walks and turns the character on the spot and saves frames to `test-output/`. For whether a level's intended solution reaches its goal and its near misses do not, use `rtk godot --headless --path . --script tests/level_solvability_tests.gd`. Stop the runtime MCP session before any headless checks.
+Asset source and regeneration instructions are in [art_sources/README.md](art_sources/README.md). Run the focused art checks with `rtk godot --headless --path . --script tests/gameplay_art_tests.gd`. For the traveller in the game, `rtk godot --path . --script tests/traveller_gameplay_review.gd` without `--headless` walks and turns the character on the spot and saves frames to `test-output/`. For the block gallery, `rtk godot --path . --script tests/block_gallery_review.gd` without `--headless` saves frames the same way. For whether a level's intended solution reaches its goal and its near misses do not, use `rtk godot --headless --path . --script tests/level_solvability_tests.gd`. Stop the runtime MCP session before any headless checks.
 
 ## Separate reference scene
 

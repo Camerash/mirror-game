@@ -10,7 +10,7 @@ func _run() -> void:
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
 	root.add_child(game)
-	game.load_level(Game.LEVEL_PATHS.size() - 1)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/10_extent.json"))
 	await _settle()
 	game.edit_mirror()
 	await _settle()

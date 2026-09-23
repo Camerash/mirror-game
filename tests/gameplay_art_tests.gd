@@ -12,6 +12,12 @@ var failures := 0
 func _initialize() -> void:
 	_run.call_deferred()
 
+func _find_solid(solids: Array[Dictionary], kind: String, id: String) -> Dictionary:
+	for solid: Dictionary in solids:
+		if solid.get("kind") == kind and solid.get("id") == id:
+			return solid
+	return {}
+
 func check(value: bool, message: String) -> void:
 	checks += 1
 	if not value:
@@ -81,6 +87,21 @@ func _run() -> void:
 				block_look = false
 		check(block_look, "Every visual slot uses the ceramic or porcelain block set: %s" % path)
 		check(game.walker.character_visual != null, "The golden traveller shows on every stage: %s" % path)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/12_block_gallery.json"))
+	var whole_original := _find_solid(game.solids, "original", "whole")
+	check(whole_original.has("bounds") and (whole_original["bounds"] as AABB).size.is_equal_approx((whole_original["source_bounds"] as AABB).size),
+		"Block gallery: an original block keeps its full source size")
+	var cut_original := _find_solid(game.solids, "original", "straddle")
+	check(cut_original.has("bounds") and not (cut_original["bounds"] as AABB).size.is_equal_approx((cut_original["source_bounds"] as AABB).size),
+		"Block gallery: the mirror plane cuts an original down from its source size")
+	var whole_reflected := _find_solid(game.solids, "reflected", "copy")
+	check(whole_reflected.has("bounds") and (whole_reflected["bounds"] as AABB).size.is_equal_approx((whole_reflected["source_bounds"] as AABB).size),
+		"Block gallery: a reflected block appears whole, at its full source size")
+	var cut_reflected := _find_solid(game.solids, "reflected", "edge")
+	check(cut_reflected.has("bounds") and not (cut_reflected["bounds"] as AABB).size.is_equal_approx((cut_reflected["source_bounds"] as AABB).size),
+		"Block gallery: a reflected block is cut smaller than its source size at the aperture edge")
+	var absolute_solid := _find_solid(game.solids, "absolute", "goal")
+	check(absolute_solid.has("bounds"), "Block gallery: the jade goal platform is present")
 	frame.queue_free()
 	game.queue_free()
 	await process_frame

@@ -174,6 +174,7 @@ Three puzzles and eight fixtures.
 | `07_horizontal` | fixture | a useful fall |
 | `09_movement` | fixture | natural walking |
 | `10_extent` | fixture | bounded cuts, side crossing, absolute priority, source-anchored materials |
+| `12_block_gallery` "Block gallery" | fixture | demo ground for the one ceramic block set: every original, reflected, and absolute look together |
 
 ### Level 3, the one stage experiment that landed
 
@@ -293,6 +294,7 @@ Native reviews, without `--headless`, save to the ignored `test-output/`:
 
 ```bash
 rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/traveller_gameplay_review.gd
+rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/block_gallery_review.gd
 ```
 
 `tests/preview_tests.gd` and `tests/mirror_interaction_tests.gd` are modules with

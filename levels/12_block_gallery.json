@@ -1,0 +1,141 @@
+{
+  "title": "Block gallery",
+  "objective": "Look around. Every block shape from the set is here.",
+  "is_test": true,
+  "originals": [
+    {
+      "id": "whole",
+      "center": [
+        -3,
+        -0.5,
+        3
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "tall",
+      "center": [
+        -3,
+        0,
+        -3
+      ],
+      "size": [
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "id": "copy",
+      "center": [
+        -1.5,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "straddle",
+      "center": [
+        0,
+        -0.5,
+        -1
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "edge",
+      "center": [
+        -1,
+        -0.5,
+        1.5
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "absolutes": [
+    {
+      "id": "start",
+      "center": [
+        -3,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "goal",
+      "center": [
+        3.5,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "start": [
+    -3,
+    0,
+    0
+  ],
+  "goal": [
+    3.5,
+    0,
+    0
+  ],
+  "mirror": {
+    "enabled": true,
+    "axis": 0,
+    "source": 1,
+    "offset": 0,
+    "pivot": [
+      0,
+      0.5,
+      0
+    ],
+    "width": 3,
+    "height": 3
+  },
+  "limits": {
+    "axes": [
+      0,
+      1,
+      2
+    ],
+    "min": [
+      -4,
+      -1,
+      -3
+    ],
+    "max": [
+      4,
+      3,
+      3
+    ]
+  },
+  "kill_y": -5
+}

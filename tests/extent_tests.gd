@@ -22,7 +22,7 @@ func _run() -> void:
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
 	root.add_child(game)
-	game.load_level(Game.LEVEL_PATHS.size() - 1)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/10_extent.json"))
 	await settle()
 	game.edit_mirror()
 	await settle()
@@ -132,7 +132,7 @@ func _resize_rules() -> void:
 	check(not Levels.validate(raw).is_empty(), "Quarter-unit initial centre is rejected")
 
 func _resize_input() -> void:
-	game.load_level(Game.LEVEL_PATHS.size() - 1)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/10_extent.json"))
 	await settle()
 	game.edit_mirror()
 	await settle()
