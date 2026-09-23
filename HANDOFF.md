@@ -295,7 +295,10 @@ the join comes from the game's own mirror rule.
 1. **There is no tutorial structure.** Three puzzles exist in a sequence;
    nothing introduces the verbs in order, and Rotate and Tilt are missing
    entirely.
-2. **Not implemented, so do not design around them**: ladders; and switches,
+2. **Exports ship the study scenes.** `export_presets.cfg` exports all
+   resources, so `art_trial/` (the reference scene and the traveller viewer)
+   and `assets/studies/` go into a build. Decide before a release build.
+3. **Not implemented, so do not design around them**: ladders; and switches,
    keys and doors, whose state sharing across the plane is explicitly undecided.
 
 ## How to build and prove
