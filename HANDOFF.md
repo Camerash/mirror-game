@@ -1,11 +1,16 @@
 # Handoff — MVP tutorial
 
-Written at `607bd05`. Read this before you change a level, the character, or
-the level sequence. It records what is done, what is blocked, what was already
+Written at `607bd05`, updated at the block-set and stage-sweep work. Read this
+before you change a level, the character, the block look, or the level sequence. It records what is done, what is blocked, what was already
 measured and failed, and which traps cost real time.
 
 ## Your task, in order
 
+0. **The user's next request is the block look.** Make the ceramic block
+   texture and its markings more impressive. Iterate on the one block set in
+   `world/block_set.gd`, `world/ceramic.gdshader` and `world/porcelain.gdshader`,
+   and judge every change in the block gallery (see "The block set and the
+   gallery" below). The user asked for this before the tutorial work.
 1. **Iterate the stage design through the tutorial.** The tutorial does not
    exist yet as a sequence. Three puzzles exist and two control verbs are still
    taught nowhere.
@@ -89,8 +94,8 @@ by hand, because the asset carries the feet and the cloth. Standing holds the
 cycle where the legs pass; airborne holds still; paused freezes; a frame gap
 longer than 0.1 s is cut rather than paid back.
 
-`assets/character/ceramic_traveller.glb`, its atlas and
-`art_sources/character/build_ceramic_traveller.py` were removed in `b1d2b6d`.
+The traveller shows on every stage. The old ceramic traveller and every earlier
+study were removed in `b1d2b6d`; git history keeps them.
 
 ### Hood and unhood — partial, and blocked
 
@@ -228,6 +233,44 @@ unproven**. A Tilt level is plausible and needs real design, not a quick check.
 - **The half turn that exchanges source and reflected sides.** An agreed rule
   with nothing behind it.
 
+### The block set and the gallery
+
+Every stage, puzzle or fixture, uses one block set. The look follows the kind
+of solid (original, reflected, absolute), never the level index. It lives in
+`world/block_set.gd` (the materials and the goal ring) and two shaders:
+`world/ceramic.gdshader` (originals and jade absolutes) and
+`world/porcelain.gdshader` (reflections). The lighting is one environment in
+`world/trial_lighting.gd`. There is no fog. The level JSON has no block type
+field; add one only when a second variant of one kind exists.
+
+`levels/12_block_gallery.json` is the demo ground. It is a fixture with an
+enabled 3x3 mirror and shows a whole original, a tall original, a whole
+reflected copy, an original cut at the plane with its cut reflection, a
+reflected piece cut at the aperture edge, and the jade start and goal.
+`tests/gameplay_art_tests.gd` fails if a later edit removes one of these looks.
+`tests/block_gallery_review.gd` (native) saves four turns, a phone size, a close
+view, and a 30 degree turn that shows the angled polygon cut path.
+
+### The stage sweep
+
+Each stage stays a self-contained JSON file in its own coordinates. At the goal
+of a puzzle that has a next puzzle, `game.gd` waits 0.5 s, then loads the next
+stage at once. The real world, collision, walker and HUD are the new stage from
+that moment. `world/stage_sweep.gd` then draws the old stage for 1.7 s only: a
+second, visual-only `MirrorWorldView`, moved by `new start - old goal` so the
+traveller stays where he stood. A glass panel sweeps from the far end back past
+the traveller. A clip plane in both block shaders hides the new stage ahead of
+the panel and the old stage behind it. Phase is `"transition"` during the
+sweep: editing, walking, Undo, the pointer and camera turns are refused. The
+last puzzle does not sweep; it stays complete with "The end of the tutorial so
+far." The level picker and Reset stay instant and cancel a sweep. There is no
+Next button.
+
+Known limits: a clipped box is open at the plane for about one second, and the
+camera frames both stages together, so each stage is smaller during the sweep.
+The user chose the sweep over a Monument Valley style diorama join, so that
+the join comes from the game's own mirror rule.
+
 ## Decisions already made. Do not reopen them without the user
 
 - **Multi-mirror is coming**, but may be limited to predefined stages or
@@ -241,22 +284,18 @@ unproven**. A Tilt level is plausible and needs real design, not a quick check.
   "Standing still only" option exists. Keep it out of the sequence; prototype it
   as fixtures, one that requires it and one that merely allows it, and let a
   playtest decide.
+- **One block set on every stage**, made from the Level 1 ceramic look. The
+  reference scene's look is a source of ideas, not the base.
+- **Stages join by the mirror sweep**, not a diorama take-apart or a title card.
 - **Armholes in the cape are rejected on the look.** Do not rebuild them unless
   the user asks by name.
 
 ## Blocking the MVP specifically
 
-1. **The traveller only renders on Level 1.** `game.gd` line 168 hardcodes
-   `set_art_trial(index == 0)`, so every other level and every fixture shows a
-   white capsule. `GAME_DESIGN.md` says the complete ceramic treatment is
-   limited to Level 1, so this is deliberate for the *world*, but it also hides
-   the character. **A tutorial MVP almost certainly needs the character on every
-   stage.** Separating the character treatment from the world treatment is a
-   small change and the user has been told it is open.
-2. **There is no tutorial structure.** Three puzzles exist in a sequence;
+1. **There is no tutorial structure.** Three puzzles exist in a sequence;
    nothing introduces the verbs in order, and Rotate and Tilt are missing
    entirely.
-3. **Not implemented, so do not design around them**: ladders; and switches,
+2. **Not implemented, so do not design around them**: ladders; and switches,
    keys and doors, whose state sharing across the plane is explicitly undecided.
 
 ## How to build and prove
@@ -280,9 +319,10 @@ rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --editor --
 
 | check | current result |
 | --- | --- |
-| `tests/run_tests.gd` | 532 checks, 0 failures |
+| `tests/run_tests.gd` | 551 checks, 0 failures (varies by one between runs) |
 | `tests/level_solvability_tests.gd` | 6 checks, 0 failures |
-| `tests/gameplay_art_tests.gd` | 62 checks, 0 failures |
+| `tests/gameplay_art_tests.gd` | 61 checks, 0 failures |
+| `tests/display_geometry_tests.gd` | 2089 checks, 0 failures |
 | `tests/animated_traveller_tests.gd` | 281 checks, 0 failures |
 | `tests/reference_art_tests.gd` | 626 checks, 0 failures |
 | `tests/extent_tests.gd` | 68 checks, 0 failures |
@@ -295,13 +335,28 @@ Native reviews, without `--headless`, save to the ignored `test-output/`:
 ```bash
 rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/traveller_gameplay_review.gd
 rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/block_gallery_review.gd
+rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/block_gallery_review.gd -- --sweep
 ```
+
+The `--sweep` mode completes Level 1 and saves the sweep at 0, 25, 50, 75 and
+100 percent. `tests/capture.gd` also runs only natively; headless, it waits
+forever for a frame.
 
 `tests/preview_tests.gd` and `tests/mirror_interaction_tests.gd` are modules with
 no runner. They print nothing on their own and are driven by `run_tests.gd`.
 `tests/extent_tests.gd` words its summary "failures:" rather than "checks,".
 
 ## Traps. Each of these produced a wrong answer at least once
+
+- **A moved block view needs its own transform in the material mapping.**
+  `_apply_source_mapping` uses `(transform * material_to_world).affine_inverse()`.
+  Without `transform`, a moved view gets wrong surface detail and marks every
+  face as cut. The clip plane is in world space.
+- **A test that completes a puzzle must set `game.auto_advance = false`**, or
+  the sweep carries the game to the next stage during the checks.
+- **`load_level` sets the phase to "play".** The sweep sets "transition" again
+  after it. A new phase must be added to the guards in `undo`, `_pointer` and
+  `turn_camera`, not only to `can_edit`.
 
 - **`run_tests.gd`'s check count varies by one between runs.** It reports
   531 or 532, seen before this change too. Compare failures, not the count.
