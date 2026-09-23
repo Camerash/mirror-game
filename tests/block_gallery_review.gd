@@ -5,15 +5,25 @@ extends SceneTree
 ## Run without --headless:
 ##   godot --path . --script tests/block_gallery_review.gd
 ## Saves frames to the ignored test-output/ directory.
+##
+## Add -- --sweep to instead complete Level 1 through real commands and
+## review the stage sweep to Level 2, at 0/25/50/75/100% of its own
+## grow-sweep-shrink duration (the ADVANCE_PAUSE before it is not part of
+## that span):
+##   godot --path . --script tests/block_gallery_review.gd -- --sweep
 
 const Game := preload("res://game.gd")
+const Sweep := preload("res://world/stage_sweep.gd")
 
 var game: Node3D
 var shots := 0
 
 
 func _initialize() -> void:
-	_run.call_deferred()
+	if "--sweep" in OS.get_cmdline_user_args():
+		_run_sweep.call_deferred()
+	else:
+		_run.call_deferred()
 
 
 func _run() -> void:
@@ -62,6 +72,65 @@ func _settle() -> void:
 				and game.settle_frames == 0 and not game._manipulating():
 			return
 	assert(false, "Review action did not settle")
+
+
+func _run_sweep() -> void:
+	root.size = Vector2i(1152, 800)
+	game = Game.new()
+	root.add_child(game)
+	game.load_level(0)
+	await _settle()
+	# Solve Level 1 through the same real commands as run_tests.gd's
+	# progression check, so the sweep starts exactly as a player would see it.
+	game.begin_preview()
+	await _settle()
+	game.change_preview("enabled", true)
+	await _settle()
+	game.apply_preview()
+	await _settle()
+	game.request_walk(Vector3(5, 0, 0))
+	await _walk_settle()
+	game.begin_preview()
+	await _settle()
+	game.change_preview("offset", 4.0)
+	await _settle()
+	game.apply_preview()
+	await _settle()
+	game.request_walk(Vector3(8, 0, 0))
+	await _walk_settle()
+	await _wait_until(func() -> bool: return game.sweep.active)
+	var total := Sweep.GROW_TIME + Sweep.SWEEP_TIME + Sweep.SHRINK_TIME
+	await _capture("sweep-0")
+	for fraction: float in [0.25, 0.5, 0.75, 0.995]:
+		await _wait_sweep_fraction(total, fraction)
+		await _capture("sweep-%d" % roundi(fraction * 100))
+	print("Saved %d sweep frames to test-output/." % shots)
+	game.queue_free()
+	await process_frame
+	quit()
+
+
+func _walk_settle() -> void:
+	for tick: int in 600:
+		await physics_frame
+		if game.walker.route.is_empty():
+			await _settle()
+			return
+	assert(false, "Walk did not finish")
+
+
+func _wait_until(predicate: Callable) -> void:
+	for tick: int in 300:
+		if predicate.call():
+			return
+		await physics_frame
+	assert(false, "Review action did not settle")
+
+
+func _wait_sweep_fraction(total: float, fraction: float) -> void:
+	var target := total * fraction
+	while game.sweep.active and game.sweep._elapsed < target:
+		await physics_frame
 
 
 func _capture(label: String) -> void:

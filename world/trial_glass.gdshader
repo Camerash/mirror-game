@@ -4,6 +4,9 @@ uniform float sheet_time = 0.0;
 uniform float sheet_alpha = 0.11;
 uniform bool removal = false;
 uniform vec2 panel_size = vec2(3.0);
+// Multiplies the opacity. The stage sweep panel has no ribbons or motes, so it
+// needs more glass to read.
+uniform float presence = 1.0;
 varying vec3 local_position;
 void vertex() {
 	local_position = VERTEX;
@@ -16,5 +19,5 @@ void fragment() {
 	ROUGHNESS = 0.16 + cloud * 0.035;
 	SPECULAR = 0.7;
 	METALLIC = 0.1;
-	ALPHA = (0.04 + cloud * 0.025 + edge * 0.06) * (removal ? 0.3 : 1.0);
+	ALPHA = (0.04 + cloud * 0.025 + edge * 0.06) * (removal ? 0.3 : 1.0) * presence;
 }

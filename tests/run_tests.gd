@@ -33,6 +33,7 @@ func _run() -> void:
 	await _test_lifecycle()
 	await _test_route()
 	await _test_progression()
+	await _test_sweep_cancel()
 	await _test_reveal()
 	await _test_support()
 	await _test_wall()
@@ -123,6 +124,9 @@ func _test_lifecycle() -> void:
 	await _frames(5)
 
 func _test_route() -> void:
+	# This test inspects "complete" state at length (undo/redo, cancel), so the
+	# stage sweep must not carry it away the instant the goal is reached.
+	game.auto_advance = false
 	_check(not game.request_walk(Vector3(8, 0, 0)), "Goal is unreachable before a reflection")
 	game.begin_preview()
 	await _preview_ready()
@@ -163,26 +167,59 @@ func _test_route() -> void:
 
 func _test_progression() -> void:
 	_check(not game.advance_level(), "Next level cannot skip an unfinished puzzle")
+	game.auto_advance = true
 	_check(game.request_walk(Vector3(8, 0, 0)), "Level 1 can be completed again after Undo")
 	await _walk_finished()
+	_check(game.phase == "transition", "Reaching the goal with auto_advance starts the stage sweep")
+	_check(not game.can_edit(), "Editing is blocked during the sweep")
+	_check(not game.request_walk(Vector3(0, 0, 0)), "Walking is blocked during the sweep")
+	_check(not game.undo(), "Undo is blocked during the sweep")
+	var settled := false
+	for tick: int in range(300):
+		if game.phase == "play":
+			settled = true
+			break
+		await physics_frame
+	_check(settled, "The sweep finishes within 300 physics frames")
+	_check(game.level_index == 1, "The sweep advances to the next puzzle")
+	_check(game.history.is_empty() and game.walker.route.is_empty(), "The sweep starts the new stage with clean history and movement")
+	_check(game.walker.position.distance_to(Geometry.vector(game.level["start"])) < 0.05, "The walker stands at the new stage's start")
+	_check(not game.sweep.active, "The sweep view is no longer active")
+	_check(game.world.clip_plane == Plane(), "The main world clip is cleared after the sweep")
+	_check(game.goal_root.visible, "The new goal ring shows again")
+	_check(game.hud._level_picker.selected == 1, "Level picker follows progression")
 	for dimensions: Vector2i in [Vector2i(390, 844), Vector2i(844, 390), Vector2i(768, 1024), Vector2i(1024, 768), Vector2i(1152, 800)]:
 		root.size = dimensions
 		await _frames(3)
-		var controls: Dictionary = game.hud.get_touch_control_bounds()
-		_check(controls.has("next_level"), "Completed Level 1 offers Next level at " + str(dimensions))
-		if controls.has("next_level"):
-			var bounds: Rect2 = controls["next_level"]
-			_check(bounds.size.x >= 48 and bounds.size.y >= 48 and Rect2(Vector2.ZERO, Vector2(dimensions)).encloses(bounds), "Next level fits the window and meets touch size")
-	var next_button: Rect2 = game.hud.get_touch_control_bounds()["next_level"]
-	_mouse(next_button.get_center(), true)
-	_mouse(next_button.get_center(), false)
+		_check(not game.hud.get_touch_control_bounds().has("next_level"), "No Next control exists at " + str(dimensions))
+	root.size = Vector2i(1152, 800)
+	await _frames(3)
+
+func _test_sweep_cancel() -> void:
+	game.load_level(1)
 	await _frames(5)
-	_check(game.level_index == 1 and game.phase == "play", "Next level click loads the second puzzle")
-	_check(game.history.is_empty() and game.walker.route.is_empty(), "Next level clears old history and movement")
-	_check(game.hud._level_picker.selected == 1, "Level picker follows progression")
-	_check(not game.hud.get_touch_control_bounds().has("next_level"), "Next level is hidden during play")
+	game.auto_advance = true
+	game.phase = "complete"
+	game._start_advance_pause()
+	await _frames(50)
+	_check(game.sweep.active, "Sweep test setup: the sweep is running mid-transition")
+	game.load_level(1)
+	await _frames(3)
+	_check(not game.sweep.active, "Reset during the sweep cancels it")
+	_check(game.sweep._old_view == null, "Cancel frees the old stage's ghost view")
+	_check(game.world.clip_plane == Plane(), "Cancel clears the main world's clip")
+	_check(game.goal_root.visible and game.contact.visible, "Cancel restores the goal ring and the contact seams")
+	# The sheet's own visibility then follows the reloaded level's mirror
+	# state (Level 2's default mirror is disabled, so the sheet stays
+	# hidden for that reason, not because the sweep still holds it down).
+	_check(game.sweep._sheet == null, "Cancel releases the sweep's hold on the mirror sheet")
+	_check(game.phase == "play", "Cancel-through-load_level leaves the game in play")
+	game.auto_advance = false
 
 func _test_reveal() -> void:
+	# Same reason as _test_route: this test keeps completing and undoing
+	# Level 2, and the sweep would carry it to Level 3 mid-check.
+	game.auto_advance = false
 	_check(not game.request_walk(Vector3(8, 0, 0)), "Level 2 goal is blocked by the original gap")
 	game.begin_preview()
 	await _preview_ready()

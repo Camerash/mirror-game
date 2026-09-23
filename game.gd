@@ -21,6 +21,8 @@ const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
 const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
+const Sweep := preload("res://world/stage_sweep.gd")
+const ADVANCE_PAUSE := 0.5
 const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json",
 	"res://levels/11_aperture.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
@@ -99,6 +101,9 @@ var rotation_target: Dictionary = {}
 var cancelling_gesture := false
 var limit_hint_shown := false
 var viewport_size := Vector2.ZERO
+var sweep := Sweep.new()
+var auto_advance := true
+var _advance_timer: Tween
 
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
@@ -133,6 +138,8 @@ func _setup_scene() -> void:
 	walker.route_finished.connect(_route_finished)
 	add_child(goal_root)
 	add_child(walker)
+	add_child(sweep)
+	sweep.finished.connect(_finish_sweep)
 	add_child(camera)
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.current = true
@@ -152,6 +159,9 @@ func _setup_scene() -> void:
 func load_level(index: int) -> bool:
 	if index < 0 or index >= LEVEL_PATHS.size():
 		return false
+	sweep.cancel()
+	if _advance_timer and _advance_timer.is_valid():
+		_advance_timer.kill()
 	var loaded := Levels.load_level(LEVEL_PATHS[index])
 	if loaded.is_empty():
 		status = "This level could not be loaded."
@@ -203,8 +213,43 @@ func _physics_process(_delta: float) -> void:
 	elif not level.get("is_test", false) and walker.position.distance_to(Geometry.vector(level["goal"])) < 0.22:
 		phase = "complete"
 		walker.stop()
-		status = "A new way through. You reached the goal."
+		var is_final := level_index + 1 >= PUZZLE_PATHS.size()
+		status = "The end of the tutorial so far." if is_final else "A new way through. You reached the goal."
+		if auto_advance and not is_final:
+			phase = "transition"
+			_start_advance_pause()
 		_refresh()
+
+func _start_advance_pause() -> void:
+	walker.stop()
+	walker.paused = true
+	if _advance_timer and _advance_timer.is_valid():
+		_advance_timer.kill()
+	_advance_timer = create_tween()
+	_advance_timer.tween_interval(ADVANCE_PAUSE)
+	_advance_timer.tween_callback(_begin_sweep)
+
+func _begin_sweep() -> void:
+	var old_solids: Array[Dictionary] = []
+	for solid: Dictionary in solids:
+		old_solids.append(solid.duplicate(true))
+	var old_start := Geometry.vector(level["start"])
+	var old_goal := Geometry.vector(level["goal"])
+	var old_framing := Geometry.total_bounds(old_solids).grow(0.3)
+	load_level(level_index + 1)
+	phase = "transition"
+	walker.paused = true
+	var shift := Geometry.vector(level["start"]) - old_goal
+	hud.show_hint(str(level["title"]))
+	camera.fit(AABB(old_framing.position + shift, old_framing.size), hud.get_camera_rect(), true)
+	sweep.start(old_solids, Geometry.total_bounds(world.drawn_solids), shift, old_start, old_goal,
+		Geometry.vector(level["goal"]), world, goal_root, sheet, contact)
+	_fit_camera(hud.get_play_rect())
+
+func _finish_sweep() -> void:
+	phase = "play"
+	_refresh()
+	_fit_camera(hud.get_play_rect())
 
 func request_walk(target: Vector3) -> bool:
 	if phase != "play" or settle_frames > 0 or not pending.is_empty():
@@ -493,7 +538,7 @@ func cancel_preview() -> void:
 	_fit_camera(hud.get_play_rect())
 
 func undo() -> bool:
-	if history.is_empty() or not pending.is_empty():
+	if history.is_empty() or not pending.is_empty() or phase == "transition":
 		return false
 	pending = {"action": "undo", "snapshot": history.pop_back()}
 	walker.paused = true
@@ -598,9 +643,9 @@ func _refresh() -> void:
 	rings.set_pose(sheet.global_transform)
 	resize_controls.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty(), edit_mode)
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
-		"level_index": level_index, "can_advance": _can_advance(),
+		"level_index": level_index,
 		"can_edit": can_edit(), "standing_only": standing_only,
-		"camera_busy": camera.busy or dragging or resizing or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
+		"camera_busy": camera.busy or dragging or resizing or translating_settle or phase == "transition", "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],
 		"edit_mode": edit_mode, "mode_busy": _mode_busy(), "angle_snap": angle_snap, "width": selected.get("width", 3.0), "height": selected.get("height", 3.0),
 		"guide_style":guide_style, "guide_preview":guide_preview_enabled, "guide_preview_available":_guide_preview_available(),
@@ -643,7 +688,6 @@ func _action(action: String, value: Variant) -> void:
 		"resize_end":
 			if not cancelling_gesture:
 				_finish_resize()
-		"next_level": advance_level()
 		"edit": begin_preview()
 		"create": create_mirror(value)
 		"remove": remove_mirror()
@@ -772,7 +816,7 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 		return
 	if gesture.active or rings.is_active() or resize_controls.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
 		return
-	if camera.busy or _manipulating() or sheet.is_transitioning() or not pending.is_empty() or phase == "failure":
+	if camera.busy or _manipulating() or sheet.is_transitioning() or not pending.is_empty() or phase in ["failure", "transition"]:
 		return
 	var target := "surface" if _solid_hit(point) else "empty"
 	if phase == "preview":
@@ -912,6 +956,8 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 	if _manipulating():
 		return
 	var framing := Geometry.total_bounds(world.drawn_solids).grow(0.3)
+	if sweep.active:
+		framing = framing.merge(sweep.union)
 	if phase == "preview" or mirror["enabled"]:
 		for corner: Vector3 in sheet.get_corners():
 			framing = framing.expand(corner)
@@ -924,7 +970,7 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 	failure_veil.size = rect.size
 
 func turn_camera(direction: int) -> void:
-	if _manipulating() or rings.is_active():
+	if _manipulating() or rings.is_active() or phase == "transition":
 		return
 	camera.turn(direction)
 	_refresh()

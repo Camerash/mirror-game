@@ -24,7 +24,6 @@ var _camera_left: Button
 var _camera_right: Button
 var _undo: Button
 var _reset: Button
-var _next: Button
 var _cancel: Button
 var _enabled: Button
 var _flip: Button
@@ -79,7 +78,6 @@ func display_state(state: Dictionary) -> void:
 	_undo.visible = not editing and bool(_state.get("can_undo", false))
 	_undo.disabled = not bool(_state.get("can_undo", false))
 	_reset.visible = phase == "failure"
-	_next.visible = phase == "complete" and bool(_state.get("can_advance", false))
 	_cancel.visible = editing
 	_enabled.visible = editing
 	_enabled.text = "Remove mirror" if enabled else "Keep mirror"
@@ -151,7 +149,6 @@ func _build() -> void:
 	_camera_right = _add_action("↷", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
 	_undo = _add_action("Undo", "undo", null, "undo")
 	_reset = _add_action("Reset", "reset", null, "reset")
-	_next = _add_action("Next", "next_level", null, "next_level")
 	_cancel = _add_action("Cancel", "cancel", null, "cancel")
 	_enabled = _button("Keep mirror"); _enabled.pressed.connect(func() -> void: _emit("enabled", not bool(_state.get("enabled", true)))); add_child(_enabled); _register("enabled", _enabled)
 	_flip = _add_action("Reverse sides", "flip", null, "flip")
@@ -163,7 +160,7 @@ func _build() -> void:
 	_mode_cycle.pressed.connect(func() -> void: _emit("mode_cycle", null))
 	add_child(_mode_cycle)
 	_register("mode_cycle", _mode_cycle)
-	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset, _next]: _style_edit(control)
+	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset]: _style_edit(control)
 	_build_debug()
 
 func _add_action(text_value: String, action: String, value: Variant, key: String) -> Button:
@@ -288,7 +285,7 @@ func _responsive_layout() -> void:
 	_gear.position = Vector2(safe.end.x - TOUCH - GAP, safe.position.y + GAP)
 	_camera_left.position = safe.position + Vector2(GAP, safe.size.y - TOUCH - GAP); _camera_right.position = _camera_left.position + Vector2(TOUCH + 6, 0)
 	var right := Vector2(safe.end.x - GAP, safe.end.y - TOUCH - GAP)
-	for control: Control in [_undo, _reset, _next]:
+	for control: Control in [_undo, _reset]:
 		control.size = control.get_combined_minimum_size()
 		if control.visible:
 			control.position = right - Vector2(control.size.x, 0)
