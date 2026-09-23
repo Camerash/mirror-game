@@ -135,8 +135,8 @@ double-walled helmet: 964 triangles, 10 ngons, two 28-valence poles at the crown
 one flat atlas point and no shape.
 
 - **The style comes from the accepted Low bun**, `HairCap.Bun` in
-  [the painted bust study](../../art_sources/traveller_painted/traveller_painted_study.blend),
-  whose direction is recorded in [study 02](traveller-hair-study-02.md). The head
+  [the hair style source](../../art_sources/traveller/hair_style_source.blend),
+  which is the painted bust study moved beside the build. The head
   has changed shape since then, 1.360 tall and 0.980 deep against 1.080 and
   0.850 now, so the style is read in each head's own frame and re-fitted rather
   than copied vertex for vertex. Nothing about the shape is invented here.

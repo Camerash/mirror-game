@@ -2,7 +2,7 @@
 
 ## Baseline and action
 
-Use the approved [drawing study](traveller-drawing-02.md), [character and hood action](traveller-drawing-02/character-and-hood-action.jpeg), and [face and movement](traveller-drawing-02/face-and-movement.jpeg). Preserve the static source, viewer, and gameplay assets.
+Use the approved [character and hood action](traveller-drawings/character-and-hood-action.jpeg) and [face and movement](traveller-drawings/face-and-movement.jpeg) drawings. Preserve the static source, viewer, and gameplay assets.
 
 Create separate one-second standing HoodDown and HoodUp clips. Hands emerge through the front split, grip the hood rim, move it clear of the head and bun, release, and return beneath the cloak. Use 0.20 seconds for reach, 0.55 seconds for hood movement, and 0.25 seconds for release, return, and settling. Use broad rounded loose sleeves and simple thumb/grouped-finger hands. Each cuff has an outer rim, inner rim, and short recessed lining around a narrower wrist. Target cuff width at least twice the palm width and about 25% wider than the adjacent sleeve. Preserve volume at the elbow and remove the active cloak opening’s hard side step. Correct arm proportions so the upper arm is slightly longer than the forearm. Blend elbow and wrist weights.
 

@@ -35,7 +35,7 @@ sys.path.insert(0, str(HERE))
 # than the inherited cap, and slightly longer sides. The head has changed shape
 # since that study, so the style is read in each head's own frame and re-fitted
 # rather than copied vertex for vertex.
-STYLE_FILE = HERE.parents[0] / 'traveller_painted/traveller_painted_study.blend'
+STYLE_FILE = HERE / 'hair_style_source.blend'
 STYLE_PARTS = ('HairCap.Bun', 'Head')
 
 # The hairline turns hard where it leaves the face, from 56 degrees of polar
@@ -91,13 +91,14 @@ def head_frame(obj):
 
 
 def approved_style(head):
-    """The accepted bun hair, re-fitted to this head. None if the study is gone.
+    """The accepted bun hair, re-fitted to this head.
 
     Both heads are read in their own frames and one is mapped onto the other, so
     a hairline that sat a given way on the study head sits the same way here.
     """
+    # A silent fallback would build different hair with no warning.
     if not STYLE_FILE.exists():
-        return None, lambda: None
+        raise FileNotFoundError(f'hair style source is missing: {STYLE_FILE}')
     # Loading objects also pulls in their meshes and materials. Left behind they
     # sit in the saved file with no users at all, so note what was there first.
     collections = (bpy.data.objects, bpy.data.meshes, bpy.data.materials,
@@ -121,7 +122,7 @@ def approved_style(head):
             if obj:
                 bpy.data.objects.remove(obj, do_unlink=True)
         discard()
-        return None, lambda: None
+        raise RuntimeError(f'{STYLE_FILE.name} lacks one of {STYLE_PARTS}')
     # An object outside every collection keeps an identity matrix_world, so its
     # own placement would be lost. Link them before reading world positions.
     for obj in loaded.values():
