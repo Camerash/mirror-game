@@ -11,8 +11,6 @@ var build_visuals := true
 var grounded := false
 var paused := false
 var route := PackedVector3Array()
-var face: Node3D
-var visual_root: Node3D
 var character_visual: CharacterVisual
 
 func _ready() -> void:
@@ -31,58 +29,8 @@ func _ready() -> void:
 	floor_constant_speed = true
 	safe_margin = 0.001
 	if build_visuals:
-		_build_visual(collider.position)
-
-func _build_visual(centre: Vector3) -> void:
-	var mesh := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = Geometry.RADIUS
-	capsule.height = Geometry.HEIGHT
-	mesh.mesh = capsule
-	mesh.position = centre
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("f8f1dd")
-	material.roughness = 0.9
-	mesh.material_override = material
-	add_child(mesh)
-	visual_root = mesh
-	set_meta("visual", mesh)
-	face = Node3D.new()
-	mesh.add_child(face)
-	for side: float in [-1.0, 1.0]:
-		var eye := MeshInstance3D.new()
-		var dot := SphereMesh.new()
-		dot.radius = 0.018
-		dot.height = 0.036
-		eye.mesh = dot
-		eye.position = Vector3(side * 0.055, 0.14, 0.164)
-		var eye_material := StandardMaterial3D.new()
-		eye_material.albedo_color = Color("fff3da")
-		eye.material_override = eye_material
-		face.add_child(eye)
-	face.visible = false
-
-func set_art_trial(enabled: bool) -> void:
-	if not build_visuals:
-		return
-	if enabled and character_visual == null:
-		if visual_root != null:
-			visual_root.queue_free()
 		character_visual = CharacterVisual.new()
-		character_visual.ready.connect(_set_character_visual_meta, CONNECT_ONE_SHOT)
 		add_child(character_visual)
-		visual_root = character_visual
-		face = null
-	elif not enabled and character_visual != null:
-		character_visual.queue_free()
-		character_visual = null
-		_build_visual(Vector3.UP * Geometry.HEIGHT * 0.5)
-	if face != null:
-		face.visible = false
-
-func _set_character_visual_meta() -> void:
-	if character_visual != null and character_visual.primary_mesh != null:
-		set_meta("visual", character_visual.primary_mesh)
 
 func _physics_process(delta: float) -> void:
 	if paused:
@@ -109,8 +57,6 @@ func advance_motion(delta: float) -> void:
 		var movement := offset.normalized() * minf(SPEED, offset.length() / delta)
 		velocity.x = movement.x
 		velocity.z = movement.z
-	if face != null and Vector2(velocity.x, velocity.z).length_squared() > 0.0:
-		face.rotation.y = lerp_angle(face.rotation.y, atan2(velocity.x, velocity.z), minf(delta * 12.0, 1.0))
 	move_and_slide()
 	grounded = is_on_floor()
 	if character_visual != null:

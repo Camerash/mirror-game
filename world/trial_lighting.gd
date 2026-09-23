@@ -24,15 +24,12 @@ func _ready() -> void:
 	fill.rotation_degrees = Vector3(-25, 135, 0)
 	fill.light_color = Color("dae3ff")
 	add_child(fill)
-	set_art_trial(false)
-
-func set_art_trial(enabled: bool) -> void:
 	var settings := environment.environment
-	settings.background_color = Color("807887") if enabled else Color("e9e5dc")
+	settings.background_color = Color("807887")
 	settings.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	settings.ambient_light_color = Color("e8e0ea") if enabled else Color("d6e0df")
-	settings.ambient_light_energy = 0.32 if enabled else 0.4
-	settings.reflected_light_source = Environment.REFLECTION_SOURCE_SKY if enabled else Environment.REFLECTION_SOURCE_DISABLED
+	settings.ambient_light_color = Color("e8e0ea")
+	settings.ambient_light_energy = 0.32
+	settings.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	key.light_color = Color("fff0dc")
-	key.light_energy = 0.35 if enabled else 0.65
-	fill.light_energy = 0.16 if enabled else 0.0
+	key.light_energy = 0.35
+	fill.light_energy = 0.16

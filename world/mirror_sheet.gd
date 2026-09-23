@@ -7,13 +7,11 @@ signal pose_changed
 const TrialGlass := preload("res://world/trial_glass.gdshader")
 const Frame := preload("res://world/mirror_frame.gd")
 const Rules := preload("res://core/mirror_state.gd")
-const SheetShader := preload("res://world/mirror_sheet.gdshader")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
 const GuideShader := preload("res://world/mirror_guides.gdshader")
 const MoteShader := preload("res://world/mirror_motes.gdshader")
 
 var frame := Frame.new()
-var art_trial := false
 var panel_size := Vector2(3, 3)
 var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
@@ -35,7 +33,7 @@ var drawn_bounds := AABB()
 var has_geometry := false
 
 func _ready() -> void:
-	sheet_material.shader = SheetShader
+	sheet_material.shader = TrialGlass
 	sheet_material.render_priority = 64
 	sheet.material_override = sheet_material
 	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -67,14 +65,6 @@ func _ready() -> void:
 	add_child(guides)
 	add_child(motes)
 
-func set_art_trial(enabled: bool) -> void:
-	art_trial = enabled
-	frame.visible = enabled and has_geometry
-	sheet_material.shader = TrialGlass if enabled else SheetShader
-	sheet_material.set_shader_parameter("panel_size", panel_size)
-	if has_geometry:
-		frame.update_frame(panel_size, editing, enabled and bool(state.get("enabled", false)))
-
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if next_state == state and bounds == drawn_bounds and editing == is_editing:
 		return
@@ -100,12 +90,12 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		_draw_guides(panel_size.x, panel_size.y)
 		_draw_motes(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
-	frame.update_frame(panel_size, editing, art_trial and enabled)
+	frame.update_frame(panel_size, editing, enabled)
 	sheet.visible = enabled
 	ribbons.visible = enabled
 	guides.visible = enabled or editing
 	motes.visible = enabled
-	edges.visible = editing or (enabled and not art_trial)
+	edges.visible = editing
 	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
 	var source_sign := float(state.get("source_sign", 1.0))

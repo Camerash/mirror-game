@@ -21,7 +21,7 @@ func _run() -> void:
 	game.set_edit_mode("rotate")
 	await _settle()
 	# Exercise the visible turn arc controller.
-	var turn_points := game.rings.get_arc_points("turn")
+	var turn_points: PackedVector2Array = game.rings.get_arc_points("turn")
 	var original: Dictionary = game.preview.duplicate(true)
 	assert(not turn_points.is_empty(), "Visible turn arc has input points")
 	var first: Vector2 = turn_points[12]

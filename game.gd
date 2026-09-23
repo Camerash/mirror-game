@@ -165,13 +165,7 @@ func load_level(index: int) -> bool:
 	level["mirror"] = MirrorRules.normalized(level["mirror"])
 	placement_guide.clear()
 	level_index = index
-	world.set_art_trial(index == 0)
-	atmosphere.set_art_trial(index == 0)
-	atmosphere.visible = index != 0
-	trial_lighting.set_art_trial(index == 0)
-	sheet.set_art_trial(index == 0)
-	preview_view.set_art_trial(index == 0)
-	walker.set_art_trial(index == 0)
+	atmosphere.visible = false
 	gesture.cancel()
 	mirror = level["mirror"].duplicate(true) if level["mirror"]["enabled"] else {"enabled": false}
 	preview.clear()
@@ -614,7 +608,7 @@ func _refresh() -> void:
 	rings.set_pose(sheet.global_transform)
 	resize_controls.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty(), edit_mode)
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
-		"level_index": level_index, "art_trial": level_index == 0, "can_advance": _can_advance(),
+		"level_index": level_index, "can_advance": _can_advance(),
 		"can_edit": can_edit(), "standing_only": standing_only,
 		"camera_busy": camera.busy or dragging or resizing or translating_settle, "mirror_busy": _manipulating(), "rotation_active": rotation_active or not rotation_target.is_empty(), "pending": not pending.is_empty(),
 		"status": status, "editing": phase == "preview", "enabled": selected["enabled"],

@@ -4,6 +4,8 @@ const Game := preload("res://game.gd")
 const Display := preload("res://core/display_geometry.gd")
 const Queries := preload("res://core/solid_queries.gd")
 const Frame := preload("res://world/mirror_frame.gd")
+const CeramicShader := preload("res://world/ceramic.gdshader")
+const PorcelainShader := preload("res://world/porcelain.gdshader")
 var checks := 0
 var failures := 0
 
@@ -20,7 +22,7 @@ func _run() -> void:
 	var game := Game.new()
 	root.add_child(game)
 	await process_frame
-	check(game.world.art_trial and not game.atmosphere.visible, "Level 1 isolates ceramic art from fog")
+	check(not game.atmosphere.visible, "Atmosphere stays hidden; the per-level art switch is gone")
 	var jade: ShaderMaterial = game.world.visual_slots["rest:absolute:0"]["material"]
 	check(jade.get_shader_parameter("jade_surface") == true, "Absolute binds jade maps")
 	check(jade.get_shader_parameter("albedo_map").get_width() == 2048, "Jade uses the 2K source texture")
@@ -68,13 +70,21 @@ func _run() -> void:
 	frame.update_frame(Vector2(6, 4), false, true)
 	check(is_equal_approx(frame.mesh.get_aabb().size.z, depth), "Mirror frame thickness stays fixed during resize")
 	check(frame.get_child_count() == 0, "Frame adds no collision nodes")
-	game.preview_view.set_art_trial(true)
 	game.preview_view.show_result({"status":"failure", "path":PackedVector3Array([Vector3.ZERO, Vector3.DOWN]), "seconds":1.0}, game.world)
 	check(game.preview_view._mesh_children(game.preview_view.ghost).size() > 1, "Fall ghost uses the character silhouette")
-	game.load_level(1)
-	check(not game.world.art_trial and game.atmosphere.visible and not game.sheet.art_trial, "Other puzzles retain their existing presentation")
+	for index: int in Game.LEVEL_PATHS.size():
+		var path: String = Game.LEVEL_PATHS[index]
+		check(game.load_level(index), "Level loads: %s" % path)
+		check(not game.atmosphere.visible, "Atmosphere stays hidden on every stage: %s" % path)
+		var block_look := true
+		for slot: Dictionary in game.world.visual_slots.values():
+			var material: ShaderMaterial = slot["material"]
+			if material.shader != CeramicShader and material.shader != PorcelainShader:
+				block_look = false
+		check(block_look, "Every visual slot uses the ceramic or porcelain block set: %s" % path)
+		check(game.walker.character_visual != null, "The golden traveller shows on every stage: %s" % path)
 	frame.queue_free()
 	game.queue_free()
 	await process_frame
-	print("Ceramic trial: %d checks, %d failures" % [checks, failures])
+	print("Gameplay art: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)

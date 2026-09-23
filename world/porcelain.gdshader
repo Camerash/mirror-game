@@ -6,8 +6,6 @@ uniform sampler2D roughness_map : repeat_enable, filter_linear_mipmap;
 uniform sampler2D normal_map : repeat_enable, filter_linear_mipmap;
 uniform sampler2D height_map : repeat_enable, filter_linear_mipmap;
 uniform bool polygon_surface = false;
-uniform bool absolute_surface = false;
-uniform bool stone_trial = false;
 uniform vec3 box_centre;
 uniform vec3 box_size = vec3(1.0);
 uniform vec3 source_size = vec3(1.0);

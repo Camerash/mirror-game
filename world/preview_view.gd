@@ -1,7 +1,6 @@
 extends Node3D
 ## The ghost is presentation only; prediction is supplied by FallPredictor.
 
-const Geometry := preload("res://core/world_geometry.gd")
 const CharacterVisual := preload("res://world/character_visual.gd")
 const FallGhostShader := preload("res://world/fall_ghost.gdshader")
 const LANDING_PAUSE := 0.32
@@ -15,7 +14,6 @@ var elapsed := 0.0
 var duration := 1.0
 var result_status := ""
 var afterimages: Array[Node3D] = []
-var art_trial := false
 
 func _ready() -> void:
 	add_child(marks)
@@ -29,31 +27,13 @@ func _ready() -> void:
 func _setup_ghost(instance: Node3D, size: float) -> void:
 	for child: Node in instance.get_children():
 		child.free()
-	if art_trial:
-		var character := CharacterVisual.new()
-		character.ready.connect(_apply_ghost_materials.bind(character), CONNECT_ONE_SHOT)
-		instance.add_child(character)
-	else:
-		var mesh := MeshInstance3D.new()
-		var capsule := CapsuleMesh.new()
-		capsule.radius = Geometry.RADIUS
-		capsule.height = Geometry.HEIGHT
-		mesh.mesh = capsule
-		mesh.position.y = Geometry.HEIGHT * 0.5
-		instance.add_child(mesh)
+	var character := CharacterVisual.new()
+	character.ready.connect(_apply_ghost_materials.bind(character), CONNECT_ONE_SHOT)
+	instance.add_child(character)
 	instance.scale = Vector3.ONE * size
 	_apply_ghost_materials(instance)
 	if instance.get_parent() == null:
 		add_child(instance)
-
-func set_art_trial(enabled: bool) -> void:
-	if art_trial == enabled:
-		return
-	art_trial = enabled
-	_setup_ghost(ghost, 1.06)
-	for index: int in afterimages.size():
-		_setup_ghost(afterimages[index], 1.11 + index * 0.05)
-	clear()
 
 func _apply_ghost_materials(root: Node) -> void:
 	for mesh: MeshInstance3D in _mesh_children(root):

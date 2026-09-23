@@ -2,9 +2,7 @@ class_name MirrorWorldView
 extends Node3D
 
 const Queries := preload("res://core/solid_queries.gd")
-const Paint := preload("res://world/painted.gdshader")
-const TrialMaterials := preload("res://world/trial_materials.gd")
-const Hologram := preload("res://world/hologram.gdshader")
+const BlockSet := preload("res://world/block_set.gd")
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
@@ -14,18 +12,10 @@ var visual_slots: Dictionary = {}
 var visual_generation := 0
 var debug_signature := ""
 var debug_collision := false
-var art_trial := false
 
 func _ready() -> void:
 	for node: Node3D in [visual_root, collision_root, overlay_root, path_root]:
 		add_child(node)
-
-func set_art_trial(enabled: bool) -> void:
-	if art_trial == enabled:
-		return
-	art_trial = enabled
-	if not drawn_solids.is_empty():
-		draw_world(drawn_solids)
 
 func commit(solids: Array[Dictionary]) -> void:
 	_clear(collision_root)
@@ -149,21 +139,14 @@ func _polygon_boundary_distance(point: Vector3, polygon: PackedVector3Array) -> 
 
 func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	var bounds: AABB = solid["bounds"]
-	var style: String = str(solid["kind"]) + "_trial" if art_trial else "painted"
+	var style: String = str(solid["kind"])
 	var material: ShaderMaterial = slot["material"]
 	if slot["style"] != style:
-		if art_trial:
-			TrialMaterials.configure(material, str(solid["kind"]))
-		else:
-			material.shader = Paint
+		BlockSet.configure(material, style)
 		slot["style"] = style
 	material.set_shader_parameter("polygon_surface", solid.has("faces") and not solid["faces"].is_empty())
 	material.set_shader_parameter("box_centre", bounds.get_center())
 	material.set_shader_parameter("box_size", bounds.size)
-	if not art_trial:
-		material.set_shader_parameter("pigment", {"original": Color("c4b59b"), "reflected": Color("7099bd"), "absolute": Color("719b87")}[solid["kind"]])
-		material.set_shader_parameter("absolute_surface", solid["kind"] == "absolute")
-		material.set_shader_parameter("stone_trial", false)
 	material.set_shader_parameter("source_size", (solid.get("source_bounds", bounds) as AABB).size)
 	_apply_source_mapping(material, solid, bounds)
 	slot["instance"].material_override = material
@@ -175,14 +158,15 @@ func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: 
 	material.set_shader_parameter("world_to_material", material_to_world.affine_inverse())
 
 func update_debug() -> void:
-	var signature := str(art_trial) + str(debug_collision) + str(drawn_solids.filter(func(solid: Dictionary) -> bool: return debug_collision or solid["kind"] == "absolute"))
+	var signature := str(debug_collision) + (str(drawn_solids) if debug_collision else "")
 	if signature == debug_signature:
 		return
 	debug_signature = signature
 	_clear(overlay_root)
+	if not debug_collision:
+		return
 	for solid: Dictionary in drawn_solids:
-		if debug_collision or (solid["kind"] == "absolute" and not art_trial):
-			_outline_box(overlay_root, solid["bounds"], Color("a44836") if debug_collision else Color("244b35"))
+		_outline_box(overlay_root, solid["bounds"], Color("a44836"))
 
 func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -> void:
 	var points := PackedVector3Array()
@@ -216,27 +200,11 @@ func add_ring(parent: Node3D, feet: Vector3, color: Color, radius := 0.3) -> voi
 	ring.ring_segments = 8
 	node.mesh = ring
 	node.position = feet + Vector3.UP * 0.055
-	node.material_override = _goal_material() if art_trial and is_equal_approx(radius, 0.3) else _plain(color)
+	var is_goal := is_equal_approx(radius, 0.3)
+	node.material_override = BlockSet.goal_material() if is_goal else _plain(color)
 	parent.add_child(node)
-	if art_trial and is_equal_approx(radius, 0.3):
-		_add_goal_carving(parent, feet, radius)
-
-func _goal_material() -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("b49a67")
-	material.metallic = 0.75
-	material.roughness = 0.27
-	return material
-
-func _add_goal_carving(parent: Node3D, feet: Vector3, radius: float) -> void:
-	var points := PackedVector3Array()
-	for index: int in 8:
-		var angle := TAU * float(index) / 8.0
-		var direction := Vector3(cos(angle), 0.0, sin(angle))
-		var centre := feet + Vector3.UP * 0.099 + direction * radius * 0.855
-		points.append(centre - direction * radius * 0.075)
-		points.append(centre + direction * radius * 0.075)
-	_lines(parent, points, Color("f3d89b"))
+	if is_goal:
+		_lines(parent, BlockSet.goal_carving_points(feet, radius), BlockSet.GOAL_CARVING_COLOR)
 
 
 func _lines(parent: Node3D, points: PackedVector3Array, color: Color) -> void:
