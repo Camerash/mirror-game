@@ -10,6 +10,7 @@ uniform vec3 box_centre;
 uniform vec3 box_size = vec3(1.0);
 uniform vec3 source_size = vec3(1.0);
 uniform mat4 world_to_material;
+uniform vec4 clip_plane = vec4(0.0);
 varying vec3 world_position;
 varying vec3 world_normal;
 
@@ -40,6 +41,9 @@ float arch_line(vec2 coordinate) {
 }
 
 void fragment() {
+	if (clip_plane.xyz != vec3(0.0) && dot(clip_plane.xyz, world_position) > clip_plane.w) {
+		discard;
+	}
 	vec3 source_position = (world_to_material * vec4(world_position, 1.0)).xyz;
 	mat3 world_to_source = mat3(world_to_material);
 	vec3 source_normal = normalize(world_to_source * world_normal);

@@ -12,6 +12,7 @@ var visual_slots: Dictionary = {}
 var visual_generation := 0
 var debug_signature := ""
 var debug_collision := false
+var clip_plane := Plane()
 
 func _ready() -> void:
 	for node: Node3D in [visual_root, collision_root, overlay_root, path_root]:
@@ -149,13 +150,25 @@ func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	material.set_shader_parameter("box_size", bounds.size)
 	material.set_shader_parameter("source_size", (solid.get("source_bounds", bounds) as AABB).size)
 	_apply_source_mapping(material, solid, bounds)
+	material.set_shader_parameter("clip_plane", _clip_vector())
 	slot["instance"].material_override = material
 
 func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: AABB) -> void:
 	var material_to_world := Transform3D(Basis.IDENTITY, bounds.get_center())
 	if solid.has("material_to_world") and solid["material_to_world"] is Transform3D:
 		material_to_world = solid["material_to_world"]
-	material.set_shader_parameter("world_to_material", material_to_world.affine_inverse())
+	material.set_shader_parameter("world_to_material", (transform * material_to_world).affine_inverse())
+
+## Hides every drawn fragment on the positive side of `plane`. The plane is in
+## world space, also for a moved view. `Plane()` (all zero) clears the clip.
+func set_clip(plane: Plane) -> void:
+	clip_plane = plane
+	var clip_value := _clip_vector()
+	for slot: Dictionary in visual_slots.values():
+		(slot["material"] as ShaderMaterial).set_shader_parameter("clip_plane", clip_value)
+
+func _clip_vector() -> Vector4:
+	return Vector4(clip_plane.normal.x, clip_plane.normal.y, clip_plane.normal.z, clip_plane.d)
 
 func update_debug() -> void:
 	var signature := str(debug_collision) + (str(drawn_solids) if debug_collision else "")

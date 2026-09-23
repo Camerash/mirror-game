@@ -6,6 +6,7 @@ const Queries := preload("res://core/solid_queries.gd")
 const Frame := preload("res://world/mirror_frame.gd")
 const CeramicShader := preload("res://world/ceramic.gdshader")
 const PorcelainShader := preload("res://world/porcelain.gdshader")
+const WorldView := preload("res://world/world_view.gd")
 var checks := 0
 var failures := 0
 
@@ -68,6 +69,21 @@ func _run() -> void:
 	var solid := {"source_bounds": bounds, "material_to_world":Transform3D.IDENTITY}
 	check(faces.any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Angled cap is identified for opaque cross-section shading")
 	check(not Display.box_faces(bounds).any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Manufactured outer faces retain glaze decoration")
+	var clip_view := WorldView.new()
+	root.add_child(clip_view)
+	clip_view.position = Vector3(5, 0, 0)
+	var clip_bounds := AABB(Vector3(-0.5, -0.5, -0.5), Vector3.ONE)
+	var clip_mapping := Transform3D(Basis.IDENTITY, Vector3.ZERO)
+	var clip_solid := {"kind": "original", "id": "clip_test", "bounds": clip_bounds, "source_bounds": clip_bounds, "material_to_world": clip_mapping}
+	clip_view.draw_world([clip_solid])
+	var clip_material: ShaderMaterial = (clip_view.visual_slots.values()[0] as Dictionary)["material"]
+	var expected_mapping: Transform3D = (clip_view.transform * clip_mapping).affine_inverse()
+	check((clip_material.get_shader_parameter("world_to_material") as Transform3D).is_equal_approx(expected_mapping),
+		"A moved MirrorWorldView maps world_to_material through its own transform")
+	check((clip_material.get_shader_parameter("clip_plane") as Vector4).is_equal_approx(Vector4.ZERO), "Default clip is zero")
+	clip_view.set_clip(Plane(Vector3(1, 0, 0), 2.0))
+	check((clip_material.get_shader_parameter("clip_plane") as Vector4).is_equal_approx(Vector4(1, 0, 0, 2.0)), "set_clip reaches the slot material")
+	clip_view.queue_free()
 	var frame := Frame.new()
 	root.add_child(frame)
 	frame.update_frame(Vector2.ONE, false, true)
