@@ -198,7 +198,6 @@ func _build_debug() -> void:
 		var button := _button(str(item[0])); button.pressed.connect(func() -> void: _emit(str(item[1]), item[2])); box.add_child(button); _debug_controls[str(item[1]) + str(item[0])] = button
 	for spec in [["Collision", "collision"], ["Standing only", "standing_only"]]:
 		var check := CheckButton.new(); check.text = spec[0]; _style(check); check.toggled.connect(func(value: bool) -> void: _emit(spec[1], value)); box.add_child(check); _debug_controls[spec[1]] = check
-	var picker := OptionButton.new(); picker.add_item("World atmosphere", 0); picker.add_item("Boundary only", 1); _style(picker); picker.item_selected.connect(func(value: int) -> void: _emit("style", value)); box.add_child(picker); _debug_controls["style"] = picker
 	_debug_status = _label("", 13); _debug_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; box.add_child(_debug_status)
 
 func _guide_style_control(parent: VBoxContainer, key: String) -> void:
@@ -253,7 +252,6 @@ func _update_debug(editing: bool, mirror_busy: bool) -> void:
 	if _level_picker.item_count > 0: _level_picker.select(clampi(int(_state.get("level_index", 0)), 0, _level_picker.item_count - 1))
 	(_debug_controls["collision"] as CheckButton).set_pressed_no_signal(bool(_state.get("collision", false)))
 	(_debug_controls["standing_only"] as CheckButton).set_pressed_no_signal(bool(_state.get("standing_only", false)))
-	(_debug_controls["style"] as OptionButton).select(clampi(int(_state.get("style", 0)), 0, 1))
 	_debug_status.text = "%s\nOffset %.1f" % [str(_state.get("status", "")), float(_state.get("offset", 0.0))]
 	for control: Control in _debug_controls.values(): control.disabled = editing and mirror_busy
 

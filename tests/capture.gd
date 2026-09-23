@@ -13,23 +13,20 @@ func _capture() -> void:
 	FileAccess.open("res://test-output/.gdignore", FileAccess.WRITE).close()
 	for dimensions: Vector2i in [Vector2i(1152, 800), Vector2i(390, 844), Vector2i(844, 390), Vector2i(768, 1024)]:
 		root.size = dimensions
-		for style: int in [0, 1]:
-			game.load_level(0)
-			await create_timer(0.1).timeout
-			game.style = style
-			game.begin_preview()
-			game.change_preview("enabled", true)
-			await create_timer(0.45).timeout
-			await RenderingServer.frame_post_draw
-			var path := "res://test-output/level1-%dx%d-style%d.png" % [dimensions.x, dimensions.y, style]
-			var error := root.get_texture().get_image().save_png(path)
-			if error != OK:
-				push_error("Screenshot failed: " + path)
-				quit(1)
-				return
+		game.load_level(0)
+		await create_timer(0.1).timeout
+		game.begin_preview()
+		game.change_preview("enabled", true)
+		await create_timer(0.45).timeout
+		await RenderingServer.frame_post_draw
+		var path := "res://test-output/level1-%dx%d.png" % [dimensions.x, dimensions.y]
+		var error := root.get_texture().get_image().save_png(path)
+		if error != OK:
+			push_error("Screenshot failed: " + path)
+			quit(1)
+			return
 	root.size = Vector2i(1152, 800)
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/07_horizontal.json"))
-	game.style = 1
 	game._refresh()
 	await create_timer(0.45).timeout
 	await RenderingServer.frame_post_draw
@@ -49,7 +46,6 @@ func _capture() -> void:
 	quit()
 
 func _capture_reveal(game: Node3D) -> bool:
-	game.style = 0
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/08_reveal.json"))
 	await create_timer(0.1).timeout
 	game.begin_preview()
@@ -84,7 +80,6 @@ func _capture_reveal(game: Node3D) -> bool:
 func _capture_technical(game: Node3D) -> bool:
 	root.size = Vector2i(1152, 800)
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/02_partial_cut.json"))
-	game.style = 0
 	await create_timer(0.1).timeout
 	game.begin_preview()
 	for axis: int in [0, 1, 2]:
@@ -112,7 +107,6 @@ func _save(name: String) -> bool:
 
 func _capture_views(game: Node3D) -> bool:
 	root.size = Vector2i(1152, 800)
-	game.style = 0
 	game.load_level(0)
 	await create_timer(0.4).timeout
 	game.begin_preview()

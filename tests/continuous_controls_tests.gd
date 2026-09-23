@@ -28,7 +28,6 @@ func _run() -> void:
 	await settle()
 	var initial: Dictionary = game.preview.duplicate(true)
 	var solids: Array = game.solids.duplicate(true)
-	var haze: Node = game.atmosphere.haze_root.get_child(0)
 	var absolute: Node = game.world.visual_slots["rest:absolute:0"]["instance"]
 	var point: Vector2 = game.camera.unproject_position(initial["pivot"])
 	var moved: Vector3 = initial["pivot"] + Vector3(0.37,0,0.67)
@@ -73,7 +72,7 @@ func _run() -> void:
 		check(game.sheet.global_basis.is_equal_approx(Basis(Vector3.UP,angle) * Rules.frame(initial)), "Panel tracks pointer before a quarter turn")
 		check(game.preview == initial and game.rotation_display and not game.apply_preview(), "Continuous pose stays outside committed state")
 		check(game.world.drawn_solids.any(func(solid: Dictionary) -> bool: return solid.has("faces")), "Reflections use continuous polygon geometry")
-		check(game.atmosphere.haze_root.get_child(0) == haze and game.world.visual_slots["rest:absolute:0"]["instance"] == absolute, "Mist and absolute nodes remain stable")
+		check(game.world.visual_slots["rest:absolute:0"]["instance"] == absolute, "Absolute node remains stable")
 		await shot("continuous-angle-%d" % int(angle * 100))
 	game._finish_rotation_drag()
 	check(not game.apply_preview(), "Rotation release settles before confirmation")

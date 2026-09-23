@@ -15,7 +15,6 @@ const Walker := preload("res://world/walker.gd")
 const HUD := preload("res://ui/mirror_hud.gd")
 const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
-const Atmosphere := preload("res://world/atmosphere.gd")
 const Resize := preload("res://ui/mirror_resize.gd")
 const Rings := preload("res://world/mirror_rings.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
@@ -48,16 +47,13 @@ var standing_only := false
 var edit_available := false
 var predictor := Predictor.new()
 var preview_view := PreviewView.new()
-var atmosphere := Atmosphere.new()
 var trial_lighting := TrialLighting.new()
 var solids: Array[Dictionary] = []
 var history: Array[Dictionary] = []
 var phase := "play"
 var status := "Tap a platform to walk. Enable the mirror to explore."
-var style := 0
 var pending: Dictionary = {}
 var settle_frames := 0
-var envelope := AABB()
 var navigation := Navigation.new()
 var world := View.new()
 var walker := Walker.new()
@@ -123,7 +119,6 @@ func _setup_scene() -> void:
 	add_child(world)
 	add_child(predictor)
 	add_child(preview_view)
-	add_child(atmosphere)
 	add_child(sheet)
 	add_child(placement_guide)
 	add_child(contact)
@@ -165,7 +160,6 @@ func load_level(index: int) -> bool:
 	level["mirror"] = MirrorRules.normalized(level["mirror"])
 	placement_guide.clear()
 	level_index = index
-	atmosphere.visible = false
 	gesture.cancel()
 	mirror = level["mirror"].duplicate(true) if level["mirror"]["enabled"] else {"enabled": false}
 	preview.clear()
@@ -179,8 +173,6 @@ func load_level(index: int) -> bool:
 	dragging = false
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
 	_commit_world()
-	envelope = Geometry.total_bounds(solids)
-	atmosphere.set_bounds(Geometry.total_bounds(solids))
 	for child: Node in goal_root.get_children():
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
@@ -493,7 +485,6 @@ func cancel_preview() -> void:
 	walker.route = preview_origin["route"].duplicate()
 	walker.paused = phase != "play"
 	world.draw_world(solids)
-	atmosphere.set_bounds(Geometry.total_bounds(solids))
 	world.draw_route(walker.route)
 	status = "Walking." if not walker.route.is_empty() else "Preview cancelled."
 	dragging = false
@@ -543,7 +534,6 @@ func _commit_world() -> void:
 	walker.paused = true
 	solids = Geometry.generate(level, mirror)
 	world.commit(solids)
-	atmosphere.set_bounds(Geometry.total_bounds(solids))
 	navigation.rebuild(solids)
 	world.draw_route(PackedVector3Array())
 	settle_frames = 2
@@ -554,7 +544,6 @@ func _display_state() -> Dictionary:
 func _update_preview() -> void:
 	var proposed := Geometry.generate(level, _display_state())
 	world.draw_world(proposed)
-	atmosphere.set_bounds(Geometry.total_bounds(proposed))
 	_invalidate_prediction()
 	if not _manipulating():
 		prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
@@ -619,11 +608,10 @@ func _refresh() -> void:
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
-		"is_test": level.get("is_test", false), "style": style, "collision": world.debug_collision})
+		"is_test": level.get("is_test", false), "collision": world.debug_collision})
 	rings.set_layout(hud.get_camera_rect(), hud.get_blocking_rects())
 	rings.update_view(camera)
 	contact.set_contacts(world.drawn_solids, selected, MirrorRules.frame(selected) if selected.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
-	atmosphere.set_mirror(selected, phase == "preview", style, MirrorRules.normal(selected) if selected.has("pivot") else Vector3.ZERO)
 	_update_constellation()
 	_position_controls()
 
@@ -682,9 +670,6 @@ func _action(action: String, value: Variant) -> void:
 		"cancel": cancel_preview()
 		"undo": undo()
 		"reset": load_level(level_index)
-		"style":
-			style = int(value)
-			_refresh()
 		"collision":
 			world.debug_collision = bool(value)
 			world.update_debug()
@@ -946,7 +931,6 @@ func turn_camera(direction: int) -> void:
 func _camera_changed() -> void:
 	if level.is_empty():
 		return
-	atmosphere.update_view(camera, envelope.get_center())
 	preview_view.update_view(camera)
 	rings.update_view(camera)
 	_position_controls()

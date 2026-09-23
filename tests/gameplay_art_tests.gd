@@ -22,7 +22,6 @@ func _run() -> void:
 	var game := Game.new()
 	root.add_child(game)
 	await process_frame
-	check(not game.atmosphere.visible, "Atmosphere stays hidden; the per-level art switch is gone")
 	var jade: ShaderMaterial = game.world.visual_slots["rest:absolute:0"]["material"]
 	check(jade.get_shader_parameter("jade_surface") == true, "Absolute binds jade maps")
 	check(jade.get_shader_parameter("albedo_map").get_width() == 2048, "Jade uses the 2K source texture")
@@ -75,7 +74,6 @@ func _run() -> void:
 	for index: int in Game.LEVEL_PATHS.size():
 		var path: String = Game.LEVEL_PATHS[index]
 		check(game.load_level(index), "Level loads: %s" % path)
-		check(not game.atmosphere.visible, "Atmosphere stays hidden on every stage: %s" % path)
 		var block_look := true
 		for slot: Dictionary in game.world.visual_slots.values():
 			var material: ShaderMaterial = slot["material"]
