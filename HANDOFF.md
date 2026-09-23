@@ -323,7 +323,8 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
   `animation_data.action_slot` after assigning an action or nothing plays.
 - **`rtk grep` reads the working directory, not a pipe.** Use `rtk proxy grep`
   when the input comes from a pipe or a redirect.
-- **Two blend files belong to the user and are not committed.**
-  `art_sources/traveller_animated/traveller_animated.blend` is modified in the
-  working tree and the build reads it. `art_sources/traveller/traveller_esmond_split.blend`
-  is untracked. Do not commit either without asking.
+- **Two blend files belong to the user.** The build reads
+  `art_sources/traveller_animated/traveller_animated.blend`.
+  `art_sources/traveller/traveller_esmond_split.blend` is the user's split copy.
+  The user committed both in `337b50d`. Do not change or commit them without
+  asking.
