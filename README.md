@@ -2,7 +2,7 @@
 
 [`HANDOFF.md`](HANDOFF.md) has the current state, what is blocked, and the traps. Read it before changing a level, the character, or the level sequence.
 
-A small Godot 4.7.2 prototype. Play **A place to stand**, then **The path beneath**. The gear panel also opens either puzzle or one of eight technical fixtures. The current rules and pending stories are in [GAME_DESIGN.md](GAME_DESIGN.md).
+A small Godot 4.7.2 prototype. It opens on a title screen and plays a six-stage tutorial: **First steps**, **A place to stand**, **The path beneath**, **Only the ground**, **Another way round** and **Together**. Progress saves and resumes. In debug builds, the gear panel also opens any stage or technical fixture. Run with `-- --release-ui` to see the release settings panel in the editor. The current rules and pending stories are in [GAME_DESIGN.md](GAME_DESIGN.md).
 
 ## Run on Mac
 
@@ -65,6 +65,8 @@ rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --path . --script tests/c
 
 The first command imports and parses the project. The second checks geometry, real physics, shared player commands, pointer input, and responsive layouts. It exits with a nonzero status on failure. For Constellation candidates and gesture lifecycle, use `tests/constellation_tests.gd`; `tests/constellation_view_tests.gd` checks glow, occlusion, and fading. `tests/constellation_tuning_tests.gd` checks live tuning and preview lifecycle; `tests/constellation_ui_tests.gd` checks the debug controls. For edit modes and target movement, use `tests/edit_mode_tests.gd`; `tests/mode_ui_tests.gd` checks mode visibility and `tests/ring_tests.gd` checks the rotation arcs. For legal angles and slopes, use `tests/legal_angles_tests.gd`. The focused native review is `tests/legal_visual_review.gd` without `--headless`. For panel contacts, use `tests/mirror_contact_tests.gd`. For continuous rotation, use `tests/display_geometry_tests.gd` for geometry or `tests/continuous_controls_tests.gd` for controller behavior with `--headless --path . --script`. Add `-- --visual-review` without `--headless` for a native review. For bounded resize work, run either focused check with `--headless --path . --script tests/extent_tests.gd` or `--headless --path . --script tests/ring_tests.gd`. The native bounded workshop review keeps the existing `tests/extent_review.gd` path and saves local captures in `test-output/`. For the immersive trial, `rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --path . --script tests/visual_review.gd` performs one desktop/portrait review session. The third command above is the older broad capture matrix and is not routine prototype work.
 
+For the tutorial, `tests/level_solvability_tests.gd` proves each stage's solution and its near misses through the player's own commands. `tests/prompt_tests.gd` checks the prompts, `tests/app_flow_tests.gd` checks the title, save and resume, end card and release settings, and `tests/sound_tests.gd` checks the sounds. `tests/tutorial_playthrough.gd`, run without `--headless`, plays all six stages from the title to the end card and saves one frame per stage to `test-output/`.
+
 ## Exports
 
 Prototype exploration uses focused Mac checks with the Mobile renderer. Physical iOS and Android checks remain separate; do not use the Compatibility-only Simulator workflow.
@@ -79,6 +81,8 @@ rtk proxy touch build/.gdignore
 rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --headless --path . --export-debug macOS build/macos/Mirror.app
 rtk proxy open build/macos/Mirror.app
 ```
+
+A debug export keeps the dev panel. Use `--export-release` for the player build: it shows the settings panel and has no Reset or dev keys. Both presets leave out `art_trial/`, `assets/reference/` and the viewer-only bounds file.
 
 ### Physical iOS and Android
 

@@ -1,7 +1,7 @@
 # Handoff — MVP tutorial
 
-Written at `607bd05`, updated at the block-set and stage-sweep work. Read this
-before you change a level, the character, the block look, or the level sequence. It records what is done, what is blocked, what was already
+Written at `607bd05`, updated after the tutorial MVP. Read this before you
+change a level, the character, the block look, or the level sequence. It records what is done, what is blocked, what was already
 measured and failed, and which traps cost real time.
 
 ## Your task, in order
@@ -11,15 +11,11 @@ measured and failed, and which traps cost real time.
    `world/block_set.gd`, `world/ceramic.gdshader` and `world/porcelain.gdshader`,
    and judge every change in the block gallery (see "The block set and the
    gallery" below). The user asked for this before the tutorial work.
-1. **Iterate the stage design through the tutorial.** The tutorial does not
-   exist yet as a sequence. Three puzzles exist and two control verbs are still
-   taught nowhere.
-2. **Wire a consistent MVP: the whole tutorial, start to finish.** One
-   continuous run, not a menu of rooms.
-3. **Only then refine the gameplay style and the design.**
-
-Do not reverse that order. The style work is the cheapest to redo and the
-sequence work is what the design record is waiting on.
+1. **Playtest the tutorial MVP and tune it.** The six stages, the prompts, the
+   title, save and resume, the end card, the release settings and the sounds
+   are done and play from start to end (see "The tutorial MVP" below). Tune
+   the stages and the prompt texts from real playtests.
+2. **Then refine the gameplay style and the design.**
 
 ## Read first
 
@@ -158,19 +154,22 @@ kill_y, title, objective, is_test
 
 `game.gd` holds two lists. `PUZZLE_PATHS` is the ordered sequence, and
 `LEVEL_PATHS` is that plus the fixtures. **The puzzles must stay the front of
-the level list**, or Next runs into a test room; `run_tests.gd` checks this.
+the level list**, or the sweep runs into a test room; `run_tests.gd` checks this.
 Tests look levels up with `LEVEL_PATHS.find(...)`, so inserting a puzzle is
 safe.
 
 ### What exists
 
-Three puzzles and eight fixtures.
+Six tutorial stages, in play order, and nine fixtures.
 
 | file | kind | teaches or tests |
 | --- | --- | --- |
-| `01_route` "A place to stand" | puzzle | create and move a mirror; an absolute as the place that stays |
-| `08_reveal` "The path beneath" | puzzle | disabling restores the original ground |
-| `11_aperture` "Only the ground" | puzzle | **Resize** |
+| `13_first_steps` "First steps" | stage 1 | tap to walk; a wall hides the goal until the view turns |
+| `01_route` "A place to stand" | stage 2 | create, move and place a mirror; an absolute as the place that stays |
+| `08_reveal` "The path beneath" | stage 3 | removing the mirror restores the original ground |
+| `11_aperture` "Only the ground" | stage 4 | **Resize** |
+| `14_turn` "Another way round" | stage 5 | **Turn**: a left quarter turn copies the spur into a sideways bridge |
+| `15_together` "Together" | stage 6 | Turn, Resize, then remove the mirror above low ground for a **safe fall** |
 | `02_partial_cut` | fixture | moving the plane through a block; surfaces and collision outlines |
 | `03_source` | fixture | which side is source |
 | `04_absolute` | fixture | absolute support |
@@ -181,16 +180,18 @@ Three puzzles and eight fixtures.
 | `10_extent` | fixture | bounded cuts, side crossing, absolute priority, source-anchored materials |
 | `12_block_gallery` "Block gallery" | fixture | demo ground for the one ceramic block set: every original, reflected, and absolute look together |
 
-### Level 3, the one stage experiment that landed
+### Stage 4, "Only the ground"
 
-`11_aperture`, "Only the ground". Resize had no coverage anywhere: `02` moves
-the plane through a block but never changes the panel's size, so the pills, the
-captured opposite edge and the grid-centre correction went unexercised.
+`11_aperture`. Resize had no coverage anywhere: `02` moves the plane through a
+block but never changes the panel's size, so the pills, the captured opposite
+edge and the grid-centre correction went unexercised.
 
-A ledge carries a tower at one end and the ring sits across a five-unit gap.
-Reflecting the ledge bridges the gap, but a full-height aperture carries the
-tower across too and stands it between the bridge and the ring. Shortening the
-aperture to the ground band brings only the ledge.
+A ledge carries a tower that **floats half a unit above** its far end, and the
+ring sits across a five-unit gap. The tower floats because a new mirror starts
+at the traveller's feet height (y 0), so its 3-high panel spans y −1.5..1.5.
+With the tower standing on the ledge, the first design could not be solved
+through the real create path; the harness proved it. Now the 3-high panel
+copies the lower part of the tower into the bridge, and the copy blocks it.
 
 The resize rule does the teaching by itself: pulling the top pill down captures
 the bottom edge, and the bottom edge is exactly the band that is wanted. The
@@ -199,18 +200,25 @@ then unbuilds it.
 
 Verified through the real preview path, not by writing geometry:
 
-| mirror | route to the goal |
+| mirror, from the real create path | route to the goal |
 | --- | --- |
 | off | no |
-| 3 wide x 3 high | no, the tower blocks one step short |
-| 3 wide x 1 high | **yes** |
+| 3 high (y −1.5..1.5) | no, the tower's copy blocks the bridge |
+| 2 high (y −1.5..0.5) | **yes** |
+| 1 high (y −1.5..−0.5) | no, the bridge is half a unit too low |
+
+Lowering the mirror two height steps also works. That is a safe alternative,
+and the tutorial does not teach the height arrow.
 
 ### The solvability harness
 
-`tests/level_solvability_tests.gd` is new. It drives `begin_preview`,
-`change_preview`, `apply_preview` and the navigation exactly as a player does,
-and asks whether the intended solution reaches the goal and the near misses do
-not. **A level is only a puzzle if the wrong answer is reachable and wrong**, so
+`tests/level_solvability_tests.gd` drives the player's own commands:
+`create_at` (the real hold-to-create path at the traveller's feet height),
+`set_size`, `turn`, `turn_to` (the ring drag), `raise`/`lower`, `confirm`,
+`remove`, `settle_fall` and `walk_to`. It asks whether each stage's solution
+reaches the goal and each near miss does not: 34 checks over the six stages.
+`place` is the older direct path; it starts from the level's pivot height, not
+the traveller's, so do not trust it for a new stage. **A level is only a puzzle if the wrong answer is reachable and wrong**, so
 check both. Reuse this for every new stage; it is the cheapest guard you have
 against a level that is accidentally unsolvable or accidentally trivial.
 
@@ -228,10 +236,11 @@ unproven**. A Tilt level is plausible and needs real design, not a quick check.
 
 ### What the tutorial still does not teach
 
-- **Rotate / Turn.** No level, no fixture.
-- **Tilt.** No level, no fixture, and see above.
-- **The half turn that exchanges source and reflected sides.** An agreed rule
-  with nothing behind it.
+- **Tilt.** No stage, no fixture, and see above.
+- **Reverse sides and the half turn** that exchanges source and reflected
+  sides. Stage 5's wrong turn (right, not left) removes the ground under the
+  traveller, which hints at the rule but does not teach it.
+- **The height arrow.** It is only a safe alternative in stages 4 and 6.
 
 ### The block set and the gallery
 
@@ -271,6 +280,28 @@ camera frames both stages together, so each stage is smaller during the sweep.
 The user chose the sweep over a Monument Valley style diorama join, so that
 the join comes from the game's own mirror rule.
 
+### The tutorial MVP
+
+- **`main.tscn` runs `app.gd` (`App`).** It shows the title, creates the Game at
+  the saved stage, pauses the game and hides its HUD behind the title and the
+  end card, loops the music, and applies the settings. `Game.new()` alone (all
+  tests) still starts at stage 1 with the debug UI and no save.
+- **Save:** `core/tutorial_progress.gd`, a ConfigFile at `user://progress.cfg`:
+  stage, done prompt ids, Music and Effects volume, fullscreen. A bad file gives
+  defaults and a warning.
+- **Prompts:** an optional `prompts` field in the level JSON, validated in
+  `core/level_loader.gd`. `game.gd` sends `tutorial_event` for walk,
+  camera_turn, create, move, confirm, remove, resize, turn, fall and goal; the
+  active prompt closes on its event. The HUD's **?** replays them.
+- **Release mode:** `not OS.is_debug_build()`, or `-- --release-ui`. The gear
+  opens Music, Effects, Fullscreen and Return to title. No Reset, no level
+  picker, and the keys R, D, 1/2/3, [ ], PgUp and PgDn are off.
+- **Sound:** `world/sounds.gd` maps the events to sounds, plays the sweep, and
+  plays footsteps every 0.42 units walked. `art_sources/audio/generate_sounds.py`
+  makes every WAV with fixed seeds.
+- `tests/tutorial_playthrough.gd` (native) plays all six stages through the App
+  from the title to the end card.
+
 ## Decisions already made. Do not reopen them without the user
 
 - **Multi-mirror is coming**, but may be limited to predefined stages or
@@ -287,14 +318,16 @@ the join comes from the game's own mirror rule.
 - **One block set on every stage**, made from the Level 1 ceramic look. The
   reference scene's look is a source of ideas, not the base.
 - **Stages join by the mirror sweep**, not a diorama take-apart or a title card.
+- **The tutorial is six stages** (the short list). Tilt and Reverse sides wait.
+- **Prompts show one time**, are saved as done, and **?** replays them.
+- **Release builds are a normal game**: settings only, no Reset, no dev tools.
 - **Armholes in the cape are rejected on the look.** Do not rebuild them unless
   the user asks by name.
 
 ## Blocking the MVP specifically
 
-1. **There is no tutorial structure.** Three puzzles exist in a sequence;
-   nothing introduces the verbs in order, and Rotate and Tilt are missing
-   entirely.
+1. **No playtest yet.** Every stage is proven solvable, and every near miss is
+   proven to fail, but no person has played the tutorial.
 2. **Not implemented, so do not design around them**: ladders; and switches,
    keys and doors, whose state sharing across the plane is explicitly undecided.
 
@@ -319,10 +352,16 @@ rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --editor --
 
 | check | current result |
 | --- | --- |
-| `tests/run_tests.gd` | 551 checks, 0 failures (varies by one between runs) |
-| `tests/level_solvability_tests.gd` | 6 checks, 0 failures |
-| `tests/gameplay_art_tests.gd` | 61 checks, 0 failures |
-| `tests/display_geometry_tests.gd` | 2089 checks, 0 failures |
+| `tests/run_tests.gd` | 596 checks, 0 failures (varies a little between runs) |
+| `tests/level_solvability_tests.gd` | 34 checks, 0 failures |
+| `tests/prompt_tests.gd` | 80 checks, 0 failures |
+| `tests/app_flow_tests.gd` | 80 checks, 0 failures |
+| `tests/sound_tests.gd` | 33 checks, 0 failures |
+| `tests/gameplay_art_tests.gd` | 70 checks, 0 failures |
+| `tests/display_geometry_tests.gd` | 2985 checks, 0 failures |
+| `tests/legal_angles_tests.gd` | 47 checks, 0 failures |
+| `tests/edit_mode_tests.gd` | 22 checks, 0 failures |
+| `tests/continuous_controls_tests.gd` | 27 checks, 0 failures |
 | `tests/animated_traveller_tests.gd` | 281 checks, 0 failures |
 | `tests/reference_art_tests.gd` | 626 checks, 0 failures |
 | `tests/extent_tests.gd` | 68 checks, 0 failures |
@@ -336,6 +375,7 @@ Native reviews, without `--headless`, save to the ignored `test-output/`:
 rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/traveller_gameplay_review.gd
 rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/block_gallery_review.gd
 rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/block_gallery_review.gd -- --sweep
+rtk /Applications/Godot.app/Contents/MacOS/godot --path . --script tests/tutorial_playthrough.gd
 ```
 
 The `--sweep` mode completes Level 1 and saves the sweep at 0, 25, 50, 75 and
@@ -347,6 +387,22 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
 `tests/extent_tests.gd` words its summary "failures:" rather than "checks,".
 
 ## Traps. Each of these produced a wrong answer at least once
+
+- **A new mirror starts at the traveller's feet height, not the level pivot.**
+  Design a stage around the panel y −1.5..1.5 of the real create path, and
+  prove it with `create_at`, not `place`.
+- **The traveller cannot walk off an edge.** The walk graph has no drop edges.
+  A fall happens only when the ground under him is removed.
+- **The camera's view turn carries over between stages.** After "First steps"
+  the later stages open in the turned view. Every stage still reads, but a
+  stage that depends on the first view (as stage 1 does) must come first or
+  reset the view.
+- **A `--script` run must call `quit()` on every path.** A check script that
+  missed it ran for 57 minutes. Use `timeout` for ad-hoc scripts.
+- **The WAV import loop enum is one off from the runtime enum.** In a
+  `.wav.import`, `edit/loop_mode=2` is Forward (0 is Detect From WAV).
+- **The App pauses the game behind the title.** A test that presses Begin must
+  wait a few frames for the stage to settle before it checks the prompts.
 
 - **A moved block view needs its own transform in the material mapping.**
   `_apply_source_mapping` uses `(transform * material_to_world).affine_inverse()`.

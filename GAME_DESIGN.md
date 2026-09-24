@@ -49,15 +49,26 @@ This is the current design record. Agreed rules are separate from later mileston
 
 ## Current playable prototype
 
+The game opens on a title screen, **Mirror**, then plays a six-stage tutorial. Each stage teaches one new idea, and the stage order is `PUZZLE_PATHS` in `game.gd`:
+
+1. **First steps** (`13_first_steps`): tap to walk. A tall wall hides the goal in the first view, so the player turns the view to find it.
+2. **A place to stand** (`01_route`): make a mirror, move it and place it. Jade stays the same on both sides.
+3. **The path beneath** (`08_reveal`): remove the mirror, and the ground it covered comes back.
+4. **Only the ground** (`11_aperture`): resize the mirror.
+5. **Another way round** (`14_turn`): turn the mirror, so it copies sideways.
+6. **Together** (`15_together`): turn, resize, then remove the mirror above low ground for a safe fall.
+
+A stage can list prompts. Each prompt shows until the player does its action, then the next one shows. The **?** button replays the stage's prompts. Done prompts, the stage reached and the settings are saved in `user://progress.cfg`, and the title offers **Continue** and **New game** when a save exists. After the last stage, an end card offers **Play again** and **Title**. Release builds show a settings panel (Music, Effects, Fullscreen on desktop, Return to title) in place of the dev panel, with no Reset and no dev keys. Soft generated sounds play for mirror actions, the goal, the sweep, landings, footsteps and buttons, over a quiet ambient loop.
+
 Level 1, “Rest, then rebuild the route” (shown as “A place to stand” in the game), uses unit-width original platforms at 0, 1, and 2, an absolute resting platform at 5, and an absolute goal at 8. The intended route uses offsets 2.5 and 4.0 within the wider placement area. At 2.5, walk to the rest platform. At 4.0, walk from it to the goal. Safe alternative routes, including successive overlapping reflections, are valid. Completion depends only on reaching the goal.
 
 Eight selectable test fixtures cover natural diagonal walking, obstacle detours, gaps, narrow passages, partial cut, source selection, absolute support, deactivation, wall conflict, and horizontal reflection. The horizontal fixture starts beside reflected high ground, then disables the mirror so the character falls to safe original ground.
 
 Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe restoration on ordinary ground. Original platforms occupy 0–2 and 5–7; the absolute goal is at 8. The intended route starts with the X orientation at offset 2.5; its position is freely adjustable within the broad level area. Enable it, walk to 5, then disable it: the original platform replaces reflected support and the final approach returns. The goal stays visible throughout. This layout is a playtest candidate; no new object or goal rules are needed.
 
-Level 3, “Only the ground” (`11_aperture`), teaches Resize, which no level or fixture covered. A ledge carries a tower at one end; the goal sits across a five-unit gap. Reflecting the ledge bridges the gap, but a full-height aperture carries the tower across with it and stands it between the bridge and the goal. Shortening the aperture to the ground band brings only the ledge. The wrong answer is reachable and visibly wrong, which is the point: the player builds the wall themselves, then unbuilds it. `tests/level_solvability_tests.gd` checks all three states.
+Level 3, “Only the ground” (`11_aperture`), teaches Resize, which no level or fixture covered. A ledge carries a tower that floats half a unit above its far end; the goal sits across a five-unit gap. A new mirror starts at the traveller's feet height, so its 3-high panel copies the lower part of the tower, and the copy blocks the bridge. Pulling the top edge down to 2 high copies only the ledge. At 1 high the bridge is too low to reach. The wrong answer is reachable and visibly wrong, which is the point: the player builds the wall themselves, then unbuilds it. `tests/level_solvability_tests.gd` checks every state through the real hold-to-create path.
 
-Reaching the goal of a puzzle starts the **mirror sweep**: after a short pause, a glass panel crosses the stage, and behind it the next stage replaces the old one, as if it were its reflection. Each stage stays a self-contained file. The next stage is placed so that its start meets the old goal, so the traveller keeps his place. Input is locked during the sweep. Level 3 ends the current puzzle sequence and stays complete; Undo after the goal is available on this last puzzle only. The menu gives direct access to all puzzles and fixtures; the menu and Reset change the stage at once. Entering a level clears previous movement and Undo history.
+Reaching the goal of a puzzle starts the **mirror sweep**: after a short pause, a glass panel crosses the stage, and behind it the next stage replaces the old one, as if it were its reflection. Each stage stays a self-contained file. The next stage is placed so that its start meets the old goal, so the traveller keeps his place. Input is locked during the sweep. **Together** ends the tutorial and shows the end card; Undo after the goal is available on this last stage only. The menu gives direct access to all puzzles and fixtures; the menu and Reset change the stage at once. Entering a level clears previous movement and Undo history.
 
 Later level:
 
@@ -145,7 +156,7 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 
 ## Later exploration
 
-- Add a progressive tutorial that introduces Move/create, then Resize, then Rotate. This is not assigned to the existing levels.
+- Teach Tilt, Reverse sides and the height arrow. The tutorial does not teach them yet; the height arrow is only a safe alternative in stages 4 and 6.
 - Generate candidate levels from data, search for solutions with shared world rules, and replay solutions for review. Human playtests decide clarity and enjoyment.
 - Multiple mirrors and recursive reflections need rules for order, depth, overlap, dependencies, parent removal, and recursion. No current multi-mirror implementation is agreed. An apparently infinite corridor remains a possible special scene.
 - Decide how reflected interactive objects share state when switches, keys, and doors enter the game.
@@ -154,7 +165,7 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 
 - Use focused Mac checks while exploring. After a design decision is confirmed, run the relevant full checks as regression guardrails. Use one focused Simulator pass only when an unchecked platform-specific feature could cause substantial rework; record the concrete risk first.
 - Test representative physical iOS and Android devices later, when that work is scheduled.
-- Play the eight fixtures and both puzzle routes; use observations to tune clarity and safe boundaries. Fixture 10, **Bounded mirror workshop**, uses three ledges, side obstacles, and absolute start and goal objects to check bounded cuts, side crossing, absolute priority, and source-anchored materials. `levels/12_block_gallery.json`, reviewed by `tests/block_gallery_review.gd`, is the demo ground for the one ceramic block set used on every stage: every original, reflected, and absolute look together.
+- Play the six tutorial stages and the fixtures; use observations to tune clarity and safe boundaries. Fixture 10, **Bounded mirror workshop**, uses three ledges, side obstacles, and absolute start and goal objects to check bounded cuts, side crossing, absolute priority, and source-anchored materials. `levels/12_block_gallery.json`, reviewed by `tests/block_gallery_review.gd`, is the demo ground for the one ceramic block set used on every stage: every original, reflected, and absolute look together.
 - Use focused geometry, control, or resize checks as appropriate; do not treat them as full-suite or Simulator validation.
 - Use Level 2 observations to refine restoration feedback. Add ladders and the key-and-fall level after these rules are stable.
 - Choose a visual treatment and develop story scenes after concrete playtests.
