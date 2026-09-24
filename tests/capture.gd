@@ -13,7 +13,7 @@ func _capture() -> void:
 	FileAccess.open("res://test-output/.gdignore", FileAccess.WRITE).close()
 	for dimensions: Vector2i in [Vector2i(1152, 800), Vector2i(390, 844), Vector2i(844, 390), Vector2i(768, 1024)]:
 		root.size = dimensions
-		game.load_level(0)
+		game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 		await create_timer(0.1).timeout
 		game.begin_preview()
 		game.change_preview("enabled", true)
@@ -107,7 +107,7 @@ func _save(name: String) -> bool:
 
 func _capture_views(game: Node3D) -> bool:
 	root.size = Vector2i(1152, 800)
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await create_timer(0.4).timeout
 	game.begin_preview()
 	await create_timer(0.5).timeout

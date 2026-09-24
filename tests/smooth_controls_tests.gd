@@ -3,7 +3,9 @@ const Rules := preload("res://core/mirror_state.gd")
 const Geometry := preload("res://core/world_geometry.gd")
 
 static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
-	game.load_level(0)
+	# The span check below is 01_route's own placement area, so load it by
+	# path rather than trust whatever level index 0 currently holds.
+	game.load_level(game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _settle(game, tree)
 	check.call(game.level["limits"]["min"][0] < 0 and game.level["limits"]["max"][0] > 8, "Placement spans both ends of the stage")
 	game.begin_preview()

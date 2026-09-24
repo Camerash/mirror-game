@@ -47,7 +47,7 @@ func _run() -> void:
 	root.size = Vector2i(390, 844)
 	await _settle()
 	await _capture("extent-portrait")
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _settle()
 	game.begin_preview()
 	await _settle()

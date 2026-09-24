@@ -42,7 +42,7 @@ func _run() -> void:
 	await settle()
 	await shot("portrait")
 	game.cancel_preview()
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await settle()
 	game.walker.restore(Vector3(3.5,0,0), Vector3.ZERO)
 	game.begin_preview()

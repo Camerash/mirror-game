@@ -2,7 +2,9 @@ extends RefCounted
 const Rules := preload("res://core/mirror_state.gd")
 
 static func run(game: Node3D, check: Callable, tree: SceneTree) -> void:
-	game.load_level(0)
+	# Loaded by path: run_tests.gd's earlier tests may leave a different level
+	# active, and this test's default mirror pivot assumes 01_route.
+	game.load_level(game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _settle(game, tree)
 	game.begin_preview()
 	await _settle(game, tree)

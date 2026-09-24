@@ -91,6 +91,10 @@ func _test_geometry() -> void:
 	_check(not Levels.validate(invalid).is_empty(), "Zero-size geometry is rejected")
 
 func _test_lifecycle() -> void:
+	# This test's pivot checks are tuned to 01_route's placement area, so load
+	# it by path. Do not rely on Game._ready() having loaded it as level 0.
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
+	await _frames(5)
 	await _preview_ready()
 	_check(game.mirror == {"enabled": false}, "An initial absent mirror has no transform")
 	var point: Vector2 = game.camera.unproject_position(Vector3(4, 0, 1))
@@ -120,7 +124,7 @@ func _test_lifecycle() -> void:
 	_check(game.undo(), "Removal can be undone")
 	await _frames(5)
 	_check(game.mirror == placed, "Undo restores the removed mirror from history")
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _frames(5)
 
 func _test_route() -> void:
@@ -166,6 +170,11 @@ func _test_route() -> void:
 	_check(game.phase == "play" and game.walker.position.x < 5.1, "Undo restores the pre-walk position and goal state")
 
 func _test_progression() -> void:
+	# 01_route is currently loaded (from the previous test). Find its own index
+	# in PUZZLE_PATHS, so this check keeps working if a stage is inserted
+	# before it and the puzzle no longer sits at index 0.
+	var route_index := Game.PUZZLE_PATHS.find("res://levels/01_route.json")
+	var next_index := route_index + 1
 	_check(not game.advance_level(), "Next level cannot skip an unfinished puzzle")
 	game.auto_advance = true
 	_check(game.request_walk(Vector3(8, 0, 0)), "Level 1 can be completed again after Undo")
@@ -181,13 +190,13 @@ func _test_progression() -> void:
 			break
 		await physics_frame
 	_check(settled, "The sweep finishes within 300 physics frames")
-	_check(game.level_index == 1, "The sweep advances to the next puzzle")
+	_check(game.level_index == next_index, "The sweep advances to the next puzzle")
 	_check(game.history.is_empty() and game.walker.route.is_empty(), "The sweep starts the new stage with clean history and movement")
 	_check(game.walker.position.distance_to(Geometry.vector(game.level["start"])) < 0.05, "The walker stands at the new stage's start")
 	_check(not game.sweep.active, "The sweep view is no longer active")
 	_check(game.world.clip_plane == Plane(), "The main world clip is cleared after the sweep")
 	_check(game.goal_root.visible, "The new goal ring shows again")
-	_check(game.hud._level_picker.selected == 1, "Level picker follows progression")
+	_check(game.hud._level_picker.selected == next_index, "Level picker follows progression")
 	for dimensions: Vector2i in [Vector2i(390, 844), Vector2i(844, 390), Vector2i(768, 1024), Vector2i(1024, 768), Vector2i(1152, 800)]:
 		root.size = dimensions
 		await _frames(3)
@@ -196,14 +205,15 @@ func _test_progression() -> void:
 	await _frames(3)
 
 func _test_sweep_cancel() -> void:
-	game.load_level(1)
+	var reveal_index := Game.LEVEL_PATHS.find("res://levels/08_reveal.json")
+	game.load_level(reveal_index)
 	await _frames(5)
 	game.auto_advance = true
 	game.phase = "complete"
 	game._start_advance_pause()
 	await _frames(50)
 	_check(game.sweep.active, "Sweep test setup: the sweep is running mid-transition")
-	game.load_level(1)
+	game.load_level(reveal_index)
 	await _frames(3)
 	_check(not game.sweep.active, "Reset during the sweep cancels it")
 	_check(game.sweep._old_view == null, "Cancel frees the old stage's ghost view")
@@ -335,7 +345,7 @@ func _test_horizontal() -> void:
 	_check(absf(game.walker.position.y - 4.0) < 0.02 and game.mirror["enabled"], "Undo restores high ground and character together")
 
 func _test_failure_undo() -> void:
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _frames(5)
 	game.begin_preview()
 	await _preview_ready()
@@ -381,7 +391,7 @@ func _test_fixtures_and_layout() -> void:
 
 func _test_pointer_input() -> void:
 	root.size = Vector2i(1152, 800)
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _frames(5)
 	var target: Vector2 = game.camera.unproject_position(Vector3(1, 0, 0))
 	_mouse(target, true)

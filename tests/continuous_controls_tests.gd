@@ -22,6 +22,10 @@ func _run() -> void:
 	game = Game.new()
 	root.add_child(game)
 	await settle()
+	# This test looks up 01_route's "rest" absolute by name, so load the
+	# level by path rather than trust the default level.
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
+	await settle()
 	game.begin_preview()
 	await settle()
 	game.set_edit_mode("move")

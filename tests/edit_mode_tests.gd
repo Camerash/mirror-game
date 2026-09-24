@@ -41,6 +41,10 @@ func _run() -> void:
 	game = Game.new()
 	root.add_child(game)
 	await settle()
+	# The drag and resize checks below need 01_route's generous placement
+	# limits, so load it by path rather than trust the default level.
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
+	await settle()
 	game.begin_preview()
 	await settle()
 	check(game.edit_mode == "move" and game.angle_snap == 15, "Editing starts in Move with 15-degree angle targets")

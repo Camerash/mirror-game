@@ -67,6 +67,11 @@ func _run() -> void:
 	game = Game.new()
 	root.add_child(game)
 	await settle()
+	# The resize checks below need 01_route's generous placement limits, so
+	# load it by path rather than trust Game._ready()'s default level.
+	var route_index := Game.LEVEL_PATHS.find("res://levels/01_route.json")
+	game.load_level(route_index)
+	await settle()
 	game.begin_preview()
 	await settle()
 	game.set_edit_mode("rotate")
@@ -130,7 +135,7 @@ func _run() -> void:
 	check(game.undo(), "Angled confirmation can be undone")
 	await settle()
 	check(game.mirror == {"enabled":false}, "Undo restores state before angled creation")
-	game.load_level(0)
+	game.load_level(route_index)
 	await settle()
 	check(game.history.is_empty(), "Reset clears angular history")
 	game.queue_free()

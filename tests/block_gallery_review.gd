@@ -78,7 +78,7 @@ func _run_sweep() -> void:
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
 	root.add_child(game)
-	game.load_level(0)
+	game.load_level(Game.LEVEL_PATHS.find("res://levels/01_route.json"))
 	await _settle()
 	# Solve Level 1 through the same real commands as run_tests.gd's
 	# progression check, so the sweep starts exactly as a player would see it.
