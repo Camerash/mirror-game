@@ -250,7 +250,7 @@ failed.
   out ahead of the arm would clear it, and nothing that moves a vertex along one
   fixed path can do that. The key should probably be removed.
 - **Gameplay uses this character.** `world/character_visual.gd` loads
-  `assets/studies/traveller.glb`, scales it to the walker's capsule, runs the
+  `assets/character/traveller.glb`, scales it to the walker's capsule, runs the
   walk cycle at the speed the character is moving, and damps the three cloak
   deformations against movement and turning. It no longer poses feet or hem
   from code: the asset carries both. The earlier `ceramic_traveller.glb` was

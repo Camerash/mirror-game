@@ -1,7 +1,7 @@
 extends "res://art_trial/full_traveller_study.gd"
 ## Isolated hood animation review. Native clips own the skeleton and garment.
 
-const BOUNDS_PATH := "res://assets/studies/traveller_bounds.json"
+const BOUNDS_PATH := "res://assets/character/traveller_bounds.json"
 const HOOD_DOWN := "HoodDown"
 const HOOD_UP := "HoodUp"
 const WALK := "Walk"

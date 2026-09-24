@@ -12,7 +12,7 @@ from pathlib import Path
 import bpy
 
 ROOT = Path(__file__).resolve().parents[2]
-TARGET = ROOT / 'assets/studies/traveller.glb'
+TARGET = ROOT / 'assets/character/traveller.glb'
 PARTS = ('TravellerAnimated', 'Rig', 'Head', 'Hair', 'Body', 'Boots', 'Garment')
 TRIANGLE_CEILING = 8000     # GAME_DESIGN.md
 ATLAS = (1024, 1024)

@@ -25,7 +25,7 @@ from pathlib import Path
 import bpy
 
 HERE = Path(__file__).resolve().parent
-TARGET = HERE.parents[1] / 'assets/studies/traveller_bounds.json'
+TARGET = HERE.parents[1] / 'assets/character/traveller_bounds.json'
 PARTS = ('Head', 'Hair', 'Garment', 'Body', 'Boots')
 CLIPS = ('HoodDown', 'HoodUp', 'Walk')
 DRIFT = ('CloakSide', 'CloakForward', 'CloakTwist')

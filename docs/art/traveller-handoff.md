@@ -15,7 +15,7 @@ upstream and rebuilds everything from Python.
 - The two hood clips are authored and pass. 4,992 triangles, 1.000 s each.
 - **The walk is authored.** One looping second, and the three cloak
   deformations the design asks for, driven and damped in the study viewer.
-- `assets/studies/traveller.glb` is the export. **Gameplay loads it**: the
+- `assets/character/traveller.glb` is the export. **Gameplay loads it**: the
   walker and the fall ghost are the skinned traveller, running its own walk
   cycle with the three cloak deformations damped against movement and turning.
 - `assets/character/ceramic_traveller.glb` was removed in `b1d2b6d`.
@@ -123,7 +123,7 @@ Two rules that hold the whole thing together:
 4. **Remove `CloakArms`.** It is a morph that nothing drives. See the failed
    approaches below for why it cannot be used. Removing it drops the cloak from
    nine morph targets to eight and removes `add_arms_key` from `build_cloak.py`.
-5. **The retired two-second study's files are gone.** `assets/studies/traveller_animated.glb`,
+5. **The retired two-second study's files are gone.** `assets/character/traveller_animated.glb`,
    its bounds sidecar, and the three `*_checks.json` reports in
    `art_sources/traveller_animated/` were removed in `b1d2b6d`.
 6. **The two old trials are gone.** The Rigify trial and the upper-body study

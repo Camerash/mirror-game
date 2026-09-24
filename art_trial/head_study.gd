@@ -2,7 +2,7 @@ extends Node3D
 ## Base of the traveller viewer: cameras, views and lighting. The golden viewer
 ## extends it through full_traveller_study.gd.
 
-@export_file("*.glb") var model_path := "res://assets/studies/traveller.glb"
+@export_file("*.glb") var model_path := "res://assets/character/traveller.glb"
 const CeramicLighting := preload("res://art_trial/reference_lighting.gd")
 const VIEW_NAMES := ["Front", "Side", "Back", "Three-quarter", "Game angle"]
 const VIEW_ANGLES := [Vector2(0, 0), Vector2(90, 0), Vector2(180, 0), Vector2(-45, 0), Vector2(-45, 30)]

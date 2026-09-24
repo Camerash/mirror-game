@@ -4,7 +4,7 @@
 
 [node name="AnimatedTravellerStudy" type="Node3D"]
 script = ExtResource("1")
-model_path = "res://assets/studies/traveller.glb"
+model_path = "res://assets/character/traveller.glb"
 face_material_name = "TravellerDrawingFace"
 hood_mesh_name = "Garment"
 arm_controls_enabled = false

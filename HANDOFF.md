@@ -87,7 +87,7 @@ gait's own hem sway against the cap and will tell you if you push them.
 
 ### In gameplay — done
 
-`world/character_visual.gd` loads `assets/studies/traveller.glb` for both the
+`world/character_visual.gd` loads `assets/character/traveller.glb` for both the
 walker and the fall ghost. It scales the model to the walker's capsule, runs the
 walk at the speed the character is moving, and damps the cloak. It poses nothing
 by hand, because the asset carries the feet and the cloth. Standing holds the
@@ -295,10 +295,7 @@ the join comes from the game's own mirror rule.
 1. **There is no tutorial structure.** Three puzzles exist in a sequence;
    nothing introduces the verbs in order, and Rotate and Tilt are missing
    entirely.
-2. **Exports ship the study scenes.** `export_presets.cfg` exports all
-   resources, so `art_trial/` (the reference scene and the traveller viewer)
-   and `assets/studies/` go into a build. Decide before a release build.
-3. **Not implemented, so do not design around them**: ladders; and switches,
+2. **Not implemented, so do not design around them**: ladders; and switches,
    keys and doors, whose state sharing across the plane is explicitly undecided.
 
 ## How to build and prove
@@ -361,6 +358,10 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
   after it. A new phase must be added to the guards in `undo`, `_pointer` and
   `turn_camera`, not only to `can_edit`.
 
+- **Exports leave out the trials and studies.** `export_presets.cfg` excludes
+  `art_trial/` and `assets/reference/`. The game's only character asset is in
+  `assets/character/`. Do not load anything from `art_trial/` or
+  `assets/reference/` in game code, or the export breaks.
 - **`run_tests.gd`'s check count varies by one between runs.** It reports
   531 or 532, seen before this change too. Compare failures, not the count.
 - **A resize is silently dropped while the camera is blending.** `_resize_to`

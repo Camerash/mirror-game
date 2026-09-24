@@ -32,4 +32,4 @@ The one piece worth keeping was the phase tables, and they are copied into
 
 The old two-second export, its bounds sidecar, and the retired checks'
 `*_checks.json` reports were removed in `b1d2b6d`. The trial scene reads
-`assets/studies/traveller.glb`.
+`assets/character/traveller.glb`.

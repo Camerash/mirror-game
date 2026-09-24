@@ -8,7 +8,7 @@ extends Node3D
 ## cloak against what the body is doing.
 
 const Geometry := preload("res://core/world_geometry.gd")
-const TravellerScene := preload("res://assets/studies/traveller.glb")
+const TravellerScene := preload("res://assets/character/traveller.glb")
 const WALK := "Walk"
 const GARMENT := "Garment"
 
