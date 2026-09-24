@@ -190,6 +190,11 @@ func owns_pointer(index: int) -> bool:
 func is_active() -> bool:
 	return _active
 
+## Hides the ring drawing's own 2D layer. `visible` on this Node3D would not
+## do it: a CanvasLayer renders on its own, independent of a 3D ancestor.
+func set_overlay_visible(value: bool) -> void:
+	_canvas.visible = value
+
 func cancel() -> void:
 	if _active: _finish()
 

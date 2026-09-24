@@ -91,6 +91,11 @@ func clear() -> void:
 	_opacity = 1.0
 	_redraw()
 
+## Hides the guide's own 2D layer. `visible` on this Node3D would not do it:
+## a CanvasLayer renders on its own, independent of a 3D ancestor.
+func set_overlay_visible(value: bool) -> void:
+	_layer.visible = value
+
 func get_visible_marks() -> Array[Dictionary]:
 	return _visible_marks.duplicate(true)
 

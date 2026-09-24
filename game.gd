@@ -5,6 +5,11 @@ extends Node3D
 ## (never for a refused action). `core/level_loader.gd`'s `PROMPT_EVENTS`
 ## lists every name a level's `prompts` can wait for.
 signal tutorial_event(name: String)
+## A stage becomes playable: once after `load_level`, and again once a
+## stage-sweep transition finishes. The app saves the reached stage on this.
+signal stage_reached(index: int)
+## The goal of the last tutorial stage is reached.
+signal tutorial_finished
 
 const TrialLighting := preload("res://world/trial_lighting.gd")
 const Targets := preload("res://core/mirror_targets.gd")
@@ -70,6 +75,10 @@ var walker := Walker.new()
 var camera := StageCameraView.new()
 var goal_root := Node3D.new()
 var hud := HUD.new()
+## The shared 2D layer for the HUD, the resize handles, and the failure
+## veil. `set_overlay_visible` hides this whole layer, plus the rings' and
+## the placement guide's own internal 2D layers, for an app overlay.
+var overlay_canvas := CanvasLayer.new()
 var failure_veil := ColorRect.new()
 var play_rect := Rect2()
 var dragging := false
@@ -117,6 +126,20 @@ var auto_advance := true
 var _advance_timer: Tween
 var _air_time := 0.0
 var _was_grounded := true
+## Which stage to load first. Read once in `_ready`; set before `add_child`.
+## `Game.new()` alone still starts at 0, so direct test use is unaffected.
+var start_stage := 0
+## True for a shipped build: hides Reset, turns the gear into settings, and
+## turns off the debug-only keys (see `_unhandled_input`). `Game.new()` alone
+## still defaults to the debug behavior tests rely on.
+var release_mode := false
+## While false, `_input`, `_unhandled_input`, and `_pointer` do nothing and
+## the walker is left exactly where it is. The app clears this to let an
+## overlay (the title, the end card) sit above the game without it reacting.
+var input_enabled := true
+## True only while `_begin_sweep` is loading the next stage's data for the
+## transition; `stage_reached` waits for the sweep to finish instead.
+var _loading_via_sweep := false
 
 ## Saved-progress hook for the tutorial prompts (see the schema in
 ## core/level_loader.gd). Optional and duck-typed rather than a hard class
@@ -148,7 +171,7 @@ func _ready() -> void:
 	gesture.action_requested.connect(_gesture_action)
 	gesture.hold_progress.connect(hud.set_hold_progress)
 	tutorial_event.connect(_on_tutorial_event)
-	load_level(0)
+	load_level(start_stage)
 	_fit_camera(hud.get_play_rect())
 	if level.get("prompts", []).is_empty():
 		hud.show_hint("Tap to walk. Hold empty space to create a mirror.")
@@ -178,15 +201,25 @@ func _setup_scene() -> void:
 	camera.near = 0.05
 	camera.far = 100.0
 	add_child(trial_lighting)
-	var canvas := CanvasLayer.new()
-	add_child(canvas)
-	canvas.add_child(hud)
-	canvas.add_child(resize_controls)
+	add_child(overlay_canvas)
+	hud.release_mode = release_mode
+	overlay_canvas.add_child(hud)
+	overlay_canvas.add_child(resize_controls)
 	resize_controls.action_requested.connect(_action)
 	resize_controls.is_obstructed = _resize_obstructed
-	canvas.add_child(failure_veil)
+	overlay_canvas.add_child(failure_veil)
 	failure_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	failure_veil.color = Color(0.8, 0.67, 0.57, 0)
+
+## Hides every 2D overlay (the HUD and its prompt or hint card, the resize
+## handles, the failure veil, the rotate/tilt rings, and the placement guide)
+## without touching game state, so an app-level overlay (the title, the end
+## card) can sit above a blank play view. `input_enabled` is a separate flag;
+## the app sets both together.
+func set_overlay_visible(value: bool) -> void:
+	overlay_canvas.visible = value
+	rings.set_overlay_visible(value)
+	placement_guide.set_overlay_visible(value)
 
 func load_level(index: int) -> bool:
 	if index < 0 or index >= LEVEL_PATHS.size():
@@ -223,6 +256,8 @@ func load_level(index: int) -> bool:
 	_build_prompt_queue()
 	_refresh()
 	_fit_camera(hud.get_play_rect(), true)
+	if not _loading_via_sweep:
+		stage_reached.emit(level_index)
 	return true
 
 func _physics_process(delta: float) -> void:
@@ -251,6 +286,8 @@ func _physics_process(delta: float) -> void:
 		tutorial_event.emit("goal")
 		var is_final := level_index + 1 >= PUZZLE_PATHS.size()
 		status = "The end of the tutorial so far." if is_final else "A new way through. You reached the goal."
+		if is_final:
+			tutorial_finished.emit()
 		if auto_advance and not is_final:
 			phase = "transition"
 			_start_advance_pause()
@@ -283,7 +320,9 @@ func _begin_sweep() -> void:
 	var old_start := Geometry.vector(level["start"])
 	var old_goal := Geometry.vector(level["goal"])
 	var old_framing := Geometry.total_bounds(old_solids).grow(0.3)
+	_loading_via_sweep = true
 	load_level(level_index + 1)
+	_loading_via_sweep = false
 	phase = "transition"
 	walker.paused = true
 	var shift := Geometry.vector(level["start"]) - old_goal
@@ -298,6 +337,7 @@ func _finish_sweep() -> void:
 	_refresh()
 	_fit_camera(hud.get_play_rect())
 	_start_prompts()
+	stage_reached.emit(level_index)
 
 func request_walk(target: Vector3) -> bool:
 	if phase != "play" or settle_frames > 0 or not pending.is_empty():
@@ -852,8 +892,21 @@ func _action(action: String, value: Variant) -> void:
 			world.update_debug()
 			_refresh()
 
+## Keyboard shortcuts hidden from a shipped build: a level reload, the raw
+## enabled toggle that skips the preview flow, the numbered mode shortcuts
+## (the mode-cycle button still reaches every mode), and the fine offset and
+## height steps (a drag reaches the same result). Camera turn, apply, cancel,
+## undo, and the rotate/tilt arrow keys stay: they either have no other
+## desktop path, or exactly mirror an always-visible button.
+const RELEASE_DISABLED_KEYS: Array[Key] = [KEY_R, KEY_D, KEY_1, KEY_2, KEY_3,
+	KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_PAGEUP, KEY_PAGEDOWN]
+
 func _unhandled_input(event: InputEvent) -> void:
+	if not input_enabled:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
+		if release_mode and RELEASE_DISABLED_KEYS.has(event.keycode):
+			return
 		match event.keycode:
 			KEY_Q: turn_camera(-1)
 			KEY_E: turn_camera(1)
@@ -903,6 +956,8 @@ func _notification(what: int) -> void:
 			_fit_camera(hud.get_play_rect())
 
 func _input(event: InputEvent) -> void:
+	if not input_enabled:
+		return
 	if rings.is_active() or resize_controls.is_active():
 		var pointer_index := -2
 		if event is InputEventScreenTouch or event is InputEventScreenDrag:
@@ -936,6 +991,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
+	if not input_enabled:
+		return
 	if not gesture.active and not rings.is_active() and resize_controls.pointer(point, pressed, touch):
 		get_viewport().set_input_as_handled()
 		return

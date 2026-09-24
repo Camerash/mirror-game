@@ -136,6 +136,13 @@ func queue_and_active_empty() -> bool:
 	return game._active_prompt.is_empty() and game._prompt_queue.is_empty()
 
 
+## An ivory card with no words in it is never a valid state, for the
+## transient hint or for the tutorial prompt.
+func check_no_empty_cards(label: String) -> void:
+	check(not (game.hud._hint.visible and game.hud._hint.text.is_empty()), "%s: the hint is never visible with empty text" % label)
+	check(not (game.hud._prompt.visible and game.hud._prompt.text.is_empty()), "%s: the prompt card is never visible with empty text" % label)
+
+
 func run() -> void:
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
@@ -175,6 +182,7 @@ func check_first_steps() -> void:
 	game.turn_camera(1)
 	await camera_idle()
 	check(queue_and_active_empty() and not game.hud._prompt.visible, "First steps: turning the view closes the last prompt")
+	check_no_empty_cards("First steps")
 
 
 func check_route() -> void:
@@ -190,6 +198,7 @@ func check_route() -> void:
 	check(active_prompt_id() == "place_mirror", "Route: the height-arrow step advances to place_mirror")
 	check(await confirm() != "blocked", "Route: the raised mirror is not blocked")
 	check(queue_and_active_empty(), "Route: confirming closes the last prompt")
+	check_no_empty_cards("Route")
 
 
 func check_reveal() -> void:
@@ -202,6 +211,7 @@ func check_reveal() -> void:
 	check(await confirm() != "blocked", "Reveal: the bridge mirror is not blocked")
 	check(await remove_stage_mirror() != "blocked", "Reveal: removing the bridge is not blocked")
 	check(queue_and_active_empty(), "Reveal: removing the mirror closes remove_mirror")
+	check_no_empty_cards("Reveal")
 
 
 func check_aperture() -> void:
@@ -214,6 +224,7 @@ func check_aperture() -> void:
 	game.change_preview("height", 2.0)
 	await camera_idle()
 	check(queue_and_active_empty(), "Aperture: resizing through change_preview closes resize_mirror")
+	check_no_empty_cards("Aperture")
 
 
 func check_turn() -> void:
@@ -226,6 +237,7 @@ func check_turn() -> void:
 	game.rotate_mirror(-1)
 	await camera_idle()
 	check(queue_and_active_empty(), "Turn: rotating the mirror closes turn_mirror")
+	check_no_empty_cards("Turn")
 
 
 func check_together() -> void:
@@ -245,6 +257,7 @@ func check_together() -> void:
 	await settle_fall()
 	await wait_until_prompt_changes("safe_fall")
 	check(queue_and_active_empty(), "Together: a safe fall of at least 0.3 s closes safe_fall")
+	check_no_empty_cards("Together")
 
 
 func check_replay() -> void:
@@ -268,6 +281,7 @@ func check_replay() -> void:
 	check(queue_and_active_empty(), "Replay: a second help press closes the replay early")
 	await load_stage("res://levels/01_route.json")
 	check(queue_and_active_empty(), "Replay: completion made during the real run still persists after the replay")
+	check_no_empty_cards("Replay")
 
 
 func check_progress_stub() -> void:
@@ -298,6 +312,7 @@ func check_transition_guard() -> void:
 	game.phase = "play"
 	game._start_prompts()
 	check(active_prompt_id() == "turn_view", "Transition guard: the next prompt starts once phase leaves transition")
+	check_no_empty_cards("Transition guard")
 
 
 func check_prompt_blocks_input() -> void:
@@ -305,6 +320,7 @@ func check_prompt_blocks_input() -> void:
 	check(game.hud._prompt.visible, "Blocks input: a prompt shows for the check")
 	var point: Vector2 = game.hud._prompt.get_global_rect().get_center()
 	check(not game.hud.blocks_world_input(point), "Blocks input: the prompt card does not block a point under it")
+	check_no_empty_cards("Blocks input")
 
 
 func check_prompt_validation() -> void:

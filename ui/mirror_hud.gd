@@ -10,9 +10,14 @@ const INK := Color("342b2a")
 const IVORY := Color("f4ecdd")
 const WARM := Color("b85f4b")
 const ConstellationStyle := preload("res://core/constellation_style.gd")
+const SafeArea := preload("res://core/safe_area.gd")
 var _state := {}
 var _syncing := false
 var _debug := false
+## Set once, before this control enters the tree (`game.gd` sets it right
+## before `add_child(hud)`). Swaps the gear's panel from debug controls to
+## player settings, and hides the Reset button.
+var release_mode := false
 var _last_play_rect := Rect2()
 var _last_camera_rect := Rect2()
 var _last_emitted_play_rect := Rect2()
@@ -30,6 +35,15 @@ var _flip: Button
 var _apply: Button
 var _mode_cycle: Button
 var _debug_panel: PanelContainer
+var _settings_panel: PanelContainer
+var _settings_box: VBoxContainer
+## True between `show_prompt` and `hide_prompt`. The card hides while a panel
+## is open and comes back when the panel closes.
+var _prompt_wanted := false
+var _music_slider: HSlider
+var _effects_slider: HSlider
+var _fullscreen_check: CheckButton
+var _title_button: Button
 var _level_picker: OptionButton
 var _failure: Label
 var _hint: Label
@@ -59,6 +73,8 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and is_inside_tree(): _responsive_layout()
 
 func configure_levels(titles: Array[String], selected: int) -> void:
+	if not is_instance_valid(_level_picker):
+		return
 	_syncing = true
 	_level_picker.clear()
 	for title in titles: _level_picker.add_item(title)
@@ -81,7 +97,7 @@ func display_state(state: Dictionary) -> void:
 	_camera_right.disabled = camera_busy or mirror_busy
 	_undo.visible = not editing and bool(_state.get("can_undo", false))
 	_undo.disabled = not bool(_state.get("can_undo", false))
-	_reset.visible = phase == "failure"
+	_reset.visible = phase == "failure" and not release_mode
 	_cancel.visible = editing
 	_enabled.visible = editing
 	_enabled.text = "Remove mirror" if enabled else "Keep mirror"
@@ -94,11 +110,14 @@ func display_state(state: Dictionary) -> void:
 	_mode_cycle.disabled = mode_busy
 	_update_mode_cycle()
 	_edit_border.visible = editing
-	_update_debug(editing, mirror_busy)
+	if not release_mode:
+		_update_debug(editing, mirror_busy)
 	_responsive_layout()
 
 func set_guide_state(settings: Dictionary, preview_enabled: bool, preview_available: bool) -> void:
-	_sync_guide_controls(settings, preview_enabled, preview_available)
+	# The guide controls are dev tools and exist only in the debug panel.
+	if not release_mode:
+		_sync_guide_controls(settings, preview_enabled, preview_available)
 
 func set_sheet_controls(_corners: PackedVector2Array, outline_accessible: bool) -> void:
 	_outline_accessible = outline_accessible
@@ -134,13 +153,17 @@ func show_prompt(text: String) -> void:
 	if is_instance_valid(_hint_tween): _hint_tween.kill()
 	_hint.visible = false
 	_prompt.text = text
-	_prompt.visible = true
+	_prompt_wanted = not text.is_empty()
+	# An empty prompt card must never show, and an open panel covers its slot.
+	_prompt.visible = _prompt_wanted and not _debug
 	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
-	_prompt_tween = create_tween()
-	_prompt_tween.tween_property(_prompt, "modulate:a", 1.0, 0.2)
+	if _prompt.visible:
+		_prompt_tween = create_tween()
+		_prompt_tween.tween_property(_prompt, "modulate:a", 1.0, 0.2)
 	_responsive_layout()
 
 func hide_prompt() -> void:
+	_prompt_wanted = false
 	if not _prompt.visible:
 		return
 	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
@@ -163,7 +186,13 @@ func get_touch_control_bounds() -> Dictionary:
 func blocks_world_input(point: Vector2) -> bool:
 	for control: Control in _touch_controls.values():
 		if control.is_visible_in_tree() and control.get_global_rect().has_point(point): return true
-	return _debug_panel.visible and _debug_panel.get_global_rect().has_point(point)
+	var panel := _active_panel()
+	return is_instance_valid(panel) and panel.visible and panel.get_global_rect().has_point(point)
+
+## The one gear-toggled panel that exists for this HUD: debug controls
+## normally, player settings in `release_mode`. Only one is ever built.
+func _active_panel() -> PanelContainer:
+	return _settings_panel if release_mode else _debug_panel
 
 func _build() -> void:
 	_failure = _label("↓ No landing", 16); _failure.visible = false; add_child(_failure)
@@ -176,7 +205,7 @@ func _build() -> void:
 	_prompt = _label("", 14); _prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; _prompt.vertical_alignment = VERTICAL_ALIGNMENT_TOP; _prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _prompt.mouse_filter = MOUSE_FILTER_IGNORE; _prompt.visible = false; _prompt.modulate.a = 0.0
 	var prompt_box := _box(Color(IVORY, .92)); prompt_box.content_margin_top = 10; prompt_box.content_margin_bottom = 10
 	_prompt.add_theme_stylebox_override("normal", prompt_box); add_child(_prompt)
-	_gear = _button("⚙"); _style_icon(_gear); _gear.tooltip_text = "Debug controls"; _gear.pressed.connect(_toggle_debug); add_child(_gear); _register("debug", _gear)
+	_gear = _button("⚙"); _style_icon(_gear); _gear.tooltip_text = "Settings" if release_mode else "Debug controls"; _gear.pressed.connect(_toggle_debug); add_child(_gear); _register("debug", _gear)
 	_help = _button("?"); _style_icon(_help); _help.tooltip_text = "Show this stage's prompts again"; _help.visible = false
 	_help.pressed.connect(func() -> void: _emit("help", null)); add_child(_help); _register("help", _help)
 	_camera_left = _add_action("↶", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
@@ -195,10 +224,53 @@ func _build() -> void:
 	add_child(_mode_cycle)
 	_register("mode_cycle", _mode_cycle)
 	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset]: _style_edit(control)
-	_build_debug()
+	if release_mode:
+		_build_settings()
+	else:
+		_build_debug()
+	# The hint and the prompt card carry the tutorial's own guidance and
+	# should never sit behind the gear's panel, which is wider and taller.
+	move_child(_hint, get_child_count() - 1)
+	move_child(_prompt, get_child_count() - 1)
 
 func _add_action(text_value: String, action: String, value: Variant, key: String) -> Button:
 	var button := _button(text_value); button.pressed.connect(func() -> void: _emit(action, value)); add_child(button); _register(key, button); return button
+
+## The gear's panel for a shipped build: audio and display settings, and a
+## way back to the title. No level picker, no guide sliders, no other debug
+## control — those exist only in `_build_debug`.
+func _build_settings() -> void:
+	_settings_panel = PanelContainer.new(); _settings_panel.visible = false; _settings_panel.mouse_filter = MOUSE_FILTER_STOP; add_child(_settings_panel)
+	var panel_box := _box(); panel_box.content_margin_top = 12; panel_box.content_margin_bottom = 12
+	_settings_panel.add_theme_stylebox_override("panel", panel_box)
+	var scroll := ScrollContainer.new(); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; _settings_panel.add_child(scroll)
+	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
+	_settings_box = box
+	box.add_child(_label("Settings", 16))
+	_music_slider = _settings_slider(box, "Music"); _music_slider.value_changed.connect(func(value: float) -> void: _emit("music_volume", value))
+	_effects_slider = _settings_slider(box, "Effects"); _effects_slider.value_changed.connect(func(value: float) -> void: _emit("effects_volume", value))
+	if _desktop():
+		_fullscreen_check = CheckButton.new(); _fullscreen_check.text = "Fullscreen"; _style(_fullscreen_check)
+		_fullscreen_check.toggled.connect(func(value: bool) -> void: _emit("fullscreen", value))
+		box.add_child(_fullscreen_check)
+	_title_button = _button("Return to title"); _style_edit(_title_button)
+	_title_button.pressed.connect(func() -> void: _emit("title", null))
+	box.add_child(_title_button)
+
+func _settings_slider(parent: VBoxContainer, label_text: String) -> HSlider:
+	parent.add_child(_label(label_text, 14))
+	var slider := HSlider.new()
+	slider.min_value = 0.0; slider.max_value = 1.0; slider.step = 0.05; slider.value = 0.8
+	slider.custom_minimum_size.y = TOUCH
+	_style(slider)
+	parent.add_child(slider)
+	return slider
+
+## Seeds the settings panel from the saved values, without emitting actions.
+func set_settings_state(music_volume: float, effects_volume: float, fullscreen: bool) -> void:
+	if is_instance_valid(_music_slider): _music_slider.set_value_no_signal(music_volume)
+	if is_instance_valid(_effects_slider): _effects_slider.set_value_no_signal(effects_volume)
+	if is_instance_valid(_fullscreen_check): _fullscreen_check.set_pressed_no_signal(fullscreen)
 
 func _build_debug() -> void:
 	_debug_panel = PanelContainer.new(); _debug_panel.visible = false; _debug_panel.mouse_filter = MOUSE_FILTER_STOP; _debug_panel.add_theme_stylebox_override("panel", _box()); add_child(_debug_panel)
@@ -305,7 +377,9 @@ func _sync_guide_controls(settings: Dictionary, preview_enabled: bool, preview_a
 
 func _toggle_debug() -> void:
 	_debug = not _debug
-	_debug_panel.visible = _debug
+	_active_panel().visible = _debug
+	_prompt.visible = _prompt_wanted and not _debug
+	_prompt.modulate.a = 1.0
 	_emit("debug_visibility", _debug)
 	_responsive_layout()
 
@@ -343,8 +417,19 @@ func _responsive_layout() -> void:
 	_mode_cycle.size = Vector2(TOUCH, TOUCH)
 	_mode_cycle.position = Vector2(safe.end.x - TOUCH - GAP, safe.end.y - TOUCH - GAP)
 	var debug_height := minf(420.0, safe.size.y - GAP * 2.0)
-	if safe.size.x < 600.0 and safe.size.y > safe.size.x: debug_height = minf(debug_height, minf(220.0, safe.size.y * 0.28))
-	_debug_panel.position = safe.position + Vector2(GAP, GAP); _debug_panel.size = Vector2(minf(260.0, safe.size.x - GAP * 2.0), debug_height)
+	# The small portrait cap keeps the dev panel clear of the stage. Release
+	# settings are few, so they use the full safe height.
+	if not release_mode and safe.size.x < 600.0 and safe.size.y > safe.size.x: debug_height = minf(debug_height, minf(220.0, safe.size.y * 0.28))
+	var panel := _active_panel()
+	if is_instance_valid(panel):
+		var panel_width := minf(260.0, safe.size.x - GAP * 2.0)
+		var panel_height := debug_height
+		if release_mode and is_instance_valid(_settings_box):
+			# Content-sized, not the debug panel's fixed height: no empty
+			# space below the last control, still capped and scrollable.
+			panel_height = minf(debug_height, _settings_box.get_combined_minimum_size().y + 24.0)
+		panel.position = safe.position + Vector2(GAP, GAP)
+		panel.size = Vector2(panel_width, panel_height)
 	_hint.size = Vector2(minf(360.0, safe.size.x - TOUCH - GAP * 3.0), TOUCH); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
 	var prompt_width := minf(360.0, safe.size.x - TOUCH - GAP * 3.0)
 	_prompt.size = Vector2(prompt_width, _prompt_height(prompt_width))
@@ -356,12 +441,7 @@ func _responsive_layout() -> void:
 		play_rect_changed.emit(_last_play_rect)
 
 func _safe_rect() -> Rect2:
-	var visible := get_viewport_rect()
-	if _desktop(): return visible
-	var area := DisplayServer.get_display_safe_area(); var window := DisplayServer.window_get_size()
-	if area.size.x <= 0 or area.size.y <= 0 or window.x <= 0 or window.y <= 0: return visible
-	var result := Rect2(Vector2(area.position) * visible.size / Vector2(window), Vector2(area.size) * visible.size / Vector2(window)).intersection(visible)
-	return result if result.size.x > 0 and result.size.y > 0 else visible
+	return SafeArea.rect(self)
 
 func _prompt_height(width: float) -> float:
 	if _prompt.text.is_empty():
@@ -422,6 +502,7 @@ func get_blocking_rects() -> Array[Rect2]:
 	var result: Array[Rect2] = []
 	for bounds: Rect2 in get_touch_control_bounds().values():
 		result.append(bounds)
-	if _debug_panel.visible:
-		result.append(_debug_panel.get_global_rect())
+	var panel := _active_panel()
+	if is_instance_valid(panel) and panel.visible:
+		result.append(panel.get_global_rect())
 	return result
