@@ -11,6 +11,7 @@ const IVORY := Color("f4ecdd")
 const WARM := Color("b85f4b")
 const ConstellationStyle := preload("res://core/constellation_style.gd")
 const SafeArea := preload("res://core/safe_area.gd")
+const UI_CLICK := preload("res://assets/audio/ui.wav")
 var _state := {}
 var _syncing := false
 var _debug := false
@@ -62,6 +63,9 @@ var _panel_height: SpinBox
 var _angle_snap: SpinBox
 var _debug_status: Label
 var _hint_tween: Tween
+## Plays a click for every button `_button` creates. One player, one wire-up
+## point, instead of a play call in each button's own press handler.
+var _click_player: AudioStreamPlayer
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -195,6 +199,7 @@ func _active_panel() -> PanelContainer:
 	return _settings_panel if release_mode else _debug_panel
 
 func _build() -> void:
+	_click_player = AudioStreamPlayer.new(); _click_player.stream = UI_CLICK; _click_player.bus = "Effects"; add_child(_click_player)
 	_failure = _label("↓ No landing", 16); _failure.visible = false; add_child(_failure)
 	_failure.add_theme_color_override("font_color", Color("f0b86e"))
 	_failure.add_theme_color_override("font_outline_color", Color("162126"))
@@ -475,7 +480,11 @@ func _draw_mode_icon() -> void:
 		"resize":
 			_mode_cycle.draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), ink, false, 1.5, true)
 func _button(text_value: String) -> Button:
-	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button); return button
+	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button)
+	button.pressed.connect(_play_click)
+	return button
+func _play_click() -> void:
+	if is_instance_valid(_click_player): _click_player.play()
 func _label(text_value: String, font_size: int) -> Label:
 	var label := Label.new(); label.text = text_value; label.add_theme_font_size_override("font_size", font_size); label.add_theme_color_override("font_color", INK); label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; return label
 func _style(control: Control) -> void:

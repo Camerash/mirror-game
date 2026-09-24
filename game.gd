@@ -32,6 +32,7 @@ const MirrorRules := preload("res://core/mirror_state.gd")
 const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
+const Sounds := preload("res://world/sounds.gd")
 const ADVANCE_PAUSE := 0.5
 ## The tutorial, in play order. Each stage teaches one new idea.
 const PUZZLE_PATHS: Array[String] = ["res://levels/13_first_steps.json", "res://levels/01_route.json",
@@ -122,6 +123,8 @@ var cancelling_gesture := false
 var limit_hint_shown := false
 var viewport_size := Vector2.ZERO
 var sweep := Sweep.new()
+## Plays the tutorial events, the sweep, and the traveller's footsteps.
+var sounds := Sounds.new()
 var auto_advance := true
 var _advance_timer: Tween
 var _air_time := 0.0
@@ -191,6 +194,9 @@ func _setup_scene() -> void:
 	camera.motion_finished.connect(_camera_motion_finished)
 	predictor.ready_result.connect(_prediction_ready)
 	walker.route_finished.connect(_route_finished)
+	add_child(sounds)
+	sounds.walker = walker
+	tutorial_event.connect(sounds.play_event)
 	add_child(goal_root)
 	add_child(walker)
 	add_child(sweep)
@@ -328,6 +334,7 @@ func _begin_sweep() -> void:
 	var shift := Geometry.vector(level["start"]) - old_goal
 	hud.show_hint(str(level["title"]))
 	camera.fit(AABB(old_framing.position + shift, old_framing.size), hud.get_camera_rect(), true)
+	sounds.play("sweep")
 	sweep.start(old_solids, Geometry.total_bounds(world.drawn_solids), shift, old_start, old_goal,
 		Geometry.vector(level["goal"]), world, goal_root, sheet, contact)
 	_fit_camera(hud.get_play_rect())

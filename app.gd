@@ -40,12 +40,29 @@ var _end_label: Label
 var _play_again_button: Button
 var _end_title_button: Button
 
+## The ambient loop, on from the title onward. `ambient_loop.wav`'s import
+## sets its own loop points, so one `play()` here is enough; no stage change
+## touches this player again.
+var _music_player: AudioStreamPlayer
+## Plays a click for every button `_styled_button` creates. One player, one
+## wire-up point, instead of a play call in each button's own press handler.
+var _click_player: AudioStreamPlayer
+
 
 func _ready() -> void:
 	progress = TutorialProgress.new(progress_path)
 	_apply_music_volume()
 	_apply_effects_volume()
 	_apply_fullscreen()
+	_music_player = AudioStreamPlayer.new()
+	_music_player.stream = preload("res://assets/audio/ambient_loop.wav")
+	_music_player.bus = "Music"
+	add_child(_music_player)
+	_music_player.play()
+	_click_player = AudioStreamPlayer.new()
+	_click_player.stream = preload("res://assets/audio/ui.wav")
+	_click_player.bus = "Effects"
+	add_child(_click_player)
 	game = Game.new()
 	game.progress = progress
 	game.release_mode = release_mode_override if release_mode_override != null \
@@ -222,7 +239,13 @@ func _styled_button(text_value: String) -> Button:
 	button.add_theme_stylebox_override("normal", normal)
 	button.add_theme_stylebox_override("hover", hover)
 	button.add_theme_stylebox_override("pressed", pressed)
+	button.pressed.connect(_play_click)
 	return button
+
+
+func _play_click() -> void:
+	if is_instance_valid(_click_player):
+		_click_player.play()
 
 
 func _layout_title() -> void:
