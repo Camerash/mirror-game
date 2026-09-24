@@ -23,8 +23,10 @@ const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
 const ADVANCE_PAUSE := 0.5
-const PUZZLE_PATHS: Array[String] = ["res://levels/01_route.json", "res://levels/08_reveal.json",
-	"res://levels/11_aperture.json"]
+## The tutorial, in play order. Each stage teaches one new idea.
+const PUZZLE_PATHS: Array[String] = ["res://levels/13_first_steps.json", "res://levels/01_route.json",
+	"res://levels/08_reveal.json", "res://levels/11_aperture.json", "res://levels/14_turn.json",
+	"res://levels/15_together.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
 	"res://levels/03_source.json", "res://levels/04_absolute.json", "res://levels/05_restore.json",
 	"res://levels/06_wall.json", "res://levels/07_horizontal.json", "res://levels/09_movement.json", "res://levels/10_extent.json",

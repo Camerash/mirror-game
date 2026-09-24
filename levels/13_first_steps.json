@@ -1,0 +1,177 @@
+{
+  "title": "First steps",
+  "objective": "Reach the ring. Turn the view if the way is hidden.",
+  "originals": [
+    {
+      "id": "path_0",
+      "center": [
+        0,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "path_1",
+      "center": [
+        1,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "path_3",
+      "center": [
+        3,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "path_4",
+      "center": [
+        4,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "turn_1",
+      "center": [
+        4,
+        -0.5,
+        -1
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "turn_2",
+      "center": [
+        4,
+        -0.5,
+        -2
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "turn_3",
+      "center": [
+        4,
+        -0.5,
+        -3
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "wall",
+      "center": [
+        5,
+        1,
+        -2.5
+      ],
+      "size": [
+        1,
+        4,
+        4
+      ]
+    }
+  ],
+  "absolutes": [
+    {
+      "id": "rest",
+      "center": [
+        2,
+        -0.5,
+        0
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": "goal",
+      "center": [
+        4,
+        -0.5,
+        -4
+      ],
+      "size": [
+        1,
+        1,
+        1
+      ]
+    }
+  ],
+  "start": [
+    0,
+    0,
+    0
+  ],
+  "goal": [
+    4,
+    0,
+    -4
+  ],
+  "mirror": {
+    "enabled": false,
+    "axis": 0,
+    "source": 1,
+    "offset": -1.5,
+    "pivot": [
+      -1.5,
+      0.5,
+      0
+    ]
+  },
+  "limits": {
+    "axes": [
+      0,
+      1,
+      2
+    ],
+    "min": [
+      -2.0,
+      -3.0,
+      -5.0
+    ],
+    "max": [
+      7.0,
+      3.0,
+      2.0
+    ]
+  },
+  "kill_y": -5
+}

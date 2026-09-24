@@ -173,57 +173,167 @@ func reaches_goal() -> bool:
 	return not game.navigation.route(game.walker.position, goal).is_empty()
 
 
+func goal_point() -> Vector3:
+	return Vector3(game.level["goal"][0], game.level["goal"][1], game.level["goal"][2])
+
+
+func goal_visible() -> bool:
+	## True when a ray from the camera to the goal ring hits nothing first.
+	var target := goal_point() + Vector3.UP * 0.05
+	var screen: Vector2 = game.camera.unproject_position(target)
+	var origin: Vector3 = game.camera.project_ray_origin(screen)
+	var ray := PhysicsRayQueryParameters3D.create(origin, origin + game.camera.project_ray_normal(screen) * 200.0)
+	ray.collision_mask = 1
+	var hit: Dictionary = game.get_world_3d().direct_space_state.intersect_ray(ray)
+	return hit.is_empty() or (hit["position"] as Vector3).distance_to(target) < 0.6
+
+
+func remove() -> String:
+	game.begin_preview()
+	await idle()
+	game.remove_mirror()
+	await camera_idle()
+	return await confirm()
+
+
 func run() -> void:
 	# create_at() projects a screen point through the camera, so the viewport
-	# needs a real size; other checks here never needed one.
+	# needs a real size.
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
 	root.add_child(game)
 	await frames(2)
+	await check_first_steps()
+	await check_route()
+	await check_reveal()
 	await check_aperture()
-	await report_aperture_real_path("full-height", 3.0, 3.0)
-	await report_aperture_real_path("one-high", 3.0, 1.0)
+	await check_turn()
+	await check_together()
 	game.queue_free()
 	await frames(1)
 	print("Level solvability: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
 
-func check_aperture() -> void:
-	## "Only the ground": the reflection carries the tower along with the ledge
-	## unless the aperture is shortened to the ground band.
-	await load_level("11_aperture")
-	check(str(game.level["title"]) == "Only the ground", "The aperture level loads")
-	check(not reaches_goal(), "Without a mirror the goal is out of reach")
+func check_first_steps() -> void:
+	## "First steps": the way is connected, but the goal is out of sight until
+	## the view turns.
+	await load_level("13_first_steps")
+	check(reaches_goal(), "First steps: the walk to the goal is connected")
+	check(not goal_visible(), "First steps: the goal is hidden in the first view")
+	var revealed := false
+	for direction: int in [1, -1]:
+		await load_level("13_first_steps")
+		game.turn_camera(direction)
+		await camera_idle()
+		revealed = revealed or goal_visible()
+	check(revealed, "First steps: one quarter turn of the view shows the goal")
+	await load_level("13_first_steps")
+	check(await walk_to(goal_point()), "First steps: the traveller walks to the goal")
 
-	await load_level("11_aperture")
-	check(await place(0, 1, 2.0, 3.0, 3.0), "A full-height mirror can be placed")
-	check(not reaches_goal(), "A full-height mirror brings the tower across and blocks the way")
 
-	await load_level("11_aperture")
-	check(await place(0, 1, 2.0, 3.0, 1.0), "A one-high mirror can be placed")
-	check(reaches_goal(), "A one-high mirror brings only the ground across and opens the way")
+func check_route() -> void:
+	## "A place to stand": the real create path at 2.5, then a move to 4.0.
+	await load_level("01_route")
+	await create_at(2.5, 0.0)
+	check(await confirm() == "supported", "Route: a mirror at 2.5 is supported")
+	check(await walk_to(Vector3(5, 0, 0)), "Route: the traveller reaches the rest platform")
+	game.begin_preview()
+	await idle()
+	game.change_preview("offset", 4.0)
+	await camera_idle()
+	await confirm()
+	check(await walk_to(goal_point()), "Route: a mirror at 4.0 opens the way to the goal")
 
 
-func report_aperture_real_path(label: String, width: float, height: float) -> void:
-	## EXPECTED FINDING, not an assertion. 11_aperture's solution was tuned to
-	## the default mirror's pivot height (0.5). The real hold-to-create path
-	## instead plants the pivot at the walker's feet (y 0), so the resized
-	## band lands half a unit away from the ledge. This case is only recorded,
-	## not checked: the user will redesign this stage. See HANDOFF.md.
+func check_reveal() -> void:
+	## "The path beneath": bridge, walk out, remove, and the ground returns.
+	await load_level("08_reveal")
+	await create_at(2.5, 0.0)
+	await confirm()
+	check(await walk_to(Vector3(5, 0, 0)), "Reveal: the bridge reaches x 5")
+	check(not reaches_goal(), "Reveal: the goal is cut off while the mirror stands")
+	await remove()
+	await settle_fall()
+	check(game.phase == "play" and await walk_to(goal_point()), "Reveal: removing the mirror returns the ground to the goal")
+
+
+func aperture_case(height: float) -> bool:
 	await load_level("11_aperture")
 	await create_at(2.0, 0.0)
-	var created_pivot: Vector3 = game.preview.get("pivot", Vector3.INF)
-	await set_size("width", width)
-	await set_size("height", height)
-	var sized_pivot: Vector3 = game.preview.get("pivot", Vector3.INF)
-	var half_height: float = float(game.preview.get("height", 0.0)) * 0.5
-	var status := await confirm()
+	if not is_equal_approx(height, 3.0):
+		await set_size("height", height)
+	await confirm()
 	await settle_fall()
-	var reflected_tops: Array[float] = []
-	for solid: Dictionary in game.solids:
-		if solid.get("kind") == "reflected":
-			var bounds: AABB = solid["bounds"]
-			reflected_tops.append(bounds.position.y + bounds.size.y)
-	print("11_aperture real-path finding (%s): created pivot=%s, sized pivot=%s, panel y range=[%.2f, %.2f], reflected tops=%s, status=%s, route to goal=%s" %
-		[label, created_pivot, sized_pivot, sized_pivot.y - half_height, sized_pivot.y + half_height, reflected_tops, status, reaches_goal()])
+	return reaches_goal()
+
+
+func check_aperture() -> void:
+	## "Only the ground": the real create path puts the panel at y -1.5..1.5,
+	## which copies the floating tower into the bridge. Pulling the top edge
+	## down to 2 high (y -1.5..0.5) copies only the ledge.
+	await load_level("11_aperture")
+	check(not reaches_goal(), "Aperture: without a mirror the goal is out of reach")
+	check(not await aperture_case(3.0), "Aperture: a full-height mirror brings the tower across and blocks the way")
+	check(await aperture_case(2.0), "Aperture: a two-high mirror brings only the ground across")
+	check(not await aperture_case(1.0), "Aperture: a one-high mirror makes a bridge too low to reach")
+
+
+func check_turn() -> void:
+	## "Another way round": only a left quarter turn copies the spur forward.
+	await load_level("14_turn")
+	check(not reaches_goal(), "Turn: without a mirror the goal is out of reach")
+	for x: float in [0.5, 1.0, 1.5, 2.0]:
+		await load_level("14_turn")
+		await create_at(x, 0.0)
+		await confirm()
+		await settle_fall()
+		check(not reaches_goal(), "Turn: an unturned mirror at x %.1f copies along X only" % x)
+	await load_level("14_turn")
+	await create_at(0.0, 0.5)
+	await turn(-1)
+	check(await confirm() == "supported", "Turn: a left turn at z 0.5 is supported")
+	check(reaches_goal(), "Turn: a left turn copies the spur into a bridge")
+	await load_level("14_turn")
+	await create_at(0.0, 0.5)
+	await turn(1)
+	check(await confirm() == "failure", "Turn: a right turn copies the empty side and removes the ground")
+	for degrees: float in [-15.0, -30.0, -45.0]:
+		await load_level("14_turn")
+		await create_at(0.0, 0.5)
+		await turn_to(degrees)
+		await confirm()
+		await settle_fall()
+		check(not reaches_goal(), "Turn: a %d degree turn does not reach the goal" % int(degrees))
+
+
+func together_bridge(height: float) -> void:
+	await load_level("15_together")
+	await create_at(0.0, 0.5)
+	await turn(-1)
+	if not is_equal_approx(height, 3.0):
+		await set_size("height", height)
+	await confirm()
+
+
+func check_together() -> void:
+	## "Together": turn, resize past the floating block, walk out above the
+	## low path, then remove the mirror and fall onto it.
+	var above_low := Vector3(0, 0, 4)
+	await load_level("15_together")
+	check(not reaches_goal(), "Together: without a mirror the goal is out of reach")
+	await load_level("15_together")
+	await create_at(1.5, 0.0)
+	await confirm()
+	check(not await walk_to(above_low), "Together: an unturned mirror makes no bridge")
+	await together_bridge(3.0)
+	check(not await walk_to(above_low), "Together: a full-height mirror copies the floating block into the way")
+	await together_bridge(2.0)
+	check(await walk_to(Vector3(0, 0, 1.5)), "Together: the resized bridge carries the traveller out")
+	check(await remove() == "failure", "Together: a removal above empty space is a fatal fall")
+	await together_bridge(2.0)
+	check(await walk_to(above_low), "Together: the traveller stands above the low path")
+	check(await remove() == "landing", "Together: a removal above the low path is a safe fall")
+	await settle_fall()
+	check(game.phase == "play" and game.walker.position.y < -2.5, "Together: the traveller lands on the low path")
+	check(await walk_to(goal_point()), "Together: the low path leads to the goal")
