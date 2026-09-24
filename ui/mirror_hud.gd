@@ -33,6 +33,9 @@ var _debug_panel: PanelContainer
 var _level_picker: OptionButton
 var _failure: Label
 var _hint: Label
+var _prompt: Label
+var _prompt_tween: Tween
+var _help: Button
 var _hold: Control
 var _edit_border: Control
 var _debug_controls := {}
@@ -71,6 +74,7 @@ func display_state(state: Dictionary) -> void:
 	var mode_busy := bool(_state.get("mode_busy", false))
 	var camera_busy := bool(_state.get("camera_busy", false))
 	var enabled := bool(_state.get("enabled", false))
+	_help.visible = bool(_state.get("has_prompts", false))
 	_camera_left.visible = _desktop()
 	_camera_right.visible = _desktop()
 	_camera_left.disabled = camera_busy or mirror_busy
@@ -108,6 +112,10 @@ func set_hold_progress(point: Vector2, progress: float) -> void:
 	_hold.queue_redraw()
 
 func show_hint(text: String) -> void:
+	# A hint is transient chatter; an active prompt is the current lesson, so
+	# a hint that would land on top of it is dropped rather than queued.
+	if _prompt.visible:
+		return
 	if is_instance_valid(_hint_tween): _hint_tween.kill()
 	_hint.text = text
 	_hint.modulate.a = 1.0
@@ -118,6 +126,27 @@ func show_hint(text: String) -> void:
 		_hint_tween.tween_interval(2.4)
 		_hint_tween.tween_property(_hint, "modulate:a", 0.0, 0.35)
 		_hint_tween.tween_callback(func() -> void: _hint.visible = false; _hint.modulate.a = 1.0)
+
+## The tutorial prompt card. It stays until `hide_prompt`, unlike the transient
+## hint above, and takes the hint's screen slot: hiding any hint in progress
+## avoids the two overlapping.
+func show_prompt(text: String) -> void:
+	if is_instance_valid(_hint_tween): _hint_tween.kill()
+	_hint.visible = false
+	_prompt.text = text
+	_prompt.visible = true
+	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
+	_prompt_tween = create_tween()
+	_prompt_tween.tween_property(_prompt, "modulate:a", 1.0, 0.2)
+	_responsive_layout()
+
+func hide_prompt() -> void:
+	if not _prompt.visible:
+		return
+	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
+	_prompt_tween = create_tween()
+	_prompt_tween.tween_property(_prompt, "modulate:a", 0.0, 0.35)
+	_prompt_tween.tween_callback(func() -> void: _prompt.visible = false)
 
 func get_play_rect() -> Rect2: return _last_play_rect
 func is_debug_visible() -> bool: return _debug
@@ -144,7 +173,12 @@ func _build() -> void:
 	_edit_border = Control.new(); _edit_border.mouse_filter = MOUSE_FILTER_IGNORE; _edit_border.set_anchors_and_offsets_preset(PRESET_FULL_RECT); _edit_border.draw.connect(func() -> void: _edit_border.draw_rect(_last_play_rect, Color(WARM, .45), false, 1.5)); _edit_border.visible = false; add_child(_edit_border)
 	_hold = Control.new(); _hold.size = Vector2(52, 52); _hold.mouse_filter = MOUSE_FILTER_IGNORE; _hold.visible = false; _hold.draw.connect(_draw_hold); add_child(_hold)
 	_hint = _label("", 14); _hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _hint.mouse_filter = MOUSE_FILTER_IGNORE; _hint.visible = false; _hint.add_theme_stylebox_override("normal", _box(Color(IVORY, .92))); add_child(_hint)
+	_prompt = _label("", 14); _prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; _prompt.vertical_alignment = VERTICAL_ALIGNMENT_TOP; _prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _prompt.mouse_filter = MOUSE_FILTER_IGNORE; _prompt.visible = false; _prompt.modulate.a = 0.0
+	var prompt_box := _box(Color(IVORY, .92)); prompt_box.content_margin_top = 10; prompt_box.content_margin_bottom = 10
+	_prompt.add_theme_stylebox_override("normal", prompt_box); add_child(_prompt)
 	_gear = _button("⚙"); _style_icon(_gear); _gear.tooltip_text = "Debug controls"; _gear.pressed.connect(_toggle_debug); add_child(_gear); _register("debug", _gear)
+	_help = _button("?"); _style_icon(_help); _help.tooltip_text = "Show this stage's prompts again"; _help.visible = false
+	_help.pressed.connect(func() -> void: _emit("help", null)); add_child(_help); _register("help", _help)
 	_camera_left = _add_action("↶", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
 	_camera_right = _add_action("↷", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
 	_undo = _add_action("Undo", "undo", null, "undo")
@@ -283,6 +317,8 @@ func _responsive_layout() -> void:
 	_camera_left.size = Vector2(TOUCH, TOUCH)
 	_camera_right.size = Vector2(TOUCH, TOUCH)
 	_gear.position = Vector2(safe.end.x - TOUCH - GAP, safe.position.y + GAP)
+	_help.size = Vector2(TOUCH, TOUCH)
+	_help.position = Vector2(_gear.position.x - TOUCH - 6, _gear.position.y)
 	_camera_left.position = safe.position + Vector2(GAP, safe.size.y - TOUCH - GAP); _camera_right.position = _camera_left.position + Vector2(TOUCH + 6, 0)
 	var right := Vector2(safe.end.x - GAP, safe.end.y - TOUCH - GAP)
 	for control: Control in [_undo, _reset]:
@@ -310,6 +346,9 @@ func _responsive_layout() -> void:
 	if safe.size.x < 600.0 and safe.size.y > safe.size.x: debug_height = minf(debug_height, minf(220.0, safe.size.y * 0.28))
 	_debug_panel.position = safe.position + Vector2(GAP, GAP); _debug_panel.size = Vector2(minf(260.0, safe.size.x - GAP * 2.0), debug_height)
 	_hint.size = Vector2(minf(360.0, safe.size.x - TOUCH - GAP * 3.0), TOUCH); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
+	var prompt_width := minf(360.0, safe.size.x - TOUCH - GAP * 3.0)
+	_prompt.size = Vector2(prompt_width, _prompt_height(prompt_width))
+	_prompt.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
 	var camera_rect := get_camera_rect()
 	if not _last_play_rect.is_equal_approx(_last_emitted_play_rect) or not camera_rect.is_equal_approx(_last_camera_rect):
 		_last_emitted_play_rect = _last_play_rect
@@ -323,6 +362,15 @@ func _safe_rect() -> Rect2:
 	if area.size.x <= 0 or area.size.y <= 0 or window.x <= 0 or window.y <= 0: return visible
 	var result := Rect2(Vector2(area.position) * visible.size / Vector2(window), Vector2(area.size) * visible.size / Vector2(window)).intersection(visible)
 	return result if result.size.x > 0 and result.size.y > 0 else visible
+
+func _prompt_height(width: float) -> float:
+	if _prompt.text.is_empty():
+		return TOUCH
+	var font := _prompt.get_theme_font("font")
+	var font_size := _prompt.get_theme_font_size("font_size")
+	var content_width := maxf(10.0, width - 24.0)
+	var text_size := font.get_multiline_string_size(_prompt.text, HORIZONTAL_ALIGNMENT_LEFT, content_width, font_size)
+	return maxf(TOUCH, text_size.y + 20.0)
 
 func _draw_hold() -> void: _hold.draw_arc(_hold.size * .5, 20.0, -PI * .5, -PI * .5 + TAU * float(_hold.get_meta("progress", 0.0)), 24, WARM, 4.0)
 func _update_mode_cycle() -> void:

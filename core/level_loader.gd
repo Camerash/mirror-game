@@ -2,6 +2,9 @@ class_name LevelLoader
 extends RefCounted
 
 const Rules := preload("res://core/mirror_state.gd")
+## Names a tutorial prompt can wait for; see game.gd's `tutorial_event` signal.
+const PROMPT_EVENTS: Array[String] = ["walk", "camera_turn", "create", "move", "confirm",
+	"remove", "resize", "turn", "fall", "goal"]
 
 static func load_level(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -85,6 +88,30 @@ static func validate(data: Dictionary) -> String:
 	var axis := int(mirror["axis"])
 	if float(mirror["offset"]) < float(limits["min"][axis]) or float(mirror["offset"]) > float(limits["max"][axis]):
 		return "Initial offset is outside the permitted area."
+	if data.has("prompts"):
+		var prompts_error := _validate_prompts(data["prompts"])
+		if not prompts_error.is_empty():
+			return prompts_error
+	return ""
+
+static func _validate_prompts(prompts: Variant) -> String:
+	if not prompts is Array:
+		return "Prompts must be an array."
+	var seen_ids := {}
+	for entry: Variant in prompts:
+		if not entry is Dictionary or not entry.get("id") is String or not entry.get("text") is String \
+				or not entry.get("until") is String:
+			return "Each prompt needs a text id, prompt text, and an until event."
+		var id: String = entry["id"]
+		var text: String = entry["text"]
+		var until: String = entry["until"]
+		if id.is_empty() or seen_ids.has(id):
+			return "Prompt ids must be non-empty and unique."
+		if text.is_empty():
+			return "Prompt text must not be empty."
+		if not PROMPT_EVENTS.has(until):
+			return "Unknown prompt event: " + until
+		seen_ids[id] = true
 	return ""
 
 static func _integer_in(value: Variant, allowed: Array) -> bool:

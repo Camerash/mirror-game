@@ -375,6 +375,10 @@ func _test_fixtures_and_layout() -> void:
 			var body: StaticBody3D = game.world.collision_root.get_child(solid_index)
 			var shape: CollisionShape3D = body.get_child(0)
 			_check(mesh_node.mesh.size.is_equal_approx(shape.shape.size) and mesh_node.position.is_equal_approx(body.position), "Visible and collision box agree")
+	# A stage with prompts, so the "?" control is visible for the touch-size
+	# and in-window checks below; the last fixture loaded above has none.
+	_check(game.load_level(Game.PUZZLE_PATHS.find("res://levels/13_first_steps.json")), "A tutorial stage with prompts loads for the layout checks")
+	await _frames(3)
 	for dimensions: Vector2i in [Vector2i(390, 844), Vector2i(844, 390), Vector2i(768, 1024), Vector2i(1024, 768), Vector2i(1152, 800)]:
 		root.size = dimensions
 		game.begin_preview()

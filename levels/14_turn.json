@@ -108,5 +108,12 @@
       6.0
     ]
   },
-  "kill_y": -5
+  "kill_y": -5,
+  "prompts": [
+    {
+      "id": "turn_mirror",
+      "text": "Tap the mode button until the circle shows. Then drag the ring to turn the mirror.",
+      "until": "turn"
+    }
+  ]
 }

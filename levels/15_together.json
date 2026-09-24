@@ -173,5 +173,12 @@
       8.0
     ]
   },
-  "kill_y": -5
+  "kill_y": -5,
+  "prompts": [
+    {
+      "id": "safe_fall",
+      "text": "A fall is safe when there is ground below. Only the edge of the world is not.",
+      "until": "fall"
+    }
+  ]
 }

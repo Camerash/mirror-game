@@ -134,5 +134,12 @@
       2.5
     ]
   },
-  "kill_y": -5
+  "kill_y": -5,
+  "prompts": [
+    {
+      "id": "remove_mirror",
+      "text": "Hold the mirror to change it. Remove it, and the ground it covered comes back.",
+      "until": "remove"
+    }
+  ]
 }

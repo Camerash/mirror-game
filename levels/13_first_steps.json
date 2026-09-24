@@ -173,5 +173,17 @@
       2.0
     ]
   },
-  "kill_y": -5
+  "kill_y": -5,
+  "prompts": [
+    {
+      "id": "walk_tap",
+      "text": "Tap a block to walk there.",
+      "until": "walk"
+    },
+    {
+      "id": "turn_view",
+      "text": "The way on is out of sight. Swipe sideways, or use the arrows, to turn the view.",
+      "until": "camera_turn"
+    }
+  ]
 }

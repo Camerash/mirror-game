@@ -108,5 +108,22 @@
   },
   "kill_y": -5,
   "title": "A place to stand",
-  "objective": "Reach the ring. Find a place that stays still."
+  "objective": "Reach the ring. Find a place that stays still.",
+  "prompts": [
+    {
+      "id": "make_mirror",
+      "text": "Hold an empty space to make a mirror.",
+      "until": "create"
+    },
+    {
+      "id": "move_mirror",
+      "text": "Drag the mirror to move it. It copies what is behind it to the other side.",
+      "until": "move"
+    },
+    {
+      "id": "place_mirror",
+      "text": "Tap the mirror to place it.",
+      "until": "confirm"
+    }
+  ]
 }

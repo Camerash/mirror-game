@@ -1,6 +1,11 @@
 extends Node3D
 ## Commands below are shared by HUD input, keyboard input, and replay tests.
 
+## Fires once for each tutorial action, right after the state change is real
+## (never for a refused action). `core/level_loader.gd`'s `PROMPT_EVENTS`
+## lists every name a level's `prompts` can wait for.
+signal tutorial_event(name: String)
+
 const TrialLighting := preload("res://world/trial_lighting.gd")
 const Targets := preload("res://core/mirror_targets.gd")
 const GuideStyle := preload("res://core/constellation_style.gd")
@@ -78,6 +83,10 @@ var gesture := WorldGesture.new()
 var outline_accessible := false
 var display_preview: Dictionary = {}
 var translating_settle := false
+## Which settle `_translation_finished` is closing: "move" for a drag or the
+## height arrow, "resize" for a width/height change. Tells it which tutorial
+## event, if any, the settle can complete.
+var _finish_kind := ""
 var rotation_active := false
 var rotation_origin: Dictionary = {}
 var rotation_axis := Vector3.UP
@@ -106,6 +115,25 @@ var viewport_size := Vector2.ZERO
 var sweep := Sweep.new()
 var auto_advance := true
 var _advance_timer: Tween
+var _air_time := 0.0
+var _was_grounded := true
+
+## Saved-progress hook for the tutorial prompts (see the schema in
+## core/level_loader.gd). Optional and duck-typed rather than a hard class
+## dependency, because the save system does not exist yet:
+##   is_prompt_done(id: String) -> bool
+##   mark_prompt_done(id: String) -> void
+## When null, done prompts are only remembered in `_prompt_done_memory`, for
+## this run.
+var progress: Object = null
+var _prompt_done_memory := {}
+## Prompts still waiting to show for the current stage, in order.
+var _prompt_queue: Array[Dictionary] = []
+## The prompt on, or waiting to return to, the HUD card right now.
+var _active_prompt: Dictionary = {}
+## The id last handed to `hud.show_prompt`, so a repeat call is a no-op.
+var _prompt_shown_id := ""
+var _prompt_replay := false
 
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
@@ -119,9 +147,11 @@ func _ready() -> void:
 	hud.play_rect_changed.connect(_fit_camera)
 	gesture.action_requested.connect(_gesture_action)
 	gesture.hold_progress.connect(hud.set_hold_progress)
+	tutorial_event.connect(_on_tutorial_event)
 	load_level(0)
 	_fit_camera(hud.get_play_rect())
-	hud.show_hint("Tap to walk. Hold empty space to create a mirror.")
+	if level.get("prompts", []).is_empty():
+		hud.show_hint("Tap to walk. Hold empty space to create a mirror.")
 
 func _setup_scene() -> void:
 	add_child(world)
@@ -190,11 +220,12 @@ func load_level(index: int) -> bool:
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
 	status = "Tap a platform to walk. Hold empty space to create a mirror."
+	_build_prompt_queue()
 	_refresh()
 	_fit_camera(hud.get_play_rect(), true)
 	return true
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if level.is_empty():
 		return
 	if not pending.is_empty():
@@ -203,6 +234,7 @@ func _physics_process(_delta: float) -> void:
 		settle_frames -= 1
 		if settle_frames == 0:
 			_refresh()
+			_start_prompts()
 		walker.paused = true
 		return
 	walker.paused = phase != "play"
@@ -210,17 +242,30 @@ func _physics_process(_delta: float) -> void:
 		return
 	if can_edit() != edit_available:
 		_refresh()
+	_track_fall(delta)
 	if walker.position.y < float(level["kill_y"]):
 		_fail()
 	elif not level.get("is_test", false) and walker.position.distance_to(Geometry.vector(level["goal"])) < 0.22:
 		phase = "complete"
 		walker.stop()
+		tutorial_event.emit("goal")
 		var is_final := level_index + 1 >= PUZZLE_PATHS.size()
 		status = "The end of the tutorial so far." if is_final else "A new way through. You reached the goal."
 		if auto_advance and not is_final:
 			phase = "transition"
 			_start_advance_pause()
 		_refresh()
+
+## A landing counts once the traveller has been airborne for at least 0.3 s,
+## so a small step down or a resize settle does not count as a fall.
+func _track_fall(delta: float) -> void:
+	if walker.grounded:
+		if not _was_grounded and _air_time >= 0.3:
+			tutorial_event.emit("fall")
+		_air_time = 0.0
+	else:
+		_air_time += delta
+	_was_grounded = walker.grounded
 
 func _start_advance_pause() -> void:
 	walker.stop()
@@ -252,6 +297,7 @@ func _finish_sweep() -> void:
 	phase = "play"
 	_refresh()
 	_fit_camera(hud.get_play_rect())
+	_start_prompts()
 
 func request_walk(target: Vector3) -> bool:
 	if phase != "play" or settle_frames > 0 or not pending.is_empty():
@@ -266,6 +312,7 @@ func request_walk(target: Vector3) -> bool:
 	world.draw_route(route)
 	status = "Walking."
 	_refresh()
+	tutorial_event.emit("walk")
 	return true
 
 func advance_level() -> bool:
@@ -297,6 +344,8 @@ func create_mirror(point: Vector2) -> void:
 		return
 	var location := origin + ray * ((walker.position.y - origin.y) / ray.y)
 	_open_preview(_new_mirror(location))
+	if phase == "preview":
+		tutorial_event.emit("create")
 
 func _new_mirror(location: Vector3) -> Dictionary:
 	var fresh: Dictionary = level["mirror"].duplicate(true)
@@ -469,6 +518,7 @@ func _settle_rotation(target_angle: float) -> void:
 func _rotation_finished() -> void:
 	if rotation_target.is_empty() or phase != "preview":
 		return
+	var turned := rotation_kind == "turn" and not is_equal_approx(float(rotation_target.get("yaw", 0.0)), float(rotation_origin.get("yaw", 0.0)))
 	preview = rotation_target
 	display_target.clear()
 	display_preview.clear()
@@ -480,6 +530,8 @@ func _rotation_finished() -> void:
 	else:
 		_update_preview()
 		_fit_camera(hud.get_play_rect())
+	if turned:
+		tutorial_event.emit("turn")
 
 func _cancel_manipulation() -> void:
 	guide_preview_enabled = false
@@ -560,6 +612,7 @@ func _execute_pending() -> void:
 		walker.restore(preview_origin["position"], preview_origin["velocity"])
 		phase = "play"
 		status = "Mirror changed. Find your next path."
+		tutorial_event.emit("confirm" if command["mirror"]["enabled"] else "remove")
 	else:
 		var snapshot: Dictionary = command["snapshot"]
 		mirror = snapshot["mirror"]
@@ -580,6 +633,8 @@ func _commit_world() -> void:
 	walker.stop()
 	walker.grounded = false
 	walker.paused = true
+	_air_time = 0.0
+	_was_grounded = true
 	solids = Geometry.generate(level, mirror)
 	world.commit(solids)
 	navigation.rebuild(solids)
@@ -618,11 +673,84 @@ func _route_finished() -> void:
 		status = "Arrived. Choose the next path."
 		_refresh()
 
+## --- Tutorial prompts -------------------------------------------------
+## One prompt shows at a time, in stage order, until its `until` event fires.
+## The queue is rebuilt on every `load_level`; a stage with no `prompts` field
+## keeps the queue empty and the card hidden throughout.
+
+func _build_prompt_queue() -> void:
+	_prompt_replay = false
+	_prompt_queue.clear()
+	_active_prompt = {}
+	_hide_prompt_card()
+	for prompt: Dictionary in level.get("prompts", []):
+		if not _prompt_done(str(prompt["id"])):
+			_prompt_queue.append(prompt)
+
+func _prompt_done(id: String) -> bool:
+	if progress != null and progress.has_method("is_prompt_done"):
+		return bool(progress.is_prompt_done(id))
+	return bool(_prompt_done_memory.get(id, false))
+
+func _mark_prompt_done(id: String) -> void:
+	if progress != null and progress.has_method("mark_prompt_done"):
+		progress.mark_prompt_done(id)
+	else:
+		_prompt_done_memory[id] = true
+
+## Shows the active prompt, or the next queued one, unless the stage is mid
+## sweep. Safe to call after any settle; it is a no-op once the right prompt
+## is already on screen.
+func _start_prompts() -> void:
+	if phase == "transition":
+		return
+	if _active_prompt.is_empty():
+		if _prompt_queue.is_empty():
+			return
+		_active_prompt = _prompt_queue.pop_front()
+	var id := str(_active_prompt.get("id", ""))
+	if id != _prompt_shown_id:
+		_prompt_shown_id = id
+		hud.show_prompt(str(_active_prompt.get("text", "")))
+
+func _hide_prompt_card() -> void:
+	_prompt_shown_id = ""
+	hud.hide_prompt()
+
+func _on_tutorial_event(name: String) -> void:
+	if _active_prompt.is_empty() or str(_active_prompt.get("until", "")) != name:
+		return
+	if not _prompt_replay:
+		_mark_prompt_done(str(_active_prompt["id"]))
+	_active_prompt = {}
+	_hide_prompt_card()
+	_start_prompts()
+
+## The "?" button: replays every prompt of the current stage, from the first,
+## regardless of what is already marked done. A second press closes it early.
+func _toggle_prompt_replay() -> void:
+	if _prompt_replay:
+		_prompt_replay = false
+		_prompt_queue.clear()
+		_active_prompt = {}
+		_hide_prompt_card()
+		return
+	if level.get("prompts", []).is_empty():
+		return
+	_prompt_replay = true
+	_prompt_queue.clear()
+	for prompt: Dictionary in level["prompts"]:
+		_prompt_queue.append(prompt.duplicate(true))
+	_active_prompt = {}
+	_hide_prompt_card()
+	_start_prompts()
+
 func _fail() -> void:
 	phase = "failure"
 	walker.paused = true
 	walker.stop()
 	status = "The path fell away. Undo to try another idea."
+	_hide_prompt_card()
 	failure_veil.color.a = 0.0
 	var tween := create_tween()
 	tween.tween_property(failure_veil, "color:a", 0.30, 0.15)
@@ -656,7 +784,8 @@ func _refresh() -> void:
 		"min_offset": level["limits"]["min"][axis], "max_offset": level["limits"]["max"][axis],
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
-		"is_test": level.get("is_test", false), "collision": world.debug_collision})
+		"is_test": level.get("is_test", false), "collision": world.debug_collision,
+		"has_prompts": not level.get("prompts", []).is_empty()})
 	rings.set_layout(hud.get_camera_rect(), hud.get_blocking_rects())
 	rings.update_view(camera)
 	contact.set_contacts(world.drawn_solids, selected, MirrorRules.frame(selected) if selected.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
@@ -678,6 +807,7 @@ func _action(action: String, value: Variant) -> void:
 			var modes := ["move", "rotate", "resize"]
 			set_edit_mode(modes[(modes.find(edit_mode) + 1) % modes.size()])
 		"select_level": load_level(int(value))
+		"help": _toggle_prompt_replay()
 		"angle_snap":
 			if not _manipulating() and is_finite(float(value)):
 				angle_snap = clampf(snappedf(float(value), 5.0), 0.0, 90.0)
@@ -888,13 +1018,16 @@ func _start_drag(point: Vector2) -> void:
 func _step_height(amount: float) -> void:
 	if phase != "preview" or _manipulating() or camera.busy or not pending.is_empty() or not preview["enabled"]:
 		return
-	var pivot: Vector3 = preview["pivot"]
+	var previous_pivot: Vector3 = preview["pivot"]
+	var pivot: Vector3 = previous_pivot
 	pivot.y += amount
 	pivot = MirrorRules.snapped_pivot(pivot, level["limits"])
 	preview["pivot"] = pivot
 	preview["offset"] = pivot[int(preview["axis"])]
 	_update_preview()
 	_fit_camera(hud.get_play_rect())
+	if not pivot.is_equal_approx(previous_pivot):
+		tutorial_event.emit("move")
 
 func _start_height_drag(point: Vector2) -> void:
 	_start_drag(point)
@@ -930,9 +1063,14 @@ func _finish_drag() -> void:
 		return
 	dragging = false
 	translating_settle = true
+	_finish_kind = "move"
 	_animate_display(display_target, 0.10, _translation_finished)
 
 func _translation_finished() -> void:
+	var kind := _finish_kind
+	_finish_kind = ""
+	var moved := kind == "move" and not (display_target.get("pivot", drag_pivot) as Vector3).is_equal_approx(drag_pivot)
+	var resized := kind == "resize" and not is_equal_approx(float(display_target.get(resize_key, 0.0)), float(resize_origin.get(resize_key, 0.0)))
 	preview = display_target.duplicate(true)
 	display_preview.clear()
 	display_target.clear()
@@ -941,6 +1079,10 @@ func _translation_finished() -> void:
 	translating_settle = false
 	_update_preview()
 	_fit_camera(hud.get_play_rect())
+	if moved:
+		tutorial_event.emit("move")
+	elif resized:
+		tutorial_event.emit("resize")
 
 func _sheet_bounds() -> AABB:
 	return Geometry.total_bounds(world.drawn_solids).grow(0.5)
@@ -975,6 +1117,7 @@ func turn_camera(direction: int) -> void:
 	if _manipulating() or rings.is_active() or phase == "transition":
 		return
 	camera.turn(direction)
+	tutorial_event.emit("camera_turn")
 	_refresh()
 
 func _camera_changed() -> void:
@@ -1075,6 +1218,7 @@ func _finish_resize() -> void:
 		return
 	resizing = false
 	translating_settle = true
+	_finish_kind = "resize"
 	_animate_display(display_target, 0.10, _translation_finished)
 
 func _resize_to(key: String, length: float) -> void:
