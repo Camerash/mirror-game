@@ -1,6 +1,14 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: direct mirror controls — 2026-10-04
+
+- Built the direct controls trial (see `GAME_DESIGN.md`, "Direct controls trial 03"). Checked in a Linux cloud container with the official Godot 4.7.2 Linux build. **Not checked on a Mac, with Metal, or on a device.**
+- Headless: every changed script passed `--check-only`. `tests/direct_controls_tests.gd`: **123 checks, 0 failures**. It covers axis picking in all four views (the six grid directions are 53° apart on screen), real mouse drags along X and straight up, a tap through the glass walking, the arrow, raise/lower keeping the place, a blocked turn going back, the fall ghost mid-drag, the camera staying still, key M, and the **Classic editor** switch. `tests/level_solvability_tests.gd -- --direct-only`: **33 checks, 0 failures** (stages 2 to 6 solved through the direct controls, near misses failing). `tests/prompt_tests.gd`: **78 checks, 0 failures**. `tests/app_flow_tests.gd`: **80 checks, 0 failures**.
+- The tutorial playthrough ran headless from the title to the end card through `App`, with its screenshots replaced by a no-op in a scratch copy: **16 checks, 0 failures**. The real native script was not run.
+- Visual check: native frames under Xvfb with Mesa's software Vulkan (llvmpipe), Forward Mobile renderer, at 1152×800 and 430×932. They show the raised mirror, a slide in progress with its guide line, the arrow held, and a lowered mirror's outline. The first set showed the arrow missing during a drag and the mirror button darkening while briefly disabled; both were fixed and re-captured. Software rendering is not a substitute for the Mac Metal check.
+- Not run, following the exploration policy: `tests/run_tests.gd`, the classic pass of `level_solvability_tests.gd`, and the other suites. Classic behaviour is behind `direct_controls == false`, which `Game.new()` keeps. No export, Simulator, or device check.
+
 # Latest check: simple reference traveller — 2026-09-12
 
 - Refined the isolated traveller against the supplied close image. Kept simple mesh construction: **2,144 triangles total**, **560 cloak**, **600 hood**, one 512×512 atlas. Changed the sloped hood/opening, charcoal, triangular hem, feet, and three cloak shapes. Gameplay assets remain unchanged.

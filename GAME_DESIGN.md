@@ -1,6 +1,6 @@
 # Mirror — Living Game Design
 
-Updated: 2026-09-09
+Updated: 2026-10-04
 
 This is the current design record. Agreed rules are separate from later milestones and playtest questions.
 
@@ -52,11 +52,13 @@ This is the current design record. Agreed rules are separate from later mileston
 The game opens on a title screen, **Mirror**, then plays a six-stage tutorial. Each stage teaches one new idea, and the stage order is `PUZZLE_PATHS` in `game.gd`:
 
 1. **First steps** (`13_first_steps`): tap to walk. A tall wall hides the goal in the first view, so the player turns the view to find it.
-2. **A place to stand** (`01_route`): make a mirror, move it and place it. Jade stays the same on both sides.
-3. **The path beneath** (`08_reveal`): remove the mirror, and the ground it covered comes back.
-4. **Only the ground** (`11_aperture`): resize the mirror.
-5. **Another way round** (`14_turn`): turn the mirror, so it copies sideways.
-6. **Together** (`15_together`): turn, resize, then remove the mirror above low ground for a safe fall.
+2. **A place to stand** (`01_route`): raise the mirror with its button and drag it along the path. Jade stays the same on both sides.
+3. **The path beneath** (`08_reveal`): lower the mirror, and the ground it covered comes back.
+4. **Only the ground** (`11_aperture`): drag the mirror straight down, so its frame leaves the tower out.
+5. **Another way round** (`14_turn`): point the mirror's arrow, so it copies sideways.
+6. **Together** (`15_together`): point, slide, drag down, then lower the mirror above low ground for a safe fall.
+
+The stages are played with the direct controls below. In the classic editor (debug switch), stages 4 and 6 are solved with Resize and stage 5 with a quarter turn; both paths are proven in `tests/level_solvability_tests.gd`.
 
 A stage can list prompts. Each prompt shows until the player does its action, then the next one shows. The **?** button replays the stage's prompts. Done prompts, the stage reached and the settings are saved in `user://progress.cfg`, and the title offers **Continue** and **New game** when a save exists. After the last stage, an end card offers **Play again** and **Title**. Release builds show a settings panel (Music, Effects, Fullscreen on desktop, Return to title) in place of the dev panel, with no Reset and no dev keys. Soft generated sounds play for mirror actions, the goal, the sweep, landings, footsteps and buttons, over a quiet ambient loop.
 
@@ -66,7 +68,7 @@ Eight selectable test fixtures cover natural diagonal walking, obstacle detours,
 
 Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe restoration on ordinary ground. Original platforms occupy 0–2 and 5–7; the absolute goal is at 8. The intended route starts with the X orientation at offset 2.5; its position is freely adjustable within the broad level area. Enable it, walk to 5, then disable it: the original platform replaces reflected support and the final approach returns. The goal stays visible throughout. This layout is a playtest candidate; no new object or goal rules are needed.
 
-Level 3, “Only the ground” (`11_aperture`), teaches Resize, which no level or fixture covered. A ledge carries a tower that floats half a unit above its far end; the goal sits across a five-unit gap. A new mirror starts at the traveller's feet height, so its 3-high panel copies the lower part of the tower, and the copy blocks the bridge. Pulling the top edge down to 2 high copies only the ledge. At 1 high the bridge is too low to reach. The wrong answer is reachable and visibly wrong, which is the point: the player builds the wall themselves, then unbuilds it. `tests/level_solvability_tests.gd` checks every state through the real hold-to-create path.
+Level 3, “Only the ground” (`11_aperture`), teaches that the frame decides what is copied: with the direct controls by dragging the mirror down one unit, in the classic editor by Resize. A ledge carries a tower that floats half a unit above its far end; the goal sits across a five-unit gap. A new mirror starts at the traveller's feet height, so its 3-high panel copies the lower part of the tower, and the copy blocks the bridge. Pulling the top edge down to 2 high copies only the ledge. At 1 high the bridge is too low to reach. The wrong answer is reachable and visibly wrong, which is the point: the player builds the wall themselves, then unbuilds it. `tests/level_solvability_tests.gd` checks every state through the real hold-to-create path.
 
 Reaching the goal of a puzzle starts the **mirror sweep**: after a short pause, a glass panel crosses the stage, and behind it the next stage replaces the old one, as if it were its reflection. Each stage stays a self-contained file. The next stage is placed so that its start meets the old goal, so the traveller keeps his place. Input is locked during the sweep. **Together** ends the tutorial and shows the end card; Undo after the goal is available on this last stage only. The menu gives direct access to all puzzles and fixtures; the menu and Reset change the stage at once. Entering a level clears previous movement and Undo history.
 
@@ -76,6 +78,7 @@ Later level:
 
 ## First playtest observations and questions
 
+- Direct controls: check whether players find the mirror button without help, whether a drag that follows one grid direction feels natural or restrictive (each drag keeps the direction it picks), whether the arrow reads as “the copy goes this way”, and whether applying on release, with Undo, feels safe enough without Confirm. Compare a playtest against the classic editor.
 - Check whether players understand which source side is selected, what partial clipping does, and why absolutes remain.
 - Check whether preview support, final-position support, wall rejection, route clearing, and fall feedback are clear.
 - Check whether tap/click navigation, smooth mirror dragging, and target snapping feel predictable on phone, tablet, and desktop.
@@ -123,7 +126,21 @@ Later level:
 - The character uses an editable Blender source and glTF model. The golden traveller is the only character asset and shows on every stage. A short gait and bounded, damped hem deformation respond to movement and turning. Hood and shoulders remain attached. Freeze during editing; Reset and Undo clear residual motion. The fall ghost uses the same silhouette. The collision capsule is unchanged.
 - Level 1 uses fixed key/fill light and a studio reflection environment. No fog, bloom, scene distortion, or full cloth simulation is required. Review the running result before extending this art treatment. Story and physical-device performance remain open.
 
+### Direct controls trial 03
+
+The game plays with these controls; `App` turns them on. There is no editor: no hold to create, no modes, and no Confirm. The classic editor of trial 02 remains behind the debug switch **Classic editor** for comparison, and `Game.new()` alone still uses it, so the older tests are unchanged.
+
+- **Mirror button** (bottom right, 56 units): raises or lowers the mirror; key M on desktop. Lowering keeps the mirror's place, shown as a faint dashed outline, so raising it again puts it back. This differs from the classic editor, where a confirmed removal forgets the panel. The first raise of a stage stands a fresh 3×3 mirror just in front of the traveller, at feet height, facing the stage's starting direction.
+- **Drag the mirror** to slide it. After 16 units of travel, the drag's screen direction picks one grid axis, and the drag keeps it until release. In every view the two ground axes are shallow diagonals (about 26.6° from horizontal) and height is straight up, at least 53° apart, so a drag straight up always lifts. A free ground drag is never used: its diagonal lands exactly on screen-vertical, which made ground moves read as lifts. Positions keep half-unit targets with the existing hysteresis. Dots along the chosen line show the path; before a direction is picked, faint dots show all three.
+- **Drag the arrow** to turn the mirror. The arrow runs from the mirror's centre toward the side its copy appears on, with a knob (13 units, 26-unit touch radius) at least 72 units out. While it is held, faint stubs show the other directions. The finger's direction from the centre picks one of the four ground directions, with a small margin against flicker; pointing backward is Reverse sides. The mirror turns about its pivot and keeps its selected side. Pointing up or down is off in the tutorial.
+- **Taps** walk everywhere, through the glass included. A swipe on empty space turns the view. A hold does nothing.
+- **Apply on release.** While the finger is down, the world shows the result and the walker holds still. When a drag rests on a target, the landing is predicted and the fall ghost shows. Letting go applies the change once the prediction is in, as one Undo step. A change that ends where it started does nothing. A blocked change (a block would fill the traveller's place) goes back with a hint. A predicted fall applies, and Undo takes it back.
+- **The view stays still** while it already shows the whole stage and is no more than 1.25 times wider than a fresh fit, so a moved mirror is judged against blocks that stay put.
+- Resize is not part of the direct controls; the frame stays 3×3. Stages 4 and 6 are solved by dragging the mirror down.
+
 ### Immersive controls and visual trial 02
+
+The classic editor. It is now reached through the debug switch **Classic editor**; see trial 03 above.
 
 - Hold empty space for 450 ms to create a mirror, or hold its visible sheet to edit. Movement under 12 logical units counts as a hold. A short release on a platform walks; a hold or swipe never also walks.
 - A new pivot comes from projecting the press onto a horizontal plane at the character's feet, then snapping and clamping each coordinate to the broad placement area. The level supplies a fresh starting axis and source direction. One mirror is supported now; holding empty space while it exists does not create another.
@@ -156,7 +173,7 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 
 ## Later exploration
 
-- Teach Tilt, Reverse sides and the height arrow. The tutorial does not teach them yet; the height arrow is only a safe alternative in stages 4 and 6.
+- Tilt: the direct arrow can point up or down (`direct_tilt`), making a flat mirror that copies upward or downward. The tutorial keeps the mirror upright; a tilt stage needs real design. Reverse sides is pointing the arrow the opposite way, and lifting is a drag straight up; neither has its own stage.
 - Generate candidate levels from data, search for solutions with shared world rules, and replay solutions for review. Human playtests decide clarity and enjoyment.
 - Multiple mirrors and recursive reflections need rules for order, depth, overlap, dependencies, parent removal, and recursion. No current multi-mirror implementation is agreed. An apparently infinite corridor remains a possible special scene.
 - Decide how reflected interactive objects share state when switches, keys, and doors enter the game.

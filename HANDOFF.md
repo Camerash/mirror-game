@@ -6,6 +6,13 @@ measured and failed, and which traps cost real time.
 
 ## Your task, in order
 
+- **New: the direct mirror controls are built as a trial** (see "State: the
+  direct mirror controls" below). The user found the editor-style controls
+  unintuitive and asked for them. They pass headless checks and a Linux
+  software-Vulkan capture, but **nobody has played them yet and there was no
+  Mac check**. Next: a short native Mac check, then a playtest against the
+  classic editor (gear, **Classic editor**).
+
 0. **The user's next request is the block look.** Make the ceramic block
    texture and its markings more impressive. Iterate on the one block set in
    `world/block_set.gd`, `world/ceramic.gdshader` and `world/porcelain.gdshader`,
@@ -137,6 +144,37 @@ trial scene in `art_trial/` does. The live choices, all the user's, are: accept
 the clipping, re-author the clips without the hand movement, or change the
 garment. None is started.
 
+## State: the direct mirror controls (trial 03)
+
+The user asked for mirror controls that feel like a game, not Blender: no
+hold to create, no Move/Rotate/Resize modes, no separate height handle, no
+Confirm. `GAME_DESIGN.md` "Direct controls trial 03" has the rules. In short:
+a **mirror button** raises and lowers the mirror (lowering keeps its place);
+a **drag on the mirror** slides it along the one grid axis its screen
+direction matches; a **drag on its arrow** points it; everything applies on
+release, and Undo takes it back.
+
+- **How it is built.** `game.direct_controls` (default false; `App` sets it
+  true). Each action opens the classic preview for as long as the finger is
+  down: `toggle_mirror`, `begin_slide`/`slide_to`/`end_slide`,
+  `begin_point`/`point_toward`/`end_point`. `_try_direct_apply` then commits
+  through `apply_preview` once the prediction is in. So the world rules, the
+  prediction, history and Undo are the editor's own. The classic editor still
+  runs when the flag is off.
+- **Files.** `world/mirror_arrow.gd` (new, the arrow overlay and its input);
+  `core/mirror_targets.gd` (`pick_axis`, `along`, `pick_direction`,
+  `rail_dots`); `core/mirror_state.gd` (`faced`, `same`); `ui/world_gesture.gd`
+  (`direct`: no holds, a drag on the mirror slides, a tap always walks);
+  `ui/mirror_hud.gd` (the mirror button and the **Classic editor** switch);
+  `world/stage_camera.gd` (`covers`, which keeps the view still);
+  `world/mirror_sheet.gd` (a lowered mirror's dashed outline). The level
+  prompts teach the direct controls; `"lower"` is a new prompt event.
+- **Tests.** `tests/direct_controls_tests.gd` pushes real mouse events through
+  the game. `tests/level_solvability_tests.gd` now has a direct pass over
+  stages 2 to 6, wrong answers included; `-- --direct-only` runs just that
+  pass. `tests/prompt_tests.gd` and `tests/tutorial_playthrough.gd` now drive
+  the direct controls.
+
 ## State: the stages
 
 ### How levels are written
@@ -207,8 +245,9 @@ Verified through the real preview path, not by writing geometry:
 | 2 high (y −1.5..0.5) | **yes** |
 | 1 high (y −1.5..−0.5) | no, the bridge is half a unit too low |
 
-Lowering the mirror two height steps also works. That is a safe alternative,
-and the tutorial does not teach the height arrow.
+Lowering the mirror two height steps also works. With the direct controls this
+is the taught solution: a drag straight down by one unit leaves the tower out
+(the frame stays 3x3), and two units down is too low.
 
 ### The solvability harness
 
@@ -240,7 +279,9 @@ unproven**. A Tilt level is plausible and needs real design, not a quick check.
 - **Reverse sides and the half turn** that exchanges source and reflected
   sides. Stage 5's wrong turn (right, not left) removes the ground under the
   traveller, which hints at the rule but does not teach it.
-- **The height arrow.** It is only a safe alternative in stages 4 and 6.
+- **The height arrow.** In the classic editor it is only a safe alternative in
+  stages 4 and 6. The direct controls teach it in stage 4 as a drag straight
+  down.
 
 ### The block set and the gallery
 
@@ -353,8 +394,9 @@ rtk /Applications/Godot.app/Contents/MacOS/godot --headless --path . --editor --
 | check | current result |
 | --- | --- |
 | `tests/run_tests.gd` | 596 checks, 0 failures (varies a little between runs) |
-| `tests/level_solvability_tests.gd` | 34 checks, 0 failures |
-| `tests/prompt_tests.gd` | 80 checks, 0 failures |
+| `tests/level_solvability_tests.gd` | classic pass 34 checks, 0 failures (before the direct controls, not re-run); direct pass (`-- --direct-only`) 33 checks, 0 failures |
+| `tests/direct_controls_tests.gd` | 123 checks, 0 failures |
+| `tests/prompt_tests.gd` | 78 checks, 0 failures (now on the direct controls) |
 | `tests/app_flow_tests.gd` | 80 checks, 0 failures |
 | `tests/sound_tests.gd` | 33 checks, 0 failures |
 | `tests/gameplay_art_tests.gd` | 70 checks, 0 failures |
@@ -387,6 +429,19 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
 `tests/extent_tests.gd` words its summary "failures:" rather than "checks,".
 
 ## Traps. Each of these produced a wrong answer at least once
+
+- **A direct change applies a few frames after release**, once its prediction
+  is in. Wait for `phase` to leave `"preview"` (`direct_settled`), not just
+  for `pending` to empty.
+- **`settle_fall` can return before a direct change has run one physics
+  step.** The direct controls do not blend the camera, so the walker still
+  reports its old floor contact. Use `direct_fall`, which counts only after two
+  unpaused physics steps.
+- **A lowered direct mirror keeps its panel**: `mirror` has a `pivot` with
+  `enabled` false. Classic code expects `{"enabled": false}`.
+  `set_direct_controls(false)` drops the panel for that reason.
+- **The level prompts teach the direct controls.** Under the classic editor
+  switch they no longer match what the player sees.
 
 - **A new mirror starts at the traveller's feet height, not the level pivot.**
   Design a stage around the panel y −1.5..1.5 of the real create path, and
