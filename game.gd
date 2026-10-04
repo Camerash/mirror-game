@@ -27,6 +27,7 @@ const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
 const Resize := preload("res://ui/mirror_resize.gd")
 const Rings := preload("res://world/mirror_rings.gd")
+const Arrow := preload("res://world/mirror_arrow.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
 const WorldGesture := preload("res://ui/world_gesture.gd")
@@ -34,6 +35,11 @@ const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
 const Sounds := preload("res://world/sounds.gd")
 const ADVANCE_PAUSE := 0.5
+## Screen distance a mirror drag travels before its direction picks an axis.
+const SLIDE_PICK_DISTANCE := 16.0
+## Keys of the classic editor that mean nothing to the direct controls.
+const DIRECT_IGNORED_KEYS: Array[Key] = [KEY_D, KEY_1, KEY_2, KEY_3, KEY_LEFT, KEY_RIGHT,
+	KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN, KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_ENTER]
 ## The tutorial, in play order. Each stage teaches one new idea.
 const PUZZLE_PATHS: Array[String] = ["res://levels/13_first_steps.json", "res://levels/01_route.json",
 	"res://levels/08_reveal.json", "res://levels/11_aperture.json", "res://levels/14_turn.json",
@@ -50,6 +56,28 @@ var preview: Dictionary = {}
 var preview_origin: Dictionary = {}
 var sheet := Sheet.new()
 var rings := Rings.new()
+## Direct controls: there is no editor. The mirror button raises and lowers
+## the mirror, a drag on the mirror slides it along the one grid axis the
+## finger follows, and its arrow points it. Each change applies when the
+## finger lifts; Undo takes it back. `App` turns this on. `Game.new()` alone
+## keeps the classic editor the older tests drive. Set it before `add_child`,
+## or call `set_direct_controls`.
+var direct_controls := false
+## Whether the arrow may point the mirror up or down. The tutorial keeps the
+## panel upright.
+var direct_tilt := false
+var arrow := Arrow.new()
+## True while the arrow is held; `point_origin` is the mirror it started from.
+var pointing := false
+var point_origin: Dictionary = {}
+## The axis a direct mirror drag follows, or -1 until its direction counts.
+var slide_axis := -1
+## Set when a direct action has finished: the next physics frames apply the
+## preview once its prediction is in, or put the mirror back if it is blocked.
+var _direct_apply := false
+## The tutorial event the pending direct apply reports; empty means the usual
+## "confirm" or "remove".
+var _direct_event := ""
 var resize_controls := Resize.new()
 var resizing := false
 var resize_origin: Dictionary = {}
@@ -173,11 +201,12 @@ func _ready() -> void:
 	hud.play_rect_changed.connect(_fit_camera)
 	gesture.action_requested.connect(_gesture_action)
 	gesture.hold_progress.connect(hud.set_hold_progress)
+	gesture.direct = direct_controls
 	tutorial_event.connect(_on_tutorial_event)
 	load_level(start_stage)
 	_fit_camera(hud.get_play_rect())
 	if level.get("prompts", []).is_empty():
-		hud.show_hint("Tap to walk. Hold empty space to create a mirror.")
+		hud.show_hint("Tap to walk. Tap the mirror button to raise the mirror." if direct_controls else "Tap to walk. Hold empty space to create a mirror.")
 
 func _setup_scene() -> void:
 	add_child(world)
@@ -188,6 +217,8 @@ func _setup_scene() -> void:
 	add_child(contact)
 	add_child(rings)
 	rings.action_requested.connect(_action)
+	add_child(arrow)
+	arrow.action_requested.connect(_action)
 	sheet.transition_finished.connect(_rotation_finished)
 	sheet.pose_changed.connect(func() -> void: rings.set_pose(sheet.global_transform))
 	camera.view_changed.connect(_camera_changed)
@@ -225,6 +256,7 @@ func _setup_scene() -> void:
 func set_overlay_visible(value: bool) -> void:
 	overlay_canvas.visible = value
 	rings.set_overlay_visible(value)
+	arrow.set_overlay_visible(value)
 	placement_guide.set_overlay_visible(value)
 
 func load_level(index: int) -> bool:
@@ -251,6 +283,8 @@ func load_level(index: int) -> bool:
 	preview_view.clear()
 	history.clear()
 	pending.clear()
+	_direct_apply = false
+	_direct_event = ""
 	phase = "play"
 	dragging = false
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
@@ -258,7 +292,7 @@ func load_level(index: int) -> bool:
 	for child: Node in goal_root.get_children():
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
-	status = "Tap a platform to walk. Hold empty space to create a mirror."
+	status = "Tap a platform to walk. Tap the mirror button to raise the mirror." if direct_controls else "Tap a platform to walk. Hold empty space to create a mirror."
 	_build_prompt_queue()
 	_refresh()
 	_fit_camera(hud.get_play_rect(), true)
@@ -271,6 +305,8 @@ func _physics_process(delta: float) -> void:
 		return
 	if not pending.is_empty():
 		_execute_pending()
+	if _direct_apply and phase == "preview":
+		_try_direct_apply()
 	if settle_frames > 0:
 		settle_frames -= 1
 		if settle_frames == 0:
@@ -411,6 +447,197 @@ func edit_mirror() -> void:
 func remove_mirror() -> void:
 	change_preview("enabled", false)
 
+## --- Direct controls ----------------------------------------------------
+## Each action opens the same preview the classic editor uses, for as long as
+## the finger is down, and `_try_direct_apply` commits it on release. So the
+## world rules, the prediction, history and Undo are shared with the editor.
+
+func set_direct_controls(value: bool) -> void:
+	if value == direct_controls:
+		return
+	if phase == "preview":
+		cancel_preview()
+	direct_controls = value
+	gesture.direct = value
+	# The classic editor has no lowered mirror: a removal forgets the panel.
+	if not value and not mirror.get("enabled", false):
+		mirror = {"enabled": false}
+	_refresh()
+	_fit_camera(hud.get_play_rect())
+
+func can_toggle_mirror() -> bool:
+	return direct_controls and can_edit() and not _manipulating()
+
+## The mirror button. Lowering keeps the mirror's place, so raising it again
+## puts it back. The first raise of a stage stands it just in front of the
+## traveller, facing the stage's starting direction.
+func toggle_mirror() -> void:
+	if not can_toggle_mirror():
+		return
+	var proposal: Dictionary
+	var event := ""
+	if mirror.get("enabled", false):
+		proposal = mirror.duplicate(true)
+		proposal["enabled"] = false
+	else:
+		proposal = mirror.duplicate(true) if mirror.has("pivot") else _direct_fresh_mirror()
+		proposal["enabled"] = true
+		event = "create"
+	if _open_direct_preview(proposal):
+		_direct_apply = true
+		_direct_event = event
+
+func _direct_fresh_mirror() -> Dictionary:
+	var fresh := MirrorRules.normalized(level["mirror"])
+	var normal := MirrorRules.normal(fresh)
+	var axis := normal.abs().max_axis_index()
+	var feet := walker.position
+	var pivot := Vector3(snappedf(feet.x, 0.5), feet.y, snappedf(feet.z, 0.5))
+	pivot[axis] = snappedf(feet[axis] + 0.5 * signf(normal[axis]), 0.5)
+	fresh["width"] = 3.0
+	fresh["height"] = 3.0
+	fresh["pivot"] = MirrorRules.snapped_pivot(pivot, level["limits"])
+	return MirrorRules.sync(fresh)
+
+## Opens the short preview a direct action works in: the walker holds still,
+## the world shows the proposal, and the landing is predicted. The camera does
+## not move, and nothing is committed until `_try_direct_apply`.
+func _open_direct_preview(proposal: Dictionary) -> bool:
+	if not can_edit() or _manipulating():
+		return false
+	_direct_apply = false
+	_direct_event = ""
+	preview_origin = _snapshot()
+	preview = MirrorRules.normalized(proposal)
+	edit_mode = "move"
+	walker.paused = true
+	phase = "preview"
+	world.draw_route(PackedVector3Array())
+	_update_preview()
+	return true
+
+## Commits a finished direct action once its prediction is in. An unchanged
+## mirror closes quietly; a blocked one goes back where it was.
+func _try_direct_apply() -> void:
+	if _manipulating() or sheet.is_transitioning() or not pending.is_empty():
+		return
+	if MirrorRules.same(preview, mirror):
+		cancel_preview()
+		return
+	var outcome := str(prediction.get("status", "idle"))
+	if outcome in ["pending", "idle"] or camera.busy:
+		return
+	if outcome in ["blocked", "unresolved"]:
+		cancel_preview()
+		hud.show_hint("A block would fill the traveller's place, so the mirror stays put.")
+		return
+	var event := _direct_event
+	if apply_preview():
+		pending["event"] = event
+		_direct_apply = false
+
+## The screen vector of one world unit along x, y and z at `point`.
+func _screen_axes(point: Vector3) -> Array[Vector2]:
+	var origin := camera.unproject_position(point)
+	var result: Array[Vector2] = []
+	for direction: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
+		result.append(camera.unproject_position(point + direction) - origin)
+	return result
+
+## A drag that starts on the mirror. `point` is where the finger went down.
+func begin_slide(point: Vector2) -> void:
+	if not direct_controls or dragging or not mirror.get("enabled", false):
+		return
+	if not _open_direct_preview(mirror):
+		return
+	dragging = true
+	height_drag = false
+	limit_hint_shown = false
+	slide_axis = -1
+	drag_touch = gesture.pointer
+	drag_origin = point
+	drag_pivot = preview["pivot"]
+	display_target = preview.duplicate(true)
+	display_preview = preview.duplicate(true)
+	_invalidate_prediction()
+	_begin_constellation("rails", preview)
+	_refresh()
+
+## The mirror follows the finger along one axis: the one whose screen
+## direction the drag matches once it has travelled far enough to tell.
+func slide_to(point: Vector2) -> void:
+	if not direct_controls or not dragging:
+		return
+	var drag := point - drag_origin
+	var axes := _screen_axes(drag_pivot)
+	if slide_axis < 0:
+		if drag.length() < SLIDE_PICK_DISTANCE:
+			return
+		slide_axis = Targets.pick_axis(drag, axes)
+		if slide_axis < 0:
+			return
+		_begin_constellation("rail_%d" % slide_axis, preview)
+	var wanted := drag_pivot[slide_axis] + Targets.along(drag, axes[slide_axis])
+	var limited := clampf(wanted, float(level["limits"]["min"][slide_axis]), float(level["limits"]["max"][slide_axis]))
+	if not is_equal_approx(limited, wanted) and not limit_hint_shown:
+		hud.show_hint("Edge of the placement area.")
+		limit_hint_shown = true
+	var selected: Vector3 = display_target["pivot"]
+	selected[slide_axis] = Targets.step(limited, selected[slide_axis], 0.5)
+	var target := preview.duplicate(true)
+	target["pivot"] = MirrorRules.snapped_pivot(selected, level["limits"])
+	_follow_target(MirrorRules.sync(target))
+
+func end_slide() -> void:
+	if not direct_controls or not dragging or cancelling_gesture:
+		return
+	_finish_drag()
+	_direct_apply = true
+	_direct_event = ""
+
+## The arrow is held: the mirror turns about its pivot to face where it points.
+func begin_point() -> void:
+	if not direct_controls or pointing or not mirror.get("enabled", false):
+		return
+	if not _open_direct_preview(mirror):
+		return
+	pointing = true
+	point_origin = preview.duplicate(true)
+	display_target = preview.duplicate(true)
+	display_preview = preview.duplicate(true)
+	_invalidate_prediction()
+	_refresh()
+
+func point_toward(direction: Vector3) -> void:
+	if not direct_controls or not pointing or direction.length_squared() < 0.5:
+		return
+	if not direct_tilt and absf(direction.y) > 0.5:
+		return
+	_follow_target(MirrorRules.faced(point_origin, direction))
+
+func end_point() -> void:
+	if not direct_controls or not pointing or cancelling_gesture:
+		return
+	pointing = false
+	translating_settle = true
+	_finish_kind = "point"
+	_animate_display(display_target, 0.10, _translation_finished)
+	_direct_apply = true
+	_direct_event = ""
+
+## While a direct drag rests on a target, predicts that world, so the fall
+## ghost warns before the release applies it.
+func _direct_hover_predict() -> void:
+	if phase != "preview" or not (dragging or pointing):
+		return
+	prediction_revision = predictor.predict(Geometry.generate(level, _display_state()), preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
+
+func _update_arrow() -> void:
+	if level.is_empty():
+		return
+	arrow.set_state(_display_state(), direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy, direct_tilt)
+	arrow.update_view(camera, hud.get_play_rect(), hud.get_blocking_rects())
+
 func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():
 		return
@@ -457,7 +684,7 @@ func change_preview(key: String, value: Variant) -> void:
 		_fit_camera(hud.get_play_rect())
 
 func _manipulating() -> bool:
-	return dragging or resizing or translating_settle or rotation_active or not rotation_queue.is_empty() or not rotation_target.is_empty()
+	return dragging or resizing or translating_settle or pointing or rotation_active or not rotation_queue.is_empty() or not rotation_target.is_empty()
 
 func set_edit_mode(mode: String) -> void:
 	if mode not in ["move", "rotate", "resize"] or phase != "preview" or _mode_busy():
@@ -474,7 +701,7 @@ func _mode_busy() -> bool:
 func _follow_target(target: Dictionary) -> void:
 	if target == display_target:
 		return
-	_animate_display(target, 0.10)
+	_animate_display(target, 0.10, _direct_hover_predict if direct_controls else Callable())
 
 func _animate_display(target: Dictionary, seconds: float, finished := Callable()) -> void:
 	if display_motion and display_motion.is_valid():
@@ -590,6 +817,11 @@ func _cancel_manipulation() -> void:
 	gesture.cancel()
 	if rings.is_inside_tree():
 		rings.cancel()
+	if arrow.is_inside_tree():
+		arrow.cancel()
+	pointing = false
+	point_origin.clear()
+	slide_axis = -1
 	if resize_controls.is_inside_tree():
 		resize_controls.cancel()
 	resizing = false
@@ -622,6 +854,7 @@ func apply_preview() -> bool:
 func cancel_preview() -> void:
 	if phase != "preview" or not pending.is_empty():
 		return
+	_direct_apply = false
 	_cancel_manipulation()
 	preview.clear()
 	predictor.cancel()
@@ -653,13 +886,17 @@ func _execute_pending() -> void:
 	_cancel_manipulation()
 	var command := pending
 	pending = {}
+	_direct_apply = false
 	if command["action"] == "apply":
 		history.append(preview_origin.duplicate(true))
-		mirror = command["mirror"] if command["mirror"]["enabled"] else {"enabled": false}
+		var applied: Dictionary = command["mirror"]
+		# A lowered direct mirror keeps its place for the next raise.
+		mirror = applied if applied["enabled"] or direct_controls else {"enabled": false}
 		walker.restore(preview_origin["position"], preview_origin["velocity"])
 		phase = "play"
 		status = "Mirror changed. Find your next path."
-		tutorial_event.emit("confirm" if command["mirror"]["enabled"] else "remove")
+		var event := str(command.get("event", ""))
+		tutorial_event.emit(event if not event.is_empty() else ("confirm" if applied["enabled"] else "remove"))
 	else:
 		var snapshot: Dictionary = command["snapshot"]
 		mirror = snapshot["mirror"]
@@ -811,14 +1048,17 @@ func _refresh() -> void:
 	if not _guide_preview_available():
 		guide_preview_enabled = false
 	var axis: int = selected.get("axis", level["mirror"]["axis"])
+	# A direct action's preview looks like editing only while the finger is down.
+	var sheet_editing := phase == "preview" and (not direct_controls or _manipulating())
 	if not sheet.is_transitioning():
-		sheet.set_state(selected, _sheet_bounds(), phase == "preview")
+		sheet.set_state(selected, _sheet_bounds(), sheet_editing)
 	if rotation_display:
 		sheet.global_basis = display_basis
 	edit_available = can_edit()
-	rings.set_state(display_target if not display_target.is_empty() else selected, phase == "preview" and edit_mode == "rotate", camera.busy or _manipulating() or not pending.is_empty())
+	var classic_editing := phase == "preview" and not direct_controls
+	rings.set_state(display_target if not display_target.is_empty() else selected, classic_editing and edit_mode == "rotate", camera.busy or _manipulating() or not pending.is_empty())
 	rings.set_pose(sheet.global_transform)
-	resize_controls.set_state(selected, phase == "preview", camera.busy or _manipulating() or not pending.is_empty(), edit_mode)
+	resize_controls.set_state(selected, classic_editing, camera.busy or _manipulating() or not pending.is_empty(), edit_mode)
 	hud.display_state({"title": level["title"], "objective": level["objective"], "phase": phase,
 		"level_index": level_index,
 		"can_edit": can_edit(), "standing_only": standing_only,
@@ -832,12 +1072,18 @@ func _refresh() -> void:
 		"allowed_axes": level["limits"]["axes"], "can_undo": not history.is_empty(),
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "collision": world.debug_collision,
-		"has_prompts": not level.get("prompts", []).is_empty()})
+		"has_prompts": not level.get("prompts", []).is_empty(),
+		"direct": direct_controls, "mirror_raised": bool(mirror.get("enabled", false)), "can_toggle_mirror": can_toggle_mirror()})
 	rings.set_layout(hud.get_camera_rect(), hud.get_blocking_rects())
 	rings.update_view(camera)
-	contact.set_contacts(world.drawn_solids, selected, MirrorRules.frame(selected) if selected.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
+	# A lowered direct mirror keeps its panel but touches nothing.
+	var contact_state := selected
+	if direct_controls and not selected["enabled"] and phase != "preview":
+		contact_state = {"enabled": false}
+	contact.set_contacts(world.drawn_solids, contact_state, MirrorRules.frame(contact_state) if contact_state.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
 	_update_constellation()
 	_position_controls()
+	_update_arrow()
 
 func _action(action: String, value: Variant) -> void:
 	match action:
@@ -855,6 +1101,14 @@ func _action(action: String, value: Variant) -> void:
 			set_edit_mode(modes[(modes.find(edit_mode) + 1) % modes.size()])
 		"select_level": load_level(int(value))
 		"help": _toggle_prompt_replay()
+		"mirror_toggle": toggle_mirror()
+		"classic_controls": set_direct_controls(not bool(value))
+		"point_begin": begin_point()
+		"point_direction":
+			if value is Vector3: point_toward(value)
+		"point_end":
+			if not cancelling_gesture:
+				end_point()
 		"angle_snap":
 			if not _manipulating() and is_finite(float(value)):
 				angle_snap = clampf(snappedf(float(value), 5.0), 0.0, 90.0)
@@ -914,10 +1168,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if release_mode and RELEASE_DISABLED_KEYS.has(event.keycode):
 			return
+		if direct_controls and DIRECT_IGNORED_KEYS.has(event.keycode):
+			return
 		match event.keycode:
 			KEY_Q: turn_camera(-1)
 			KEY_E: turn_camera(1)
-			KEY_M: _action("edit", null)
+			KEY_M:
+				if direct_controls: toggle_mirror()
+				else: _action("edit", null)
 			KEY_ENTER: apply_preview()
 			KEY_ESCAPE: cancel_preview()
 			KEY_D: change_preview("enabled", not bool(preview.get("enabled", true)))
@@ -954,27 +1212,30 @@ func _process(delta: float) -> void:
 	if sheet.has_geometry:
 		rings.set_pose(sheet.global_transform)
 		_position_resize_controls()
+	_update_arrow()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		_cancel_manipulation()
-		if phase == "preview":
+		if phase == "preview" and direct_controls:
+			cancel_preview()
+		elif phase == "preview":
 			_update_preview()
 			_fit_camera(hud.get_play_rect())
 
 func _input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
-	if rings.is_active() or resize_controls.is_active():
+	if rings.is_active() or resize_controls.is_active() or arrow.is_active():
 		var pointer_index := -2
 		if event is InputEventScreenTouch or event is InputEventScreenDrag:
 			pointer_index = event.index
 		elif event is InputEventMouse:
 			pointer_index = -1
-		if pointer_index != -2 and not rings.owns_pointer(pointer_index) and not resize_controls.owns_pointer(pointer_index):
+		if pointer_index != -2 and not rings.owns_pointer(pointer_index) and not resize_controls.owns_pointer(pointer_index) and not arrow.owns_pointer(pointer_index):
 			get_viewport().set_input_as_handled()
 			return
-	var owned := gesture.active or rings.is_active() or resize_controls.is_active()
+	var owned := gesture.active or rings.is_active() or resize_controls.is_active() or arrow.is_active()
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.device != InputEvent.DEVICE_ID_EMULATION:
 			_pointer(event.position, event.pressed, -1)
@@ -984,15 +1245,17 @@ func _input(event: InputEvent) -> void:
 				resize_controls.cancel()
 			if rings.owns_pointer(event.index):
 				rings.cancel()
+			if arrow.owns_pointer(event.index):
+				arrow.cancel()
 			if gesture.active and gesture.pointer == event.index:
 				gesture.cancel()
 		else:
 			_pointer(event.position, event.pressed, event.index)
 	elif event is InputEventMouseMotion:
-		if not resize_controls.motion(event.position, -1) and not rings.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
+		if not resize_controls.motion(event.position, -1) and not rings.motion(event.position, -1) and not arrow.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
 			gesture.move(event.position, -1)
 	elif event is InputEventScreenDrag:
-		if not resize_controls.motion(event.position, event.index) and not rings.motion(event.position, event.index):
+		if not resize_controls.motion(event.position, event.index) and not rings.motion(event.position, event.index) and not arrow.motion(event.position, event.index):
 			gesture.move(event.position, event.index)
 	if owned and (event is InputEventMouseButton or event is InputEventMouseMotion or event is InputEventScreenTouch or event is InputEventScreenDrag):
 		get_viewport().set_input_as_handled()
@@ -1006,15 +1269,26 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 	if not gesture.active and not resize_controls.is_active() and rings.pointer(point, pressed, touch):
 		get_viewport().set_input_as_handled()
 		return
+	var arrow_press := pressed and play_rect.has_point(point) and not hud.blocks_world_input(point)
+	if direct_controls and not gesture.active and (arrow.is_active() or arrow_press) and arrow.pointer(point, pressed, touch):
+		get_viewport().set_input_as_handled()
+		return
 	if not pressed:
 		gesture.release(point, touch)
 		if phase == "preview": _refresh()
 		return
-	if gesture.active or rings.is_active() or resize_controls.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
+	if gesture.active or rings.is_active() or resize_controls.is_active() or arrow.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
 		return
 	if camera.busy or _manipulating() or sheet.is_transitioning() or not pending.is_empty() or phase in ["failure", "transition"]:
 		return
 	var target := "surface" if _solid_hit(point) else "empty"
+	if direct_controls:
+		# No holds: a drag on the mirror slides it, a tap walks, and a swipe on
+		# empty space turns the view.
+		if mirror.get("enabled", false) and sheet_hit(point):
+			target = "sheet"
+		gesture.begin(point, touch, target, false, true)
+		return
 	if phase == "preview":
 		if sheet_hit(point):
 			target = "sheet"
@@ -1032,12 +1306,15 @@ func _gesture_action(action: String, value: Variant) -> void:
 		"edit": edit_mirror()
 		"walk": _walk_at(value)
 		"drag_begin":
-			if edit_mode == "move": _start_drag(value)
+			if direct_controls: begin_slide(value)
+			elif edit_mode == "move": _start_drag(value)
 		"drag_move":
-			if dragging:
+			if direct_controls: slide_to(value)
+			elif dragging:
 				_drag(value)
 		"drag_end":
-			if not cancelling_gesture:
+			if direct_controls: end_slide()
+			elif not cancelling_gesture:
 				_finish_drag()
 		"apply":
 			if not apply_preview():
@@ -1092,6 +1369,8 @@ func _step_height(amount: float) -> void:
 	_fit_camera(hud.get_play_rect())
 	if not pivot.is_equal_approx(previous_pivot):
 		tutorial_event.emit("move")
+		if pivot.y < previous_pivot.y:
+			tutorial_event.emit("lower")
 
 func _start_height_drag(point: Vector2) -> void:
 	_start_drag(point)
@@ -1134,7 +1413,10 @@ func _translation_finished() -> void:
 	var kind := _finish_kind
 	_finish_kind = ""
 	var moved := kind == "move" and not (display_target.get("pivot", drag_pivot) as Vector3).is_equal_approx(drag_pivot)
+	var lowered := moved and (display_target["pivot"] as Vector3).y < drag_pivot.y - 0.01
 	var resized := kind == "resize" and not is_equal_approx(float(display_target.get(resize_key, 0.0)), float(resize_origin.get(resize_key, 0.0)))
+	var turned := kind == "point" and not is_zero_approx(wrapf(float(display_target.get("yaw", 0.0)) - float(point_origin.get("yaw", 0.0)), -PI, PI))
+	point_origin.clear()
 	preview = display_target.duplicate(true)
 	display_preview.clear()
 	display_target.clear()
@@ -1145,8 +1427,12 @@ func _translation_finished() -> void:
 	_fit_camera(hud.get_play_rect())
 	if moved:
 		tutorial_event.emit("move")
+		if lowered:
+			tutorial_event.emit("lower")
 	elif resized:
 		tutorial_event.emit("resize")
+	elif turned:
+		tutorial_event.emit("turn")
 
 func _sheet_bounds() -> AABB:
 	return Geometry.total_bounds(world.drawn_solids).grow(0.5)
@@ -1154,6 +1440,7 @@ func _sheet_bounds() -> AABB:
 func _fit_camera(rect: Rect2, instant := false) -> void:
 	var current_size := get_viewport().get_visible_rect().size
 	var resized := viewport_size != Vector2.ZERO and not viewport_size.is_equal_approx(current_size)
+	var rect_changed := not rect.is_equal_approx(play_rect)
 	viewport_size = current_size
 	play_rect = rect
 	if level.is_empty() or rect.size.x < 10 or rect.size.y < 10:
@@ -1173,7 +1460,12 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 		framing = framing.expand(point)
 	framing = framing.expand(Geometry.vector(level["goal"]) + Vector3.UP)
 	framing = framing.expand(walker.position).expand(walker.position + Vector3.UP)
-	camera.fit(framing, hud.get_camera_rect(), instant)
+	# The direct controls keep the view still while it already shows the whole
+	# stage, so a moved mirror is judged against blocks that stay put.
+	var keep_view := direct_controls and not instant and not resized and not rect_changed and not sweep.active \
+		and camera.covers(framing, hud.get_camera_rect())
+	if not keep_view:
+		camera.fit(framing, hud.get_camera_rect(), instant)
 	failure_veil.position = rect.position
 	failure_veil.size = rect.size
 
@@ -1206,7 +1498,7 @@ func _resize_obstructed(point: Vector2, location: Vector3) -> bool:
 func sheet_hit(point: Vector2, selected: Dictionary = {}) -> bool:
 	if selected.is_empty():
 		selected = _display_state()
-	if not selected.has("axis") or hud.blocks_world_input(point) or resize_controls.blocks_point(point) or rings.blocks_point(point):
+	if not selected.has("axis") or hud.blocks_world_input(point) or resize_controls.blocks_point(point) or rings.blocks_point(point) or arrow.blocks_point(point):
 		return false
 	var origin := camera.project_ray_origin(point)
 	var direction := camera.project_ray_normal(point)
@@ -1225,7 +1517,8 @@ func _position_controls() -> void:
 		return
 	hud.set_failure_marker(Vector2.ZERO, false)
 	outline_accessible = false
-	if phase == "preview" and preview.get("enabled", false):
+	# Only the classic editor's Confirm button needs to know.
+	if phase == "preview" and preview.get("enabled", false) and not direct_controls:
 		# Test whether a visible panel area is available for confirmation.
 		for y: int in 9:
 			for x: int in 9:
@@ -1306,7 +1599,8 @@ func _camera_motion_finished() -> void:
 
 func _begin_constellation(kind: String, origin: Dictionary) -> void:
 	guide_kind = kind
-	guide_last[edit_mode] = kind
+	if not direct_controls:
+		guide_last[edit_mode] = kind
 	guide_origin = origin.duplicate(true)
 	guide_ring = rings.get_ring_frame(kind) if kind in ["turn","tilt"] else {}
 	_update_constellation()
@@ -1352,6 +1646,12 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	var destination: Vector3 = target["pivot"]
 	if kind in ["ground","height"]:
 		dots = Targets.position_dots(displayed["pivot"],origin["pivot"],level["limits"],kind == "height")
+	elif kind == "rails":
+		# A direct drag before its direction counts: the three lines it can take.
+		for axis: int in 3:
+			dots.append_array(Targets.rail_dots(displayed["pivot"],origin["pivot"],level["limits"],axis,0.55))
+	elif kind.begins_with("rail_"):
+		dots = Targets.rail_dots(displayed["pivot"],origin["pivot"],level["limits"],int(kind.trim_prefix("rail_")))
 	elif kind.begins_with("size_"):
 		var key := kind.trim_prefix("size_")
 		dots = Targets.resize_dots(origin,displayed,key,level["limits"])

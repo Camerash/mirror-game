@@ -7,6 +7,7 @@ extends SceneTree
 ## they exercise the same rules a player does.
 
 const Game := preload("res://game.gd")
+const MirrorRules := preload("res://core/mirror_state.gd")
 
 var game: Node3D
 var checks := 0
@@ -196,21 +197,224 @@ func remove() -> String:
 	return await confirm()
 
 
+## --- Direct controls ----------------------------------------------------
+## The same stages through the direct controls the game plays with: the
+## mirror button, a drag on the mirror along one axis, and the arrow. Each
+## action applies on release, so every helper waits for that.
+
+
+func direct_settled() -> void:
+	## Waits until a direct action has applied (or gone back) and the stage
+	## has settled again.
+	for index: int in 600:
+		if game.phase != "preview" and game.pending.is_empty() and game.settle_frames == 0 and not game.camera.busy:
+			return
+		await process_frame
+
+
+func press_mirror_button() -> void:
+	game.toggle_mirror()
+	await direct_settled()
+
+
+func slide(axis: int, units: float) -> void:
+	## A finger on the mirror's centre drags along one axis's screen direction
+	## (0 x, 1 y, 2 z) by `units`, then lifts.
+	var pivot: Vector3 = game.mirror["pivot"]
+	var direction: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis]
+	var start: Vector2 = game.camera.unproject_position(pivot)
+	var finish: Vector2 = game.camera.unproject_position(pivot + direction * units)
+	game.begin_slide(start)
+	for step: int in range(1, 13):
+		game.slide_to(start.lerp(finish, step / 12.0))
+		await process_frame
+	await frames(8)
+	game.end_slide()
+	await direct_settled()
+
+
+func point(direction: Vector3) -> void:
+	## The arrow is held, pointed along a grid direction, and let go.
+	game.begin_point()
+	game.point_toward(direction)
+	await frames(8)
+	game.end_point()
+	await direct_settled()
+
+
+func direct_fall() -> void:
+	## Like `settle_fall`, but counts only after two unpaused physics steps: a
+	## direct change applies without a camera blend, so a floor contact left
+	## over from before the change must not read as a landing.
+	var unpaused_at := -1
+	for index: int in 900:
+		if game.phase in ["failure", "complete", "transition"]:
+			return
+		if game.walker.paused or game.settle_frames > 0:
+			unpaused_at = -1
+		elif unpaused_at < 0:
+			unpaused_at = Engine.get_physics_frames()
+		elif Engine.get_physics_frames() - unpaused_at >= 2 and (game.walker.grounded or game.walker.is_on_floor()) and absf(game.walker.velocity.y) < 0.01:
+			return
+		await process_frame
+
+
+func pivot_is(expected: Vector3) -> bool:
+	return game.mirror.has("pivot") and (game.mirror["pivot"] as Vector3).is_equal_approx(expected)
+
+
+func run_direct() -> void:
+	game = Game.new()
+	game.direct_controls = true
+	# A reached goal must not sweep the game on to the next stage mid-check.
+	game.auto_advance = false
+	root.add_child(game)
+	await frames(2)
+	await check_direct_route()
+	await check_direct_reveal()
+	await check_direct_aperture()
+	await check_direct_turn()
+	await check_direct_together()
+	game.queue_free()
+	await frames(1)
+
+
+func check_direct_route() -> void:
+	## "A place to stand": raise, slide to 2.5, rest on jade, slide on to 4.0.
+	await load_level("01_route")
+	await press_mirror_button()
+	check(bool(game.mirror.get("enabled", false)) and pivot_is(Vector3(0.5, 0, 0)), "Direct route: the first raise stands the mirror just in front of the traveller")
+	await slide(0, 2.0)
+	check(pivot_is(Vector3(2.5, 0, 0)), "Direct route: a drag along X slides the mirror to 2.5")
+	check(await walk_to(Vector3(5, 0, 0)), "Direct route: the copy reaches the rest platform")
+	await slide(0, 1.5)
+	check(pivot_is(Vector3(4, 0, 0)), "Direct route: a second drag slides the mirror on to 4.0")
+	check(await walk_to(goal_point()), "Direct route: the mirror at 4.0 opens the way to the goal")
+	await load_level("01_route")
+	await press_mirror_button()
+	await slide(0, 2.0)
+	check(await walk_to(Vector3(4, 0, 0)), "Direct route: the traveller stands on the copy")
+	await slide(0, 1.5)
+	await direct_fall()
+	check(game.phase == "failure", "Direct route: moving the mirror from under the traveller is a fall")
+	check(game.undo(), "Direct route: Undo is offered after the fall")
+	await direct_settled()
+	check(game.phase == "play" and pivot_is(Vector3(2.5, 0, 0)), "Direct route: Undo puts the mirror and the traveller back")
+
+
+func check_direct_reveal() -> void:
+	## "The path beneath": bridge, walk out, lower, and the ground returns.
+	await load_level("08_reveal")
+	await press_mirror_button()
+	await slide(0, 2.0)
+	check(await walk_to(Vector3(5, 0, 0)), "Direct reveal: the copy reaches x 5")
+	check(not reaches_goal(), "Direct reveal: the goal is cut off while the mirror stands")
+	await press_mirror_button()
+	await direct_fall()
+	check(not bool(game.mirror.get("enabled", true)) and pivot_is(Vector3(2.5, 0, 0)), "Direct reveal: lowering keeps the mirror's place")
+	check(game.phase == "play" and reaches_goal(), "Direct reveal: lowering the mirror returns the ground to the goal")
+	await press_mirror_button()
+	check(bool(game.mirror.get("enabled", false)) and pivot_is(Vector3(2.5, 0, 0)), "Direct reveal: raising again puts the mirror back where it stood")
+	await press_mirror_button()
+	await direct_fall()
+	check(game.phase == "play" and await walk_to(goal_point()), "Direct reveal: the returned ground leads to the goal")
+	await load_level("08_reveal")
+	await press_mirror_button()
+	await slide(0, 2.0)
+	check(await walk_to(Vector3(4, 0, 0)), "Direct reveal: the traveller stands on the copy")
+	await press_mirror_button()
+	await direct_fall()
+	check(game.phase == "failure", "Direct reveal: lowering the mirror under the traveller is a fall")
+
+
+func direct_aperture_case(lower_units: float) -> bool:
+	await load_level("11_aperture")
+	await press_mirror_button()
+	await slide(0, 1.5)
+	if lower_units > 0.0:
+		await slide(1, -lower_units)
+	await direct_fall()
+	return reaches_goal()
+
+
+func check_direct_aperture() -> void:
+	## "Only the ground": the same frame the classic path uses catches the
+	## tower's foot; dragging the mirror down one unit leaves it out.
+	check(not await direct_aperture_case(0.0), "Direct aperture: the full frame copies the tower's foot into the way")
+	check(pivot_is(Vector3(2, 0, 0)), "Direct aperture: the drag along X stops at the ledge's end")
+	check(await direct_aperture_case(1.0), "Direct aperture: one unit lower, the mirror copies only the ground")
+	check(pivot_is(Vector3(2, -1, 0)), "Direct aperture: a drag straight down lowers the mirror")
+	check(not await direct_aperture_case(2.0), "Direct aperture: two units lower, the copy is too low to reach")
+
+
+func check_direct_turn() -> void:
+	## "Another way round": point the arrow at the ring, then slide half a unit.
+	await load_level("14_turn")
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK), "Direct turn: the arrow points the mirror toward the ring")
+	check(not reaches_goal(), "Direct turn: turned in place, the copy leaves a gap")
+	await slide(2, 0.5)
+	check(reaches_goal(), "Direct turn: turned and slid half a unit, the copy is a bridge to the ring")
+	await load_level("14_turn")
+	await press_mirror_button()
+	await point(Vector3.FORWARD)
+	await direct_fall()
+	check(not reaches_goal(), "Direct turn: pointing away from the ring does not reach it")
+	await load_level("14_turn")
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	await slide(2, 1.0)
+	await direct_fall()
+	check(not reaches_goal(), "Direct turn: a step too far leaves a gap")
+
+
+func direct_together_bridge(lower_units: float) -> void:
+	await load_level("15_together")
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	await slide(2, 0.5)
+	if lower_units > 0.0:
+		await slide(1, -lower_units)
+
+
+func check_direct_together() -> void:
+	## "Together": point, slide, lower past the floating block, walk out, then
+	## lower the mirror and fall onto the low path.
+	var above_low := Vector3(0, 0, 4)
+	await direct_together_bridge(0.0)
+	check(not await walk_to(above_low), "Direct together: the full frame copies the floating block into the way")
+	await direct_together_bridge(1.0)
+	check(await walk_to(Vector3(0, 0, 1.5)), "Direct together: one unit lower, the bridge carries the traveller out")
+	await press_mirror_button()
+	await direct_fall()
+	check(game.phase == "failure", "Direct together: lowering the mirror above empty space is a fatal fall")
+	await direct_together_bridge(1.0)
+	check(await walk_to(above_low), "Direct together: the traveller stands above the low path")
+	await press_mirror_button()
+	await direct_fall()
+	check(game.phase == "play" and game.walker.position.y < -2.5, "Direct together: lowering the mirror above the low path is a safe fall")
+	check(await walk_to(goal_point()), "Direct together: the low path leads to the goal")
+
+
 func run() -> void:
 	# create_at() projects a screen point through the camera, so the viewport
 	# needs a real size.
 	root.size = Vector2i(1152, 800)
-	game = Game.new()
-	root.add_child(game)
-	await frames(2)
-	await check_first_steps()
-	await check_route()
-	await check_reveal()
-	await check_aperture()
-	await check_turn()
-	await check_together()
-	game.queue_free()
-	await frames(1)
+	# `-- --direct-only` checks only the direct controls' path.
+	if not "--direct-only" in OS.get_cmdline_user_args():
+		game = Game.new()
+		root.add_child(game)
+		await frames(2)
+		await check_first_steps()
+		await check_route()
+		await check_reveal()
+		await check_aperture()
+		await check_turn()
+		await check_together()
+		game.queue_free()
+		await frames(1)
+	await run_direct()
 	print("Level solvability: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 

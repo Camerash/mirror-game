@@ -112,7 +112,7 @@
   "prompts": [
     {
       "id": "turn_mirror",
-      "text": "Tap the mode button until the circle shows. Then drag the ring to turn the mirror.",
+      "text": "Drag the mirror's arrow to turn it. The copy appears where the arrow points.",
       "until": "turn"
     }
   ]

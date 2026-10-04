@@ -35,6 +35,18 @@ func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
 		_apply(start_position.lerp(pose["position"], weight), start_basis.slerp(pose["basis"], weight), lerpf(start_size, pose["size"], weight)), 0.0, 1.0, 0.28)
 	motion.tween_callback(_finish)
 
+## True when the current view already shows all of `stage_bounds` inside
+## `rect`, and is not much wider than a fresh fit would be. While this holds,
+## the direct controls leave the view where it is.
+func covers(stage_bounds: AABB, rect: Rect2, slack := 1.25) -> bool:
+	if not initialized or busy or rect.size.x < 10 or rect.size.y < 10:
+		return false
+	var inner := rect.grow(-12.0)
+	for index: int in range(8):
+		if not inner.has_point(unproject_position(stage_bounds.get_endpoint(index))):
+			return false
+	return size <= float(_pose(yaw, 0.0, stage_bounds, rect)["size"]) * slack
+
 func turn(direction: int) -> void:
 	if busy or not initialized:
 		return
@@ -55,9 +67,11 @@ func _apply_pose(angle: float, height: float) -> void:
 	var pose := _pose(angle, height)
 	_apply(pose["position"], pose["basis"], pose["size"])
 
-func _pose(angle: float, fixed_size := 0.0) -> Dictionary:
+func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: Variant = null) -> Dictionary:
+	var framed: AABB = bounds if stage_bounds == null else stage_bounds
+	var fit_rect: Rect2 = play_rect if area == null else area
 	var direction := Vector3(cos(angle) * cos(PI / 6.0), sin(PI / 6.0), sin(angle) * cos(PI / 6.0))
-	var centre := bounds.get_center()
+	var centre := framed.get_center()
 	var view_basis := Basis.looking_at(-direction, Vector3.UP)
 	var viewport_size := get_viewport().get_visible_rect().size
 	var pixels := viewport_size.y / fixed_size if fixed_size > 0.0 else 1.0
@@ -65,12 +79,12 @@ func _pose(angle: float, fixed_size := 0.0) -> Dictionary:
 		var low := Vector2(INF, INF)
 		var high := Vector2(-INF, -INF)
 		for index: int in range(8):
-			var corner := view_basis.inverse() * (bounds.get_endpoint(index) - centre)
+			var corner := view_basis.inverse() * (framed.get_endpoint(index) - centre)
 			low = low.min(Vector2(corner.x, corner.y))
 			high = high.max(Vector2(corner.x, corner.y))
 		var extent := (high - low).max(Vector2.ONE)
-		pixels = minf(maxf(10, play_rect.size.x - 48) / extent.x, maxf(10, play_rect.size.y - 48) / extent.y)
-	var offset := play_rect.get_center() - viewport_size * 0.5
+		pixels = minf(maxf(10, fit_rect.size.x - 48) / extent.x, maxf(10, fit_rect.size.y - 48) / extent.y)
+	var offset := fit_rect.get_center() - viewport_size * 0.5
 	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}
 

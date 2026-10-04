@@ -17,6 +17,9 @@ var moved := false
 var consumed := false
 var translating := false
 var allow_translation := true
+## Direct controls: a hold means nothing, a drag that starts on the mirror
+## slides it, and a tap anywhere walks, through the glass included.
+var direct := false
 
 func begin(point: Vector2, index: int, hit: String, is_editing: bool, can_translate := true) -> void:
 	if active:
@@ -37,7 +40,7 @@ func advance(delta: float) -> void:
 	if not active or consumed or moved:
 		return
 	elapsed += delta
-	if editing:
+	if editing or direct:
 		return
 	if target not in ["create", "sheet"]:
 		return
@@ -55,7 +58,7 @@ func move(point: Vector2, index: int) -> void:
 	if travel.length() >= TAP_DISTANCE:
 		moved = true
 		hold_progress.emit(origin, -1.0)
-	if editing and allow_translation and target in ["sheet", "outline"] and moved:
+	if (editing or direct) and allow_translation and target in ["sheet", "outline"] and moved:
 		if not translating:
 			translating = true
 			action_requested.emit("drag_begin", origin)
@@ -68,15 +71,15 @@ func release(point: Vector2, index: int) -> void:
 	if not active or index != pointer:
 		return
 	move(point, index)
-	var short_tap := not consumed and not moved and elapsed < HOLD_SECONDS
+	var short_tap := not consumed and not moved and (direct or elapsed < HOLD_SECONDS)
 	active = false
 	hold_progress.emit(origin, -1.0)
 	if translating:
 		action_requested.emit("drag_end", null)
 	elif short_tap:
-		if editing and target in ["sheet", "outline"]:
+		if editing and not direct and target in ["sheet", "outline"]:
 			action_requested.emit("apply", null)
-		elif not editing:
+		elif not editing or direct:
 			action_requested.emit("walk", point)
 
 func cancel() -> void:

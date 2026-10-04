@@ -50,6 +50,35 @@ static func reversed(state: Dictionary) -> Dictionary:
 	result["source_sign"] = -int(result["source_sign"])
 	return sync(result)
 
+## The same panel turned about its pivot so its copy side faces `direction`,
+## a unit grid axis. The selected side is kept, so pointing the opposite way
+## is the half turn that exchanges the source and reflected sides. Yaw stays
+## in the current revolution, so a display blend turns the short way round.
+static func faced(state: Dictionary, direction: Vector3) -> Dictionary:
+	var result := normalized(state)
+	var side := float(result["source_sign"])
+	if absf(direction.y) > 0.5:
+		result["pitch"] = -side * signf(direction.y) * PI * 0.5
+	else:
+		var yaw := atan2(direction.x * side, direction.z * side)
+		result["yaw"] = float(result["yaw"]) + wrapf(yaw - float(result["yaw"]), -PI, PI)
+		result["pitch"] = 0.0
+	return sync(result)
+
+## True when two states give the same world and the same panel: both without
+## a panel, or the same pose, side and size with the same enabled state.
+static func same(a: Dictionary, b: Dictionary) -> bool:
+	if bool(a.get("enabled", false)) != bool(b.get("enabled", false)) or a.has("pivot") != b.has("pivot"):
+		return false
+	if not a.has("pivot"):
+		return true
+	return (a["pivot"] as Vector3).is_equal_approx(b["pivot"]) \
+		and is_zero_approx(wrapf(float(a.get("yaw", 0.0)) - float(b.get("yaw", 0.0)), -PI, PI)) \
+		and is_equal_approx(float(a.get("pitch", 0.0)), float(b.get("pitch", 0.0))) \
+		and int(a.get("source_sign", 1)) == int(b.get("source_sign", 1)) \
+		and is_equal_approx(float(a.get("width", 3.0)), float(b.get("width", 3.0))) \
+		and is_equal_approx(float(a.get("height", 3.0)), float(b.get("height", 3.0)))
+
 static func turn(state: Dictionary, direction: int) -> Dictionary:
 	return state.duplicate(true) if horizontal(state) else rotated(state, "turn", signi(direction) * PI * 0.5)
 

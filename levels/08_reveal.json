@@ -138,7 +138,7 @@
   "prompts": [
     {
       "id": "remove_mirror",
-      "text": "Hold the mirror to change it. Remove it, and the ground it covered comes back.",
+      "text": "Tap the mirror button again to lower the mirror. The ground it covered comes back.",
       "until": "remove"
     }
   ]

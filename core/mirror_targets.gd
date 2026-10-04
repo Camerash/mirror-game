@@ -64,6 +64,60 @@ static func resize_dots(origin: Dictionary, displayed: Dictionary, key: String, 
 		_append_dot(dots,point,point.distance_to(reference))
 	return dots
 
+## Direct controls. In the game's camera each world axis has its own screen
+## direction (the ground axes are shallow diagonals, height is straight up,
+## at least 53 degrees apart in every view), so the direction of a drag alone
+## says which axis it means.
+
+## The world axis (0 x, 1 y, 2 z) whose screen direction best matches `drag`.
+## `screen_axes` holds the screen vector of one world unit along each axis.
+static func pick_axis(drag: Vector2, screen_axes: Array[Vector2]) -> int:
+	var best := -1
+	var best_score := -1.0
+	if drag.length_squared() < 0.0001:
+		return best
+	for axis: int in screen_axes.size():
+		var direction := screen_axes[axis]
+		if direction.length_squared() < 1.0:
+			continue
+		var score := absf(drag.normalized().dot(direction.normalized()))
+		if score > best_score:
+			best_score = score
+			best = axis
+	return best
+
+## World units along one axis for a screen drag, given that axis's screen
+## vector for one world unit.
+static func along(drag: Vector2, direction: Vector2) -> float:
+	return drag.dot(direction) / maxf(direction.length_squared(), 0.0001)
+
+## The index of the screen direction closest to `offset`. A switch away from
+## `current` needs a margin, so a finger near the halfway line does not flicker.
+static func pick_direction(offset: Vector2, screen_directions: Array[Vector2], current := -1, margin := 0.05) -> int:
+	if offset.length_squared() < 0.0001:
+		return current
+	var scores: Array[float] = []
+	var best := -1
+	for index: int in screen_directions.size():
+		var direction := screen_directions[index]
+		scores.append(offset.normalized().dot(direction.normalized()) if direction.length_squared() >= 1.0 else -INF)
+		if best < 0 or scores[index] > scores[best]:
+			best = index
+	if current >= 0 and current < scores.size() and best != current and scores[best] < scores[current] + margin:
+		return current
+	return best
+
+## Half-unit dots along one axis through `origin`, near the displayed pivot.
+static func rail_dots(displayed: Vector3, origin: Vector3, limits: Dictionary, axis: int, strength := 1.0) -> Array[Dictionary]:
+	var dots: Array[Dictionary] = []
+	for value: float in _steps(displayed[axis], float(limits["min"][axis]), float(limits["max"][axis])):
+		var point := origin
+		point[axis] = value
+		var weight := spatial_weight(absf(value - displayed[axis])) * strength
+		if weight > 0.0:
+			dots.append({"position": point, "weight": weight})
+	return dots
+
 static func rotation_angles(displayed_angle: float, increment: float) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if increment <= 0.0: return result

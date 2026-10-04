@@ -68,6 +68,9 @@ func _ready() -> void:
 	game.release_mode = release_mode_override if release_mode_override != null \
 		else (not OS.is_debug_build() or "--release-ui" in OS.get_cmdline_user_args())
 	game.start_stage = clampi(progress.stage, 0, Game.PUZZLE_PATHS.size() - 1)
+	# The game plays with the direct mirror controls; the gear's debug panel
+	# can switch back to the classic editor to compare.
+	game.direct_controls = true
 	add_child(game)
 	game.stage_reached.connect(_on_stage_reached)
 	game.tutorial_finished.connect(_on_tutorial_finished)

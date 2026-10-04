@@ -112,18 +112,13 @@
   "prompts": [
     {
       "id": "make_mirror",
-      "text": "Hold an empty space to make a mirror.",
+      "text": "Tap the mirror button in the corner to raise your mirror.",
       "until": "create"
     },
     {
       "id": "move_mirror",
-      "text": "Drag the mirror to move it. It copies what is behind it to the other side.",
+      "text": "Drag the mirror along the path. It copies what is behind it to the other side.",
       "until": "move"
-    },
-    {
-      "id": "place_mirror",
-      "text": "Tap the mirror to place it.",
-      "until": "confirm"
     }
   ]
 }

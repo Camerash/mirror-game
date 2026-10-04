@@ -5,6 +5,8 @@ signal action_requested(action: String, value: Variant)
 signal play_rect_changed(rect: Rect2)
 
 const TOUCH := 48.0
+## The mirror button is the game's main action, so it is a size up.
+const PRIMARY := 56.0
 const GAP := 12.0
 const INK := Color("342b2a")
 const IVORY := Color("f4ecdd")
@@ -35,6 +37,10 @@ var _enabled: Button
 var _flip: Button
 var _apply: Button
 var _mode_cycle: Button
+## Direct controls only: raises and lowers the mirror. It takes the corner the
+## classic mode button uses; the two never show together.
+var _mirror_button: Button
+var _classic_check: CheckButton
 var _debug_panel: PanelContainer
 var _settings_panel: PanelContainer
 var _settings_box: VBoxContainer
@@ -94,26 +100,36 @@ func display_state(state: Dictionary) -> void:
 	var mode_busy := bool(_state.get("mode_busy", false))
 	var camera_busy := bool(_state.get("camera_busy", false))
 	var enabled := bool(_state.get("enabled", false))
+	var direct := bool(_state.get("direct", false))
+	var classic_editing := editing and not direct
 	_help.visible = bool(_state.get("has_prompts", false))
 	_camera_left.visible = _desktop()
 	_camera_right.visible = _desktop()
 	_camera_left.disabled = camera_busy or mirror_busy
 	_camera_right.disabled = camera_busy or mirror_busy
-	_undo.visible = not editing and bool(_state.get("can_undo", false))
-	_undo.disabled = not bool(_state.get("can_undo", false))
+	# A direct drag is a short preview: Undo stays in place through it, so the
+	# corner does not flicker on every drag.
+	_undo.visible = (direct or not editing) and bool(_state.get("can_undo", false))
+	_undo.disabled = not bool(_state.get("can_undo", false)) or (direct and editing)
 	_reset.visible = phase == "failure" and not release_mode
-	_cancel.visible = editing
-	_enabled.visible = editing
+	_cancel.visible = classic_editing
+	_enabled.visible = classic_editing
 	_enabled.text = "Remove mirror" if enabled else "Keep mirror"
 	_enabled.disabled = mirror_busy
-	_flip.visible = editing
+	_flip.visible = classic_editing
 	_flip.disabled = mirror_busy
-	_apply.visible = editing and (not _outline_accessible or not enabled)
+	_apply.visible = classic_editing and (not _outline_accessible or not enabled)
 	_apply.disabled = not bool(_state.get("can_apply", false))
-	_mode_cycle.visible = editing
+	_mode_cycle.visible = classic_editing
 	_mode_cycle.disabled = mode_busy
 	_update_mode_cycle()
-	_edit_border.visible = editing
+	_mirror_button.visible = direct
+	_mirror_button.disabled = not bool(_state.get("can_toggle_mirror", false))
+	var raised := bool(_state.get("mirror_raised", false))
+	_mirror_button.tooltip_text = "Lower the mirror (M)" if raised else "Raise the mirror (M)"
+	_mirror_button.accessibility_name = "Lower the mirror" if raised else "Raise the mirror"
+	_mirror_button.queue_redraw()
+	_edit_border.visible = classic_editing
 	if not release_mode:
 		_update_debug(editing, mirror_busy)
 	_responsive_layout()
@@ -125,7 +141,7 @@ func set_guide_state(settings: Dictionary, preview_enabled: bool, preview_availa
 
 func set_sheet_controls(_corners: PackedVector2Array, outline_accessible: bool) -> void:
 	_outline_accessible = outline_accessible
-	_apply.visible = bool(_state.get("editing", false)) and (not _outline_accessible or not bool(_state.get("enabled", false)))
+	_apply.visible = bool(_state.get("editing", false)) and not bool(_state.get("direct", false)) and (not _outline_accessible or not bool(_state.get("enabled", false)))
 	_responsive_layout()
 
 func set_hold_progress(point: Vector2, progress: float) -> void:
@@ -228,6 +244,15 @@ func _build() -> void:
 	_mode_cycle.pressed.connect(func() -> void: _emit("mode_cycle", null))
 	add_child(_mode_cycle)
 	_register("mode_cycle", _mode_cycle)
+	_mirror_button = _button("")
+	_mirror_button.visible = false
+	# It is briefly disabled during every drag; it must not flash dark then.
+	_mirror_button.add_theme_stylebox_override("disabled", _box(Color(IVORY, 0.72)))
+	_mirror_button.tooltip_text = "Raise the mirror (M)"
+	_mirror_button.draw.connect(_draw_mirror_icon)
+	_mirror_button.pressed.connect(func() -> void: _emit("mirror_toggle", null))
+	add_child(_mirror_button)
+	_register("mirror", _mirror_button)
 	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset]: _style_edit(control)
 	if release_mode:
 		_build_settings()
@@ -281,6 +306,10 @@ func _build_debug() -> void:
 	_debug_panel = PanelContainer.new(); _debug_panel.visible = false; _debug_panel.mouse_filter = MOUSE_FILTER_STOP; _debug_panel.add_theme_stylebox_override("panel", _box()); add_child(_debug_panel)
 	var scroll := ScrollContainer.new(); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; _debug_panel.add_child(scroll)
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
+	# Compares the direct controls with the earlier Move/Rotate/Resize editor.
+	_classic_check = CheckButton.new(); _classic_check.text = "Classic editor"; _style(_classic_check)
+	_classic_check.toggled.connect(func(value: bool) -> void: _emit("classic_controls", value))
+	box.add_child(_classic_check)
 	var heading := _label("Constellation", 16); box.add_child(heading)
 	_guide_preview = CheckButton.new(); _guide_preview.text = "Preview guides"; _style(_guide_preview)
 	_guide_preview.toggled.connect(func(value: bool) -> void: _emit("guide_preview", value))
@@ -347,6 +376,8 @@ func _size_control(parent: VBoxContainer, label: String, key: String) -> SpinBox
 	return control
 
 func _update_debug(editing: bool, mirror_busy: bool) -> void:
+	_classic_check.set_pressed_no_signal(not bool(_state.get("direct", false)))
+	_classic_check.disabled = mirror_busy
 	for spec: Array in [[_panel_width, "width"], [_panel_height, "height"]]:
 		var control := spec[0] as SpinBox
 		control.visible = true
@@ -400,6 +431,10 @@ func _responsive_layout() -> void:
 	_help.position = Vector2(_gear.position.x - TOUCH - 6, _gear.position.y)
 	_camera_left.position = safe.position + Vector2(GAP, safe.size.y - TOUCH - GAP); _camera_right.position = _camera_left.position + Vector2(TOUCH + 6, 0)
 	var right := Vector2(safe.end.x - GAP, safe.end.y - TOUCH - GAP)
+	_mirror_button.size = Vector2(PRIMARY, PRIMARY)
+	_mirror_button.position = Vector2(safe.end.x - PRIMARY - GAP, safe.end.y - PRIMARY - GAP)
+	if _mirror_button.visible:
+		right.x -= PRIMARY + 6.0
 	for control: Control in [_undo, _reset]:
 		control.size = control.get_combined_minimum_size()
 		if control.visible:
@@ -412,7 +447,7 @@ func _responsive_layout() -> void:
 	var columns: int = 2 if _last_play_rect.size.x < 420.0 and count > 2 else maxi(1, count)
 	var rows: int = ceili(float(count) / float(columns))
 	var slot: float = maxf(TOUCH, minf(140.0, (_last_play_rect.size.x - row_gap * (columns - 1)) / maxf(1.0, float(columns))))
-	_bottom_reserved = TOUCH + GAP + (TOUCH * rows + row_gap * maxf(0.0, rows - 1) + GAP if count > 0 else 0.0)
+	_bottom_reserved = (PRIMARY if _mirror_button.visible else TOUCH) + GAP + (TOUCH * rows + row_gap * maxf(0.0, rows - 1) + GAP if count > 0 else 0.0)
 	var start: float = _last_play_rect.get_center().x - (slot * columns + row_gap * (columns - 1)) * .5; var index := 0
 	for control: Control in row:
 		if control.visible:
@@ -479,6 +514,22 @@ func _draw_mode_icon() -> void:
 			_mode_cycle.draw_arc(center, 11.0, 0.0, TAU, 48, ink, 1.5, true)
 		"resize":
 			_mode_cycle.draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), ink, false, 1.5, true)
+## A small upright pane: filled glass with a glint while the mirror stands,
+## a dashed empty frame while it is lowered.
+func _draw_mirror_icon() -> void:
+	if not is_instance_valid(_mirror_button): return
+	var raised := bool(_state.get("mirror_raised", false))
+	var ink := INK if not _mirror_button.disabled else Color(INK, 0.45)
+	var panel := Rect2(_mirror_button.size * 0.5 - Vector2(10, 14), Vector2(20, 28))
+	if raised:
+		_mirror_button.draw_rect(panel, Color("cfe9ee"), true)
+		_mirror_button.draw_line(panel.position + Vector2(5, 19), panel.position + Vector2(15, 8), Color(1, 1, 1, 0.95), 2.0, true)
+		_mirror_button.draw_rect(panel, ink, false, 1.5, true)
+		return
+	var corners := [panel.position, Vector2(panel.end.x, panel.position.y), panel.end, Vector2(panel.position.x, panel.end.y)]
+	for index: int in 4:
+		_mirror_button.draw_dashed_line(corners[index], corners[(index + 1) % 4], ink, 1.5, 3.0, true, true)
+
 func _button(text_value: String) -> Button:
 	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button)
 	button.pressed.connect(_play_click)

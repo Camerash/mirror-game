@@ -3,7 +3,7 @@ extends RefCounted
 
 const Rules := preload("res://core/mirror_state.gd")
 ## Names a tutorial prompt can wait for; see game.gd's `tutorial_event` signal.
-const PROMPT_EVENTS: Array[String] = ["walk", "camera_turn", "create", "move", "confirm",
+const PROMPT_EVENTS: Array[String] = ["walk", "camera_turn", "create", "move", "lower", "confirm",
 	"remove", "resize", "turn", "fall", "goal"]
 
 static func load_level(path: String) -> Dictionary:

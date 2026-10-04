@@ -1,6 +1,7 @@
 extends "res://tests/level_solvability_tests.gd"
 ## Plays the whole tutorial through the App, from the title to the end card,
-## with the player's own commands and the automatic mirror sweep between
+## with the player's own commands (the direct controls: the mirror button, a
+## drag on the mirror, the arrow) and the automatic mirror sweep between
 ## stages. Run it natively (without --headless): it saves one frame at the
 ## start of each stage, one during each sweep, and one of the end card, to
 ## test-output/playthrough-*.png.
@@ -61,49 +62,45 @@ func run() -> void:
 	check(await walk_to(goal_point()), "Playthrough: First steps is walked")
 	await next_stage("01_route")
 
-	# A place to stand: a mirror at 2.5, rest, then the mirror at 4.0.
-	await create_at(2.5, 0.0)
-	await confirm()
+	# A place to stand: raise the mirror, slide it to 2.5, rest, slide it on to 4.0.
+	await press_mirror_button()
+	await slide(0, 2.0)
 	check(await walk_to(Vector3(5, 0, 0)), "Playthrough: the rest platform is reached")
-	game.begin_preview()
-	await idle()
-	game.change_preview("offset", 4.0)
-	await camera_idle()
-	await confirm()
+	await slide(0, 1.5)
 	check(await walk_to(goal_point()), "Playthrough: A place to stand is solved")
 	await next_stage("08_reveal")
 
-	# The path beneath: bridge, walk out, remove the mirror.
-	await create_at(2.5, 0.0)
-	await confirm()
+	# The path beneath: bridge, walk out, lower the mirror.
+	await press_mirror_button()
+	await slide(0, 2.0)
 	check(await walk_to(Vector3(5, 0, 0)), "Playthrough: the bridge is walked")
-	await remove()
-	await settle_fall()
+	await press_mirror_button()
+	await direct_fall()
 	check(await walk_to(goal_point()), "Playthrough: The path beneath is solved")
 	await next_stage("11_aperture")
 
-	# Only the ground: a two-high mirror.
-	await create_at(2.0, 0.0)
-	await set_size("height", 2.0)
-	await confirm()
+	# Only the ground: slide to the ledge's end, then drag the mirror down.
+	await press_mirror_button()
+	await slide(0, 1.5)
+	await slide(1, -1.0)
 	check(await walk_to(goal_point()), "Playthrough: Only the ground is solved")
 	await next_stage("14_turn")
 
-	# Another way round: a left turn at z 0.5.
-	await create_at(0.0, 0.5)
-	await turn(-1)
-	await confirm()
+	# Another way round: point the arrow at the ring, slide half a unit.
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	await slide(2, 0.5)
 	check(await walk_to(goal_point()), "Playthrough: Another way round is solved")
 	await next_stage("15_together")
 
-	# Together: turn, resize, walk out, remove, fall, walk.
-	await create_at(0.0, 0.5)
-	await turn(-1)
-	await set_size("height", 2.0)
-	await confirm()
+	# Together: point, slide, drag down, walk out, lower the mirror, fall, walk.
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	await slide(2, 0.5)
+	await slide(1, -1.0)
 	check(await walk_to(Vector3(0, 0, 4)), "Playthrough: the traveller stands above the low path")
-	await remove()
-	await settle_fall()
+	await press_mirror_button()
+	await direct_fall()
 	check(await walk_to(goal_point()), "Playthrough: Together is solved")
 
 	for index: int in 600:

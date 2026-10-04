@@ -85,9 +85,9 @@
   "objective": "Reach the ring. Bring the ground across, and nothing above it.",
   "prompts": [
     {
-      "id": "resize_mirror",
-      "text": "Tap the mode button until the square shows. Then drag the top edge down to make the mirror shorter.",
-      "until": "resize"
+      "id": "lower_mirror",
+      "text": "The mirror copies everything inside its frame. Drag it straight down to lower the frame.",
+      "until": "lower"
     }
   ]
 }

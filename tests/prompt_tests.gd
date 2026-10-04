@@ -3,12 +3,13 @@ extends SceneTree
 ## close a prompt, the "?" replay, the progress-object interface, and the
 ## loader's validation of a bad `prompts` field.
 ##
-## Where driving the real command is cheap, these checks use it (request_walk,
-## turn_camera, create_mirror, a real drag or height step, confirm, remove,
-## resize through change_preview, rotate_mirror, a real safe fall). A
-## non-matching event is instead emitted directly on `tutorial_event`: it
-## exercises the same `_on_tutorial_event` guard without needing a second,
-## unrelated real action for every stage.
+## The stages' prompts teach the direct controls the game plays with, so the
+## game here runs them too. Where driving the real command is cheap, these
+## checks use it (request_walk, turn_camera, the mirror button, a drag on the
+## mirror along one axis, the arrow, a real safe fall). A non-matching event
+## is instead emitted directly on `tutorial_event`: it exercises the same
+## `_on_tutorial_event` guard without needing a second, unrelated real action
+## for every stage.
 
 const Game := preload("res://game.gd")
 const Levels := preload("res://core/level_loader.gd")
@@ -57,38 +58,40 @@ func camera_idle() -> void:
 		await process_frame
 
 
-func prediction_settled() -> String:
+## The direct actions apply when the finger lifts; each helper waits for that.
+func direct_settled() -> void:
 	for index: int in 600:
-		var status := str(game.prediction.get("status", "idle"))
-		if status not in ["pending", "idle", "unresolved"]:
-			return status
+		if game.phase != "preview" and game.pending.is_empty() and game.settle_frames == 0 and not game.camera.busy:
+			return
 		await process_frame
-	return str(game.prediction.get("status", "idle"))
 
 
-func confirm() -> String:
-	var status := await prediction_settled()
-	if status == "blocked":
-		game.cancel_preview()
-		await idle()
-		return "blocked"
-	game.apply_preview()
-	await idle()
-	return status
+func press_mirror_button() -> void:
+	game.toggle_mirror()
+	await direct_settled()
 
 
-func remove_stage_mirror() -> String:
-	game.begin_preview()
-	await idle()
-	game.remove_mirror()
-	await camera_idle()
-	return await confirm()
+## A finger on the mirror's centre drags along one axis (0 x, 1 y, 2 z).
+func slide(axis: int, units: float) -> void:
+	var pivot: Vector3 = game.mirror["pivot"]
+	var direction: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis]
+	var start: Vector2 = game.camera.unproject_position(pivot)
+	var finish: Vector2 = game.camera.unproject_position(pivot + direction * units)
+	game.begin_slide(start)
+	for step: int in range(1, 13):
+		game.slide_to(start.lerp(finish, step / 12.0))
+		await process_frame
+	await frames(8)
+	game.end_slide()
+	await direct_settled()
 
 
-func create_at(x: float, z: float) -> void:
-	var point: Vector2 = game.camera.unproject_position(Vector3(x, game.walker.position.y, z))
-	game.create_mirror(point)
-	await camera_idle()
+func point(direction: Vector3) -> void:
+	game.begin_point()
+	game.point_toward(direction)
+	await frames(8)
+	game.end_point()
+	await direct_settled()
 
 
 func walk_to(target: Vector3) -> bool:
@@ -102,11 +105,19 @@ func walk_to(target: Vector3) -> bool:
 	return game.walker.position.distance_to(target) < 0.22
 
 
-func settle_fall() -> void:
-	for index: int in 600:
-		if game.phase == "failure":
+## Waits for a landing, counting only after two unpaused physics steps: a
+## direct change applies without a camera blend, so a floor contact left over
+## from before the change must not read as one.
+func direct_fall() -> void:
+	var unpaused_at := -1
+	for index: int in 900:
+		if game.phase in ["failure", "complete", "transition"]:
 			return
-		if (game.walker.grounded or game.walker.is_on_floor()) and absf(game.walker.velocity.y) < 0.01:
+		if game.walker.paused or game.settle_frames > 0:
+			unpaused_at = -1
+		elif unpaused_at < 0:
+			unpaused_at = Engine.get_physics_frames()
+		elif Engine.get_physics_frames() - unpaused_at >= 2 and (game.walker.grounded or game.walker.is_on_floor()) and absf(game.walker.velocity.y) < 0.01:
 			return
 		await process_frame
 
@@ -146,6 +157,7 @@ func check_no_empty_cards(label: String) -> void:
 func run() -> void:
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
+	game.direct_controls = true
 	root.add_child(game)
 	await frames(2)
 	await check_first_steps()
@@ -191,13 +203,11 @@ func check_route() -> void:
 	game.tutorial_event.emit("move")
 	await frames(1)
 	check(active_prompt_id() == "make_mirror", "Route: a non-matching event does not advance make_mirror")
-	await create_at(2.5, 0.0)
-	check(active_prompt_id() == "move_mirror", "Route: creating the mirror advances to move_mirror")
-	game._step_height(0.5)
-	await camera_idle()
-	check(active_prompt_id() == "place_mirror", "Route: the height-arrow step advances to place_mirror")
-	check(await confirm() != "blocked", "Route: the raised mirror is not blocked")
-	check(queue_and_active_empty(), "Route: confirming closes the last prompt")
+	await press_mirror_button()
+	check(active_prompt_id() == "move_mirror", "Route: raising the mirror advances to move_mirror")
+	await slide(0, 2.0)
+	check(bool(game.mirror.get("enabled", false)), "Route: the slid mirror applies on release")
+	check(queue_and_active_empty(), "Route: sliding the mirror closes the last prompt")
 	check_no_empty_cards("Route")
 
 
@@ -207,23 +217,26 @@ func check_reveal() -> void:
 	game.tutorial_event.emit("confirm")
 	await frames(1)
 	check(active_prompt_id() == "remove_mirror", "Reveal: a non-matching event does not advance remove_mirror")
-	await create_at(2.5, 0.0)
-	check(await confirm() != "blocked", "Reveal: the bridge mirror is not blocked")
-	check(await remove_stage_mirror() != "blocked", "Reveal: removing the bridge is not blocked")
-	check(queue_and_active_empty(), "Reveal: removing the mirror closes remove_mirror")
+	await press_mirror_button()
+	await slide(0, 2.0)
+	check(active_prompt_id() == "remove_mirror", "Reveal: raising and sliding the mirror do not close remove_mirror")
+	await press_mirror_button()
+	check(not bool(game.mirror.get("enabled", true)), "Reveal: the mirror button lowers the mirror")
+	check(queue_and_active_empty(), "Reveal: lowering the mirror closes remove_mirror")
 	check_no_empty_cards("Reveal")
 
 
 func check_aperture() -> void:
 	await load_stage("res://levels/11_aperture.json")
-	check(active_prompt_id() == "resize_mirror", "Aperture: resize_mirror prompt is first")
+	check(active_prompt_id() == "lower_mirror", "Aperture: lower_mirror prompt is first")
 	game.tutorial_event.emit("turn")
 	await frames(1)
-	check(active_prompt_id() == "resize_mirror", "Aperture: a non-matching event does not advance resize_mirror")
-	await create_at(2.0, 0.0)
-	game.change_preview("height", 2.0)
-	await camera_idle()
-	check(queue_and_active_empty(), "Aperture: resizing through change_preview closes resize_mirror")
+	check(active_prompt_id() == "lower_mirror", "Aperture: a non-matching event does not advance lower_mirror")
+	await press_mirror_button()
+	await slide(0, 1.5)
+	check(active_prompt_id() == "lower_mirror", "Aperture: a drag along the ground does not close lower_mirror")
+	await slide(1, -1.0)
+	check(queue_and_active_empty(), "Aperture: dragging the mirror down closes lower_mirror")
 	check_no_empty_cards("Aperture")
 
 
@@ -233,10 +246,9 @@ func check_turn() -> void:
 	game.tutorial_event.emit("resize")
 	await frames(1)
 	check(active_prompt_id() == "turn_mirror", "Turn: a non-matching event does not advance turn_mirror")
-	await create_at(0.0, 0.5)
-	game.rotate_mirror(-1)
-	await camera_idle()
-	check(queue_and_active_empty(), "Turn: rotating the mirror closes turn_mirror")
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	check(queue_and_active_empty(), "Turn: pointing the arrow closes turn_mirror")
 	check_no_empty_cards("Turn")
 
 
@@ -246,15 +258,14 @@ func check_together() -> void:
 	game.tutorial_event.emit("goal")
 	await frames(1)
 	check(active_prompt_id() == "safe_fall", "Together: a non-matching event does not advance safe_fall")
-	await create_at(0.0, 0.5)
-	game.rotate_mirror(-1)
-	await camera_idle()
-	game.change_preview("height", 2.0)
-	await camera_idle()
-	check(await confirm() != "blocked", "Together: the resized bridge is not blocked")
+	await press_mirror_button()
+	await point(Vector3.BACK)
+	await slide(2, 0.5)
+	await slide(1, -1.0)
 	check(await walk_to(Vector3(0, 0, 4)), "Together: the traveller reaches above the low path")
-	check(await remove_stage_mirror() == "landing", "Together: removing above the low path is a safe fall")
-	await settle_fall()
+	await press_mirror_button()
+	await direct_fall()
+	check(game.phase == "play" and game.walker.position.y < -2.5, "Together: lowering the mirror above the low path is a safe fall")
 	await wait_until_prompt_changes("safe_fall")
 	check(queue_and_active_empty(), "Together: a safe fall of at least 0.3 s closes safe_fall")
 	check_no_empty_cards("Together")
@@ -262,10 +273,9 @@ func check_together() -> void:
 
 func check_replay() -> void:
 	await load_stage("res://levels/01_route.json")
-	await create_at(2.5, 0.0)
-	game._step_height(0.5)
-	await camera_idle()
-	check(await confirm() != "blocked", "Replay: setting up the mirror confirms")
+	await press_mirror_button()
+	await slide(0, 2.0)
+	check(bool(game.mirror.get("enabled", false)), "Replay: setting up the mirror applies")
 	check(queue_and_active_empty(), "Replay: the stage's prompts are all done before the replay")
 	game._action("help", null)
 	await frames(1)
@@ -273,9 +283,6 @@ func check_replay() -> void:
 	game.tutorial_event.emit("create")
 	await frames(1)
 	check(active_prompt_id() == "move_mirror", "Replay: a replayed prompt still advances on its own event")
-	game.tutorial_event.emit("move")
-	await frames(1)
-	check(active_prompt_id() == "place_mirror", "Replay: the replay reaches the last prompt")
 	game._action("help", null)
 	await frames(1)
 	check(queue_and_active_empty(), "Replay: a second help press closes the replay early")
@@ -289,8 +296,8 @@ func check_progress_stub() -> void:
 	game.progress = progress
 	await load_stage("res://levels/01_route.json")
 	check(active_prompt_id() == "make_mirror", "Progress stub: a fresh stage still starts at make_mirror")
-	await create_at(2.5, 0.0)
-	check(bool(progress.done.get("make_mirror", false)), "Progress stub: create marks make_mirror done on the stub")
+	await press_mirror_button()
+	check(bool(progress.done.get("make_mirror", false)), "Progress stub: raising the mirror marks make_mirror done on the stub")
 	check(active_prompt_id() == "move_mirror", "Progress stub: the queue advances to move_mirror")
 	await load_stage("res://levels/01_route.json")
 	check(active_prompt_id() == "move_mirror", "Progress stub: a reloaded stage skips the done prompt")

@@ -26,6 +26,9 @@ var guide_material := ShaderMaterial.new()
 var mote_material := ShaderMaterial.new()
 var state: Dictionary = {}
 var editing := false
+## A lowered direct mirror keeps its panel: a faint dashed outline shows where
+## it comes back. The classic editor never produces this state.
+var lowered := false
 var transitioning := false
 var elapsed := 0.0
 var settle_time := 0.0
@@ -69,10 +72,12 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if next_state == state and bounds == drawn_bounds and editing == is_editing:
 		return
 	var dimensions := Vector2(clampf(float(next_state.get("width", 3.0)), 1.0, 6.0), clampf(float(next_state.get("height", 3.0)), 1.0, 6.0))
-	var rebuild := editing != is_editing or not has_geometry or dimensions != panel_size
+	var next_lowered := not bool(next_state.get("enabled", false)) and not is_editing
+	var rebuild := editing != is_editing or lowered != next_lowered or not has_geometry or dimensions != panel_size
 	panel_size = dimensions
 	state = next_state.duplicate(true)
 	editing = is_editing
+	lowered = next_lowered
 	drawn_bounds = bounds
 	has_geometry = state.has("axis")
 	visible = has_geometry
@@ -95,7 +100,7 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	ribbons.visible = enabled
 	guides.visible = enabled or editing
 	motes.visible = enabled
-	edges.visible = editing
+	edges.visible = editing or lowered
 	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
 	var source_sign := float(state.get("source_sign", 1.0))
@@ -151,8 +156,9 @@ func _draw_edges(width: float, height: float) -> void:
 	for side: int in 4:
 		var start: Vector2 = corners_2d[side] * 0.5
 		var finish: Vector2 = corners_2d[(side + 1) % 4] * 0.5
-		var steps := maxi(1, ceili(start.distance_to(finish) / 0.16)) if editing else 1
-		for step: int in range(0, steps, 2 if editing else 1):
+		var dashed := editing or lowered
+		var steps := maxi(1, ceili(start.distance_to(finish) / 0.16)) if dashed else 1
+		for step: int in range(0, steps, 2 if dashed else 1):
 			points.append(Vector3(start.x, start.y, 0.01).lerp(Vector3(finish.x, finish.y, 0.01), float(step) / steps))
 			points.append(Vector3(start.x, start.y, 0.01).lerp(Vector3(finish.x, finish.y, 0.01), float(step + 1) / steps))
 	var mesh := ImmediateMesh.new()
@@ -232,8 +238,8 @@ func _process(delta: float) -> void:
 	settle_time = maxf(0.0, settle_time - delta)
 	sheet_material.set_shader_parameter("sheet_time", elapsed)
 	var pulse := 0.70 + sin(elapsed * 2.2) * 0.20 if editing else 1.0
-	edge_material.albedo_color = Color(0.76, 0.95, 0.95, pulse)
-	edge_material.emission_energy_multiplier = 1.35 if not editing else 0.75 + pulse * 0.45
+	edge_material.albedo_color = Color(0.76, 0.95, 0.95, 0.3 if lowered else pulse)
+	edge_material.emission_energy_multiplier = 0.4 if lowered else (1.35 if not editing else 0.75 + pulse * 0.45)
 	sheet_material.set_shader_parameter("sheet_alpha", 0.07 if editing else 0.11 + settle_time * 0.12)
 	ribbon_material.set_shader_parameter("ribbon_time", elapsed)
 	ribbon_material.set_shader_parameter("ribbon_alpha", 0.85 if editing else 1.0)
