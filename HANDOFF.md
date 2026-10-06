@@ -6,7 +6,11 @@ measured and failed, and which traps cost real time.
 
 ## Your task, in order
 
-- **New: the direct mirror controls are built as a trial** (see "State: the
+- **New: the user wants published-game polish, with Monument Valley as the
+  reference.** `docs/polish-gap.md` records the gap, area by area, before
+  any work to close it, and lists the decisions it needs from the user. Read
+  it first and follow its order.
+- **The direct mirror controls are built as a trial** (see "State: the
   direct mirror controls" below). The user found the editor-style controls
   unintuitive and asked for them. They pass headless checks and a Linux
   software-Vulkan capture, but **nobody has played them yet and there was no
@@ -29,6 +33,7 @@ measured and failed, and which traps cost real time.
 | file | why |
 | --- | --- |
 | `GAME_DESIGN.md` | the design record. Agreed rules are separate from proposals and open questions. Update it when the user confirms a decision |
+| `docs/polish-gap.md` | the gap between this prototype and a published game, the order to close it, and the decisions it needs |
 | `AGENTS.md` | working rules, the Blender workflow, and the check policy. It says to use the smallest useful check while exploring |
 | `docs/art/traveller-handoff.md` | the character in detail, including every failed approach |
 | `VALIDATION.md` | what has actually been checked, and on what |
