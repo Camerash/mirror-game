@@ -1,0 +1,9 @@
+; Godot-native asset generator for the art pipeline pilot.
+config_version=5
+
+[application]
+config/name="Pilot Godot Generator"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[rendering]
+renderer/rendering_method="mobile"

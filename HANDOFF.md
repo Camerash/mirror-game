@@ -454,6 +454,11 @@ no runner. They print nothing on their own and are driven by `run_tests.gd`.
 
 ## Traps. Each of these produced a wrong answer at least once
 
+- **Godot 4.7.2's glTF import drops the first part's vertex colours.** A
+  part of a mesh gets vertex-colour albedo only if an earlier part of the
+  same mesh has vertex colours. `art_trial/pipeline_pilot/godot/vcol_test.gd`
+  shows it. Put a part that needs no vertex colours first, or keep colour in
+  materials.
 - **A direct change applies a few frames after release**, once its prediction
   is in. Wait for `phase` to leave `"preview"` (`direct_settled`), not just
   for `pending` to empty.

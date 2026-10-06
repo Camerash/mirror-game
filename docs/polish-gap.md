@@ -352,8 +352,8 @@ finds.
   on a modest PC, Steamworks (store page, saves, achievements if wanted) and
   a playtest branch. Then iPhone and iPad through TestFlight, then Android
   through Play internal testing, each with a device set and store assets.
-  Steam asks every game to disclose AI-generated content, and this game's
-  art and music will be generated.
+  Steam requires a store-page disclosure of AI-generated art and music,
+  which this game will need ([the art pipeline](art-pipeline.md)).
 
 ### 12. Accessibility and languages — M
 

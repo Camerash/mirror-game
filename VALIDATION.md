@@ -1,6 +1,14 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: art pipeline pilot — 2026-10-06
+
+- No game code changed, and no game checks were run. This entry records the pilot in `art_trial/pipeline_pilot/` (see `docs/art-pipeline.md`), in a Linux cloud container with the official Godot 4.7.2 Linux build.
+- Three agents built the same gate and bonsai from code (Godot `ArrayMesh`, Blender 5.0.1 `bpy`, Three.js 0.186.1). Every judged render came from `judge/judge.gd`: Mobile renderer under Xvfb with Mesa's software Vulkan, the game's lighting, its four views and an in-game-size view. Each route's own geometry checks (closed meshes, winding, budgets, bends) ran on every build.
+- Determinism: all six `.glb` files rebuilt from the committed sources were byte-identical to the judged files (sha256).
+- `godot/vcol_test.gd` was re-run independently: the glTF vertex-colour import bug reproduces on 4.7.2.
+- Not checked: the Mac, Metal, textures, UVs, baking, and import of these assets into the game project.
+
 # Latest check: direct mirror controls — 2026-10-04
 
 - Built the direct controls trial (see `GAME_DESIGN.md`, "Direct controls trial 03"). Checked in a Linux cloud container with the official Godot 4.7.2 Linux build. **Not checked on a Mac, with Metal, or on a device.**

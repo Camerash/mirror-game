@@ -1,0 +1,12 @@
+; Pilot judge: renders a glTF asset under the game's lighting and camera views.
+config_version=5
+
+[application]
+config/name="Pilot Judge"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[rendering]
+rendering_device/fallback_to_opengl3=false
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+anti_aliasing/quality/msaa_3d=2

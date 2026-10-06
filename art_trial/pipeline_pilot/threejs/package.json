@@ -1,0 +1,8 @@
+{
+  "name": "mirror-pipeline-pilot",
+  "private": true,
+  "description": "Three.js route of the 2026-10 art pipeline pilot",
+  "dependencies": {
+    "three": "0.186.1"
+  }
+}
