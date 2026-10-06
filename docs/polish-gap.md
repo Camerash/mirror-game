@@ -1,10 +1,10 @@
 # Polish gap: from the tutorial MVP to a published puzzle game
 
-Written 2026-10-06, at commit `3580a37`. The owner wants the game to reach the
-polish of published games in its genre, with Monument Valley as the
-reference. This document records the bar, where the game stands, and the gap
-between them, before any work to close it. Update it as gaps close. Keep
-decisions in `GAME_DESIGN.md`.
+Written 2026-10-06, at commit `3580a37`; the owner's decisions were added the
+same day. The owner wants the game to reach the polish of published games in
+its genre, with Monument Valley as the reference. This document records the
+bar, where the game stands, and the gap between them, before any work to
+close it. Update it as gaps close. Keep decisions in `GAME_DESIGN.md`.
 
 ## In one paragraph
 
@@ -183,16 +183,17 @@ Keep these; published games are built on the same things:
 ## The gap, area by area
 
 Sizes are relative, for one person working with agents: **S** is days,
-**M** is weeks, **L** is one to three months, **XL** is more. They are rough,
-and they will change once the first decisions are made.
+**M** is weeks, **L** is one to three months, **XL** is more. They are rough.
+With agents making all the art, the art sizes depend on the method the pilot
+finds.
 
 | # | Area | The gap | Size | Waits on |
 | --- | --- | --- | --- | --- |
-| 1 | Identity and story | No premise, world, characters or ending | XL | your decisions |
+| 1 | Identity and story | No premise, world, characters or ending | XL | the story comparison |
 | 2 | A player-tested core | No player has tried the game | M | — |
-| 3 | Levels and content | 6 one-minute stages against about 90 minutes of distinct levels | XL | 1, 2, 4, 5 |
+| 3 | Levels and content | 6 one-minute stages against about an hour of distinct levels | XL | 1, 2, 4, 5 |
 | 4 | Mechanic variety | One mirror; the next elements are undecided | L | 2 |
-| 5 | World and level art | Cubes in a void against composed, themed dioramas | XL | 1 |
+| 5 | World and level art | Cubes in a void against composed, themed dioramas | XL | 1, 13 |
 | 6 | Character | One walk; small on screen | L | 1, 5 |
 | 7 | Feel | Near-instant changes; few animations | L | 5 |
 | 8 | Guidance | Text cards against wordless teaching | M | 2, 3 |
@@ -200,7 +201,7 @@ and they will change once the first decisions are made.
 | 10 | UI and menus | A bare title and end card; no chapter select | M | 1, 5 |
 | 11 | Platforms and release | Mac only; no store build | L | — |
 | 12 | Accessibility and languages | None | M | 8, 10 |
-| 13 | Production | No art, music or playtest pipeline | — | your decisions |
+| 13 | Production | No art, music or playtest pipeline | — | the art method |
 
 ### 1. Identity and story — XL
 
@@ -212,8 +213,9 @@ and they will change once the first decisions are made.
 - **The bar:** the mechanic, the world and the story are one idea, told
   mostly through the environment, with an emotional ending (see "The bar",
   1 and 2).
-- **To close:** choose a direction. Write a one-page premise: who, where,
-  why, what changes, how it ends. Decide what the mirror is in the world and
+- **To close:** choose between the two shortlisted directions, possible
+  lives and loss and acceptance ([the comparison](story-directions.md)).
+  Write a one-page premise: who, where, why, what changes, how it ends. Decide what the mirror is in the world and
   what the goal is. Outline the chapters so each story beat meets a mechanic
   beat. Decide how the story is told: wordless, chapter cards, or a few
   lines. The mirror carries strong themes on its own: reflection, the other
@@ -242,9 +244,9 @@ and they will change once the first decisions are made.
   set-piece moment, and in which the mechanics recombine as the difficulty
   rises (see "The bar", 3).
 - **To close:** a level framework (each chapter introduces, explores, twists
-  and ends on a set piece). The content target follows from the scope you
-  choose: roughly 10 to 15 substantial levels of 5 to 10 minutes for a
-  90-minute game. Hand-written JSON boxes cannot make dioramas, so levels
+  and ends on a set piece). For the agreed length of about an hour, that is
+  roughly 8 to 12 substantial levels of 5 to 8 minutes; deeper mechanics
+  would add to it. Hand-written JSON boxes cannot make dioramas, so levels
   need an authoring path that adds art dressing on top of the gameplay
   boxes, such as a Godot scene layer. Extend the solvability harness to
   every level.
@@ -276,10 +278,12 @@ and they will change once the first decisions are made.
   ceramic identity); a modular kit beyond cubes (stairs, arches, columns,
   roofs, doors, ornaments, water, plants); a backdrop and sky system;
   framing rules per level (the stage fills the screen and the goal is a
-  focal point); and effects for the mirror's moment of copying. Decide
-  whether the view keeps turning: the benchmark cut camera rotation so that
-  every screen could be composed, while our first stage is built on it. This
-  is the largest single production cost.
+  focal point); and effects for the mirror's moment of copying. The view
+  keeps turning, because turning is part of play here. So every level must be
+  composed to hold up from all four views, a harder task than the
+  benchmark's single composed view. This is the largest single production
+  cost, and agents alone will make it, so the method comes first
+  ([research and pilot](art-pipeline.md)).
 
 ### 6. Character — L
 
@@ -322,10 +326,10 @@ and they will change once the first decisions are made.
   mono.
 - **The bar:** an original score, interactions that sound musical, a theme
   per chapter, and a mixed, mastered soundscape (see "The bar", 7).
-- **To close:** an audio direction that follows the story; music from a
-  composer, or generated and carefully curated; a sound palette for the
-  mirror; ambience per chapter; a mix pass on phone speakers and on
-  headphones.
+- **To close:** an audio direction that follows the story; music generated
+  with Lyria and carefully curated; a separate route for sound effects,
+  which Lyria does not target; a sound palette for the mirror; ambience per
+  chapter; a mix pass on laptop speakers, headphones and phone speakers.
 
 ### 10. UI and menus — M
 
@@ -344,9 +348,12 @@ and they will change once the first decisions are made.
   export; no store build; phone performance unknown.
 - **The bar:** smooth on the target phones and tablets, fast loading, and
   store-ready builds with a trailer and screenshots.
-- **To close:** a device set (an older iPhone, a current iPhone, an iPad, a
-  mid-range Android phone); frame-time budgets; automated builds;
-  TestFlight and Play internal testing; store assets.
+- **To close:** Steam comes first: Windows and Mac builds, frame-time budgets
+  on a modest PC, Steamworks (store page, saves, achievements if wanted) and
+  a playtest branch. Then iPhone and iPad through TestFlight, then Android
+  through Play internal testing, each with a device set and store assets.
+  Steam asks every game to disclose AI-generated content, and this game's
+  art and music will be generated.
 
 ### 12. Accessibility and languages — M
 
@@ -356,20 +363,22 @@ and they will change once the first decisions are made.
 - **To close:** keep words minimal; move strings into a translation table;
   add options for reduced motion, text size, haptics and high contrast.
 
-### 13. Production — your decisions
+### 13. Production — decided: agents only
 
 - **Today:** you and AI agents. Engineering is strong. Art, music and
   writing capacity is the limit, and there is no playtest routine.
 - **The bar:** a small, focused team over about a year (see "The bar", 10).
-- **To close:** decide what agents make, what you make and what to
-  commission (concept art and music are the likely candidates); a milestone
-  plan; a playtest at every milestone.
+- **To close:** agents make everything (decided). That makes the agents'
+  art method the largest risk in the project, so it is researched and
+  piloted before more assets are made. Add a milestone plan and a playtest
+  at every milestone.
 
 ## What waits on what
 
-1. **Decide the identity and story (1), and play-test the core (2).** Both are
-   cheap next to what they unblock.
-2. **From the story, set the art direction (5) and the audio direction (9).**
+1. **Choose the story (1), play-test the core (2), and find the agents' art
+   method (13).** All three are cheap next to what they unblock.
+2. **From the story, set the art direction (5) through style boards, and the
+   audio direction (9).**
 3. **From the playtests, set the mechanic roadmap (4) and settle the controls
    and guidance (2, 8).**
 4. **Then build levels (3)**, the expensive part, with the art kit and the
@@ -377,49 +386,56 @@ and they will change once the first decisions are made.
 5. Feel, UI, platforms and languages (7, 10, 11, 12) run alongside, tied to
    the slice below.
 
-## Recommended first milestone: a vertical slice
+## First milestone: a vertical slice
 
-Before making more levels, make **one chapter at release quality**. It proves
-the bar is reachable, shows what a finished level really costs, and gives
-something worth showing to playtesters, and later to a publisher or a store.
+Agreed on 2026-10-06. Before making more levels, make **one chapter at
+release quality**. It proves the bar is reachable, shows what a finished
+level really costs, and gives something worth showing to playtesters, and
+later to a publisher or a store.
 
 - **Size:** 4 to 6 levels, 10 to 15 minutes of play.
 - **Contents:** an opening story beat; the art direction applied (kit,
   backdrop, lighting, the mirror's effects); the traveller with the core
   animations; original music for the chapter and a full set of interaction
   sounds; wordless teaching for the mirror; a title, chapter select, pause
-  and credits at slice quality; smooth play on a mid-range phone.
+  and credits at slice quality; smooth play on a modest PC, with the touch
+  controls still working.
 - **Done when:** five first-time players finish it without help, and can say
   what they were doing and why; every screen holds up as a screenshot beside
   the benchmark's; and nothing in the chapter is placeholder art or audio.
 
-## Decisions needed from you
+## Decisions
 
-Each decision unblocks part of the plan above. A recommendation is given
-where there is one; the choice is yours.
+The owner answered the open decisions on 2026-10-06. `GAME_DESIGN.md`
+records them as agreed rules.
 
-1. **Story direction** (area 1). One of the three directions in
-   `GAME_DESIGN.md`, the workshop concept, or something new.
-   *Recommendation:* "possible lives". A mirror that copies one side over
-   the other, and restores the original when it is lowered, is already a
-   picture of the road not taken.
+1. **Story direction** (area 1). Possible lives, with loss and acceptance
+   as the alternative if it fits; the two are compared before one is chosen
+   ([the comparison](story-directions.md)).
 2. **How the game teaches and tells** (areas 1, 8, 12). Nearly wordless,
-   like the benchmark; short chapter cards and a few lines; or characters
-   who speak. *Recommendation:* nearly wordless, with chapter titles.
-3. **Art direction** (area 5). Build on the ceramic, porcelain and jade
-   identity; explore new style boards first; or move toward the benchmark's
-   flat pastel architecture. *Recommendation:* build on the ceramic identity.
-   It is already distinctive, and imitating the benchmark's look would date
-   the game.
-4. **Who makes the art and the music** (areas 5, 9, 13). Agents only; agents
-   plus your own work; or commissioned concept art and music. This sets the
-   ceiling on the two largest gaps.
-5. **Scope, platform and business model** (areas 3, 11). Target length,
-   first platform (iPhone and iPad, Mac, Steam) and price model.
-6. **The first milestone.** The vertical slice above, or something else.
-7. **The camera** (areas 5 and 8). Keep the four turning views, or fix the
-   camera per level as the benchmark does, so that every screen can be
-   composed. Stage 1 would change if the camera were fixed.
+   with chapter titles; art shows more than words say. A proposal, not yet
+   agreed: a few characters in some stage areas, who give a line or two of
+   quiet lore or a hint when the traveller walks up to them.
+3. **Art direction** (area 5). Explore new style boards first. The ceramic,
+   porcelain and jade look is one candidate; if it is chosen, it needs a
+   deep polish pass.
+4. **Who makes the art and the music** (areas 5, 9, 13). Agents only. Music
+   comes from Google's Lyria API with the owner's Gemini key. For 3D art,
+   agents research a better method first, since Blender work so far has been
+   weak; Three.js is one candidate ([research and pilot](art-pipeline.md)).
+5. **Scope and platform** (areas 3, 11). About an hour, perhaps a little
+   longer, like the first Monument Valley and shorter than Chants of
+   Sennaar or Viewfinder; the depth of the mechanics decides. Steam first,
+   then iPhone and iPad, then Android.
+6. **The first milestone.** The one-chapter slice above.
+7. **The camera** (areas 5 and 8). Keep the four turning views: turning is
+   part of this game's play, while the benchmark needs a fixed view for its
+   impossible geometry.
+
+Still open: the price model; whether the Steam release supports controllers
+and the Steam Deck, which would need a control scheme without a pointer; the
+story choice, after the comparison; the art direction, after the style
+boards; and the art method, after the pilot.
 
 ## Limits of this review
 

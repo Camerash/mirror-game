@@ -1,20 +1,25 @@
 # Mirror — Living Game Design
 
-Updated: 2026-10-04
+Updated: 2026-10-06
 
 This is the current design record. Agreed rules are separate from later milestones and playtest questions.
 
 ## Experience and platforms
 
-- A calm spatial puzzle about discovery and creative experiments. The story direction remains open.
+- A calm spatial puzzle about discovery and creative experiments. The story is narrowed to two directions; see **Story direction**.
 - Players change reflected structures to reach places that ordinary paths cannot reach.
 - Previews, short failure feedback, undo, cancel, and reset make experiments inexpensive.
-- The game view and controls support iPhone, iPad, Android, and desktop development. Touch uses large reachable targets; mouse and keyboard provide equivalent desktop input. Camera framing and controls adapt to safe areas and aspect ratio.
+- The full game lasts about an hour, perhaps a little longer, like the first Monument Valley, and stays shorter than Chants of Sennaar or Viewfinder. The final length follows from how deep the mechanics go.
+- The game is nearly wordless, with chapter titles. The world and the art carry the story.
+- The four turning views stay for the whole game. Monument Valley's impossible geometry depends on a fixed view; here, turning the view is part of play.
+- Release order: Steam first, then iPhone and iPad, then Android. The game view and controls support all of them: complete mouse and keyboard input on Steam, and touch with large reachable targets on phones and tablets. Camera framing and controls adapt to safe areas and aspect ratio. Mac stays the development runtime.
+- The first milestone is one chapter at release quality, 4 to 6 levels and 10 to 15 minutes long, before more levels are made. [The polish gap](docs/polish-gap.md) defines the bar and the milestone.
 - During prototype exploration, use the smallest useful check on Mac. Run the relevant full checks after design decisions are confirmed, as regression guardrails; do not repeat full suites or layout matrices for each idea. Earlier evidence includes an iPhone touch Level 1 pass and iPad rendering. A later Simulator restart stalled on a blank background, so final Simulator validation is unresolved and deferred. Physical iOS and Android checks and user playtests come later. See `VALIDATION.md` for actual checks and limits.
 
 ## Technical baseline
 
 - Godot **4.7.2 stable**, typed GDScript, Mobile renderer on all platforms, with Metal on Apple platforms and no Compatibility fallback.
+- Agents make all of the art and music. Music uses Google's Lyria API with the owner's Gemini key, as in the owner's other projects. The 3D art method is open: agent work in Blender has given weak results so far, so routes are researched and piloted before more assets are made; see [the art pipeline research](docs/art-pipeline.md).
 - Procedural 3D geometry remains available for prototypes. Character studies use editable Blender assets. All agents must follow the Blender workflow in `AGENTS.md`: edit the approved source in a persistent session, use Blender Lab inspection tools first, make small native edits or focused scripts, and review key poses before completing animation. Keep scripts for export and validation; do not rebuild the whole character for local visual corrections.
 - Level data is JSON and separate from scenes.
 - Touch targets are at least 48 logical units. The agreed direction is an immersive world with minimal gameplay controls. A top-right gear will show or hide debug panels; panels will be hidden by default. The world fills the window. Gameplay uses direct gestures and small contextual actions; diagnostic controls stay in the gear panel.
@@ -92,6 +97,7 @@ Later level:
 
 ## Visual and sound direction
 
+- The art direction is open again. New style boards come first. The ceramic, porcelain and jade look below is one candidate; if it is chosen, it needs a deep polish pass to reach the bar in [the polish gap](docs/polish-gap.md).
 - Use clear 3D forms, soft colour and lighting differences between original and reflected space, and a consistent absolute material that does not rely on colour alone.
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.
 - Every stage uses a quiet mauve background without fog, ivory ceramic originals, cool porcelain reflections, and carved jade absolutes. `levels/12_block_gallery.json` is the demo ground for this one block set; `tests/block_gallery_review.gd` is its native review. The bounded aperture limits width and height, while depth along the normal stays unlimited. The two sides have no assigned sun/moon meaning. An even, softly feathered edge light extends along the full perimeter toward reflected space, with no point spikes or bright corners. Walking surfaces remain solid and readable.
@@ -157,19 +163,22 @@ The classic editor. It is now reached through the debug switch **Classic editor*
 - Level 1 uses the B + R3 + S1 treatment above; the earlier holographic stone and mist treatment is superseded there.
 - The image's extra pillars and cubes do not change level geometry or objectives.
 
-## Pending story directions
+## Story direction
 
-All three directions remain open and may overlap:
+The shortlist is **possible lives**, with **loss and acceptance** as the alternative if it fits. Connection and belonging is not on it. [The story comparison](docs/story-directions.md) sets the two side by side before one is chosen.
 
 | Direction | Candidate story | Connection to play |
 | --- | --- | --- |
-| Connection and belonging | A traveller repairs paths between residents and finds a place among them. | Creating routes brings people together; absolutes provide shared places. |
 | Identity and possible lives | Someone returns to a place they left and explores how different choices change relationships. | The same source structures offer different routes and possibilities. |
 | Loss and acceptance | Someone inherits unfinished work and gives it a purpose of their own. | Familiar structures remain useful as paths and needs change. |
 
 The workshop concept remains one loss-and-acceptance candidate: the protagonist returns to close a deceased mentor’s workshop, completes repairs for residents, and adapts that work to present needs. Character identities, opening scene, and ending remain open.
 
-Compare each story through an opening, one relationship, a puzzle with emotional meaning, and an ending. A quiet protagonist and environmental storytelling remain options.
+Compare each story through an opening, one relationship, a puzzle with emotional meaning, and an ending.
+
+The story is told nearly without words, with chapter titles; the art shows more than words say.
+
+Proposal, not yet agreed: a few characters stand in some stage areas. Walking up to one reveals a line or two of quiet lore or a hint. The main story stays nearly wordless.
 
 ## Later exploration
 
@@ -185,4 +194,4 @@ Compare each story through an opening, one relationship, a puzzle with emotional
 - Play the six tutorial stages and the fixtures; use observations to tune clarity and safe boundaries. Fixture 10, **Bounded mirror workshop**, uses three ledges, side obstacles, and absolute start and goal objects to check bounded cuts, side crossing, absolute priority, and source-anchored materials. `levels/12_block_gallery.json`, reviewed by `tests/block_gallery_review.gd`, is the demo ground for the one ceramic block set used on every stage: every original, reflected, and absolute look together.
 - Use focused geometry, control, or resize checks as appropriate; do not treat them as full-suite or Simulator validation.
 - Use Level 2 observations to refine restoration feedback. Add ladders and the key-and-fall level after these rules are stable.
-- Choose a visual treatment and develop story scenes after concrete playtests.
+- Toward the first milestone: compare the two story directions; research and pilot a way for agents to make polished 3D assets; make style boards and choose an art direction; play-test the six tutorial stages with first-time players. Then build the one-chapter slice.

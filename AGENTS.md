@@ -6,7 +6,7 @@
 - Use `GAME_DESIGN.md` as the current design record.
 - Update it when the user confirms a correction, clarification, or new decision. Replace conflicting statements; use Git history for previous decisions.
 - Keep agreed rules separate from proposals and open playtest questions. Keep the document concise.
-- Design the game view and controls for iPhone, iPad, and Android. Keep layouts responsive and provide equivalent desktop input for development and possible PC support.
+- Release on Steam first, then iPhone and iPad, then Android. Design the game view and controls for all of them: complete mouse and keyboard input for Steam, and touch-complete responsive layouts for phones and tablets.
 - During prototype exploration, use only the smallest check needed for the changed behavior: a parse check, a focused rule check, or a short Mac visual check. Do not run the full suite, replay every level, export builds, or repeat layout/capture matrices for each idea. Apply this policy to the current session.
 - After the user confirms a design decision, run the relevant full checks once as regression guardrails. Repeat or broaden them only for changed behavior, a failure, or a concrete unresolved risk. Record what was actually checked.
 - Keep touch-complete responsive phone, tablet, and desktop design. Mac is the default runtime target; defer routine physical-device checks.

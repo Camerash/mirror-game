@@ -6,10 +6,25 @@ measured and failed, and which traps cost real time.
 
 ## Your task, in order
 
-- **New: the user wants published-game polish, with Monument Valley as the
-  reference.** `docs/polish-gap.md` records the gap, area by area, before
-  any work to close it, and lists the decisions it needs from the user. Read
-  it first and follow its order.
+- **The user wants published-game polish, with Monument Valley as the
+  reference.** `docs/polish-gap.md` records the gap, area by area, and the
+  order to close it. The user answered its decisions on 2026-10-06, and
+  `GAME_DESIGN.md` records them: possible lives as the story, with loss and
+  acceptance as the alternative; nearly wordless, with chapter titles; new
+  style boards before an art direction; agents make all art and music, with
+  Lyria for music; about an hour long; Steam first, then iPhone and iPad,
+  then Android; a one-chapter vertical slice first; keep the four turning
+  views.
+- **Work toward the slice in this order:** compare the two stories
+  (`docs/story-directions.md`); find the agents' art method
+  (`docs/art-pipeline.md`, desk research and a three-route pilot); make style
+  boards; play-test the six stages with first-time players.
+- **Cloud sessions need two things from the user.** Web pages are blocked by
+  the environment's network policy (search works; fetching a page fails with
+  `EGRESS_BLOCKED`), and the Gemini key for Lyria and image generation lives
+  in the user's local `.zshenv`, which a cloud container does not have. The
+  user changes Network access and adds `GEMINI_API_KEY` in the cloud
+  environment's settings, then starts a new session.
 - **The direct mirror controls are built as a trial** (see "State: the
   direct mirror controls" below). The user found the editor-style controls
   unintuitive and asked for them. They pass headless checks and a Linux
@@ -17,8 +32,10 @@ measured and failed, and which traps cost real time.
   Mac check**. Next: a short native Mac check, then a playtest against the
   classic editor (gear, **Classic editor**).
 
-0. **The user's next request is the block look.** Make the ceramic block
-   texture and its markings more impressive. Iterate on the one block set in
+0. **The block look waits for the style boards.** The user asked earlier to
+   make the ceramic block texture and its markings more impressive. The art
+   direction is now open, and the ceramic look is one candidate; do this
+   polish only if that look is chosen. Iterate on the one block set in
    `world/block_set.gd`, `world/ceramic.gdshader` and `world/porcelain.gdshader`,
    and judge every change in the block gallery (see "The block set and the
    gallery" below). The user asked for this before the tutorial work.
@@ -33,7 +50,9 @@ measured and failed, and which traps cost real time.
 | file | why |
 | --- | --- |
 | `GAME_DESIGN.md` | the design record. Agreed rules are separate from proposals and open questions. Update it when the user confirms a decision |
-| `docs/polish-gap.md` | the gap between this prototype and a published game, the order to close it, and the decisions it needs |
+| `docs/polish-gap.md` | the gap between this prototype and a published game, the order to close it, and the user's decisions |
+| `docs/story-directions.md` | the two shortlisted stories side by side |
+| `docs/art-pipeline.md` | how agents can make polished 3D assets: research, the pilot's evidence, the recommended method |
 | `AGENTS.md` | working rules, the Blender workflow, and the check policy. It says to use the smallest useful check while exploring |
 | `docs/art/traveller-handoff.md` | the character in detail, including every failed approach |
 | `VALIDATION.md` | what has actually been checked, and on what |
