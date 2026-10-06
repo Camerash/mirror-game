@@ -14,6 +14,25 @@ rtk proxy /Applications/Godot.app/Contents/MacOS/Godot --path .
 
 Open `project.godot` in Godot to edit the project. The exported local app is `build/macos/Mirror.app`.
 
+The game plays with the **direct controls** (trial 03 in `GAME_DESIGN.md`):
+
+| Action | Touch or mouse | Keyboard |
+| --- | --- | --- |
+| Walk | Short tap on a platform top, through the mirror's glass too | — |
+| Raise / lower the mirror | Mirror button, bottom right. A lowered mirror keeps its place | M |
+| Slide the mirror | Drag the mirror. The drag follows one grid direction: either of the two along the ground, or straight up and down | — |
+| Turn the mirror | Drag the knob on the mirror's arrow; the copy appears where it points | — |
+| Turn camera | Mobile swipe on empty space; desktop curved arrows | Q / E |
+| Undo a change | Undo button. A drag that ends where it started changes nothing | Z |
+| Cancel a drag | — | Escape |
+| Debug controls | Top-right gear, including **Classic editor** | — |
+
+Each change applies when the finger lifts. While it is down, the world shows the result and the fall ghost warns of a fall. Start a playtest from the title with **New game**: it clears the saved stage and the prompts already seen.
+
+### Classic editor
+
+**Gear → Classic editor** switches to the earlier editor (trial 02), for comparison. The stage prompts describe the direct controls, so they do not match it. The rest of this section describes the classic editor.
+
 | Action | Touch or mouse | Keyboard |
 | --- | --- | --- |
 | Walk | Short tap on a platform top | — |
