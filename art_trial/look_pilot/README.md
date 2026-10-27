@@ -25,4 +25,10 @@ looks. Findings: [`docs/look-pilot.md`](../../docs/look-pilot.md).
   python3 -I boards/board.py gemini-3.1-flash-image greybox_hero.png prompt.txt board_ink.png
   ```
 
+  Round 1 used `common.txt`. Round 2 (papercraft, clay, risograph, garden,
+  winter, toy, ligne_claire, tidepool) uses `common_v2.txt`, which states
+  that only the one path block is the copy. `canvas.py` (needs Pillow)
+  puts every board and the in-engine renders on one canvas; it expects
+  `boards/`, `boards2/` and `look/` folders under the directory it is given.
+
 Nothing here is used by the game.
