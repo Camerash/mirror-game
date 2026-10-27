@@ -29,6 +29,29 @@ board. Four-view sheets: [ceramic](look-pilot/engine-ceramic-views.jpg),
 [ink](look-pilot/engine-ink-views.jpg),
 [twilight](look-pilot/engine-twilight-views.jpg).*
 
+## Round 2: eight more boards
+
+Eight more concepts from the same grey box, on a revised prompt
+(`boards/common_v2.txt`) that says only the one path block is the copy. In
+all eight the copy now stays on that block, distinct from the originals,
+and the goal block stands apart. The two rounds and the in-engine looks
+share [one canvas](look-pilot/concepts-canvas-2026-10.jpg).
+
+| Concept | The copy | The goal |
+| --- | --- | --- |
+| Papercraft | vellum tracing paper (faint) | gold foil card |
+| Clay miniature | pale-blue resin | green glazed clay |
+| Risograph print | coral hatching | dark overprint |
+| Overgrown garden | the path in full spring bloom | bronze with patina |
+| Winter town | clear blue ice | red lacquer |
+| Wooden toy blocks | coloured acrylic | painted star block |
+| Ligne claire comic | flat cobalt with highlight lines | magenta |
+| Tide pool and sea glass | frosted aqua sea glass | mother-of-pearl |
+
+The garden board makes the story literal: the copy is the same path from a
+life where the town was never left. The board cost is about $0.80 at list
+price.
+
 ## What it showed
 
 - **Lighting and palette move the look furthest for the least work.** The
