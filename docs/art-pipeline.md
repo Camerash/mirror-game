@@ -274,7 +274,7 @@ out before the end. **†** marks a fact from a single source.
 
 These need the owner's go-ahead; the first two need nothing new.
 
-1. **A look pilot.** One small diorama made from the pilot's gate, bonsai
+1. **A look pilot** (done 2026-10-27, see [look-pilot.md](look-pilot.md)). One small diorama made from the pilot's gate, bonsai
    and blocks, shown in three looks in the Mobile renderer, the ceramic look
    among them. This answers how far lighting and materials carry, and
    doubles as the in-engine style boards.

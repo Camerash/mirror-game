@@ -1,6 +1,13 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: look pilot — 2026-10-27
+
+- No game code changed, and no game checks were run. The look pilot in `art_trial/look_pilot/` (see `docs/look-pilot.md`) was rendered in a Linux cloud container with the official Godot 4.7.2 Linux build: Mobile renderer under Xvfb with Mesa's software Vulkan, the game's orthographic camera, four views and a hero view at 1600×1000.
+- A headless `--import` of the whole project finished without errors after the new scripts, shaders and models were added.
+- The two models were rebuilt from `art_trial/pipeline_pilot/godot` and matched their earlier sha256 hashes.
+- Not checked: the Mac, Metal, baked lighting (LightmapGI bakes only in the editor), or motion.
+
 # Latest check: art pipeline pilot — 2026-10-06
 
 - No game code changed, and no game checks were run. This entry records the pilot in `art_trial/pipeline_pilot/` (see `docs/art-pipeline.md`), in a Linux cloud container with the official Godot 4.7.2 Linux build.

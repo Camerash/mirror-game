@@ -18,7 +18,9 @@ measured and failed, and which traps cost real time.
 - **Work toward the slice in this order:** compare the two stories
   (`docs/story-directions.md`); find the agents' art method
   (`docs/art-pipeline.md`, desk research and a three-route pilot); make style
-  boards; play-test the six stages with first-time players.
+  boards; play-test the six stages with first-time players. The look pilot
+  (`docs/look-pilot.md`) made four style boards and built three looks in the
+  engine; the user's choice of direction is next.
 - **Cloud sessions need two things from the user.** Web pages are blocked by
   the environment's network policy (search works; fetching a page fails with
   `EGRESS_BLOCKED`), and the Gemini key for Lyria and image generation lives
@@ -52,6 +54,7 @@ measured and failed, and which traps cost real time.
 | `GAME_DESIGN.md` | the design record. Agreed rules are separate from proposals and open questions. Update it when the user confirms a decision |
 | `docs/polish-gap.md` | the gap between this prototype and a published game, the order to close it, and the user's decisions |
 | `docs/story-directions.md` | the two shortlisted stories side by side |
+| `docs/look-pilot.md` | four style boards, three looks built in the engine on one diorama, and what lighting and materials carry |
 | `docs/art-pipeline.md` | how agents can make polished 3D assets: research, the pilot's evidence, the recommended method |
 | `AGENTS.md` | working rules, the Blender workflow, and the check policy. It says to use the smallest useful check while exploring |
 | `docs/art/traveller-handoff.md` | the character in detail, including every failed approach |

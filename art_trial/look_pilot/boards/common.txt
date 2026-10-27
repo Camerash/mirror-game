@@ -1,0 +1,5 @@
+This is a grey-box render of one level of "Mirror", a calm, nearly wordless 3D puzzle game seen through an orthographic camera looking 30 degrees down. A small hooded traveller in a blue cloak stands on the left terrace beside a bonsai. A rectangular mirror frame stands in the gap; the block on its right is the mirror's copy of the path on its left, a reflection made real and walkable, crossing the gap to a goal terrace with a shrine gate (two columns and an arch) and a small ring lying on a block: the goal. The story: a traveller returns to the town they left and walks through the lives they might have had.
+
+Repaint this exact scene as a finished, polished game screenshot in the style below. Keep the orthographic camera, the layout, the block shapes and proportions, the gate, the bonsai, the mirror and the traveller exactly where they are and the same size. The islands float in open space. No text, no interface, no logos, no watermark.
+
+Style:
