@@ -52,6 +52,42 @@ The garden board makes the story literal: the copy is the same path from a
 life where the town was never left. The board cost is about $0.80 at list
 price.
 
+## Style test: garden and tide pool
+
+The owner picked these two boards for a style test (2026-10-29). Both are
+built in the engine on the same diorama, as `looks/garden.gd` and
+`looks/tidepool.gd`.
+
+![Each board beside its look in the engine](look-pilot/style-test-garden-tidepool.jpg)
+
+*Four-view sheets: [garden](look-pilot/engine-garden-views.jpg),
+[tide pool](look-pilot/engine-tidepool-views.jpg).*
+
+- **Garden comes close in the engine.** One stone shader draws the brick
+  courses, the paving, the worn edges and the moss. Grass, ivy, blossom
+  and butterflies are scattered as instanced meshes from a fixed seed. The
+  copy reads instantly: it is the only block in flower, so the mechanic
+  and the story are one picture. The bronze goal works. What it lacks:
+  - leaf and flower shapes (they are spheres);
+  - ivy thick enough to soften the block silhouettes;
+  - real shadow detail under the overhangs.
+- **Tide pool is weaker.** The sea-glass copy and the mother-of-pearl goal
+  read well, and the goal is the best absolute in any look so far. But the
+  sand blocks are plain boxes. The board's charm is in rounded, eroded
+  edges, sunken pools and crusted shells, and that is geometry: bevelled
+  or sculpted block meshes, and pools cut into the terraces. Painted pools
+  and scattered shells do not carry it.
+- **Light direction mattered most again.** A sun from behind the scene,
+  which leaves both faces the camera sees in shade, gave both looks their
+  form. A sun lighting those faces left them flat whatever the materials
+  did.
+
+| | Garden | Tide pool |
+| --- | --- | --- |
+| Rendered rounds | 3 | 4 |
+| New shaders | stone, bloom, patina, cloud backdrop | stone (sand settings), sea glass, pearl, pool |
+| Instanced props | grass, flowers, ivy, butterflies | shells, barnacles |
+
 ## What it showed
 
 - **Lighting and palette move the look furthest for the least work.** The

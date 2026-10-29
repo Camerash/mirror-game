@@ -8,13 +8,17 @@ looks. Findings: [`docs/look-pilot.md`](../../docs/look-pilot.md).
   `art_trial/pipeline_pilot/godot`), the goal ring and the traveller.
 - `look.gd` is the base look (the grey box) and its helpers. Each file in
   `looks/` overrides the environment, lights and materials.
-- `shaders/` holds the look shaders: the screen-space backdrop, the
-  underside shade, the mirror glass, and the ink surface, outline and wash.
+- `shaders/` holds the look shaders: the screen-space backdrop (with
+  optional clouds), the underside shade, the mirror glass, the ink surface,
+  outline and wash, and the style-test shaders: stone, bloom, patina, sea
+  glass, pearl and pool. `noise.gdshaderinc` is their shared noise.
+- `scatter.gd` scatters small props (grass, ivy, shells) over exposed block
+  faces from a fixed seed, as one MultiMesh per prop.
 - `capture.gd` renders each look from the game's four views and at the hero
   framing:
 
   ```sh
-  xvfb-run -a godot --path . --rendering-method mobile -s res://art_trial/look_pilot/capture.gd -- --looks greybox,ceramic,ink,twilight --out /abs/dir
+  xvfb-run -a godot --path . --rendering-method mobile -s res://art_trial/look_pilot/capture.gd -- --looks greybox,ceramic,ink,twilight,garden,tidepool --out /abs/dir
   ```
 
 - `boards/` holds the style-board prompts and `board.py`, which restyles the
