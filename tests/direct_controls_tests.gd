@@ -9,7 +9,6 @@ const Game := preload("res://game.gd")
 const Targets := preload("res://core/mirror_targets.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
 const Queries := preload("res://core/solid_queries.gd")
-const AXES: Array[Vector3] = [Vector3.RIGHT, Vector3.UP, Vector3.BACK]
 
 var game: Node3D
 var checks := 0
@@ -98,7 +97,7 @@ func press_mirror_button() -> void:
 ## The command path a drag on the mirror takes, without hunting for glass.
 func slide(axis: int, units: float) -> void:
 	var start: Vector2 = game.camera.unproject_position(pivot())
-	var finish: Vector2 = game.camera.unproject_position(pivot() + AXES[axis] * units)
+	var finish: Vector2 = start + game._screen_axes(pivot())[axis] * units
 	game.begin_slide(start)
 	for step: int in range(1, 13):
 		game.slide_to(start.lerp(finish, step / 12.0))
@@ -379,7 +378,7 @@ func check_hover_ghost() -> void:
 	await frames(3)
 	check(walked, "Hover: the traveller walks out onto the copy")
 	var start: Vector2 = game.camera.unproject_position(pivot())
-	var finish: Vector2 = game.camera.unproject_position(pivot() + Vector3.RIGHT * 1.5)
+	var finish: Vector2 = start + game._screen_axes(pivot())[0] * 1.5
 	game.begin_slide(start)
 	for step: int in range(1, 13):
 		game.slide_to(start.lerp(finish, step / 12.0))

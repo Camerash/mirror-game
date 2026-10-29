@@ -74,9 +74,8 @@ func press_mirror_button() -> void:
 ## A finger on the mirror's centre drags along one axis (0 x, 1 y, 2 z).
 func slide(axis: int, units: float) -> void:
 	var pivot: Vector3 = game.mirror["pivot"]
-	var direction: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis]
 	var start: Vector2 = game.camera.unproject_position(pivot)
-	var finish: Vector2 = game.camera.unproject_position(pivot + direction * units)
+	var finish: Vector2 = start + game._screen_axes(pivot)[axis] * units
 	game.begin_slide(start)
 	for step: int in range(1, 13):
 		game.slide_to(start.lerp(finish, step / 12.0))

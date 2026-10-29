@@ -18,7 +18,7 @@ space, then wording and polish.
 | 3 | **Don't apply a predicted fall off the world from the arrow or a drag.** Keep the preview on release and ask for a second release, or bounce it back as a blocked change does. Check that turning the mirror keeps the traveller on the source side where it can. | 4.5 | done |
 | 4 | **A clear failure state.** Show that the traveller fell, pulse Undo, or rewind after a moment. Today the traveller hangs in the void. | 4.6 | done |
 | 5 | **Make positions readable.** Contact shadows under copies; a "can't reach" cue on a failed tap; on desktop, the reachable path on hover. | 4.3 | done |
-| 6 | **Forgiving half-unit steps.** More pointer travel per step, or settling to the nearest connecting position; arrow-key nudges for the mirror on desktop. Size it for phones too. | 4.4 | |
+| 6 | **Forgiving half-unit steps.** More pointer travel per step, or settling to the nearest connecting position; arrow-key nudges for the mirror on desktop. Size it for phones too. | 4.4 | done |
 | 7 | **Prompts.** Stage 1 on desktop names the arrows and Q/E, not a swipe; stage 3 drops "again" before the mirror is up; stage 4 shows the problem before the hint; stage 5 gets a visual cue instead of text. | 4.7 | |
 | 8 | **Small fixes.** Camera buttons that don't look like Undo and Redo; a visible grab area and hover cue for the mirror; no mirror button on stage 1; a Reset in the release UI; a larger stage on phone layouts. | 3, 4.8 | |
 
@@ -82,3 +82,21 @@ proves simpler.
    `tests/readability_tests.gd` covers all three (11 checks).
    ![The drop shadow under the copied tower](playtests/2026-10-fixes/drop-shadow.jpg)
    ![Left: an unreachable tap. Right: the hover path](playtests/2026-10-fixes/unreachable-and-hover.jpg)
+6. **Half-unit steps are easier to hit** (`game.gd` `_screen_axes`,
+   `_nudge_key`, `nudge_mirror`).
+   - A half step always takes at least 40 logical units of drag. At
+     1152×800 that was about 30; in phone portrait about 12. Where the stage
+     is drawn small, the mirror now moves slower than the finger.
+   - On desktop, the arrow keys nudge a raised mirror by half a unit: Up
+     and Down along the ground axis that runs up and to the right on
+     screen, Left and Right along the other. Page Up and Page Down lift and
+     lower it. Each nudge is one Undo step, goes through the same preview,
+     and is refused like a drag if it would drop the traveller off the
+     world. The keys work in the release build.
+   - Not done: settling to the nearest position that connects to
+     something. It would choose for the player, and the drop shadows and
+     the hover path may make it unnecessary. Revisit after the next
+     playtest.
+
+   `tests/step_tests.gd` covers both (20 checks). Three test helpers that
+   turned world units into screen drags now use `_screen_axes`.

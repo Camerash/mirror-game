@@ -41,6 +41,10 @@ const REFUSE_HOLD := 1.2
 const FAIL_REWIND := 1.0
 ## Screen distance a mirror drag travels before its direction picks an axis.
 const SLIDE_PICK_DISTANCE := 16.0
+## The least drag, in screen units, that moves the mirror half a unit. Where
+## the stage is drawn small (phones), a half step would otherwise be a few
+## pixels; the mirror then moves slower than the finger.
+const MIN_HALF_STEP := 40.0
 ## Keys of the classic editor that mean nothing to the direct controls.
 const DIRECT_IGNORED_KEYS: Array[Key] = [KEY_D, KEY_1, KEY_2, KEY_3, KEY_LEFT, KEY_RIGHT,
 	KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN, KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_ENTER]
@@ -557,13 +561,53 @@ func _refuse_fall() -> void:
 		if phase == "preview" and pending.is_empty() and preview_origin == origin:
 			cancel_preview())
 
-## The screen vector of one world unit along x, y and z at `point`.
+## The screen drag that slides the mirror one world unit along x, y and z at
+## `point`: the axis's screen direction, lengthened where needed so a half
+## step takes at least MIN_HALF_STEP.
 func _screen_axes(point: Vector3) -> Array[Vector2]:
 	var origin := camera.unproject_position(point)
 	var result: Array[Vector2] = []
 	for direction: Vector3 in [Vector3.RIGHT, Vector3.UP, Vector3.BACK]:
-		result.append(camera.unproject_position(point + direction) - origin)
+		var axis := camera.unproject_position(point + direction) - origin
+		result.append(axis * maxf(1.0, MIN_HALF_STEP / maxf(axis.length() * 0.5, 0.001)))
 	return result
+
+## The mirror's keys: Up and Down slide it along the ground axis that runs
+## up and to the right on screen, Left and Right along the other, and Page Up
+## and Page Down lift and lower it. Returns whether the key was one of them.
+func _nudge_key(keycode: Key) -> bool:
+	if keycode not in [KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_PAGEUP, KEY_PAGEDOWN]:
+		return false
+	if not mirror.get("enabled", false):
+		return true
+	var axes := _screen_axes(mirror["pivot"])
+	var axis := 1
+	var direction := 1.0 if keycode == KEY_PAGEUP else -1.0
+	if keycode not in [KEY_PAGEUP, KEY_PAGEDOWN]:
+		var wanted: Vector2 = {KEY_UP: Vector2(1, -1), KEY_DOWN: Vector2(-1, 1), KEY_RIGHT: Vector2(1, 1), KEY_LEFT: Vector2(-1, -1)}[keycode]
+		axis = 0 if absf(wanted.normalized().dot(axes[0].normalized())) >= absf(wanted.normalized().dot(axes[2].normalized())) else 2
+		direction = signf(wanted.dot(axes[axis]))
+	nudge_mirror(axis, 0.5 * direction)
+	return true
+
+## Slides the raised mirror by `amount` along one axis, as one direct change.
+func nudge_mirror(axis: int, amount: float) -> void:
+	if not can_toggle_mirror() or not mirror.get("enabled", false):
+		return
+	var proposal := mirror.duplicate(true)
+	var pivot: Vector3 = proposal["pivot"]
+	pivot[axis] += amount
+	pivot = MirrorRules.snapped_pivot(pivot, level["limits"])
+	if pivot.is_equal_approx(mirror["pivot"]):
+		hud.show_hint("Edge of the placement area.")
+		return
+	proposal["pivot"] = pivot
+	if _open_direct_preview(MirrorRules.sync(proposal)):
+		_direct_apply = true
+		_direct_event = ""
+		tutorial_event.emit("move")
+		if amount < 0.0 and axis == 1:
+			tutorial_event.emit("lower")
 
 ## A drag that starts on the mirror. `point` is where the finger went down.
 func begin_slide(point: Vector2) -> void:
@@ -1198,6 +1242,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
+		if direct_controls and _nudge_key(event.keycode):
+			get_viewport().set_input_as_handled()
+			return
 		if release_mode and RELEASE_DISABLED_KEYS.has(event.keycode):
 			return
 		if direct_controls and DIRECT_IGNORED_KEYS.has(event.keycode):
