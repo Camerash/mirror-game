@@ -97,7 +97,7 @@ Later level:
 
 ## Visual and sound direction
 
-- The art direction is open again. New style boards come first. The ceramic, porcelain and jade look below is one candidate; if it is chosen, it needs a deep polish pass to reach the bar in [the polish gap](docs/polish-gap.md).
+- **Overgrown garden is the art direction to try** (chosen 2026-10-29 after the [look pilot](docs/look-pilot.md)): weathered limestone brickwork with moss, grass and ivy, a low warm sun, a hazy green sky, the mirror's copy as the same path in full bloom, and absolutes as old bronze under green patina. It is a trial on a real stage before it replaces anything. Until then the ceramic, porcelain and jade look below stays in the game.
 - Use clear 3D forms, soft colour and lighting differences between original and reflected space, and a consistent absolute material that does not rely on colour alone.
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.
 - Every stage uses a quiet mauve background without fog, ivory ceramic originals, cool porcelain reflections, and carved jade absolutes. `levels/12_block_gallery.json` is the demo ground for this one block set; `tests/block_gallery_review.gd` is its native review. The bounded aperture limits width and height, while depth along the normal stays unlimited. The two sides have no assigned sun/moon meaning. An even, softly feathered edge light extends along the full perimeter toward reflected space, with no point spikes or bright corners. Walking surfaces remain solid and readable.

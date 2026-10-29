@@ -385,6 +385,11 @@ func _finish_sweep() -> void:
 func request_walk(target: Vector3) -> bool:
 	if phase != "play" or settle_frames > 0 or not pending.is_empty():
 		return false
+	# A walk that ends on the goal's tile ends on the goal, so a tap anywhere
+	# on that tile finishes the stage, not only one near the ring's centre.
+	var goal := Geometry.vector(level["goal"])
+	if absf(target.x - goal.x) < 0.5 and absf(target.z - goal.z) < 0.5 and absf(target.y - goal.y) < 0.3:
+		target = goal
 	var route := navigation.route(walker.position, target)
 	if route.is_empty():
 		status = "There is no connected path to that point."

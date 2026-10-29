@@ -20,9 +20,8 @@ measured and failed, and which traps cost real time.
   (`docs/art-pipeline.md`, desk research and a three-route pilot); make style
   boards; play-test the six stages with first-time players. The look pilot
   (`docs/look-pilot.md`) made twelve style boards and built five looks in
-  the engine. The user shortlisted garden and tide pool for a style test;
-  garden carried into the engine best. The user's choice of direction is
-  next.
+  the engine. The user chose **overgrown garden** to try (2026-10-29); the
+  next art step is the garden look on one real tutorial stage.
 - **Cloud sessions need two things from the user.** Web pages are blocked by
   the environment's network policy (search works; fetching a page fails with
   `EGRESS_BLOCKED`), and the Gemini key for Lyria and image generation lives
@@ -51,6 +50,9 @@ measured and failed, and which traps cost real time.
    a goal-completion bug, no view of the ground a raised mirror hides,
    positions that are hard to read, and half-unit drags that are hard to
    hit. It peeked at the scripted solutions, so it understates difficulty.
+   The owner agreed every point; `docs/playtest-fixes.md` orders the fixes
+   and tracks them. The goal bug is fixed; showing what a raised mirror
+   hides is next.
 2. **Then refine the gameplay style and the design.**
 
 ## Read first

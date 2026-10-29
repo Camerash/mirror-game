@@ -1,6 +1,12 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: goal tile fix and garden style test — 2026-10-29
+
+- **Goal fix.** `game.gd` `request_walk` now ends a walk that lands on the goal's tile at the goal. The new `tests/goal_tests.gd` reproduced the bug first (an off-centre walk stopped 0.46 from the goal and the stage stayed in play), then passed with the fix: **9 checks, 0 failures**. Regression, headless, once: `prompt_tests` **78/0**, `level_solvability_tests -- --direct-only` **33/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**. Linux cloud container, official Godot 4.7.2 build. Not run: the full suite, the classic solvability pass, any Mac check.
+- **Agent playtest.** An agent played the six stages from the title to the end card under Xvfb with software Vulkan, injecting input events and judging from screenshots. See `docs/playtests/2026-10-agent-playtest.md`. No audio, no motion judgement, no Mac or device.
+- **Garden and tide pool looks.** Rendered in the look pilot only, under Xvfb with software Vulkan; no game code involved.
+
 # Latest check: look pilot — 2026-10-27
 
 - No game code changed, and no game checks were run. The look pilot in `art_trial/look_pilot/` (see `docs/look-pilot.md`) was rendered in a Linux cloud container with the official Godot 4.7.2 Linux build: Mobile renderer under Xvfb with Mesa's software Vulkan, the game's orthographic camera, four views and a hero view at 1600×1000.
