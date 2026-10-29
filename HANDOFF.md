@@ -19,8 +19,10 @@ measured and failed, and which traps cost real time.
   (`docs/story-directions.md`); find the agents' art method
   (`docs/art-pipeline.md`, desk research and a three-route pilot); make style
   boards; play-test the six stages with first-time players. The look pilot
-  (`docs/look-pilot.md`) made four style boards and built three looks in the
-  engine; the user's choice of direction is next.
+  (`docs/look-pilot.md`) made twelve style boards and built five looks in
+  the engine. The user shortlisted garden and tide pool for a style test;
+  garden carried into the engine best. The user's choice of direction is
+  next.
 - **Cloud sessions need two things from the user.** Web pages are blocked by
   the environment's network policy (search works; fetching a page fails with
   `EGRESS_BLOCKED`), and the Gemini key for Lyria and image generation lives
@@ -44,7 +46,11 @@ measured and failed, and which traps cost real time.
 1. **Playtest the tutorial MVP and tune it.** The six stages, the prompts, the
    title, save and resume, the end card, the release settings and the sounds
    are done and play from start to end (see "The tutorial MVP" below). Tune
-   the stages and the prompt texts from real playtests.
+   the stages and the prompt texts from real playtests. An agent played it
+   end to end on 2026-10-29 (`docs/playtests/2026-10-agent-playtest.md`):
+   a goal-completion bug, no view of the ground a raised mirror hides,
+   positions that are hard to read, and half-unit drags that are hard to
+   hit. It peeked at the scripted solutions, so it understates difficulty.
 2. **Then refine the gameplay style and the design.**
 
 ## Read first
@@ -54,7 +60,8 @@ measured and failed, and which traps cost real time.
 | `GAME_DESIGN.md` | the design record. Agreed rules are separate from proposals and open questions. Update it when the user confirms a decision |
 | `docs/polish-gap.md` | the gap between this prototype and a published game, the order to close it, and the user's decisions |
 | `docs/story-directions.md` | the two shortlisted stories side by side |
-| `docs/look-pilot.md` | four style boards, three looks built in the engine on one diorama, and what lighting and materials carry |
+| `docs/look-pilot.md` | twelve style boards, five looks built in the engine on one diorama, and what lighting and materials carry |
+| `docs/playtests/2026-10-agent-playtest.md` | an agent's play of the six tutorial stages: what was fun, the bugs, what to improve |
 | `docs/art-pipeline.md` | how agents can make polished 3D assets: research, the pilot's evidence, the recommended method |
 | `AGENTS.md` | working rules, the Blender workflow, and the check policy. It says to use the smallest useful check while exploring |
 | `docs/art/traveller-handoff.md` | the character in detail, including every failed approach |
@@ -394,8 +401,9 @@ the join comes from the game's own mirror rule.
 
 ## Blocking the MVP specifically
 
-1. **No playtest yet.** Every stage is proven solvable, and every near miss is
-   proven to fail, but no person has played the tutorial.
+1. **No human playtest yet.** Every stage is proven solvable, and every near
+   miss is proven to fail. An agent has played it (see above), but no person
+   has.
 2. **Not implemented, so do not design around them**: ladders; and switches,
    keys and doors, whose state sharing across the plane is explicitly undecided.
 
