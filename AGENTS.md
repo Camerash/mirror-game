@@ -3,6 +3,7 @@
 - Start with `HANDOFF.md`. It records the current state, the work that is
   blocked, the approaches already measured and failed, and the traps. It is
   written for an agent picking the project up.
+- Read `docs/VISION.md` before design or build work. It says what the game should feel like; `GAME_DESIGN.md` says the rules.
 - Use `GAME_DESIGN.md` as the current design record.
 - Update it when the user confirms a correction, clarification, or new decision. Replace conflicting statements; use Git history for previous decisions.
 - Keep agreed rules separate from proposals and open playtest questions. Keep the document concise.
