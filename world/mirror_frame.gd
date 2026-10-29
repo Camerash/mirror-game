@@ -10,10 +10,19 @@ func _init() -> void:
 	metal.albedo_color = Color("b8a787")
 	metal.metallic = 0.8
 	metal.roughness = 0.24
+	# Off until the pointer rests on the mirror; always enabled so the hover
+	# does not compile a new shader.
+	metal.emission_enabled = true
+	metal.emission = Color("9ee9f2")
+	metal.emission_energy_multiplier = 0.0
 	ghost.albedo_color = Color(0.72, 0.8, 0.83, 0.24)
 	ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	ghost.roughness = 0.32
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## The pointer rests on the mirror: the frame glows as the grab cue.
+func set_glow(value: bool) -> void:
+	metal.emission_energy_multiplier = 0.9 if value else 0.0
 
 func update_frame(size: Vector2, editing: bool, enabled: bool) -> void:
 	material_override = ghost if editing else metal

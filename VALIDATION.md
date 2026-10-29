@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: playtest fix 8, small fixes — 2026-10-29
+
+- Drawn camera-button icons, a forgiving mirror grab with a desktop hover cue, no mirror on stage 1, Restart stage in the release settings, larger phone framing. New `tests/small_fix_tests.gd` **56/0** (the grab through a block in "Only the ground", hover cursor and glow, stage 1, the loader field, Restart stage, and the stage area against the controls at 844×390, 390×844 and 1152×800). Regression, headless, once: `run_tests` (the full classic suite) **597/0**, `level_solvability_tests` (classic and direct) **68/0**, `prompt_tests` **82/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**, `readability_tests` **11/0**, `step_tests` **20/0**. `tests/tutorial_playthrough.gd` under Xvfb: **16/0**. Visual: captures under Xvfb with software Vulkan at 844×390, 390×844 and 1152×800 (`docs/playtests/2026-10-fixes/`). Hover was driven by injected mouse motion; the real system cursor shape was not seen. No Mac check, no real phone.
+
 # Latest check: playtest fix 7, prompts — 2026-10-29
 
 - Prompts can wait for an `after` event; stages 1, 3 and 4 reworded or gated; a mouse drag on empty space turns the view with the direct controls. `prompt_tests` **82/0**. Regression, headless, once: `run_tests` (the full classic suite) **594/0**, `level_solvability_tests -- --direct-only` **34/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**, `readability_tests` **11/0**, `step_tests` **20/0**. No Mac check.

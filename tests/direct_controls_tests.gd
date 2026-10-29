@@ -354,6 +354,9 @@ func check_blocked_goes_back() -> void:
 		await process_frame
 	await frames(3)
 	check(walked and game.walker.position.distance_to(Vector3(4, 0, -1)) < 0.25, "Blocked: the traveller stands beside the wall")
+	# The stage itself leaves the mirror out; this rule check puts it back.
+	game.level["mirror_available"] = true
+	game._refresh()
 	await press_mirror_button()
 	var before: Dictionary = game.mirror.duplicate(true)
 	game.begin_point()

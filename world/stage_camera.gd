@@ -83,7 +83,9 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 			low = low.min(Vector2(corner.x, corner.y))
 			high = high.max(Vector2(corner.x, corner.y))
 		var extent := (high - low).max(Vector2.ONE)
-		pixels = minf(maxf(10, fit_rect.size.x - 48) / extent.x, maxf(10, fit_rect.size.y - 48) / extent.y)
+		# A small screen keeps a smaller margin, so a phone shows more stage.
+		var margin := minf(48.0, 0.08 * minf(fit_rect.size.x, fit_rect.size.y))
+		pixels = minf(maxf(10, fit_rect.size.x - margin) / extent.x, maxf(10, fit_rect.size.y - margin) / extent.y)
 	var offset := fit_rect.get_center() - viewport_size * 0.5
 	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}

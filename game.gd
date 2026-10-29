@@ -45,6 +45,8 @@ const SLIDE_PICK_DISTANCE := 16.0
 ## the stage is drawn small (phones), a half step would otherwise be a few
 ## pixels; the mirror then moves slower than the finger.
 const MIN_HALF_STEP := 40.0
+## How far past its glass, in world units, a press still takes the mirror.
+const GRAB_MARGIN := 0.25
 ## Keys of the classic editor that mean nothing to the direct controls.
 const DIRECT_IGNORED_KEYS: Array[Key] = [KEY_D, KEY_1, KEY_2, KEY_3, KEY_LEFT, KEY_RIGHT,
 	KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN, KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_ENTER]
@@ -198,6 +200,8 @@ var _prompt_shown_id := ""
 var _prompt_replay := false
 ## The tutorial events seen on this stage, for prompts that wait on `after`.
 var _stage_events := {}
+## The desktop pointer shape the hover last set.
+var _cursor := Input.CURSOR_ARROW
 
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
@@ -478,7 +482,12 @@ func set_direct_controls(value: bool) -> void:
 	_fit_camera(hud.get_play_rect())
 
 func can_toggle_mirror() -> bool:
-	return direct_controls and can_edit() and not _manipulating()
+	return direct_controls and _mirror_available() and can_edit() and not _manipulating()
+
+## A stage may leave the mirror out, so the first stage teaches only walking
+## and turning the view.
+func _mirror_available() -> bool:
+	return bool(level.get("mirror_available", true))
 
 ## The mirror button. Lowering keeps the mirror's place, so raising it again
 ## puts it back. The first raise of a stage stands it just in front of the
@@ -1167,7 +1176,8 @@ func _refresh() -> void:
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "collision": world.debug_collision,
 		"has_prompts": not level.get("prompts", []).is_empty(),
-		"direct": direct_controls, "mirror_raised": bool(mirror.get("enabled", false)), "can_toggle_mirror": can_toggle_mirror()})
+		"direct": direct_controls, "mirror_raised": bool(mirror.get("enabled", false)), "can_toggle_mirror": can_toggle_mirror(),
+		"mirror_available": _mirror_available()})
 	rings.set_layout(hud.get_camera_rect(), hud.get_blocking_rects())
 	rings.update_view(camera)
 	# A lowered direct mirror keeps its panel but touches nothing.
@@ -1320,6 +1330,9 @@ func _notification(what: int) -> void:
 			_update_preview()
 			_fit_camera(hud.get_play_rect())
 
+func _exit_tree() -> void:
+	Input.set_default_cursor_shape(Input.CURSOR_ARROW)
+
 func _input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
@@ -1453,12 +1466,23 @@ func _walk_target(target: Vector3) -> Vector3:
 ## with no way to it shows nothing.
 func _hover_at(point: Vector2) -> void:
 	var route := PackedVector3Array()
-	if phase == "play" and walker.route.is_empty() and pending.is_empty() and settle_frames == 0 and not camera.busy \
-			and play_rect.has_point(point) and not hud.blocks_world_input(point):
-		var target: Variant = _floor_point(point)
-		if target != null:
-			route = navigation.route(walker.position, _walk_target(target))
+	var cursor := Input.CURSOR_ARROW
+	var on_sheet := false
+	if phase == "play" and not camera.busy and play_rect.has_point(point) and not hud.blocks_world_input(point):
+		if arrow.blocks_point(point):
+			cursor = Input.CURSOR_POINTING_HAND
+		elif mirror.get("enabled", false) and not sheet.is_transitioning() and sheet_hit(point):
+			cursor = Input.CURSOR_MOVE
+			on_sheet = true
+		if walker.route.is_empty() and pending.is_empty() and settle_frames == 0:
+			var target: Variant = _floor_point(point)
+			if target != null:
+				route = navigation.route(walker.position, _walk_target(target))
 	world.draw_hover(route)
+	sheet.set_hover(on_sheet)
+	if cursor != _cursor:
+		_cursor = cursor
+		Input.set_default_cursor_shape(cursor)
 
 func _ground_point(point: Vector2, height: float) -> Vector3:
 	var ray := camera.project_ray_normal(point)
@@ -1637,6 +1661,11 @@ func sheet_hit(point: Vector2, selected: Dictionary = {}) -> bool:
 	if distance < 0:
 		return false
 	var intersection := origin + direction * distance
+	# A direct mirror takes a press anywhere on its panel, through blocks that
+	# pass through the frame, and a little past the glass: a tap there still
+	# walks, so nothing else needs the press.
+	if direct_controls:
+		return sheet.contains_visible_point(intersection, selected, GRAB_MARGIN)
 	return sheet.contains_visible_point(intersection, selected) and not _solid_hit(point, distance)
 
 func _position_controls() -> void:

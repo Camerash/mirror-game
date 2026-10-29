@@ -51,10 +51,13 @@ measured and failed, and which traps cost real time.
    positions that are hard to read, and half-unit drags that are hard to
    hit. It peeked at the scripted solutions, so it understates difficulty.
    The owner agreed every point; `docs/playtest-fixes.md` orders the fixes
-   and tracks them. Items 1 to 7 are done (the goal tile, the hidden-ground
+   and tracks them. All eight are done (the goal tile, the hidden-ground
    outline, refused falls off the world, rewind after a fall, drop shadows
    and reach cues, forgiving steps and key nudges, prompts that wait for
-   their moment); the small fixes are next.
+   their moment, and the small fixes: camera icons, the mirror grab and
+   hover cue, no mirror on stage 1, Restart stage, phone framing). Next: a
+   fresh agent playtest that has not read `tests/tutorial_playthrough.gd`,
+   then a person on a Mac.
 2. **Then refine the gameplay style and the design.**
 
 ## Read first

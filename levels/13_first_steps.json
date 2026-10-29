@@ -156,6 +156,7 @@
       0
     ]
   },
+  "mirror_available": false,
   "limits": {
     "axes": [
       0,

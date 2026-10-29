@@ -88,6 +88,8 @@ static func validate(data: Dictionary) -> String:
 	var axis := int(mirror["axis"])
 	if float(mirror["offset"]) < float(limits["min"][axis]) or float(mirror["offset"]) > float(limits["max"][axis]):
 		return "Initial offset is outside the permitted area."
+	if data.has("mirror_available") and not data["mirror_available"] is bool:
+		return "mirror_available must be true or false."
 	if data.has("prompts"):
 		var prompts_error := _validate_prompts(data["prompts"])
 		if not prompts_error.is_empty():

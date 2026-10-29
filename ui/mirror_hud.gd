@@ -8,6 +8,8 @@ const TOUCH := 48.0
 ## The mirror button is the game's main action, so it is a size up.
 const PRIMARY := 56.0
 const GAP := 12.0
+## Below this play height, a wide screen frames the stage between side columns.
+const SHORT_LANDSCAPE := 560.0
 const INK := Color("342b2a")
 const IVORY := Color("f4ecdd")
 const WARM := Color("b85f4b")
@@ -25,6 +27,8 @@ var _last_play_rect := Rect2()
 var _last_camera_rect := Rect2()
 var _last_emitted_play_rect := Rect2()
 var _bottom_reserved := TOUCH + GAP
+## On a short landscape screen, the width kept clear on each side of the stage.
+var _side_reserved := 0.0
 var _touch_controls := {}
 var _outline_accessible := true
 var _gear: Button
@@ -51,6 +55,7 @@ var _music_slider: HSlider
 var _effects_slider: HSlider
 var _fullscreen_check: CheckButton
 var _title_button: Button
+var _restart_button: Button
 var _level_picker: OptionButton
 var _failure: Label
 var _hint: Label
@@ -123,7 +128,7 @@ func display_state(state: Dictionary) -> void:
 	_mode_cycle.visible = classic_editing
 	_mode_cycle.disabled = mode_busy
 	_update_mode_cycle()
-	_mirror_button.visible = direct
+	_mirror_button.visible = direct and bool(_state.get("mirror_available", true))
 	_mirror_button.disabled = not bool(_state.get("can_toggle_mirror", false))
 	var raised := bool(_state.get("mirror_raised", false))
 	_mirror_button.tooltip_text = "Lower the mirror (M)" if raised else "Raise the mirror (M)"
@@ -194,7 +199,12 @@ func hide_prompt() -> void:
 func get_play_rect() -> Rect2: return _last_play_rect
 func is_debug_visible() -> bool: return _debug
 func get_camera_rect() -> Rect2:
-	return Rect2(_last_play_rect.position + Vector2(GAP, TOUCH + GAP), _last_play_rect.size - Vector2(GAP * 2, _bottom_reserved + TOUCH + GAP))
+	if _side_reserved > 0.0:
+		return _last_play_rect.grow_individual(-_side_reserved, -GAP, -_side_reserved, -GAP)
+	# A narrow portrait screen has controls only in its corners: the stage may
+	# use the whole width.
+	var side := 0.0 if _last_play_rect.size.x < 500.0 else GAP
+	return Rect2(_last_play_rect.position + Vector2(side, TOUCH + GAP), _last_play_rect.size - Vector2(side * 2, _bottom_reserved + TOUCH + GAP))
 func set_failure_marker(_point: Vector2, _active: bool) -> void:
 	_failure.visible = false
 func get_touch_control_bounds() -> Dictionary:
@@ -229,8 +239,12 @@ func _build() -> void:
 	_gear = _button("⚙"); _style_icon(_gear); _gear.tooltip_text = "Settings" if release_mode else "Debug controls"; _gear.pressed.connect(_toggle_debug); add_child(_gear); _register("debug", _gear)
 	_help = _button("?"); _style_icon(_help); _help.tooltip_text = "Show this stage's prompts again"; _help.visible = false
 	_help.pressed.connect(func() -> void: _emit("help", null)); add_child(_help); _register("help", _help)
-	_camera_left = _add_action("↶", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
-	_camera_right = _add_action("↷", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
+	_camera_left = _add_action("", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
+	_camera_right = _add_action("", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
+	for pair: Array in [[_camera_left, -1, "Turn the view left (Q)"], [_camera_right, 1, "Turn the view right (E)"]]:
+		var camera_button: Button = pair[0]
+		camera_button.tooltip_text = pair[2]; camera_button.accessibility_name = String(pair[2]).get_slice(" (", 0)
+		camera_button.draw.connect(_draw_camera_icon.bind(camera_button, int(pair[1])))
 	_undo = _add_action("Undo", "undo", null, "undo")
 	_reset = _add_action("Reset", "reset", null, "reset")
 	_cancel = _add_action("Cancel", "cancel", null, "cancel")
@@ -283,6 +297,12 @@ func _build_settings() -> void:
 		_fullscreen_check = CheckButton.new(); _fullscreen_check.text = "Fullscreen"; _style(_fullscreen_check)
 		_fullscreen_check.toggled.connect(func(value: bool) -> void: _emit("fullscreen", value))
 		box.add_child(_fullscreen_check)
+	# Undo walks back one step; this goes back to the stage's start at once.
+	_restart_button = _button("Restart stage"); _style_edit(_restart_button)
+	_restart_button.pressed.connect(func() -> void:
+		_toggle_debug()
+		_emit("reset", null))
+	box.add_child(_restart_button)
 	_title_button = _button("Return to title"); _style_edit(_title_button)
 	_title_button.pressed.connect(func() -> void: _emit("title", null))
 	box.add_child(_title_button)
@@ -448,6 +468,15 @@ func _responsive_layout() -> void:
 	var rows: int = ceili(float(count) / float(columns))
 	var slot: float = maxf(TOUCH, minf(140.0, (_last_play_rect.size.x - row_gap * (columns - 1)) / maxf(1.0, float(columns))))
 	_bottom_reserved = (PRIMARY if _mirror_button.visible else TOUCH) + GAP + (TOUCH * rows + row_gap * maxf(0.0, rows - 1) + GAP if count > 0 else 0.0)
+	# A phone on its side keeps every control in a corner, so the stage takes
+	# the full height between two equal side columns. Undo counts while it is
+	# hidden, so its first appearance does not move the view.
+	_side_reserved = 0.0
+	if count == 0 and _last_play_rect.size.y < SHORT_LANDSCAPE and _last_play_rect.size.x > _last_play_rect.size.y * 1.3:
+		var left := TOUCH * 2.0 + 6.0 + GAP if _camera_left.visible else 0.0
+		var right_bottom := (PRIMARY + 6.0 if _mirror_button.visible else 0.0) + _shown_width(_undo) + GAP
+		var right_top := TOUCH * 2.0 + 6.0 + GAP
+		_side_reserved = maxf(left, maxf(right_bottom, right_top)) + GAP
 	var start: float = _last_play_rect.get_center().x - (slot * columns + row_gap * (columns - 1)) * .5; var index := 0
 	for control: Control in row:
 		if control.visible:
@@ -479,6 +508,12 @@ func _responsive_layout() -> void:
 		_last_emitted_play_rect = _last_play_rect
 		_last_camera_rect = camera_rect
 		play_rect_changed.emit(_last_play_rect)
+
+## A text button's width once shown; a hidden button's minimum size is stale.
+func _shown_width(button: Button) -> float:
+	var font := button.get_theme_font("font")
+	var text_width := font.get_string_size(button.text, HORIZONTAL_ALIGNMENT_LEFT, -1, button.get_theme_font_size("font_size")).x
+	return maxf(button.custom_minimum_size.x, text_width + button.get_theme_stylebox("normal").get_minimum_size().x)
 
 func _safe_rect() -> Rect2:
 	return SafeArea.rect(self)
@@ -529,6 +564,37 @@ func _draw_mirror_icon() -> void:
 	var corners := [panel.position, Vector2(panel.end.x, panel.position.y), panel.end, Vector2(panel.position.x, panel.end.y)]
 	for index: int in 4:
 		_mirror_button.draw_dashed_line(corners[index], corners[(index + 1) % 4], ink, 1.5, 3.0, true, true)
+
+## A small block on a turntable arc, so the view turns do not read as Undo
+## and Redo. The arrowhead shows the direction of the turn.
+func _draw_camera_icon(button: Button, direction: int) -> void:
+	var ink := Color(IVORY, 0.45 if button.disabled else 1.0)
+	var shade := Color(INK, 0.55)
+	var centre := button.size * 0.5 + Vector2(0, -4)
+	var radius := 8.0
+	var hexagon := PackedVector2Array()
+	for index: int in 6:
+		hexagon.append(centre + Vector2.from_angle(-PI * 0.5 + index * PI / 3.0) * radius)
+	var top := PackedVector2Array([hexagon[0], hexagon[1], centre, hexagon[5]])
+	button.draw_colored_polygon(top, Color(ink, ink.a * 0.35))
+	var lines: Array[PackedVector2Array] = [hexagon + PackedVector2Array([hexagon[0]]),
+		PackedVector2Array([hexagon[5], centre, hexagon[1]]), PackedVector2Array([centre, hexagon[3]])]
+	var arc := PackedVector2Array()
+	var ring := Vector2(16, 6.0)
+	var ring_centre := centre + Vector2(0, 9)
+	for step: int in 17:
+		var angle := lerpf(deg_to_rad(15.0), deg_to_rad(165.0), float(step) / 16.0)
+		arc.append(ring_centre + Vector2(cos(angle) * ring.x, sin(angle) * ring.y))
+	if direction > 0:
+		arc.reverse()
+	lines.append(arc)
+	var tip := arc[arc.size() - 1]
+	var heading := (tip - arc[arc.size() - 3]).normalized()
+	lines.append(PackedVector2Array([tip - heading.rotated(0.6) * 6.0, tip, tip - heading.rotated(-0.6) * 6.0]))
+	for line: PackedVector2Array in lines:
+		button.draw_polyline(line, shade, 3.5, true)
+	for line: PackedVector2Array in lines:
+		button.draw_polyline(line, ink, 1.6, true)
 
 func _button(text_value: String) -> Button:
 	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button)

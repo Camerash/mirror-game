@@ -29,6 +29,8 @@ var editing := false
 ## A lowered direct mirror keeps its panel: a faint dashed outline shows where
 ## it comes back. The classic editor never produces this state.
 var lowered := false
+## The pointer rests on a standing mirror: its solid outline shows the grab area.
+var hovered := false
 var transitioning := false
 var elapsed := 0.0
 var settle_time := 0.0
@@ -100,7 +102,7 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	ribbons.visible = enabled
 	guides.visible = enabled or editing
 	motes.visible = enabled
-	edges.visible = editing or lowered
+	edges.visible = editing or lowered or (hovered and enabled)
 	sheet_material.set_shader_parameter("panel_size", panel_size)
 	sheet_material.set_shader_parameter("removal", not enabled)
 	var source_sign := float(state.get("source_sign", 1.0))
@@ -110,12 +112,19 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	mote_material.set_shader_parameter("source_sign", source_sign)
 	settle_time = 0.18 if not editing else 0.0
 
-func contains_visible_point(point: Vector3, selected: Dictionary) -> bool:
+func set_hover(value: bool) -> void:
+	hovered = value
+	frame.set_glow(value)
+	if has_geometry:
+		edges.visible = editing or lowered or (hovered and sheet.visible)
+
+## `margin` widens the panel, in world units, for a forgiving grab.
+func contains_visible_point(point: Vector3, selected: Dictionary, margin := 0.0) -> bool:
 	var pivot: Vector3 = selected["pivot"]
 	var local := Rules.frame(selected).inverse() * (point - pivot)
 	var width := clampf(float(selected.get("width", 3.0)), 1.0, 6.0)
 	var height := clampf(float(selected.get("height", 3.0)), 1.0, 6.0)
-	return absf(local.x) <= width * 0.5 and absf(local.y) <= height * 0.5
+	return absf(local.x) <= width * 0.5 + margin and absf(local.y) <= height * 0.5 + margin
 
 func animate_to(next_state: Dictionary, bounds: AABB) -> void:
 	var previous := global_basis
@@ -240,7 +249,7 @@ func _process(delta: float) -> void:
 	var pulse := 0.70 + sin(elapsed * 2.2) * 0.20 if editing else 1.0
 	edge_material.albedo_color = Color(0.76, 0.95, 0.95, 0.3 if lowered else pulse)
 	edge_material.emission_energy_multiplier = 0.4 if lowered else (1.35 if not editing else 0.75 + pulse * 0.45)
-	sheet_material.set_shader_parameter("sheet_alpha", 0.07 if editing else 0.11 + settle_time * 0.12)
+	sheet_material.set_shader_parameter("sheet_alpha", 0.07 if editing else 0.11 + settle_time * 0.12 + (0.08 if hovered else 0.0))
 	ribbon_material.set_shader_parameter("ribbon_time", elapsed)
 	ribbon_material.set_shader_parameter("ribbon_alpha", 0.85 if editing else 1.0)
 	mote_material.set_shader_parameter("mote_time", elapsed)

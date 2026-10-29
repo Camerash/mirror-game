@@ -20,7 +20,7 @@ space, then wording and polish.
 | 5 | **Make positions readable.** Contact shadows under copies; a "can't reach" cue on a failed tap; on desktop, the reachable path on hover. | 4.3 | done |
 | 6 | **Forgiving half-unit steps.** More pointer travel per step, or settling to the nearest connecting position; arrow-key nudges for the mirror on desktop. Size it for phones too. | 4.4 | done |
 | 7 | **Prompts.** Stage 1 on desktop names the arrows and Q/E, not a swipe; stage 3 drops "again" before the mirror is up; stage 4 shows the problem before the hint; stage 5 gets a visual cue instead of text. | 4.7 | done |
-| 8 | **Small fixes.** Camera buttons that don't look like Undo and Redo; a visible grab area and hover cue for the mirror; no mirror button on stage 1; a Reset in the release UI; a larger stage on phone layouts. | 3, 4.8 | |
+| 8 | **Small fixes.** Camera buttons that don't look like Undo and Redo; a visible grab area and hover cue for the mirror; no mirror button on stage 1; a Reset in the release UI; a larger stage on phone layouts. | 3, 4.8 | done |
 
 Items 2 to 4 share one idea: the player sees an outcome before it
 happens, and can always recover from it. Build them together if that
@@ -119,3 +119,33 @@ proves simpler.
    `tests/prompt_tests.gd` covers the waiting, the new event and the mouse
    drag (82 checks). The full classic suite, `tests/run_tests.gd`, passed
    once after the gesture change (594 checks).
+8. **Small fixes** (`ui/mirror_hud.gd`, `game.gd`, `world/mirror_sheet.gd`,
+   `world/mirror_frame.gd`, `world/stage_camera.gd`, `core/level_loader.gd`,
+   stage 1's file). Pictures:
+   [grab and camera buttons](playtests/2026-10-fixes/grab-hover-and-camera-icons.jpg),
+   [phone framing](playtests/2026-10-fixes/phone-framing.jpg).
+   - The camera buttons are drawn as a small block over a turning arc, with
+     the arrowhead on the side of the turn, not as the ↶ ↷ glyphs. Their
+     tooltips say "Turn the view left (Q)" and "right (E)".
+   - The mirror takes a press anywhere on its panel, through a block that
+     passes through the frame, and up to a quarter unit past the glass. A tap
+     there still walks. On desktop, the pointer on the mirror shows a move
+     cursor, the frame glows and the glass brightens; on the arrow's knob it
+     shows a hand.
+   - A stage can set `"mirror_available": false`. Stage 1 does: no mirror
+     button, and M does nothing.
+   - The release settings panel has **Restart stage** above Return to
+     title. It closes the panel and reloads the stage.
+   - Phone framing. On a short landscape screen (play height under 560 px
+     and wider than 1.3 × its height), the stage takes the full height
+     between two equal side columns that hold the corner controls; Undo
+     counts while hidden, so its first appearance does not move the view.
+     A narrow portrait screen lets the stage use the full width. A small
+     screen keeps a smaller fit margin (8 % of the shorter side, at most
+     48 px, so desktop is unchanged). At 844×390 the "A place to stand"
+     stage grew from 225×140 px to 373×232 px; at 390×844 from 262 to
+     300 px wide.
+
+   `tests/small_fix_tests.gd` covers all five (56 checks). The rule check in
+   `direct_controls_tests` that turned the mirror on stage 1 now turns the
+   mirror back on for itself first.
