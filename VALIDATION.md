@@ -1,6 +1,11 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: playtest fixes 2 to 4 — 2026-10-29
+
+- Hidden-ground outline, refused falls off the world, and rewind after a fall (`docs/playtest-fixes.md`). Headless, once each: `level_solvability_tests -- --direct-only` **34/0** (three checks that expected a lethal mirror change to kill the traveller now expect it to be refused, and two new checks cover the outline), `prompt_tests` **78/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**.
+- Visual: a short capture of "The path beneath" under Xvfb with software Vulkan (`docs/playtests/2026-10-fixes/`): the outline while the mirror is up, and a refused lowering with the ghost falling. No Mac check. The rewind after a fall has no test: after the refusal, a direct mirror change cannot cause one.
+
 # Latest check: goal tile fix and garden style test — 2026-10-29
 
 - **Goal fix.** `game.gd` `request_walk` now ends a walk that lands on the goal's tile at the goal. The new `tests/goal_tests.gd` reproduced the bug first (an off-centre walk stopped 0.46 from the goal and the stage stayed in play), then passed with the fix: **9 checks, 0 failures**. Regression, headless, once: `prompt_tests` **78/0**, `level_solvability_tests -- --direct-only` **33/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**. Linux cloud container, official Godot 4.7.2 build. Not run: the full suite, the classic solvability pass, any Mac check.

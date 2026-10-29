@@ -35,6 +35,10 @@ const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
 const Sounds := preload("res://world/sounds.gd")
 const ADVANCE_PAUSE := 0.5
+## How long a refused fall's ghost stays on screen before the mirror goes back.
+const REFUSE_HOLD := 1.2
+## How long a fall stays on screen before the direct controls rewind it.
+const FAIL_REWIND := 1.0
 ## Screen distance a mirror drag travels before its direction picks an axis.
 const SLIDE_PICK_DISTANCE := 16.0
 ## Keys of the classic editor that mean nothing to the direct controls.
@@ -536,10 +540,26 @@ func _try_direct_apply() -> void:
 		cancel_preview()
 		hud.show_hint("A block would fill the traveller's place, so the mirror stays put.")
 		return
+	if outcome == "failure":
+		_refuse_fall()
+		return
 	var event := _direct_event
 	if apply_preview():
 		pending["event"] = event
 		_direct_apply = false
+
+## A change that would drop the traveller off the world is never applied.
+## The preview stays long enough for the ghost to show the fall, then the
+## mirror goes back where it was.
+func _refuse_fall() -> void:
+	_direct_apply = false
+	hud.show_hint("The traveller would fall off the world, so the mirror goes back.")
+	var origin := preview_origin
+	var hold := create_tween()
+	hold.tween_interval(REFUSE_HOLD)
+	hold.tween_callback(func() -> void:
+		if phase == "preview" and pending.is_empty() and preview_origin == origin:
+			cancel_preview())
 
 ## The screen vector of one world unit along x, y and z at `point`.
 func _screen_axes(point: Vector3) -> Array[Vector2]:
@@ -870,6 +890,7 @@ func cancel_preview() -> void:
 	walker.route = preview_origin["route"].duplicate()
 	walker.paused = phase != "play"
 	world.draw_world(solids)
+	world.draw_hidden(Geometry.hidden(level, mirror))
 	world.draw_route(walker.route)
 	status = "Walking." if not walker.route.is_empty() else "Preview cancelled."
 	dragging = false
@@ -926,6 +947,7 @@ func _commit_world() -> void:
 	_was_grounded = true
 	solids = Geometry.generate(level, mirror)
 	world.commit(solids)
+	world.draw_hidden(Geometry.hidden(level, mirror))
 	navigation.rebuild(solids)
 	world.draw_route(PackedVector3Array())
 	settle_frames = 2
@@ -936,6 +958,7 @@ func _display_state() -> Dictionary:
 func _update_preview() -> void:
 	var proposed := Geometry.generate(level, _display_state())
 	world.draw_world(proposed)
+	world.draw_hidden(Geometry.hidden(level, _display_state()))
 	_invalidate_prediction()
 	if not _manipulating():
 		prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
@@ -1044,6 +1067,12 @@ func _fail() -> void:
 	var tween := create_tween()
 	tween.tween_property(failure_veil, "color:a", 0.30, 0.15)
 	tween.tween_property(failure_veil, "color:a", 0.0, 0.25)
+	if direct_controls:
+		hud.show_hint("The traveller fell off the world. Going back.")
+		tween.tween_interval(FAIL_REWIND)
+		tween.tween_callback(func() -> void:
+			if phase == "failure":
+				undo())
 	_refresh()
 
 func _refresh() -> void:

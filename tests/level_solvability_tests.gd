@@ -294,12 +294,11 @@ func check_direct_route() -> void:
 	await press_mirror_button()
 	await slide(0, 2.0)
 	check(await walk_to(Vector3(4, 0, 0)), "Direct route: the traveller stands on the copy")
+	var steps: int = game.history.size()
 	await slide(0, 1.5)
 	await direct_fall()
-	check(game.phase == "failure", "Direct route: moving the mirror from under the traveller is a fall")
-	check(game.undo(), "Direct route: Undo is offered after the fall")
-	await direct_settled()
-	check(game.phase == "play" and pivot_is(Vector3(2.5, 0, 0)), "Direct route: Undo puts the mirror and the traveller back")
+	check(game.phase == "play" and pivot_is(Vector3(2.5, 0, 0)), "Direct route: a slide that would drop the traveller off the world goes back")
+	check(game.walker.position.distance_to(Vector3(4, 0, 0)) < 0.22 and game.history.size() == steps, "Direct route: the refused slide leaves the traveller and the history as they were")
 
 
 func check_direct_reveal() -> void:
@@ -322,9 +321,12 @@ func check_direct_reveal() -> void:
 	await press_mirror_button()
 	await slide(0, 2.0)
 	check(await walk_to(Vector3(4, 0, 0)), "Direct reveal: the traveller stands on the copy")
+	check(game.world.hidden_root.get_child_count() > 0, "Direct reveal: the raised mirror outlines the ground it hides")
 	await press_mirror_button()
 	await direct_fall()
-	check(game.phase == "failure", "Direct reveal: lowering the mirror under the traveller is a fall")
+	check(game.phase == "play" and bool(game.mirror.get("enabled", false)), "Direct reveal: lowering the mirror under the traveller is refused, not a fall")
+	await load_level("08_reveal")
+	check(game.world.hidden_root.get_child_count() == 0, "Direct reveal: with no mirror up, nothing is outlined as hidden")
 
 
 func direct_aperture_case(lower_units: float) -> bool:
@@ -388,7 +390,7 @@ func check_direct_together() -> void:
 	check(await walk_to(Vector3(0, 0, 1.5)), "Direct together: one unit lower, the bridge carries the traveller out")
 	await press_mirror_button()
 	await direct_fall()
-	check(game.phase == "failure", "Direct together: lowering the mirror above empty space is a fatal fall")
+	check(game.phase == "play" and bool(game.mirror.get("enabled", false)), "Direct together: lowering the mirror above empty space is refused, not a fatal fall")
 	await direct_together_bridge(1.0)
 	check(await walk_to(above_low), "Direct together: the traveller stands above the low path")
 	await press_mirror_button()

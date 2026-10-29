@@ -44,6 +44,31 @@ static func generate(level: Dictionary, state: Dictionary, frame: Basis) -> Arra
 			_emit_fragments(output, [reflected], item, "reflected", reflection, absolutes)
 	return output
 
+## The parts of originals that the mirror's destination column replaces: the
+## ground a raised mirror hides. Each item is one closed fragment's faces.
+static func hidden(level: Dictionary, state: Dictionary, frame: Basis) -> Array:
+	var result: Array = []
+	if not state.get("enabled", false):
+		return result
+	var destination := column(state["pivot"], frame, state, true)
+	var absolutes: Array = []
+	for item: Dictionary in level["absolutes"]:
+		absolutes.append(box_planes(box(item)))
+	for item: Dictionary in level["originals"]:
+		var replaced := intersect(box_faces(box(item)), destination)
+		if volume(replaced) <= EPS:
+			continue
+		var remaining: Array = [replaced]
+		for planes: Array[Plane] in absolutes:
+			var next: Array = []
+			for faces: Array in remaining:
+				next.append_array(subtract(faces, planes))
+			remaining = next
+		for faces: Array in remaining:
+			if volume(faces) > EPS:
+				result.append(faces)
+	return result
+
 static func column(pivot: Vector3, frame: Basis, state: Dictionary, reverse: bool) -> Array[Plane]:
 	var normal := frame.z * float(state.get("source_sign", 1)) * (-1.0 if reverse else 1.0)
 	var planes: Array[Plane] = [Plane(normal, normal.dot(pivot))]

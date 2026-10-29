@@ -3,10 +3,14 @@ extends Node3D
 
 const Queries := preload("res://core/solid_queries.gd")
 const BlockSet := preload("res://world/block_set.gd")
+const HIDDEN_FILL := Color(0.86, 0.9, 0.96, 0.16)
+const HIDDEN_EDGE := Color(0.92, 0.95, 1.0, 0.75)
+const HIDDEN_INSET := 0.985
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
 var path_root := Node3D.new()
+var hidden_root := Node3D.new()
 var drawn_solids: Array[Dictionary] = []
 var visual_slots: Dictionary = {}
 var visual_generation := 0
@@ -15,7 +19,7 @@ var debug_collision := false
 var clip_plane := Plane()
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, collision_root, overlay_root, path_root]:
+	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, hidden_root]:
 		add_child(node)
 
 func commit(solids: Array[Dictionary]) -> void:
@@ -193,6 +197,47 @@ func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -
 			points.append(start.lerp(finish, float(index) / count))
 			points.append(start.lerp(finish, float(index + 1) / count))
 	_lines(parent, points, color)
+
+## The ground a raised mirror hides: a faint fill with dashed edges, drawn
+## a little inside each fragment so it never fights the blocks around it.
+func draw_hidden(fragments: Array) -> void:
+	_clear(hidden_root)
+	if fragments.is_empty():
+		return
+	var fill := SurfaceTool.new()
+	fill.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var edges := PackedVector3Array()
+	for faces: Array in fragments:
+		var centre := Vector3.ZERO
+		var count := 0
+		for polygon: PackedVector3Array in faces:
+			for point: Vector3 in polygon:
+				centre += point
+				count += 1
+		centre /= maxi(count, 1)
+		for polygon: PackedVector3Array in faces:
+			var inset := PackedVector3Array()
+			for point: Vector3 in polygon:
+				inset.append(centre + (point - centre) * HIDDEN_INSET)
+			for index: int in range(1, inset.size() - 1):
+				fill.add_vertex(inset[0])
+				fill.add_vertex(inset[index])
+				fill.add_vertex(inset[index + 1])
+			for index: int in inset.size():
+				var start := inset[index]
+				var finish := inset[(index + 1) % inset.size()]
+				var dashes := maxi(1, ceili(start.distance_to(finish) / 0.12))
+				for dash: int in range(0, dashes, 2):
+					edges.append(start.lerp(finish, float(dash) / dashes))
+					edges.append(start.lerp(finish, float(dash + 1) / dashes))
+	var surface := MeshInstance3D.new()
+	surface.mesh = fill.commit()
+	var material := _plain(HIDDEN_FILL)
+	material.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	surface.material_override = material
+	surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	hidden_root.add_child(surface)
+	_lines(hidden_root, edges, HIDDEN_EDGE)
 
 func draw_route(path: PackedVector3Array) -> void:
 	_clear(path_root)

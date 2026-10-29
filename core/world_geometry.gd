@@ -45,6 +45,27 @@ static func generate(level: Dictionary, mirror: Dictionary) -> Array[Dictionary]
 			_append_pieces(result, reflect(clipped, mirror), absolute_bounds, "reflected", item["id"], reflected_metadata)
 	return result
 
+## The ground a raised mirror hides, as closed fragments of faces.
+static func hidden(level: Dictionary, mirror: Dictionary) -> Array:
+	if mirror.has("yaw"):
+		return Polygons.hidden(level, mirror, MirrorRules.frame(mirror))
+	var result: Array = []
+	if not mirror.get("enabled", false):
+		return result
+	var opposite := mirror.duplicate()
+	opposite["source"] = -int(mirror["source"])
+	for item: Dictionary in level["originals"]:
+		var pieces: Array[AABB] = [selected_source(box(item), opposite)]
+		for absolute: Dictionary in level["absolutes"]:
+			var next: Array[AABB] = []
+			for piece: AABB in pieces:
+				next.append_array(subtract(piece, box(absolute)))
+			pieces = next
+		for piece: AABB in pieces:
+			if has_volume(piece):
+				result.append(Polygons.box_faces(piece))
+	return result
+
 static func _source_metadata(item: Dictionary) -> Dictionary:
 	var bounds := box(item)
 	return {"source_id": item["id"], "source_bounds": bounds,

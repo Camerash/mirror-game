@@ -51,8 +51,9 @@ measured and failed, and which traps cost real time.
    positions that are hard to read, and half-unit drags that are hard to
    hit. It peeked at the scripted solutions, so it understates difficulty.
    The owner agreed every point; `docs/playtest-fixes.md` orders the fixes
-   and tracks them. The goal bug is fixed; showing what a raised mirror
-   hides is next.
+   and tracks them. Items 1 to 4 are done (the goal tile, the hidden-ground
+   outline, refused falls off the world, rewind after a fall); readable
+   positions are next.
 2. **Then refine the gameplay style and the design.**
 
 ## Read first
