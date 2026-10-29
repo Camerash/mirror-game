@@ -26,6 +26,25 @@ Items 2 to 4 share one idea: the player sees an outcome before it
 happens, and can always recover from it. Build them together if that
 proves simpler.
 
+## Round 2
+
+From the [second, blind agent playtest](playtests/2026-10-agent-playtest-2.md):
+all six stages finished; stages 2 and 3 were the best moments; stages 4 to 6
+were mostly trial and error.
+
+| # | Fix | Playtest | Status |
+| --- | --- | --- | --- |
+| 9 | **No perch after a fall.** A fall that lands on a tile edge counts as safe, but the traveller cannot walk from there. Settle a landing onto walkable ground, or refuse the change. | 2 (stage 6), 4.1 | |
+| 10 | **Keys reach the mirror.** After a button press, the arrow keys move UI focus instead of nudging the mirror. Keep HUD buttons out of keyboard focus. | 3, 4.7 | |
+| 11 | **Taps pass through the mirror.** A tap (no drag) on the glass or the arrow's knob walks to the ground behind it. | 2 (stage 3), 3, 4.5 | |
+| 12 | **Read height and reach before clicking.** Outline the tile under the pointer; mark an unreachable one on hover, not only after a click. | 2 (stages 4, 5), 4.2, 4.3 | |
+| 13 | **Show the mirror's step on the ground** while dragging, so half-tile positions read. | 4.4 | |
+| 14 | **Small:** reset the camera on Play again; a short controls list in Settings. | 3, 4.9 | |
+
+Not taken: showing stage 4's lowering hint up front (the same report lists
+"hints after a failure" under Keep), and a bigger portrait stage (the stage is
+already width-limited; judge on a real phone).
+
 ## How each fix is checked
 
 - A focused headless test for the changed behaviour, like
