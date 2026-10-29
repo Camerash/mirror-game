@@ -4,7 +4,7 @@ extends RefCounted
 const Rules := preload("res://core/mirror_state.gd")
 ## Names a tutorial prompt can wait for; see game.gd's `tutorial_event` signal.
 const PROMPT_EVENTS: Array[String] = ["walk", "camera_turn", "create", "move", "lower", "confirm",
-	"remove", "resize", "turn", "fall", "goal"]
+	"remove", "resize", "turn", "fall", "goal", "no_path"]
 
 static func load_level(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -111,6 +111,8 @@ static func _validate_prompts(prompts: Variant) -> String:
 			return "Prompt text must not be empty."
 		if not PROMPT_EVENTS.has(until):
 			return "Unknown prompt event: " + until
+		if entry.has("after") and not PROMPT_EVENTS.has(entry["after"]):
+			return "Unknown prompt event: " + str(entry["after"])
 		seen_ids[id] = true
 	return ""
 

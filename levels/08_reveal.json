@@ -138,7 +138,8 @@
   "prompts": [
     {
       "id": "remove_mirror",
-      "text": "Tap the mirror button again to lower the mirror. The ground it covered comes back.",
+      "text": "Lowering the mirror brings back the ground it covered. Tap the mirror button to lower it.",
+      "after": "create",
       "until": "remove"
     }
   ]

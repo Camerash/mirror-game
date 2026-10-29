@@ -87,6 +87,7 @@
     {
       "id": "lower_mirror",
       "text": "The mirror copies everything inside its frame. Drag it straight down to lower the frame.",
+      "after": "no_path",
       "until": "lower"
     }
   ]

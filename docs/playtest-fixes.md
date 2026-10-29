@@ -19,7 +19,7 @@ space, then wording and polish.
 | 4 | **A clear failure state.** Show that the traveller fell, pulse Undo, or rewind after a moment. Today the traveller hangs in the void. | 4.6 | done |
 | 5 | **Make positions readable.** Contact shadows under copies; a "can't reach" cue on a failed tap; on desktop, the reachable path on hover. | 4.3 | done |
 | 6 | **Forgiving half-unit steps.** More pointer travel per step, or settling to the nearest connecting position; arrow-key nudges for the mirror on desktop. Size it for phones too. | 4.4 | done |
-| 7 | **Prompts.** Stage 1 on desktop names the arrows and Q/E, not a swipe; stage 3 drops "again" before the mirror is up; stage 4 shows the problem before the hint; stage 5 gets a visual cue instead of text. | 4.7 | |
+| 7 | **Prompts.** Stage 1 on desktop names the arrows and Q/E, not a swipe; stage 3 drops "again" before the mirror is up; stage 4 shows the problem before the hint; stage 5 gets a visual cue instead of text. | 4.7 | done |
 | 8 | **Small fixes.** Camera buttons that don't look like Undo and Redo; a visible grab area and hover cue for the mirror; no mirror button on stage 1; a Reset in the release UI; a larger stage on phone layouts. | 3, 4.8 | |
 
 Items 2 to 4 share one idea: the player sees an outcome before it
@@ -100,3 +100,22 @@ proves simpler.
 
    `tests/step_tests.gd` covers both (20 checks). Three test helpers that
    turned world units into screen drags now use `_screen_axes`.
+7. **The prompts fit what the player has seen** (`game.gd` `_prompt_ready`,
+   `core/level_loader.gd`, `ui/world_gesture.gd`, three stage files).
+   - Stage 1: a mouse drag sideways on empty space now turns the view, as a
+     touch swipe does, and the prompt says "Drag sideways, or use the arrows
+     in the corner".
+   - Prompts can wait, hidden, for an `after` event. Stage 3's prompt waits
+     until the mirror is up and now reads "Lowering the mirror brings back
+     the ground it covered. Tap the mirror button to lower it." Stage 4's
+     waits for a walk that cannot get through (a new `no_path` event), so
+     the player meets the copied tower before the hint names the answer.
+     Its action still closes a prompt while it waits, and the "?" replay
+     shows every prompt.
+   - Stage 5 keeps its text. Its real difficulty was reading positions; the
+     drop shadows from item 5 are its visual cue. Judge it in the next
+     playtest.
+
+   `tests/prompt_tests.gd` covers the waiting, the new event and the mouse
+   drag (82 checks). The full classic suite, `tests/run_tests.gd`, passed
+   once after the gesture change (594 checks).

@@ -13,6 +13,7 @@ extends SceneTree
 
 const Game := preload("res://game.gd")
 const Levels := preload("res://core/level_loader.gd")
+const Geometry := preload("res://core/world_geometry.gd")
 
 ## Duck-typed save-progress stub matching the interface documented on
 ## `game.progress`.
@@ -42,6 +43,23 @@ func check(value: bool, message: String) -> void:
 func frames(count: int) -> void:
 	for index: int in count:
 		await process_frame
+
+
+func mouse(point: Vector2, pressed: bool) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = point
+	event.global_position = point
+	return event
+
+
+func mouse_motion(point: Vector2) -> InputEventMouseMotion:
+	var event := InputEventMouseMotion.new()
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	event.position = point
+	event.global_position = point
+	return event
 
 
 func idle() -> void:
@@ -190,9 +208,13 @@ func check_first_steps() -> void:
 	check(game.request_walk(Vector3(1, 0, 0)), "First steps: the walk to path_1 is accepted")
 	await frames(1)
 	check(active_prompt_id() == "turn_view", "First steps: walking advances to the turn prompt")
-	game.turn_camera(1)
+	await idle()
+	var start := Vector2(root.size) * Vector2(0.3, 0.8)
+	for event: InputEvent in [mouse(start, true), mouse_motion(start + Vector2(60, 0)), mouse_motion(start + Vector2(140, 0)), mouse(start + Vector2(140, 0), false)]:
+		root.push_input(event)
+		await process_frame
 	await camera_idle()
-	check(queue_and_active_empty() and not game.hud._prompt.visible, "First steps: turning the view closes the last prompt")
+	check(queue_and_active_empty() and not game.hud._prompt.visible, "First steps: a mouse drag sideways on empty space turns the view and closes the last prompt")
 	check_no_empty_cards("First steps")
 
 
@@ -212,11 +234,12 @@ func check_route() -> void:
 
 func check_reveal() -> void:
 	await load_stage("res://levels/08_reveal.json")
-	check(active_prompt_id() == "remove_mirror", "Reveal: remove_mirror prompt is first")
+	check(active_prompt_id() == "remove_mirror" and not game.hud._prompt_wanted, "Reveal: remove_mirror waits, hidden, until the mirror is up")
 	game.tutorial_event.emit("confirm")
 	await frames(1)
-	check(active_prompt_id() == "remove_mirror", "Reveal: a non-matching event does not advance remove_mirror")
+	check(active_prompt_id() == "remove_mirror" and not game.hud._prompt_wanted, "Reveal: a non-matching event neither shows nor advances remove_mirror")
 	await press_mirror_button()
+	check(game.hud._prompt_wanted and game.hud._prompt.text.begins_with("Lowering the mirror"), "Reveal: raising the mirror shows remove_mirror")
 	await slide(0, 2.0)
 	check(active_prompt_id() == "remove_mirror", "Reveal: raising and sliding the mirror do not close remove_mirror")
 	await press_mirror_button()
@@ -227,13 +250,16 @@ func check_reveal() -> void:
 
 func check_aperture() -> void:
 	await load_stage("res://levels/11_aperture.json")
-	check(active_prompt_id() == "lower_mirror", "Aperture: lower_mirror prompt is first")
+	check(active_prompt_id() == "lower_mirror" and not game.hud._prompt_wanted, "Aperture: lower_mirror waits, hidden, for a walk that cannot get through")
 	game.tutorial_event.emit("turn")
 	await frames(1)
 	check(active_prompt_id() == "lower_mirror", "Aperture: a non-matching event does not advance lower_mirror")
 	await press_mirror_button()
 	await slide(0, 1.5)
-	check(active_prompt_id() == "lower_mirror", "Aperture: a drag along the ground does not close lower_mirror")
+	check(active_prompt_id() == "lower_mirror" and not game.hud._prompt_wanted, "Aperture: a drag along the ground neither shows nor closes lower_mirror")
+	check(not game.request_walk(Geometry.vector(game.level["goal"])), "Aperture: the copied tower blocks the way to the goal")
+	await frames(1)
+	check(game.hud._prompt_wanted and active_prompt_id() == "lower_mirror", "Aperture: the failed walk shows lower_mirror")
 	await slide(1, -1.0)
 	check(queue_and_active_empty(), "Aperture: dragging the mirror down closes lower_mirror")
 	check_no_empty_cards("Aperture")
@@ -342,6 +368,9 @@ func check_prompt_validation() -> void:
 	var empty_text := raw.duplicate(true)
 	empty_text["prompts"] = [{"id": "a", "text": "", "until": "walk"}]
 	check(not Levels.validate(empty_text).is_empty(), "Validation: empty prompt text is rejected")
+	var unknown_after := raw.duplicate(true)
+	unknown_after["prompts"] = [{"id": "a", "text": "x", "after": "nonsense", "until": "walk"}]
+	check(not Levels.validate(unknown_after).is_empty(), "Validation: an unknown after event is rejected")
 	var good := raw.duplicate(true)
-	good["prompts"] = [{"id": "a", "text": "x", "until": "walk"}]
+	good["prompts"] = [{"id": "a", "text": "x", "after": "create", "until": "walk"}]
 	check(Levels.validate(good).is_empty(), "Validation: a well-formed prompts field is accepted")

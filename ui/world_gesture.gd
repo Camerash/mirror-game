@@ -63,7 +63,7 @@ func move(point: Vector2, index: int) -> void:
 			translating = true
 			action_requested.emit("drag_begin", origin)
 		action_requested.emit("drag_move", point)
-	elif pointer >= 0 and target in ["empty", "create"] and absf(travel.x) >= SWIPE_DISTANCE and absf(travel.x) > absf(travel.y) * 1.5:
+	elif (pointer >= 0 or direct) and target in ["empty", "create"] and absf(travel.x) >= SWIPE_DISTANCE and absf(travel.x) > absf(travel.y) * 1.5:
 		consumed = true
 		action_requested.emit("camera_turn", -1 if travel.x < 0 else 1)
 

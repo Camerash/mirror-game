@@ -182,7 +182,7 @@
     },
     {
       "id": "turn_view",
-      "text": "The way on is out of sight. Swipe sideways, or use the arrows, to turn the view.",
+      "text": "The way on is out of sight. Drag sideways, or use the arrows in the corner, to turn the view.",
       "until": "camera_turn"
     }
   ]

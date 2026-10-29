@@ -196,6 +196,8 @@ var _active_prompt: Dictionary = {}
 ## The id last handed to `hud.show_prompt`, so a repeat call is a no-op.
 var _prompt_shown_id := ""
 var _prompt_replay := false
+## The tutorial events seen on this stage, for prompts that wait on `after`.
+var _stage_events := {}
 
 func _ready() -> void:
 	if OS.get_name() in ["iOS", "Android"]:
@@ -396,6 +398,7 @@ func request_walk(target: Vector3) -> bool:
 	var route := navigation.route(walker.position, _walk_target(target))
 	if route.is_empty():
 		status = "There is no connected path to that point."
+		tutorial_event.emit("no_path")
 		_refresh()
 		return false
 	history.append(_snapshot())
@@ -1034,6 +1037,7 @@ func _route_finished() -> void:
 
 func _build_prompt_queue() -> void:
 	_prompt_replay = false
+	_stage_events.clear()
 	_prompt_queue.clear()
 	_active_prompt = {}
 	_hide_prompt_card()
@@ -1062,17 +1066,31 @@ func _start_prompts() -> void:
 		if _prompt_queue.is_empty():
 			return
 		_active_prompt = _prompt_queue.pop_front()
+	if not _prompt_ready(_active_prompt):
+		return
 	var id := str(_active_prompt.get("id", ""))
 	if id != _prompt_shown_id:
 		_prompt_shown_id = id
 		hud.show_prompt(str(_active_prompt.get("text", "")))
+
+## A prompt with an `after` event stays hidden until that event has happened
+## on this stage, so it explains what the player has just seen instead of
+## giving the answer away. Its `until` event still closes it while hidden.
+## The "?" replay shows every prompt at once.
+func _prompt_ready(prompt: Dictionary) -> bool:
+	var after := str(prompt.get("after", ""))
+	return after.is_empty() or _prompt_replay or _stage_events.has(after)
 
 func _hide_prompt_card() -> void:
 	_prompt_shown_id = ""
 	hud.hide_prompt()
 
 func _on_tutorial_event(name: String) -> void:
-	if _active_prompt.is_empty() or str(_active_prompt.get("until", "")) != name:
+	_stage_events[name] = true
+	if _active_prompt.is_empty():
+		return
+	if str(_active_prompt.get("until", "")) != name:
+		_start_prompts()
 		return
 	if not _prompt_replay:
 		_mark_prompt_done(str(_active_prompt["id"]))
