@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: playtest fix 5, readable positions — 2026-10-29
+
+- Drop shadows under floating blocks, the unreachable-tap mark and the desktop hover path. New `tests/readability_tests.gd` **11/0**. Regression, headless, once: `level_solvability_tests -- --direct-only` **34/0**, `prompt_tests` **78/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**. Visual: captures of "Only the ground", "Another way round" and "A place to stand" under Xvfb with software Vulkan. No Mac check; real mouse hover was not driven, only `_hover_at`.
+
 # Latest check: playtest fixes 2 to 4 — 2026-10-29
 
 - Hidden-ground outline, refused falls off the world, and rewind after a fall (`docs/playtest-fixes.md`). Headless, once each: `level_solvability_tests -- --direct-only` **34/0** (three checks that expected a lethal mirror change to kill the traveller now expect it to be refused, and two new checks cover the outline), `prompt_tests` **78/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**.

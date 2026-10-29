@@ -389,12 +389,7 @@ func _finish_sweep() -> void:
 func request_walk(target: Vector3) -> bool:
 	if phase != "play" or settle_frames > 0 or not pending.is_empty():
 		return false
-	# A walk that ends on the goal's tile ends on the goal, so a tap anywhere
-	# on that tile finishes the stage, not only one near the ring's centre.
-	var goal := Geometry.vector(level["goal"])
-	if absf(target.x - goal.x) < 0.5 and absf(target.z - goal.z) < 0.5 and absf(target.y - goal.y) < 0.3:
-		target = goal
-	var route := navigation.route(walker.position, target)
+	var route := navigation.route(walker.position, _walk_target(target))
 	if route.is_empty():
 		status = "There is no connected path to that point."
 		_refresh()
@@ -402,6 +397,7 @@ func request_walk(target: Vector3) -> bool:
 	history.append(_snapshot())
 	walker.route = route
 	world.draw_route(route)
+	world.draw_hover(PackedVector3Array())
 	status = "Walking."
 	_refresh()
 	tutorial_event.emit("walk")
@@ -948,6 +944,7 @@ func _commit_world() -> void:
 	solids = Geometry.generate(level, mirror)
 	world.commit(solids)
 	world.draw_hidden(Geometry.hidden(level, mirror))
+	world.draw_hover(PackedVector3Array())
 	navigation.rebuild(solids)
 	world.draw_route(PackedVector3Array())
 	settle_frames = 2
@@ -959,6 +956,7 @@ func _update_preview() -> void:
 	var proposed := Geometry.generate(level, _display_state())
 	world.draw_world(proposed)
 	world.draw_hidden(Geometry.hidden(level, _display_state()))
+	world.draw_hover(PackedVector3Array())
 	_invalidate_prediction()
 	if not _manipulating():
 		prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
@@ -1288,6 +1286,8 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventMouseMotion:
 		if not resize_controls.motion(event.position, -1) and not rings.motion(event.position, -1) and not arrow.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
 			gesture.move(event.position, -1)
+		if direct_controls and not owned and event.button_mask == 0 and event.device != InputEvent.DEVICE_ID_EMULATION:
+			_hover_at(event.position)
 	elif event is InputEventScreenDrag:
 		if not resize_controls.motion(event.position, event.index) and not rings.motion(event.position, event.index) and not arrow.motion(event.position, event.index):
 			gesture.move(event.position, event.index)
@@ -1356,16 +1356,44 @@ func _gesture_action(action: String, value: Variant) -> void:
 		"camera_turn": turn_camera(int(value))
 
 func _walk_at(point: Vector2) -> void:
+	var target: Variant = _floor_point(point)
+	if target == null:
+		hud.show_hint("Tap a platform top to walk.")
+	elif not request_walk(target):
+		hud.show_hint("There is no connected path.")
+		if phase == "play":
+			world.flash_unreachable(target)
+	world.draw_hover(PackedVector3Array())
+
+## The walkable point under a screen point, or null when it is not a floor.
+func _floor_point(point: Vector2) -> Variant:
 	var query := PhysicsRayQueryParameters3D.create(camera.project_ray_origin(point),
 		camera.project_ray_origin(point) + camera.project_ray_normal(point) * 100, 1)
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if not hit.is_empty() and (hit["normal"] as Vector3).y >= Queries.FLOOR_Y - 0.0001:
-		var target: Vector3 = hit["position"]
-		target.y += Geometry.RADIUS * (1.0 / (hit["normal"] as Vector3).y - 1.0)
-		if not request_walk(target):
-			hud.show_hint("There is no connected path.")
-	else:
-		hud.show_hint("Tap a platform top to walk.")
+	if hit.is_empty() or (hit["normal"] as Vector3).y < Queries.FLOOR_Y - 0.0001:
+		return null
+	var target: Vector3 = hit["position"]
+	target.y += Geometry.RADIUS * (1.0 / (hit["normal"] as Vector3).y - 1.0)
+	return target
+
+## A walk that ends on the goal's tile ends on the goal, so a tap anywhere on
+## that tile finishes the stage, not only one near the ring's centre.
+func _walk_target(target: Vector3) -> Vector3:
+	var goal := Geometry.vector(level["goal"])
+	if absf(target.x - goal.x) < 0.5 and absf(target.z - goal.z) < 0.5 and absf(target.y - goal.y) < 0.3:
+		return goal
+	return target
+
+## On desktop, the way to the pointer shows faintly before a click. A place
+## with no way to it shows nothing.
+func _hover_at(point: Vector2) -> void:
+	var route := PackedVector3Array()
+	if phase == "play" and walker.route.is_empty() and pending.is_empty() and settle_frames == 0 and not camera.busy \
+			and play_rect.has_point(point) and not hud.blocks_world_input(point):
+		var target: Variant = _floor_point(point)
+		if target != null:
+			route = navigation.route(walker.position, _walk_target(target))
+	world.draw_hover(route)
 
 func _ground_point(point: Vector2, height: float) -> Vector3:
 	var ray := camera.project_ray_normal(point)

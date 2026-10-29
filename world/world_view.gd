@@ -3,6 +3,10 @@ extends Node3D
 
 const Queries := preload("res://core/solid_queries.gd")
 const BlockSet := preload("res://world/block_set.gd")
+const DropShadowShader := preload("res://world/drop_shadow.gdshader")
+## Gaps under a block smaller than this count as resting on the surface.
+const SHADOW_GAP := 0.05
+const UNREACHABLE := Color(0.82, 0.38, 0.3, 0.95)
 const HIDDEN_FILL := Color(0.86, 0.9, 0.96, 0.16)
 const HIDDEN_EDGE := Color(0.92, 0.95, 1.0, 0.75)
 const HIDDEN_INSET := 0.985
@@ -11,6 +15,9 @@ var collision_root := Node3D.new()
 var overlay_root := Node3D.new()
 var path_root := Node3D.new()
 var hidden_root := Node3D.new()
+var shadow_root := MeshInstance3D.new()
+var hover_root := Node3D.new()
+var mark_root := Node3D.new()
 var drawn_solids: Array[Dictionary] = []
 var visual_slots: Dictionary = {}
 var visual_generation := 0
@@ -19,8 +26,12 @@ var debug_collision := false
 var clip_plane := Plane()
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, hidden_root]:
+	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, hidden_root, shadow_root, hover_root, mark_root]:
 		add_child(node)
+	shadow_root.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var shade := ShaderMaterial.new()
+	shade.shader = DropShadowShader
+	shadow_root.material_override = shade
 
 func commit(solids: Array[Dictionary]) -> void:
 	_clear(collision_root)
@@ -57,7 +68,39 @@ func draw_world(solids: Array[Dictionary]) -> void:
 	for slot: Dictionary in visual_slots.values():
 		if slot.get("generation", -1) != visual_generation:
 			slot["instance"].visible = false
+	_draw_drop_shadows(solids)
 	update_debug()
+
+## A soft shadow straight below every floating block, on each surface under
+## its footprint. A copy beside a path and one above it look alike from an
+## isometric view; the shadow tells them apart.
+func _draw_drop_shadows(solids: Array[Dictionary]) -> void:
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var count := 0
+	for block: Dictionary in solids:
+		var bounds: AABB = block["bounds"]
+		for below: Dictionary in solids:
+			var support: AABB = below["bounds"]
+			if is_same(below, block) or support.end.y > bounds.position.y - SHADOW_GAP:
+				continue
+			var low := Vector2(maxf(bounds.position.x, support.position.x), maxf(bounds.position.z, support.position.z))
+			var high := Vector2(minf(bounds.end.x, support.end.x), minf(bounds.end.z, support.end.z))
+			if high.x - low.x < 0.05 or high.y - low.y < 0.05:
+				continue
+			var size := high - low
+			var height := support.end.y + 0.012
+			# Fainter the further the block floats above the surface.
+			var fade := clampf(1.2 - (bounds.position.y - support.end.y) * 0.15, 0.45, 1.0)
+			var corners := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+			for index: int in [0, 1, 2, 0, 2, 3]:
+				var corner: Vector2 = corners[index]
+				tool.set_color(Color(1, 1, 1, fade))
+				tool.set_uv(corner)
+				tool.set_uv2(size)
+				tool.add_vertex(Vector3(low.x + size.x * corner.x, height, low.y + size.y * corner.y))
+			count += 1
+	shadow_root.mesh = tool.commit() if count > 0 else null
 
 func _discard_inactive_slots() -> void:
 	for key: String in visual_slots.keys():
@@ -238,6 +281,47 @@ func draw_hidden(fragments: Array) -> void:
 	surface.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	hidden_root.add_child(surface)
 	_lines(hidden_root, edges, HIDDEN_EDGE)
+
+## The way the traveller would walk to the pointer, drawn faintly on hover.
+func draw_hover(path: PackedVector3Array) -> void:
+	_clear(hover_root)
+	var points := PackedVector3Array()
+	for index: int in range(path.size() - 1):
+		points.append(path[index] + Vector3.UP * 0.02)
+		points.append(path[index + 1] + Vector3.UP * 0.02)
+	_lines(hover_root, points, Color(0.24, 0.38, 0.38, 0.45))
+	if not path.is_empty():
+		add_ring(hover_root, path[-1], Color(0.24, 0.38, 0.38, 0.45), 0.13)
+
+## A short-lived mark where a tap asked for a place the traveller cannot
+## reach: a cross in a ring, lying on the surface, that fades out.
+func flash_unreachable(feet: Vector3) -> void:
+	_clear(mark_root)
+	var mark := Node3D.new()
+	mark.position = feet + Vector3.UP * 0.08
+	mark_root.add_child(mark)
+	var material := _plain(UNREACHABLE)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.no_depth_test = true
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.27
+	ring.outer_radius = 0.34
+	ring.rings = 32
+	ring.ring_segments = 6
+	var bar := BoxMesh.new()
+	bar.size = Vector3(0.42, 0.02, 0.06)
+	for part: Array in [[ring, 0.0], [bar, PI * 0.25], [bar, -PI * 0.25]]:
+		var piece := MeshInstance3D.new()
+		piece.mesh = part[0]
+		piece.rotation.y = part[1]
+		piece.scale = Vector3(1, 0.3, 1)
+		piece.material_override = material
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mark.add_child(piece)
+	var fade := mark.create_tween()
+	fade.tween_interval(0.5)
+	fade.tween_property(material, "albedo_color:a", 0.0, 0.45)
+	fade.tween_callback(mark.queue_free)
 
 func draw_route(path: PackedVector3Array) -> void:
 	_clear(path_root)
