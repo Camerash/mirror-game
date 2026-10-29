@@ -124,9 +124,9 @@ proves simpler.
    stage 1's file). Pictures:
    [grab and camera buttons](playtests/2026-10-fixes/grab-hover-and-camera-icons.jpg),
    [phone framing](playtests/2026-10-fixes/phone-framing.jpg).
-   - The camera buttons are drawn as a small block over a turning arc, with
-     the arrowhead on the side of the turn, not as the ↶ ↷ glyphs. Their
-     tooltips say "Turn the view left (Q)" and "right (E)".
+   - The camera buttons are drawn as one bold, flattened orbit arrow with
+     its head at the front, pointing the way of the turn, not as the ↶ ↷
+     glyphs. Tooltips: "Turn left (Q)", "Turn right (E)".
    - The mirror takes a press anywhere on its panel, through a block that
      passes through the frame, and up to a quarter unit past the glass. A tap
      there still walks. On desktop, the pointer on the mirror shows a move

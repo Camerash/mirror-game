@@ -241,7 +241,7 @@ func _build() -> void:
 	_help.pressed.connect(func() -> void: _emit("help", null)); add_child(_help); _register("help", _help)
 	_camera_left = _add_action("", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
 	_camera_right = _add_action("", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
-	for pair: Array in [[_camera_left, -1, "Turn the view left (Q)"], [_camera_right, 1, "Turn the view right (E)"]]:
+	for pair: Array in [[_camera_left, -1, "Turn left (Q)"], [_camera_right, 1, "Turn right (E)"]]:
 		var camera_button: Button = pair[0]
 		camera_button.tooltip_text = pair[2]; camera_button.accessibility_name = String(pair[2]).get_slice(" (", 0)
 		camera_button.draw.connect(_draw_camera_icon.bind(camera_button, int(pair[1])))
@@ -565,36 +565,25 @@ func _draw_mirror_icon() -> void:
 	for index: int in 4:
 		_mirror_button.draw_dashed_line(corners[index], corners[(index + 1) % 4], ink, 1.5, 3.0, true, true)
 
-## A small block on a turntable arc, so the view turns do not read as Undo
-## and Redo. The arrowhead shows the direction of the turn.
+## One bold, flattened orbit with its head at the front: the view swings
+## round the stage, not the hook of Undo and Redo.
 func _draw_camera_icon(button: Button, direction: int) -> void:
 	var ink := Color(IVORY, 0.45 if button.disabled else 1.0)
-	var shade := Color(INK, 0.55)
-	var centre := button.size * 0.5 + Vector2(0, -4)
-	var radius := 8.0
-	var hexagon := PackedVector2Array()
-	for index: int in 6:
-		hexagon.append(centre + Vector2.from_angle(-PI * 0.5 + index * PI / 3.0) * radius)
-	var top := PackedVector2Array([hexagon[0], hexagon[1], centre, hexagon[5]])
-	button.draw_colored_polygon(top, Color(ink, ink.a * 0.35))
-	var lines: Array[PackedVector2Array] = [hexagon + PackedVector2Array([hexagon[0]]),
-		PackedVector2Array([hexagon[5], centre, hexagon[1]]), PackedVector2Array([centre, hexagon[3]])]
+	var shade := Color(INK, 0.5)
+	var centre := button.size * 0.5 + Vector2(0, -1)
+	var ring := Vector2(16.0, 7.0)
 	var arc := PackedVector2Array()
-	var ring := Vector2(16, 6.0)
-	var ring_centre := centre + Vector2(0, 9)
-	for step: int in 17:
-		var angle := lerpf(deg_to_rad(15.0), deg_to_rad(165.0), float(step) / 16.0)
-		arc.append(ring_centre + Vector2(cos(angle) * ring.x, sin(angle) * ring.y))
-	if direction > 0:
-		arc.reverse()
-	lines.append(arc)
-	var tip := arc[arc.size() - 1]
-	var heading := (tip - arc[arc.size() - 3]).normalized()
-	lines.append(PackedVector2Array([tip - heading.rotated(0.6) * 6.0, tip, tip - heading.rotated(-0.6) * 6.0]))
-	for line: PackedVector2Array in lines:
-		button.draw_polyline(line, shade, 3.5, true)
-	for line: PackedVector2Array in lines:
-		button.draw_polyline(line, ink, 1.6, true)
+	for step: int in 33:
+		var angle := deg_to_rad(lerpf(25.0, -265.0, float(step) / 32.0))
+		arc.append(centre + Vector2(cos(angle) * ring.x * direction, sin(angle) * ring.y))
+	var base := arc[arc.size() - 1]
+	var heading := Vector2(direction, 0)
+	var side := Vector2(0, 5.5)
+	var head := PackedVector2Array([base + heading * 8.0, base + side, base - side])
+	button.draw_polyline(arc, shade, 6.5, true)
+	button.draw_colored_polygon(PackedVector2Array([head[0] + heading * 1.5, head[1] + side * 0.25 - heading, head[2] - side * 0.25 - heading]), shade)
+	button.draw_polyline(arc, ink, 3.5, true)
+	button.draw_colored_polygon(head, ink)
 
 func _button(text_value: String) -> Button:
 	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button)

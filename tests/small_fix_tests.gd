@@ -122,8 +122,8 @@ func run() -> void:
 
 	# Camera buttons: a drawn turning block, not the Undo and Redo glyphs.
 	for button: Button in [game.hud._camera_left, game.hud._camera_right]:
-		check(button.text.is_empty() and button.tooltip_text.begins_with("Turn the view") and button.draw.get_connections().size() > 0,
-			"Camera: %s is a drawn icon with a 'Turn the view' tooltip" % button.tooltip_text)
+		check(button.text.is_empty() and button.tooltip_text.begins_with("Turn ") and button.draw.get_connections().size() > 0,
+			"Camera: %s is a drawn icon with a 'Turn' tooltip" % button.tooltip_text)
 
 	# First steps leaves the mirror out: no button, and M does nothing.
 	await load_stage("13_first_steps")
