@@ -29,9 +29,13 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
 
 ## Her
 
+- DECIDED (2026-10-30): the twins are always side by side, but a little
+  different: one is right-handed and one left-handed, fitting the mirror.
 - DECIDED (2026-10-30): pictured like the little girl in Deemo. The small
   hooded traveller in the game is the owner's version of her for this game.
 - DRAFT (2026-10-30): alone on screen, like Ida; a second figure is optional.
+- OPEN: whether the sister appears in reflections or as a figure on the copy
+  side; it depends on the story.
 - OPEN: whether she carries the mirror from the start or finds it in the
   first minutes. Test both.
 
@@ -83,11 +87,11 @@ How each verb should feel. A feature brief cites these.
   mirrors to build an infinite pathway, to reach something she has long hoped
   for. Inspired by Inception. The mechanic arc builds toward it.
 - DECIDED (2026-10-30): the last minutes feel light-hearted and hopeful.
-- OPEN (2026-10-30): the number of chapters should be symbolic: 5, for the
-  five stages of grief, or 7, for the holiness of the number. DRAFT
-  recommendation: five chapters of about 12 minutes, one for each stage of
-  grief as an undercurrent (never as titles), framed by a short prologue and
-  epilogue: seven parts in all.
+- DECIDED (2026-10-30): a prologue, five chapters and an epilogue, seven
+  parts in all. The five stages of grief run underneath the chapters, never
+  as titles. About 12 minutes a chapter.
+- DRAFT: two story arcs, chapter by chapter, in [story arcs](story-arcs.md).
+  Recommended: A, the pond.
 
 ## Story and telling
 
@@ -123,9 +127,11 @@ How each verb should feel. A feature brief cites these.
 
 ## First five minutes
 
-- DECIDED (2026-10-30): a title screen like Monument Valley's.
-- OPEN: what the player meets after it, and what they have learned, felt and
-  wanted by minute five.
+- DECIDED (2026-10-30): a title screen like Monument Valley's: the first
+  place seen from afar, and a tap begins.
+- DECIDED (2026-10-30): by minute five, one glimpse of the sister in the
+  mirror, then she is gone.
+- OPEN: what the player has learned and wants by minute five.
 
 ## Art reference
 
