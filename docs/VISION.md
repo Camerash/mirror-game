@@ -5,6 +5,15 @@ before design or build work. It says what the game is for the player. The
 rules live in `GAME_DESIGN.md`; when the two disagree, raise it with the
 owner before changing either.
 
+## The feeling: light after rain
+
+DECIDED (2026-10-30). The one feeling the whole game aims at: mysterious,
+holy, hopeful, sad, grieving, like light after rain. The owner's touchstones
+are three pieces from the Nier Automata soundtrack: "City Ruins - Rays of
+Light", "Copied City" and "Weight of the World". The owner calls this the
+most important feeling and the closest description of the game. Test every
+screen, sound and story beat against it.
+
 Each item is marked **DECIDED** (with the date), **DRAFT** (proposed, not yet
 agreed) or **OPEN** (not yet discussed). Only the owner decides.
 
@@ -38,9 +47,10 @@ DRAFT (2026-10-30), from round 1. Each pillar is a test a feature must pass.
    dimension: what was, what might have been, what lies deep within her. What
    the player does with the mirror is what the story means. Raising it is
    looking back; lowering it is letting go; the ending is putting it down.
-3. **Felt, not told.** Nearly wordless. Light, music, place and motion carry
-   the emotion. A late reveal reframes what the player has seen, as Nier
-   Automata reframes the androids and the machines.
+3. **Light after rain.** Grim on the way, hopeful at the end. Nearly
+   wordless: light, music, place and motion carry the emotion. A late reveal
+   reframes what the player has seen, as Nier Automata reframes the androids
+   and the machines.
 4. **Made by hand, every screen a picture.** One coherent, intentional look,
    curated frame by frame. Nothing generic, nothing that reads as AI slop.
 5. **Respect the hour.** One sitting, no grind, no cash grab. Every chapter
@@ -61,6 +71,10 @@ How each verb should feel. A feature brief cites these.
 - DECIDED (2026-10-30): played in one sitting of about an hour, on Steam or
   on a phone. Each chapter moves the story on meaningfully and brings
   slightly more complex places.
+- DRAFT (owner's idea, 2026-10-30): in the finale she uses two parallel
+  mirrors to build an infinite pathway, to reach something she has long hoped
+  for. Inspired by Inception. The mechanic arc builds toward it.
+- DECIDED (2026-10-30): the last minutes feel light-hearted and hopeful.
 - DRAFT: chapters of 8 to 12 minutes, each ending on a story beat, so a phone
   player can also stop between them.
 
@@ -75,6 +89,14 @@ How each verb should feel. A feature brief cites these.
 - DECIDED (2026-10-30): the mirror means reflection on oneself; a glimpse of,
   or portal to, another dimension; uncovering the unknown; exploring what is
   deep within.
+- DECIDED (2026-10-30): the story is written together with the owner, from
+  scratch. Inspirations: Inception, Nier Automata, Death Stranding. It can be
+  grim, but it stays uplifting and hopeful.
+- DECIDED (2026-10-30): the mirror shows the mirrored structures, as the
+  rules require; it may also show something more on the other side. The life
+  that might have been is a good fit (DRAFT), depending on the story.
+- DRAFT (2026-10-30): "putting down" is not literal; whether the last puzzle
+  is solved without the mirror stays an open idea.
 - DRAFT: the blend in [story directions](story-directions.md), "possible
   lives, after a loss": the mirror shows the lives in which the loss did not
   happen, made walkable; the ending is putting the mirror down. Her own past
@@ -84,8 +106,9 @@ How each verb should feel. A feature brief cites these.
 
 ## First five minutes
 
-- OPEN: what the player meets on opening the game, and what they have
-  learned, felt and wanted by minute five.
+- DECIDED (2026-10-30): a title screen like Monument Valley's.
+- OPEN: what the player meets after it, and what they have learned, felt and
+  wanted by minute five.
 
 ## Art reference
 
@@ -101,7 +124,10 @@ How each verb should feel. A feature brief cites these.
 
 ## Sound
 
-- OPEN: what the world, the mirror and the music should sound like.
+- DECIDED (2026-10-30): mysterious, holy, hopeful, sad, grieving: light
+  after rain (see the top). References: Nier Automata, "City Ruins - Rays of
+  Light", "Copied City", "Weight of the World".
+- OPEN: what the mirror itself sounds like.
 
 ## Money
 
@@ -115,7 +141,8 @@ How each verb should feel. A feature brief cites these.
 
 ## Never
 
-- DECIDED (2026-10-30): AI slop.
+- DECIDED (2026-10-30): AI slop. The defence is craftsmanship and attention
+  to detail, fine-tuned with the owner.
 - DECIDED (2026-10-30): a cash-grab game, such as Kingshot.
 - DECIDED (2026-10-30): grind.
 - DRAFT: no scores or timers (stated in `GAME_DESIGN.md`, never dated).
@@ -171,7 +198,15 @@ Named after round 1 (2026-10-30), each with a recommendation.
 5. **The garden look and a tragic past.** They fit: overgrowth is time since
    the loss; the copy in full bloom is what was. DRAFT recommendation: keep
    the garden and tie its two states to the story.
-6. **One sitting against phone sessions.** DRAFT recommendation: short
+6. **The two-mirror finale needs a second mirror.** The game has one mirror
+   today. DRAFT recommendation: plan the mechanic arc backwards from the
+   finale, so a second mirror arrives a chapter or two before it, and test
+   two facing mirrors in grey box early, since it is the game's biggest
+   promise.
+7. **Grim against light-hearted.** DRAFT recommendation: a tone curve, grim
+   through the middle and lifting at the end, with small moments of light
+   throughout so the dark never becomes despair.
+8. **One sitting against phone sessions.** DRAFT recommendation: short
    chapters that each end on a beat serve both.
 
 ### Where today's game breaks the draft pillars
