@@ -12,10 +12,12 @@ const Game := preload("res://game.gd")
 const TutorialProgress := preload("res://core/tutorial_progress.gd")
 const SafeArea := preload("res://core/safe_area.gd")
 
-const INK := Color("342b2a")
-const IVORY := Color("f4ecdd")
-const WARM := Color("b85f4b")
 const END_CARD_DELAY := 1.5
+## How long the title waits before the small light shows where to tap.
+const TITLE_HINT_DELAY := 1.8
+## The title's slow sway about the stage: radians, and radians per second.
+const TITLE_SWAY := 0.45
+const TITLE_SWAY_SPEED := 0.15
 
 ## Overridable before `add_child`, so a test does not need a real save file.
 var progress_path := TutorialProgress.DEFAULT_PATH
@@ -29,10 +31,13 @@ var game: Game
 
 var _title_layer: CanvasLayer
 var _title_root: Control
-var _title_veil: ColorRect
 var _title_label: Label
-var _primary_button: Button
-var _new_game_button: Button
+## A small light that breathes where to tap, once the title has settled.
+var _title_hint: Control
+var _title_motion: Tween
+var _title_time := 0.0
+## True while the camera sinks from the title into the stage.
+var _sinking := false
 
 var _end_layer: CanvasLayer
 var _end_root: Control
@@ -44,7 +49,7 @@ var _end_title_button: Button
 ## sets its own loop points, so one `play()` here is enough; no stage change
 ## touches this player again.
 var _music_player: AudioStreamPlayer
-## Plays a click for every button `_styled_button` creates. One player, one
+## Plays a click for every row `_row` creates. One player, one
 ## wire-up point, instead of a play call in each button's own press handler.
 var _click_player: AudioStreamPlayer
 
@@ -78,7 +83,7 @@ func _ready() -> void:
 	game.hud.set_settings_state(progress.music_volume, progress.effects_volume, progress.fullscreen)
 	_build_title()
 	_build_end_card()
-	_show_title()
+	_show_title(false)
 
 
 func _apply_music_volume() -> void:
@@ -112,6 +117,8 @@ func _on_tutorial_finished() -> void:
 	_set_game_active(false)
 	_end_layer.visible = true
 	_layout_end()
+	_end_root.modulate.a = 0.0
+	Motion.tween(_end_root, "modulate:a", 1.0, "transition")
 
 
 ## `input_enabled` gates what the game reacts to; `set_overlay_visible` hides
@@ -140,110 +147,162 @@ func _on_hud_action(action: String, value: Variant) -> void:
 			if game.hud.is_debug_visible():
 				game.hud._toggle_debug()
 			_show_title()
+		"new_game":
+			_start_again()
 
 
 ## --- Title -------------------------------------------------------------
 
 func _build_title() -> void:
 	_title_layer = CanvasLayer.new(); _title_layer.layer = 10; add_child(_title_layer)
-	_title_root = Control.new(); _title_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _title_layer.add_child(_title_root)
-	_title_veil = ColorRect.new(); _title_veil.color = Color(IVORY, 0.86); _title_veil.mouse_filter = Control.MOUSE_FILTER_STOP
-	_title_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _title_root.add_child(_title_veil)
-	_title_veil.gui_input.connect(_on_title_veil_input)
-	_title_label = _title_text("Mirror", 48); _title_root.add_child(_title_label)
-	_primary_button = _styled_button("Tap to begin"); _primary_button.pressed.connect(_on_primary_pressed); _title_root.add_child(_primary_button)
-	_new_game_button = _styled_button("New game"); _new_game_button.pressed.connect(_on_new_game_pressed); _title_root.add_child(_new_game_button)
+	# The whole screen is the way in: a tap anywhere, or any key, begins.
+	_title_root = Control.new(); _title_root.theme = UiStyle.theme(); _title_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	_title_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _title_layer.add_child(_title_root)
+	_title_root.gui_input.connect(_on_title_input)
+	_title_label = UiStyle.label("Mirror", "title"); _title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE; _title_root.add_child(_title_label)
+	_title_hint = Control.new(); _title_hint.size = Vector2(UiStyle.TOUCH, UiStyle.TOUCH); _title_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title_hint.draw.connect(_draw_title_hint); _title_hint.visible = false; _title_root.add_child(_title_hint)
 	_title_root.resized.connect(_layout_title)
 
 
-func _show_title() -> void:
-	var has_save := progress.stage > 0
-	_primary_button.text = "Continue" if has_save else "Tap to begin"
-	_new_game_button.visible = has_save
-	_title_layer.visible = true
+## The light after rain, small: a warm point in a soft halo.
+func _draw_title_hint() -> void:
+	var centre := _title_hint.size * 0.5
+	for ring: int in 6:
+		_title_hint.draw_circle(centre, 6.0 + ring * 3.2, Color(UiStyle.LIGHT, 0.10))
+	_title_hint.draw_circle(centre, 5.0, Color(UiStyle.SNOW, 0.95))
+
+
+## `rise` lifts the camera from the stage up to the far view; without it, the
+## far view shows at once, as on launch.
+func _show_title(rise := true) -> void:
 	_set_game_active(false)
+	_sinking = false
+	if is_instance_valid(_title_motion):
+		_title_motion.kill()
+	_title_layer.visible = true
 	_layout_title()
+	_title_hint.visible = false
+	Motion.fade(_title_label, true)
+	var camera := game.camera
+	if rise:
+		var start := camera.afar
+		_title_motion = Motion.blend(self, func(weight: float) -> void:
+			camera.afar = lerpf(start, 1.0, weight)
+			camera.refresh(), "transition")
+	else:
+		camera.afar = 1.0
+		camera.refresh()
+		_title_motion = create_tween()
+	_title_motion.tween_interval(TITLE_HINT_DELAY)
+	_title_motion.tween_callback(func() -> void:
+		Motion.fade(_title_hint, true)
+		_title_motion = create_tween()
+		_title_motion.tween_interval(Motion.duration("appear"))
+		_title_motion.tween_callback(func() -> void: _title_motion = Motion.breathe(_title_hint, 0.35)))
 
 
+func _process(delta: float) -> void:
+	if not _title_layer.visible or _sinking:
+		return
+	_title_time += delta
+	game.camera.drift = sin(_title_time * TITLE_SWAY_SPEED) * TITLE_SWAY
+	game.camera.refresh()
+
+
+## Play begins once the camera has sunk into the stage.
 func _hide_title() -> void:
 	_title_layer.visible = false
+	_sinking = false
+	game.camera.afar = 0.0
+	game.camera.refresh()
 	_set_game_active(true)
+	game.hud.modulate.a = 0.0
+	Motion.tween(game.hud, "modulate:a", 1.0, "appear")
+	game.hud.show_stage_title(str(game.level.get("title", "")))
 
 
-## Tapping empty title space begins the game exactly like the primary
-## button, but only while there is no save to protect ("Tap to begin", not
-## "Continue"): a returning player should not resume by an accidental tap.
-func _on_title_veil_input(event: InputEvent) -> void:
-	if progress.stage > 0:
-		return
+func _on_title_input(event: InputEvent) -> void:
 	if (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) \
 			or (event is InputEventScreenTouch and event.pressed):
 		_on_primary_pressed()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if _title_layer.visible and (event is InputEventKey or event is InputEventJoypadButton) and event.is_pressed() and not event.is_echo():
+		get_viewport().set_input_as_handled()
+		_on_primary_pressed()
+
+
+## The tap that begins or continues: the camera sinks from the far view into
+## the stage, then play starts.
 func _on_primary_pressed() -> void:
-	_hide_title()
+	if _sinking or not _title_layer.visible:
+		return
+	_sinking = true
+	if is_instance_valid(_title_motion):
+		_title_motion.kill()
+	Motion.fade(_title_label, false)
+	Motion.fade(_title_hint, false)
+	var camera := game.camera
+	var start := camera.afar
+	_title_motion = Motion.blend(self, func(weight: float) -> void:
+		camera.afar = lerpf(start, 0.0, weight)
+		camera.refresh(), "transition")
+	_title_motion.tween_callback(_hide_title)
 
 
-func _on_new_game_pressed() -> void:
+## Settings' "Start again": the saved stage and done prompts are cleared, and
+## the first stage begins.
+func _start_again() -> void:
 	progress.reset_progress()
 	game.load_level(0)
-	_hide_title()
+	game.hud.show_stage_title(str(game.level.get("title", "")))
 
 
 ## --- End card ------------------------------------------------------------
 
 func _build_end_card() -> void:
 	_end_layer = CanvasLayer.new(); _end_layer.layer = 10; _end_layer.visible = false; add_child(_end_layer)
-	_end_root = Control.new(); _end_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _end_layer.add_child(_end_root)
-	var veil := ColorRect.new(); veil.color = Color(IVORY, 0.86); veil.mouse_filter = Control.MOUSE_FILTER_STOP
-	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _end_root.add_child(veil)
-	_end_label = _title_text("The tutorial is complete.", 32); _end_root.add_child(_end_label)
-	_play_again_button = _styled_button("Play again"); _play_again_button.pressed.connect(_on_play_again_pressed); _end_root.add_child(_play_again_button)
-	_end_title_button = _styled_button("Title"); _end_title_button.pressed.connect(_on_end_title_pressed); _end_root.add_child(_end_title_button)
+	_end_root = Control.new(); _end_root.theme = UiStyle.theme(); _end_root.mouse_filter = Control.MOUSE_FILTER_STOP
+	_end_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _end_layer.add_child(_end_root)
+	# A thin mist over the world, so the words read on it.
+	var mist := ColorRect.new(); mist.color = Color(UiStyle.SNOW, 0.42); mist.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mist.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT); _end_root.add_child(mist)
+	_end_label = UiStyle.label("The tutorial is complete.", "chapter"); _end_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_end_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _end_root.add_child(_end_label)
+	_play_again_button = _row("again", "Play again"); _play_again_button.pressed.connect(_on_play_again_pressed)
+	_end_title_button = _row("title", "Title"); _end_title_button.pressed.connect(_on_end_title_pressed)
 	_end_root.resized.connect(_layout_end)
+	# A wrapped label knows its height only once shaped at its width.
+	_end_label.minimum_size_changed.connect(_layout_end, CONNECT_DEFERRED)
+
+
+func _row(icon: String, text: String) -> Button:
+	var row := UiIcons.row(icon, text)
+	row.custom_minimum_size.x = 220
+	row.pressed.connect(_play_click)
+	_end_root.add_child(row)
+	return row
 
 
 func _on_play_again_pressed() -> void:
 	progress.reset_progress()
 	game.load_level(0)
-	_end_layer.visible = false
+	_hide_end_card()
 	_set_game_active(true)
+	game.hud.show_stage_title(str(game.level.get("title", "")))
 
 
 func _on_end_title_pressed() -> void:
-	_end_layer.visible = false
+	_hide_end_card()
 	_show_title()
 
 
-## --- Shared look and layout -----------------------------------------------
-
-func _title_text(text_value: String, font_size: int) -> Label:
-	var label := Label.new()
-	label.text = text_value
-	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", INK)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return label
-
-
-func _styled_button(text_value: String) -> Button:
-	var button := Button.new()
-	button.text = text_value
-	button.custom_minimum_size = Vector2(200, 48)
-	button.add_theme_color_override("font_color", Color("fff4df"))
-	var normal := StyleBoxFlat.new(); normal.bg_color = Color("342b2ad9"); normal.border_color = Color("cdbca5")
-	normal.set_border_width_all(1); normal.corner_radius_top_left = 10; normal.corner_radius_top_right = 10
-	normal.corner_radius_bottom_left = 10; normal.corner_radius_bottom_right = 10
-	normal.content_margin_left = 16; normal.content_margin_right = 16
-	var hover := normal.duplicate() as StyleBoxFlat; hover.bg_color = Color("4b3a38e6")
-	var pressed := normal.duplicate() as StyleBoxFlat; pressed.bg_color = WARM
-	button.add_theme_stylebox_override("normal", normal)
-	button.add_theme_stylebox_override("hover", hover)
-	button.add_theme_stylebox_override("pressed", pressed)
-	button.pressed.connect(_play_click)
-	return button
+func _hide_end_card() -> void:
+	var motion := Motion.tween(_end_root, "modulate:a", 0.0, "dismiss")
+	motion.tween_callback(func() -> void: _end_layer.visible = false)
 
 
 func _play_click() -> void:
@@ -252,26 +311,26 @@ func _play_click() -> void:
 
 
 func _layout_title() -> void:
-	_layout_overlay(_title_root, _title_label, [_primary_button, _new_game_button])
-
-
-func _layout_end() -> void:
-	_layout_overlay(_end_root, _end_label, [_play_again_button, _end_title_button])
-
-
-## Centres a heading and stacks its buttons under it, clear of the window
-## edges at every supported aspect ratio from a phone in portrait to a
-## tablet in landscape.
-func _layout_overlay(root_control: Control, label: Label, buttons: Array) -> void:
-	if not is_instance_valid(root_control) or root_control.size.x < 10 or root_control.size.y < 10:
+	if not is_instance_valid(_title_root) or _title_root.size.x < 10 or _title_root.size.y < 10:
 		return
-	var safe := SafeArea.rect(root_control)
-	label.position = Vector2(safe.position.x, safe.position.y + safe.size.y * 0.32)
-	label.size = Vector2(safe.size.x, 60)
-	var y := safe.position.y + safe.size.y * 0.32 + 90
-	for button: Button in buttons:
-		if not button.visible:
-			continue
-		button.position = Vector2(safe.position.x + (safe.size.x - button.custom_minimum_size.x) * 0.5, y)
+	var safe := SafeArea.rect(_title_root)
+	# "Mirror" in the sky above the far stage; the light low in the middle.
+	_title_label.size = Vector2(safe.size.x, _title_label.get_combined_minimum_size().y)
+	_title_label.position = Vector2(safe.position.x, safe.position.y + safe.size.y * 0.12)
+	_title_hint.position = Vector2(safe.get_center().x - _title_hint.size.x * 0.5, safe.end.y - safe.size.y * 0.12 - _title_hint.size.y)
+
+
+## The end card: the words a little above the middle, the two rows under them,
+## clear of the window edges from a phone in portrait to a tablet in landscape.
+func _layout_end() -> void:
+	if not is_instance_valid(_end_root) or _end_root.size.x < 10 or _end_root.size.y < 10:
+		return
+	var safe := SafeArea.rect(_end_root)
+	var width := safe.size.x - UiStyle.GAP * 2.0
+	_end_label.size = Vector2(width, 0)
+	_end_label.position = Vector2(safe.position.x + UiStyle.GAP, safe.position.y + safe.size.y * 0.32)
+	var y := _end_label.position.y + _end_label.size.y + 40.0
+	for button: Button in [_play_again_button, _end_title_button]:
 		button.size = button.custom_minimum_size
-		y += button.custom_minimum_size.y + 24
+		button.position = Vector2(safe.get_center().x - button.size.x * 0.5, y)
+		y += button.size.y + UiStyle.GAP

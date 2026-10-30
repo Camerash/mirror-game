@@ -177,6 +177,8 @@ func run() -> void:
 	check(game.hud._settings_panel.visible and game.hud._restart_button.is_visible_in_tree(), "Restart: the settings panel shows Restart stage")
 	game.hud._restart_button.pressed.emit()
 	await settled()
+	# The panel leaves with the dismiss motion.
+	await create_timer(Motion.duration("dismiss") + 0.05).timeout
 	check(not game.hud._settings_panel.visible, "Restart: the panel closes")
 	check(game.history.is_empty() and not game.mirror.get("enabled", false) and game.walker.position.is_equal_approx(start),
 		"Restart: the stage is back at its start")

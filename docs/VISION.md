@@ -325,6 +325,12 @@ placeholder; and the owner says it feels like light after rain.
   names, Regular for the few other words.
 - DECIDED (2026-10-30): use UI elements sparingly in the game. Show a control
   only when it can be used and is needed.
+- Status (2026-10-30): every screen now uses the system, per
+  [the screens brief](briefs/ui-screens.md): the title from afar with no
+  buttons, icon-only HUD, frost prompt and hints, stage names on the world,
+  the settings panel and the end card. Every tween goes through `Motion`.
+  Stills and a clip: `docs/ui-style/screens/`. Waits for the owner's Mac
+  review.
 
 ## Open tensions
 

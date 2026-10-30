@@ -11,6 +11,10 @@ var play_rect := Rect2()
 var motion: Tween
 var busy := false
 var initialized := false
+## The title's view: 0 is play, 1 is the stage seen from far above.
+var afar := 0.0
+## The title's slow sway about the stage, in radians, scaled by `afar`.
+var drift := 0.0
 
 func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
 	if rect.size.x < 10 or rect.size.y < 10:
@@ -30,9 +34,8 @@ func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
 	var start_position := position
 	var start_size := size
 	var start_basis := basis
-	motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	motion.tween_method(func(weight: float) -> void:
-		_apply(start_position.lerp(pose["position"], weight), start_basis.slerp(pose["basis"], weight), lerpf(start_size, pose["size"], weight)), 0.0, 1.0, 0.28)
+	motion = Motion.blend(self, func(weight: float) -> void:
+		_apply(start_position.lerp(pose["position"], weight), start_basis.slerp(pose["basis"], weight), lerpf(start_size, pose["size"], weight)), "settle")
 	motion.tween_callback(_finish)
 
 ## True when the current view already shows all of `stage_bounds` inside
@@ -57,11 +60,18 @@ func turn(direction: int) -> void:
 	var start_size := size
 	var end_size: float = _pose(target)["size"]
 	# One captured destination, one fixed world pivot, no intermediate fit.
-	motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	motion.tween_method(func(weight: float) -> void:
+	motion = Motion.blend(self, func(weight: float) -> void:
 		yaw = lerpf(start, target, weight)
-		_apply_pose(yaw, lerpf(start_size, end_size, weight)), 0.0, 1.0, 0.4)
+		_apply_pose(yaw, lerpf(start_size, end_size, weight)), "reveal")
 	motion.tween_callback(_finish)
+
+## Applies the current pose at once, for the title's `afar` and `drift`.
+func refresh() -> void:
+	if not initialized:
+		return
+	if busy:
+		_stop()
+	_apply_pose(yaw, 0.0)
 
 func _apply_pose(angle: float, height: float) -> void:
 	var pose := _pose(angle, height)
@@ -70,7 +80,10 @@ func _apply_pose(angle: float, height: float) -> void:
 func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: Variant = null) -> Dictionary:
 	var framed: AABB = bounds if stage_bounds == null else stage_bounds
 	var fit_rect: Rect2 = play_rect if area == null else area
-	var direction := Vector3(cos(angle) * cos(PI / 6.0), sin(PI / 6.0), sin(angle) * cos(PI / 6.0))
+	angle += drift * afar
+	# From afar the view looks down more steeply, and from further away.
+	var lift := lerpf(PI / 6.0, 0.95, afar)
+	var direction := Vector3(cos(angle) * cos(lift), sin(lift), sin(angle) * cos(lift))
 	var centre := framed.get_center()
 	var view_basis := Basis.looking_at(-direction, Vector3.UP)
 	var viewport_size := get_viewport().get_visible_rect().size
@@ -86,6 +99,7 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 		# A small screen keeps a smaller margin, so a phone shows more stage.
 		var margin := minf(48.0, 0.08 * minf(fit_rect.size.x, fit_rect.size.y))
 		pixels = minf(maxf(10, fit_rect.size.x - margin) / extent.x, maxf(10, fit_rect.size.y - margin) / extent.y)
+		pixels /= lerpf(1.0, 2.2, afar)
 	var offset := fit_rect.get_center() - viewport_size * 0.5
 	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}

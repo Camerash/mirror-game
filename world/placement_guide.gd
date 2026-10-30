@@ -6,7 +6,6 @@ const Queries := preload("res://core/solid_queries.gd")
 const Style := preload("res://core/constellation_style.gd")
 const PEARL := Color("d9eff4")
 const AMBER := Color("f1c57b")
-const FADE_TIME := 0.2
 
 class MarksCanvas extends Control:
 	var guide: PlacementGuide
@@ -81,7 +80,8 @@ func finish() -> void:
 	if _data.is_empty() or _is_fading():
 		return
 	_fade = create_tween()
-	_fade.tween_method(_set_opacity, _opacity, 0.0, FADE_TIME)
+	_fade.tween_method(_set_opacity, _opacity, 0.0, Motion.duration("dismiss")) \
+		.set_trans(Motion.VERBS["dismiss"][1]).set_ease(Motion.VERBS["dismiss"][2])
 	_fade.tween_callback(clear)
 
 func clear() -> void:

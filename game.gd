@@ -382,7 +382,7 @@ func _begin_sweep() -> void:
 	phase = "transition"
 	walker.paused = true
 	var shift := Geometry.vector(level["start"]) - old_goal
-	hud.show_hint(str(level["title"]))
+	hud.show_stage_title(str(level["title"]))
 	camera.fit(AABB(old_framing.position + shift, old_framing.size), hud.get_camera_rect(), true)
 	sounds.play("sweep")
 	sweep.start(old_solids, Geometry.total_bounds(world.drawn_solids), shift, old_start, old_goal,
@@ -1133,9 +1133,9 @@ func _fail() -> void:
 	status = "The path fell away. Undo to try another idea."
 	_hide_prompt_card()
 	failure_veil.color.a = 0.0
-	var tween := create_tween()
-	tween.tween_property(failure_veil, "color:a", 0.30, 0.15)
-	tween.tween_property(failure_veil, "color:a", 0.0, 0.25)
+	var tween := Motion.tween(failure_veil, "color:a", 0.30, "press")
+	tween.tween_property(failure_veil, "color:a", 0.0, Motion.duration("dismiss")) \
+		.set_trans(Motion.VERBS["dismiss"][1]).set_ease(Motion.VERBS["dismiss"][2])
 	if direct_controls:
 		hud.show_hint("The traveller fell off the world. Going back.")
 		tween.tween_interval(FAIL_REWIND)

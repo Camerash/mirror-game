@@ -427,6 +427,8 @@ func check_classic_toggle() -> void:
 	await load_stage("01_route")
 	game._action("classic_controls", true)
 	await frames(2)
+	# The mirror button leaves with the dismiss motion.
+	await create_timer(Motion.duration("dismiss") + 0.05).timeout
 	check(not game.direct_controls and not game.gesture.direct and not game.hud._mirror_button.visible, "Toggle: the debug switch brings back the classic editor")
 	game.begin_preview()
 	await direct_settled()

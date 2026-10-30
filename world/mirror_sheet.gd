@@ -132,10 +132,9 @@ func animate_to(next_state: Dictionary, bounds: AABB) -> void:
 	var target := global_basis
 	global_basis = previous
 	transitioning = true
-	rotation_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	rotation_motion.tween_method(func(weight: float) -> void:
+	rotation_motion = Motion.blend(self, func(weight: float) -> void:
 		global_basis = previous.slerp(target, weight)
-		pose_changed.emit(), 0.0, 1.0, 0.22)
+		pose_changed.emit(), "settle")
 	rotation_motion.tween_callback(func() -> void:
 		global_basis = target
 		transitioning = false

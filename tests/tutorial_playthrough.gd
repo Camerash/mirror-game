@@ -51,6 +51,10 @@ func run() -> void:
 	await shot("title")
 	app._on_primary_pressed()
 	game = app.game
+	# The camera sinks from the far view into the stage before play begins.
+	var deadline := Time.get_ticks_msec() + 5000
+	while app._title_layer.visible and Time.get_ticks_msec() < deadline:
+		await process_frame
 	await frames(6)
 	await idle()
 	check(stage_file() == "13_first_steps", "Playthrough: Begin starts First steps")

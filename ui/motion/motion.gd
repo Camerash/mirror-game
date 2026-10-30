@@ -25,8 +25,8 @@ const VERBS := {
 ## How far an appearing control rises, in logical units.
 const RISE := 8.0
 
-## Scales every duration. Tests set it near zero; a reduced-motion setting
-## could later set it lower than one.
+## Divides every duration. Tests raise it so motion ends within a frame or
+## two; a reduced-motion setting could later raise it too.
 static var speed := 1.0
 
 
@@ -42,6 +42,41 @@ static func tween(target: Object, property: NodePath, value: Variant, verb: Stri
 	motion.tween_property(target, property, value, duration(verb)) \
 		.set_trans(VERBS[verb][1]).set_ease(VERBS[verb][2])
 	return motion
+
+
+## Calls `step` with a weight from 0 to 1, in the verb's time and curve, on a
+## tween made by `host`. For motions that blend whole poses.
+static func blend(host: Node, step: Callable, verb: String) -> Tween:
+	var motion := host.create_tween()
+	motion.tween_method(step, 0.0, 1.0, duration(verb)).set_trans(VERBS[verb][1]).set_ease(VERBS[verb][2])
+	return motion
+
+
+## Fades a laid-out control in or out where it stands: for HUD controls,
+## whose position the layout owns. Hiding sets `visible` false at the end.
+static func fade(item: Control, shown: bool) -> void:
+	var target := 1.0 if shown else 0.0
+	var motion: Tween = item.get_meta("fade_motion") if item.has_meta("fade_motion") else null
+	var moving := motion != null and motion.is_valid()
+	# Already there, or already on its way there.
+	if moving and is_equal_approx(float(item.get_meta("fade_target")), target):
+		return
+	if not moving and item.visible == shown:
+		return
+	if moving:
+		motion.kill()
+	if shown and not item.visible:
+		item.modulate.a = 0.0
+	item.visible = true
+	var verb := "appear" if shown else "dismiss"
+	motion = item.create_tween()
+	motion.tween_property(item, "modulate:a", target, duration(verb)).set_trans(VERBS[verb][1]).set_ease(VERBS[verb][2])
+	if not shown:
+		motion.tween_callback(func() -> void:
+			item.visible = false
+			item.modulate.a = 1.0)
+	item.set_meta("fade_target", target)
+	item.set_meta("fade_motion", motion)
 
 
 ## Fades a control in as it rises into its place.

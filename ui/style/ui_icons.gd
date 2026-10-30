@@ -4,7 +4,7 @@ extends RefCounted
 ## grid, in one colour. Icons replace words in the interface.
 
 const NAMES: Array[String] = ["mirror", "mirror_raised", "undo", "turn_left", "turn_right",
-	"settings", "help", "restart", "close"]
+	"settings", "help", "restart", "again", "title", "close"]
 ## Stroke width in grid units.
 const WEIGHT := 1.9
 
@@ -21,9 +21,35 @@ static func button(icon: String, tooltip := "", primary := false) -> Button:
 	item.set_meta("icon", icon)
 	item.draw.connect(func() -> void:
 		var side := minf(item.size.x, item.size.y) * 0.5
-		var ink := Color(UiStyle.INK, 0.4 if item.disabled else 1.0)
-		draw(item, str(item.get_meta("icon")), Rect2(item.size * 0.5 - Vector2.ONE * side * 0.5, Vector2.ONE * side), ink))
+		draw(item, str(item.get_meta("icon")), Rect2(item.size * 0.5 - Vector2.ONE * side * 0.5, Vector2.ONE * side), _ink(item)))
 	return item
+
+
+## A row of icon and word, for the few places words stay: settings and the
+## end of the tutorial.
+static func row(icon: String, text: String) -> Button:
+	var item := Button.new()
+	item.text = text
+	item.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	item.custom_minimum_size = Vector2(0, UiStyle.TOUCH)
+	item.focus_mode = Control.FOCUS_NONE
+	item.add_theme_constant_override("h_separation", 0)
+	item.set_meta("icon", icon)
+	item.draw.connect(func() -> void:
+		var side := UiStyle.TOUCH * 0.42
+		draw(item, str(item.get_meta("icon")), Rect2(Vector2(16.0, (item.size.y - side) * 0.5), Vector2.ONE * side), _ink(item)))
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		# Room on the left for the icon.
+		var shifted := UiStyle.theme().get_stylebox(state, "Button").duplicate() as StyleBoxFlat
+		shifted.content_margin_left = 16.0 + UiStyle.TOUCH * 0.42 + 12.0
+		item.add_theme_stylebox_override(state, shifted)
+	return item
+
+
+## The ink for a button's icon: faded when disabled, unless the button is
+## `steady` (briefly disabled while busy, and must not flicker).
+static func _ink(item: Button) -> Color:
+	return Color(UiStyle.INK, 0.4 if item.disabled and not item.get_meta("steady", false) else 1.0)
 
 
 ## Draws `icon` into `rect` on `canvas`.
@@ -72,6 +98,17 @@ static func draw(canvas: CanvasItem, icon: String, rect: Rect2, color: Color) ->
 			_stroke(canvas, [at.call(5.5, 5.0), at.call(5.5, 19.0)], color, width)
 			_stroke(canvas, [at.call(19.0, 12.0), at.call(9.5, 12.0)], color, width)
 			_stroke(canvas, [at.call(13.5, 7.5), at.call(9.0, 12.0), at.call(13.5, 16.5)], color, width)
+		"again":
+			# Once more round: a near-full circle with its head at the top.
+			var loop := _arc(at.call(12.0, 12.5), 7.0 * scale, Vector2(1, 1), -60.0, 235.0)
+			_stroke(canvas, loop, color, width)
+			var tip := loop[0]
+			_stroke(canvas, [tip + Vector2(-4.5, -1.0) * scale, tip, tip + Vector2(-0.5, 4.5) * scale], color, width)
+		"title":
+			# The place from afar: the light low over a far horizon.
+			_stroke(canvas, _arc(at.call(12.0, 15.0), 5.0 * scale, Vector2(1, 1), 180.0, 360.0), color, width)
+			_stroke(canvas, [at.call(3.5, 15.0), at.call(20.5, 15.0)], color, width)
+			_stroke(canvas, [at.call(7.0, 19.0), at.call(17.0, 19.0)], color, width)
 		"close":
 			_stroke(canvas, [at.call(6.0, 6.0), at.call(18.0, 18.0)], color, width)
 			_stroke(canvas, [at.call(18.0, 6.0), at.call(6.0, 18.0)], color, width)

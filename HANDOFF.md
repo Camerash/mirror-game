@@ -1,10 +1,33 @@
 # Handoff — MVP tutorial
 
+Updated 2026-10-30 for the vision review and the UI system; the sections
+below the first list are older and still accurate for the code they name.
+
 Written at `607bd05`, updated after the tutorial MVP. Read this before you
 change a level, the character, the block look, or the level sequence. It records what is done, what is blocked, what was already
 measured and failed, and which traps cost real time.
 
 ## Your task, in order
+
+- **Start from `docs/VISION.md` (2026-10-30).** A feel and vision review
+  with the owner set the game's direction: an emotional puzzle game about
+  loss and acceptance, "light after rain", the twins and the pond
+  (`docs/story-arcs.md`, arc A), an hour long in five chapters. Its **Order
+  of work** (DECIDED) replaces the older order below: 1 the feel doc (done),
+  2 the UI and motion system (done, waits for the owner's Mac review),
+  3 a two-mirror spike, 4 the slice in grey box (title, prologue, chapter 1
+  "The Garden", and the stage-6 perch bug from playtest 2), 5 sound and a
+  Lyria theme, 6 art on the slice, 7 feel reviews. Write a feature brief
+  per new piece (`docs/briefs/`) and get it approved before code.
+- **The UI system.** `ui/style/` (`UiStyle` tokens and theme, `UiIcons`),
+  `ui/motion/motion.gd` (`Motion` verbs). Every screen and tween uses them;
+  do not add per-control styles or raw tween timings. Tests that need a
+  control gone must wait out `Motion.duration("dismiss")`, and anything
+  after the title must wait out the 1.6 s sink (see `begin` in
+  `tests/app_flow_tests.gd`). `tests/tutorial_playthrough.gd` needs a
+  renderer (xvfb); headless, it hangs on its first screenshot.
+- **Gemini:** Flash for drafts, Pro only for an owner-approved final render
+  (`AGENTS.md`).
 
 - **The user wants published-game polish, with Monument Valley as the
   reference.** `docs/polish-gap.md` records the gap, area by area, and the

@@ -1,6 +1,6 @@
 # Brief: the game's screens on the UI style and motion system
 
-DRAFT, 2026-10-30, for the owner's approval before code. Step 2 of the order
+APPROVED and BUILT, 2026-10-30. Waits for the owner's Mac review. Step 2 of the order
 of work in [the vision](../VISION.md). The style, icons, motion verbs and
 typeface are approved; this brief moves the game onto them.
 
@@ -69,3 +69,23 @@ World art, snow, sound and music, the story, and the prompts' wording.
 Stills of every screen at 1152×800, 844×390 and 390×844; one Movie Maker
 clip from the title into the first stage and through one stage change; the
 owner plays it on a Mac. Then the checks above, once.
+
+## As built (2026-10-30)
+
+- Title: the camera's `afar` view (higher, about twice as far, a slow sway);
+  the light appears after 1.8 s and breathes. A tap, a click or any key
+  starts the 1.6 s sink; play starts when it lands.
+- Stage title: low in the middle of the stage area, so it never meets the
+  prompt card at the top. It holds 2.2 s. It also shows after the sink,
+  Start again and Play again.
+- Settings and the turn buttons rest at half alpha and wake on hover. HUD
+  controls fade in place (the layout owns their position); free-standing
+  ones rise as they appear.
+- New icons: **again** (Start again, Play again) and **title** (Return to
+  title, Title).
+- Settings sliders sit on one line with their names, so the panel fits a
+  phone on its side.
+- The drag-follow smoothing (0.10 s) stays: it follows the finger, it is
+  not motion. The fail flash uses press then dismiss.
+- Review: `docs/ui-style/screens/` (stills at three sizes, and the clip
+  `title-to-stage-2.mp4`).

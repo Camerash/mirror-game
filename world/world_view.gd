@@ -320,7 +320,8 @@ func flash_unreachable(feet: Vector3) -> void:
 		mark.add_child(piece)
 	var fade := mark.create_tween()
 	fade.tween_interval(0.5)
-	fade.tween_property(material, "albedo_color:a", 0.0, 0.45)
+	fade.tween_property(material, "albedo_color:a", 0.0, Motion.duration("dismiss")) \
+		.set_trans(Motion.VERBS["dismiss"][1]).set_ease(Motion.VERBS["dismiss"][2])
 	fade.tween_callback(mark.queue_free)
 
 func draw_route(path: PackedVector3Array) -> void:

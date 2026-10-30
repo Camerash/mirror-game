@@ -4,15 +4,17 @@ class_name MirrorHUD
 signal action_requested(action: String, value: Variant)
 signal play_rect_changed(rect: Rect2)
 
-const TOUCH := 48.0
+const TOUCH := UiStyle.TOUCH
 ## The mirror button is the game's main action, so it is a size up.
-const PRIMARY := 56.0
-const GAP := 12.0
+const PRIMARY := UiStyle.PRIMARY
+const GAP := UiStyle.GAP
 ## Below this play height, a wide screen frames the stage between side columns.
 const SHORT_LANDSCAPE := 560.0
-const INK := Color("342b2a")
-const IVORY := Color("f4ecdd")
-const WARM := Color("b85f4b")
+## The resting alpha of the quiet controls (settings, turn the view) until a
+## pointer wakes them.
+const FAINT := 0.5
+## How long a stage's name stays written on the world.
+const STAGE_TITLE_HOLD := 2.2
 const ConstellationStyle := preload("res://core/constellation_style.gd")
 const SafeArea := preload("res://core/safe_area.gd")
 const UI_CLICK := preload("res://assets/audio/ui.wav")
@@ -56,6 +58,10 @@ var _effects_slider: HSlider
 var _fullscreen_check: CheckButton
 var _title_button: Button
 var _restart_button: Button
+var _new_game_button: Button
+## The stage's name, written on the world as it arrives.
+var _stage_title: Label
+var _stage_title_tween: Tween
 var _level_picker: OptionButton
 var _failure: Label
 var _hint: Label
@@ -79,6 +85,7 @@ var _hint_tween: Tween
 var _click_player: AudioStreamPlayer
 
 func _ready() -> void:
+	theme = UiStyle.theme()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build()
@@ -107,14 +114,14 @@ func display_state(state: Dictionary) -> void:
 	var enabled := bool(_state.get("enabled", false))
 	var direct := bool(_state.get("direct", false))
 	var classic_editing := editing and not direct
-	_help.visible = bool(_state.get("has_prompts", false))
+	Motion.fade(_help, bool(_state.get("has_prompts", false)))
 	_camera_left.visible = _desktop()
 	_camera_right.visible = _desktop()
 	_camera_left.disabled = camera_busy or mirror_busy
 	_camera_right.disabled = camera_busy or mirror_busy
 	# A direct drag is a short preview: Undo stays in place through it, so the
 	# corner does not flicker on every drag.
-	_undo.visible = (direct or not editing) and bool(_state.get("can_undo", false))
+	Motion.fade(_undo, (direct or not editing) and bool(_state.get("can_undo", false)))
 	_undo.disabled = not bool(_state.get("can_undo", false)) or (direct and editing)
 	_reset.visible = phase == "failure" and not release_mode
 	_cancel.visible = classic_editing
@@ -128,9 +135,11 @@ func display_state(state: Dictionary) -> void:
 	_mode_cycle.visible = classic_editing
 	_mode_cycle.disabled = mode_busy
 	_update_mode_cycle()
-	_mirror_button.visible = direct and bool(_state.get("mirror_available", true))
+	# The mirror button waits out the sweep between stages.
+	Motion.fade(_mirror_button, direct and bool(_state.get("mirror_available", true)) and phase != "transition")
 	_mirror_button.disabled = not bool(_state.get("can_toggle_mirror", false))
 	var raised := bool(_state.get("mirror_raised", false))
+	_mirror_button.set_meta("icon", "mirror_raised" if raised else "mirror")
 	_mirror_button.tooltip_text = "Lower the mirror (M)" if raised else "Raise the mirror (M)"
 	_mirror_button.accessibility_name = "Lower the mirror" if raised else "Raise the mirror"
 	_mirror_button.queue_redraw()
@@ -161,15 +170,26 @@ func show_hint(text: String) -> void:
 	if _prompt.visible:
 		return
 	if is_instance_valid(_hint_tween): _hint_tween.kill()
+	if text.is_empty():
+		_hint.visible = false
+		return
 	_hint.text = text
-	_hint.modulate.a = 1.0
-	_hint.visible = not text.is_empty()
 	_responsive_layout()
-	if _hint.visible:
-		_hint_tween = create_tween()
-		_hint_tween.tween_interval(2.4)
-		_hint_tween.tween_property(_hint, "modulate:a", 0.0, 0.35)
-		_hint_tween.tween_callback(func() -> void: _hint.visible = false; _hint.modulate.a = 1.0)
+	Motion.fade(_hint, true)
+	_hint_tween = create_tween()
+	_hint_tween.tween_interval(Motion.duration("appear") + 2.4)
+	_hint_tween.tween_callback(func() -> void: Motion.fade(_hint, false))
+
+## The stage's name, written on the world in chapter type: it appears, holds,
+## and leaves.
+func show_stage_title(text: String) -> void:
+	if is_instance_valid(_stage_title_tween): _stage_title_tween.kill()
+	_stage_title.text = text
+	_responsive_layout()
+	Motion.fade(_stage_title, true)
+	_stage_title_tween = create_tween()
+	_stage_title_tween.tween_interval(Motion.duration("appear") + STAGE_TITLE_HOLD)
+	_stage_title_tween.tween_callback(func() -> void: Motion.fade(_stage_title, false))
 
 ## The tutorial prompt card. It stays until `hide_prompt`, unlike the transient
 ## hint above, and takes the hint's screen slot: hiding any hint in progress
@@ -183,8 +203,7 @@ func show_prompt(text: String) -> void:
 	_prompt.visible = _prompt_wanted and not _debug
 	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
 	if _prompt.visible:
-		_prompt_tween = create_tween()
-		_prompt_tween.tween_property(_prompt, "modulate:a", 1.0, 0.2)
+		_prompt_tween = Motion.tween(_prompt, "modulate:a", 1.0, "appear")
 	_responsive_layout()
 
 func hide_prompt() -> void:
@@ -192,8 +211,7 @@ func hide_prompt() -> void:
 	if not _prompt.visible:
 		return
 	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
-	_prompt_tween = create_tween()
-	_prompt_tween.tween_property(_prompt, "modulate:a", 0.0, 0.35)
+	_prompt_tween = Motion.tween(_prompt, "modulate:a", 0.0, "dismiss")
 	_prompt_tween.tween_callback(func() -> void: _prompt.visible = false)
 
 func get_play_rect() -> Rect2: return _last_play_rect
@@ -227,25 +245,26 @@ func _active_panel() -> PanelContainer:
 func _build() -> void:
 	_click_player = AudioStreamPlayer.new(); _click_player.stream = UI_CLICK; _click_player.bus = "Effects"; add_child(_click_player)
 	_failure = _label("↓ No landing", 16); _failure.visible = false; add_child(_failure)
-	_failure.add_theme_color_override("font_color", Color("f0b86e"))
-	_failure.add_theme_color_override("font_outline_color", Color("162126"))
-	_failure.add_theme_constant_override("outline_size", 4)
-	_edit_border = Control.new(); _edit_border.mouse_filter = MOUSE_FILTER_IGNORE; _edit_border.set_anchors_and_offsets_preset(PRESET_FULL_RECT); _edit_border.draw.connect(func() -> void: _edit_border.draw_rect(_last_play_rect, Color(WARM, .45), false, 1.5)); _edit_border.visible = false; add_child(_edit_border)
+	_edit_border = Control.new(); _edit_border.mouse_filter = MOUSE_FILTER_IGNORE; _edit_border.set_anchors_and_offsets_preset(PRESET_FULL_RECT); _edit_border.draw.connect(func() -> void: _edit_border.draw_rect(_last_play_rect, Color(UiStyle.EMBER, .45), false, 1.5)); _edit_border.visible = false; add_child(_edit_border)
 	_hold = Control.new(); _hold.size = Vector2(52, 52); _hold.mouse_filter = MOUSE_FILTER_IGNORE; _hold.visible = false; _hold.draw.connect(_draw_hold); add_child(_hold)
-	_hint = _label("", 14); _hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _hint.mouse_filter = MOUSE_FILTER_IGNORE; _hint.visible = false; _hint.add_theme_stylebox_override("normal", _box(Color(IVORY, .92))); add_child(_hint)
-	_prompt = _label("", 14); _prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; _prompt.vertical_alignment = VERTICAL_ALIGNMENT_TOP; _prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _prompt.mouse_filter = MOUSE_FILTER_IGNORE; _prompt.visible = false; _prompt.modulate.a = 0.0
-	var prompt_box := _box(Color(IVORY, .92)); prompt_box.content_margin_top = 10; prompt_box.content_margin_bottom = 10
+	_stage_title = UiStyle.label("", "chapter"); _stage_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _stage_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_stage_title.mouse_filter = MOUSE_FILTER_IGNORE; _stage_title.visible = false; add_child(_stage_title)
+	# The hint and the prompt card: the one frost surface, in the one typeface.
+	_hint = UiStyle.label("", "small"); _hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; _hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _hint.mouse_filter = MOUSE_FILTER_IGNORE; _hint.visible = false
+	_hint.add_theme_stylebox_override("normal", UiStyle.frost(0.86)); add_child(_hint)
+	_prompt = UiStyle.label("", "body"); _prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; _prompt.vertical_alignment = VERTICAL_ALIGNMENT_TOP; _prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _prompt.mouse_filter = MOUSE_FILTER_IGNORE; _prompt.visible = false; _prompt.modulate.a = 0.0
+	var prompt_box := UiStyle.frost(0.9); prompt_box.content_margin_top = 12; prompt_box.content_margin_bottom = 12
 	_prompt.add_theme_stylebox_override("normal", prompt_box); add_child(_prompt)
-	_gear = _button("⚙"); _style_icon(_gear); _gear.tooltip_text = "Settings" if release_mode else "Debug controls"; _gear.pressed.connect(_toggle_debug); add_child(_gear); _register("debug", _gear)
-	_help = _button("?"); _style_icon(_help); _help.tooltip_text = "Show this stage's prompts again"; _help.visible = false
-	_help.pressed.connect(func() -> void: _emit("help", null)); add_child(_help); _register("help", _help)
-	_camera_left = _add_action("", "camera_turn", -1, "camera_left"); _style_icon(_camera_left); _camera_left.modulate.a = .72
-	_camera_right = _add_action("", "camera_turn", 1, "camera_right"); _style_icon(_camera_right); _camera_right.modulate.a = .72
-	for pair: Array in [[_camera_left, -1, "Turn left (Q)"], [_camera_right, 1, "Turn right (E)"]]:
-		var camera_button: Button = pair[0]
-		camera_button.tooltip_text = pair[2]; camera_button.accessibility_name = String(pair[2]).get_slice(" (", 0)
-		camera_button.draw.connect(_draw_camera_icon.bind(camera_button, int(pair[1])))
-	_undo = _add_action("Undo", "undo", null, "undo")
+	_gear = _icon_button("settings", "Settings" if release_mode else "Debug controls", "debug"); _gear.pressed.connect(_toggle_debug); _rest_faint(_gear)
+	_help = _icon_button("help", "Show this stage's prompts again", "help"); _help.visible = false
+	_help.pressed.connect(func() -> void: _emit("help", null))
+	_camera_left = _icon_button("turn_left", "Turn left (Q)", "camera_left"); _camera_left.pressed.connect(func() -> void: _emit("camera_turn", -1))
+	_camera_right = _icon_button("turn_right", "Turn right (E)", "camera_right"); _camera_right.pressed.connect(func() -> void: _emit("camera_turn", 1))
+	for camera_button: Button in [_camera_left, _camera_right]:
+		camera_button.accessibility_name = camera_button.tooltip_text.get_slice(" (", 0)
+		_rest_faint(camera_button)
+	_undo = _icon_button("undo", "Undo (Z)", "undo"); _undo.visible = false; _undo.accessibility_name = "Undo"
+	_undo.pressed.connect(func() -> void: _emit("undo", null))
 	_reset = _add_action("Reset", "reset", null, "reset")
 	_cancel = _add_action("Cancel", "cancel", null, "cancel")
 	_enabled = _button("Keep mirror"); _enabled.pressed.connect(func() -> void: _emit("enabled", not bool(_state.get("enabled", true)))); add_child(_enabled); _register("enabled", _enabled)
@@ -258,16 +277,12 @@ func _build() -> void:
 	_mode_cycle.pressed.connect(func() -> void: _emit("mode_cycle", null))
 	add_child(_mode_cycle)
 	_register("mode_cycle", _mode_cycle)
-	_mirror_button = _button("")
+	_mirror_button = _icon_button("mirror", "Raise the mirror (M)", "mirror", true)
 	_mirror_button.visible = false
-	# It is briefly disabled during every drag; it must not flash dark then.
-	_mirror_button.add_theme_stylebox_override("disabled", _box(Color(IVORY, 0.72)))
-	_mirror_button.tooltip_text = "Raise the mirror (M)"
-	_mirror_button.draw.connect(_draw_mirror_icon)
+	# It is briefly disabled during every drag; it must not flicker then.
+	_mirror_button.set_meta("steady", true)
+	_mirror_button.add_theme_stylebox_override("disabled", UiStyle.theme().get_stylebox("normal", "PrimaryButton"))
 	_mirror_button.pressed.connect(func() -> void: _emit("mirror_toggle", null))
-	add_child(_mirror_button)
-	_register("mirror", _mirror_button)
-	for control: Button in [_cancel, _enabled, _flip, _apply, _undo, _reset]: _style_edit(control)
 	if release_mode:
 		_build_settings()
 	else:
@@ -277,43 +292,66 @@ func _build() -> void:
 	move_child(_hint, get_child_count() - 1)
 	move_child(_prompt, get_child_count() - 1)
 
+## A round icon button from the style's icon set, registered as a touch control.
+func _icon_button(icon: String, tooltip: String, key: String, primary := false) -> Button:
+	var button := UiIcons.button(icon, tooltip, primary)
+	button.pressed.connect(_play_click)
+	add_child(button)
+	_register(key, button)
+	return button
+
+## A quiet control rests faint and wakes while a pointer is over it.
+func _rest_faint(button: Button) -> void:
+	button.modulate.a = FAINT
+	button.mouse_entered.connect(func() -> void: Motion.tween(button, "modulate:a", 1.0, "appear"))
+	button.mouse_exited.connect(func() -> void:
+		if not (button == _gear and _debug):
+			Motion.tween(button, "modulate:a", FAINT, "dismiss"))
+
 func _add_action(text_value: String, action: String, value: Variant, key: String) -> Button:
 	var button := _button(text_value); button.pressed.connect(func() -> void: _emit(action, value)); add_child(button); _register(key, button); return button
 
-## The gear's panel for a shipped build: audio and display settings, and a
-## way back to the title. No level picker, no guide sliders, no other debug
-## control — those exist only in `_build_debug`.
+## The gear's panel for a shipped build: audio and display settings, then
+## the few ways to start over. No level picker, no guide sliders, no other
+## debug control — those exist only in `_build_debug`. Words stay here only.
 func _build_settings() -> void:
 	_settings_panel = PanelContainer.new(); _settings_panel.visible = false; _settings_panel.mouse_filter = MOUSE_FILTER_STOP; add_child(_settings_panel)
-	var panel_box := _box(); panel_box.content_margin_top = 12; panel_box.content_margin_bottom = 12
-	_settings_panel.add_theme_stylebox_override("panel", panel_box)
 	var scroll := ScrollContainer.new(); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; _settings_panel.add_child(scroll)
-	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
+	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); box.size_flags_horizontal = SIZE_EXPAND_FILL; scroll.add_child(box)
 	_settings_box = box
-	box.add_child(_label("Settings", 16))
 	_music_slider = _settings_slider(box, "Music"); _music_slider.value_changed.connect(func(value: float) -> void: _emit("music_volume", value))
 	_effects_slider = _settings_slider(box, "Effects"); _effects_slider.value_changed.connect(func(value: float) -> void: _emit("effects_volume", value))
 	if _desktop():
-		_fullscreen_check = CheckButton.new(); _fullscreen_check.text = "Fullscreen"; _style(_fullscreen_check)
+		_fullscreen_check = CheckButton.new(); _fullscreen_check.text = "Fullscreen"; _fullscreen_check.focus_mode = FOCUS_NONE
+		_fullscreen_check.custom_minimum_size.y = TOUCH
 		_fullscreen_check.toggled.connect(func(value: bool) -> void: _emit("fullscreen", value))
 		box.add_child(_fullscreen_check)
+	var gap := Control.new(); gap.custom_minimum_size.y = 4; box.add_child(gap)
 	# Undo walks back one step; this goes back to the stage's start at once.
-	_restart_button = _button("Restart stage"); _style_edit(_restart_button)
-	_restart_button.pressed.connect(func() -> void:
-		_toggle_debug()
-		_emit("reset", null))
-	box.add_child(_restart_button)
-	_title_button = _button("Return to title"); _style_edit(_title_button)
-	_title_button.pressed.connect(func() -> void: _emit("title", null))
-	box.add_child(_title_button)
+	_restart_button = _settings_row(box, "restart", "Restart stage", "reset")
+	_new_game_button = _settings_row(box, "again", "Start again", "new_game")
+	_title_button = _settings_row(box, "title", "Return to title", "title")
 
+## One icon-and-word row of the settings panel: it closes the panel, then acts.
+func _settings_row(parent: VBoxContainer, icon: String, text: String, action: String) -> Button:
+	var row := UiIcons.row(icon, text)
+	row.pressed.connect(_play_click)
+	row.pressed.connect(func() -> void:
+		if _debug:
+			_toggle_debug()
+		_emit(action, null))
+	parent.add_child(row)
+	return row
+
+## A named slider on one line, so the panel fits a phone on its side.
 func _settings_slider(parent: VBoxContainer, label_text: String) -> HSlider:
-	parent.add_child(_label(label_text, 14))
-	var slider := HSlider.new()
+	var line := HBoxContainer.new(); line.add_theme_constant_override("separation", 12); parent.add_child(line)
+	var name := UiStyle.label(label_text, "small"); name.custom_minimum_size.x = 64; line.add_child(name)
+	var slider := HSlider.new(); slider.size_flags_horizontal = SIZE_EXPAND_FILL; slider.size_flags_vertical = SIZE_SHRINK_CENTER
 	slider.min_value = 0.0; slider.max_value = 1.0; slider.step = 0.05; slider.value = 0.8
-	slider.custom_minimum_size.y = TOUCH
-	_style(slider)
-	parent.add_child(slider)
+	slider.custom_minimum_size.y = 40
+	slider.focus_mode = FOCUS_NONE
+	line.add_child(slider)
 	return slider
 
 ## Seeds the settings panel from the saved values, without emitting actions.
@@ -323,7 +361,9 @@ func set_settings_state(music_volume: float, effects_volume: float, fullscreen: 
 	if is_instance_valid(_fullscreen_check): _fullscreen_check.set_pressed_no_signal(fullscreen)
 
 func _build_debug() -> void:
-	_debug_panel = PanelContainer.new(); _debug_panel.visible = false; _debug_panel.mouse_filter = MOUSE_FILTER_STOP; _debug_panel.add_theme_stylebox_override("panel", _box()); add_child(_debug_panel)
+	_debug_panel = PanelContainer.new(); _debug_panel.visible = false; _debug_panel.mouse_filter = MOUSE_FILTER_STOP; add_child(_debug_panel)
+	# Dev tools only: a smaller type keeps the many controls in a narrow panel.
+	var dev_theme := Theme.new(); dev_theme.default_font_size = 14; _debug_panel.theme = dev_theme
 	var scroll := ScrollContainer.new(); scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; _debug_panel.add_child(scroll)
 	var box := VBoxContainer.new(); box.add_theme_constant_override("separation", 6); scroll.add_child(box)
 	# Compares the direct controls with the earlier Move/Rotate/Resize editor.
@@ -433,7 +473,11 @@ func _sync_guide_controls(settings: Dictionary, preview_enabled: bool, preview_a
 
 func _toggle_debug() -> void:
 	_debug = not _debug
-	_active_panel().visible = _debug
+	Motion.fade(_active_panel(), _debug)
+	if _debug:
+		if is_instance_valid(_hint_tween): _hint_tween.kill()
+		Motion.fade(_hint, false)
+	Motion.tween(_gear, "modulate:a", 1.0 if _debug else FAINT, "appear" if _debug else "dismiss")
 	_prompt.visible = _prompt_wanted and not _debug
 	_prompt.modulate.a = 1.0
 	_emit("debug_visibility", _debug)
@@ -496,14 +540,19 @@ func _responsive_layout() -> void:
 		if release_mode and is_instance_valid(_settings_box):
 			# Content-sized, not the debug panel's fixed height: no empty
 			# space below the last control, still capped and scrollable.
-			panel_height = minf(debug_height, _settings_box.get_combined_minimum_size().y + 24.0)
+			panel_height = minf(debug_height, _settings_box.get_combined_minimum_size().y + panel.get_theme_stylebox("panel").get_minimum_size().y)
 		panel.position = safe.position + Vector2(GAP, GAP)
 		panel.size = Vector2(panel_width, panel_height)
-	_hint.size = Vector2(minf(360.0, safe.size.x - TOUCH - GAP * 3.0), TOUCH); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
-	var prompt_width := minf(360.0, safe.size.x - TOUCH - GAP * 3.0)
-	_prompt.size = Vector2(prompt_width, _prompt_height(prompt_width))
+	var card_width := minf(380.0, safe.size.x - TOUCH - GAP * 3.0)
+	_hint.size = Vector2(card_width, _card_height(_hint, card_width)); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
+	_prompt.size = Vector2(card_width, _card_height(_prompt, card_width))
 	_prompt.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
 	var camera_rect := get_camera_rect()
+	# The stage's name is written on the world, low in the middle, clear of
+	# the prompt card at the top.
+	var title_width := minf(camera_rect.size.x, 640.0)
+	_stage_title.size = Vector2(title_width, _card_height(_stage_title, title_width))
+	_stage_title.position = Vector2(camera_rect.get_center().x - title_width * 0.5, camera_rect.end.y - _stage_title.size.y - camera_rect.size.y * 0.04)
 	if not _last_play_rect.is_equal_approx(_last_emitted_play_rect) or not camera_rect.is_equal_approx(_last_camera_rect):
 		_last_emitted_play_rect = _last_play_rect
 		_last_camera_rect = camera_rect
@@ -518,16 +567,18 @@ func _shown_width(button: Button) -> float:
 func _safe_rect() -> Rect2:
 	return SafeArea.rect(self)
 
-func _prompt_height(width: float) -> float:
-	if _prompt.text.is_empty():
+## A wrapping label's height at `width`, with its surface's margins.
+func _card_height(label: Label, width: float) -> float:
+	var box := label.get_theme_stylebox("normal")
+	var margins := box.get_minimum_size() if box else Vector2.ZERO
+	if label.text.is_empty():
 		return TOUCH
-	var font := _prompt.get_theme_font("font")
-	var font_size := _prompt.get_theme_font_size("font_size")
-	var content_width := maxf(10.0, width - 24.0)
-	var text_size := font.get_multiline_string_size(_prompt.text, HORIZONTAL_ALIGNMENT_LEFT, content_width, font_size)
-	return maxf(TOUCH, text_size.y + 20.0)
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	var text_size := font.get_multiline_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, maxf(10.0, width - margins.x), font_size)
+	return maxf(TOUCH, text_size.y + margins.y)
 
-func _draw_hold() -> void: _hold.draw_arc(_hold.size * .5, 20.0, -PI * .5, -PI * .5 + TAU * float(_hold.get_meta("progress", 0.0)), 24, WARM, 4.0)
+func _draw_hold() -> void: _hold.draw_arc(_hold.size * .5, 20.0, -PI * .5, -PI * .5 + TAU * float(_hold.get_meta("progress", 0.0)), 24, UiStyle.LIGHT, 4.0)
 func _update_mode_cycle() -> void:
 	var mode := _edit_mode()
 	var name := mode.capitalize()
@@ -540,7 +591,7 @@ func _edit_mode() -> String:
 func _draw_mode_icon() -> void:
 	if not is_instance_valid(_mode_cycle): return
 	var center := _mode_cycle.size * 0.5
-	var ink := INK if not _mode_cycle.disabled else Color(INK, 0.45)
+	var ink := UiStyle.INK if not _mode_cycle.disabled else Color(UiStyle.INK, 0.45)
 	match _edit_mode():
 		"move":
 			_mode_cycle.draw_line(center - Vector2(11, 0), center + Vector2(11, 0), ink, 1.5, true)
@@ -549,42 +600,6 @@ func _draw_mode_icon() -> void:
 			_mode_cycle.draw_arc(center, 11.0, 0.0, TAU, 48, ink, 1.5, true)
 		"resize":
 			_mode_cycle.draw_rect(Rect2(center - Vector2(10, 10), Vector2(20, 20)), ink, false, 1.5, true)
-## A small upright pane: filled glass with a glint while the mirror stands,
-## a dashed empty frame while it is lowered.
-func _draw_mirror_icon() -> void:
-	if not is_instance_valid(_mirror_button): return
-	var raised := bool(_state.get("mirror_raised", false))
-	var ink := INK if not _mirror_button.disabled else Color(INK, 0.45)
-	var panel := Rect2(_mirror_button.size * 0.5 - Vector2(10, 14), Vector2(20, 28))
-	if raised:
-		_mirror_button.draw_rect(panel, Color("cfe9ee"), true)
-		_mirror_button.draw_line(panel.position + Vector2(5, 19), panel.position + Vector2(15, 8), Color(1, 1, 1, 0.95), 2.0, true)
-		_mirror_button.draw_rect(panel, ink, false, 1.5, true)
-		return
-	var corners := [panel.position, Vector2(panel.end.x, panel.position.y), panel.end, Vector2(panel.position.x, panel.end.y)]
-	for index: int in 4:
-		_mirror_button.draw_dashed_line(corners[index], corners[(index + 1) % 4], ink, 1.5, 3.0, true, true)
-
-## One bold, flattened orbit with its head at the front: the view swings
-## round the stage, not the hook of Undo and Redo.
-func _draw_camera_icon(button: Button, direction: int) -> void:
-	var ink := Color(IVORY, 0.45 if button.disabled else 1.0)
-	var shade := Color(INK, 0.5)
-	var centre := button.size * 0.5 + Vector2(0, -1)
-	var ring := Vector2(16.0, 7.0)
-	var arc := PackedVector2Array()
-	for step: int in 33:
-		var angle := deg_to_rad(lerpf(25.0, -265.0, float(step) / 32.0))
-		arc.append(centre + Vector2(cos(angle) * ring.x * direction, sin(angle) * ring.y))
-	var base := arc[arc.size() - 1]
-	var heading := Vector2(direction, 0)
-	var side := Vector2(0, 5.5)
-	var head := PackedVector2Array([base + heading * 8.0, base + side, base - side])
-	button.draw_polyline(arc, shade, 6.5, true)
-	button.draw_colored_polygon(PackedVector2Array([head[0] + heading * 1.5, head[1] + side * 0.25 - heading, head[2] - side * 0.25 - heading]), shade)
-	button.draw_polyline(arc, ink, 3.5, true)
-	button.draw_colored_polygon(head, ink)
-
 func _button(text_value: String) -> Button:
 	var button := Button.new(); button.text = text_value; button.custom_minimum_size = Vector2(TOUCH, TOUCH); _style(button)
 	button.pressed.connect(_play_click)
@@ -592,22 +607,11 @@ func _button(text_value: String) -> Button:
 func _play_click() -> void:
 	if is_instance_valid(_click_player): _click_player.play()
 func _label(text_value: String, font_size: int) -> Label:
-	var label := Label.new(); label.text = text_value; label.add_theme_font_size_override("font_size", font_size); label.add_theme_color_override("font_color", INK); label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; return label
+	var label := Label.new(); label.text = text_value; label.add_theme_font_size_override("font_size", font_size); label.add_theme_color_override("font_color", UiStyle.INK); label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; return label
+## Dev and classic-editor controls take the style's theme; this only keeps
+## them at touch height.
 func _style(control: Control) -> void:
-	control.add_theme_color_override("font_color", INK); control.add_theme_stylebox_override("normal", _box()); control.add_theme_stylebox_override("hover", _box(Color("eadcc8"))); control.add_theme_stylebox_override("pressed", _box(WARM)); control.add_theme_stylebox_override("focus", _box(Color.TRANSPARENT, 2)); control.custom_minimum_size.y = maxf(control.custom_minimum_size.y, TOUCH)
-func _style_icon(button: Button) -> void:
-	button.add_theme_font_size_override("font_size", 26)
-	button.add_theme_color_override("font_color", IVORY)
-	button.add_theme_stylebox_override("normal", _box(Color.TRANSPARENT, 0))
-	button.add_theme_stylebox_override("hover", _box(Color("342b2a66"), 0))
-	button.add_theme_stylebox_override("pressed", _box(Color("342b2a99"), 0))
-func _style_edit(button: Button) -> void:
-	button.add_theme_color_override("font_color", Color("fff4df"))
-	button.add_theme_stylebox_override("normal", _box(Color("342b2ad9"), 1))
-	button.add_theme_stylebox_override("hover", _box(Color("4b3a38e6"), 1))
-	button.add_theme_stylebox_override("pressed", _box(WARM, 1))
-func _box(color := IVORY, border := 1) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new(); style.bg_color = color; style.border_color = WARM if border == 2 else Color("cdbca5"); style.set_border_width_all(border); style.corner_radius_top_left = 10; style.corner_radius_top_right = 10; style.corner_radius_bottom_left = 10; style.corner_radius_bottom_right = 10; style.content_margin_left = 12; style.content_margin_right = 12; return style
+	control.custom_minimum_size.y = maxf(control.custom_minimum_size.y, TOUCH)
 func _register(key: String, control: Control) -> void: _touch_controls[key] = control
 func _emit(action: String, value: Variant = null) -> void:
 	if not _syncing: action_requested.emit(action, value)
