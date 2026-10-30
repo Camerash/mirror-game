@@ -1,0 +1,5 @@
+{
+  "_note": "The one place for Gemini model names (AGENTS.md). Flash for drafts; Pro only for a final render the owner has approved. Fill in the Pro name from the API's model list when it is first needed.",
+  "image_draft": "gemini-3.1-flash-image",
+  "image_final": ""
+}

@@ -1,0 +1,5 @@
+Storyboard of four wide panels in a 2x2 grid for the wordless opening of a quiet isometric puzzle game, "light after rain": mysterious, holy, hopeful, sad. Seen from a high isometric camera, like the attached style reference: small floating stone garden pieces in snow, soft dusk light. A small girl in a cream wool coat with one red-ochre mitten (use the same girl in all panels). No text, no labels, no speech, no UI, no panel numbers.
+Panel 1: a snowed garden at dusk around a small round frozen pond; the girl lies curled in the snow at the pond's edge; snow falling; a single warm light glints on the ice.
+Panel 2: the girl, standing, walks out onto the ice towards a small oval hand mirror lying on it, catching the light; her footprints trail behind her in the snow.
+Panel 3: close, still isometric: she holds the hand mirror up; in the glass, and only in the glass, another girl who looks exactly like her waves with her RIGHT hand; everything else is still.
+Panel 4: the same hand mirror lowered, the glass showing only falling snow; beyond the pond the garden is broken into floating stone pieces drifting apart, a narrow path of stones leading away into soft light.

@@ -33,6 +33,9 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
   different: one is right-handed and one left-handed, fitting the mirror.
 - DECIDED (2026-10-30): pictured like the little girl in Deemo. The small
   hooded traveller in the game is the owner's version of her for this game.
+- DECIDED (2026-10-30): her model may change to fit the story (a small girl
+  in winter, the left mitten). A Gemini Flash mockup round comes first; the
+  owner picks before any Blender work.
 - DRAFT (2026-10-30): alone on screen, like Ida; a second figure is optional.
 - OPEN: whether the sister appears in reflections or as a figure on the copy
   side; it depends on the story.
@@ -142,9 +145,11 @@ sister was a moment ago. Motion: the light warms, she pauses, a held note,
 one to two seconds of stillness before anything moves. Today: a ring, then
 the sweep.
 
-**Moving on.** Keep the mirror sweep: the next place as the reflection of
-the last. Slower, carried by the music. Between chapters, the chapter title
-is written on the world, not on a card.
+**Moving on.** DECIDED (2026-10-30, replaces "keep the mirror sweep"): the
+places of a chapter sit in one continuous garden. She walks out of one place
+and the camera travels with her to the next, with no transition effect.
+Between chapters, a short wordless memory scene carries the change, and the
+chapter title is written on the world, not on a card.
 
 **The interface.** Feeling: almost absent. Icons only, in one drawn style;
 they appear when they can be used and leave quietly. Today: four button
@@ -175,6 +180,8 @@ styles and words.
 
 - DECIDED (2026-10-06): nearly wordless, with chapter titles; the world and
   the art carry the story.
+- DECIDED (2026-10-30): the story scenes are wordless too: staging, light,
+  music, at most a single line. No dialogue boxes.
 - DECIDED (2026-10-30): the emotional heart is loss and acceptance: putting
   down. The main character is a girl, and the story uncovers her tragic
   past. (Replaces the 2026-10-06 shortlist, in which possible lives led.
@@ -276,11 +283,14 @@ DECIDED (2026-10-30): the owner approved this order of work.
    slice's verbs (walk, raise, slide, lower, fall, reach, move on), from
    light after rain. The owner approves it.
 2. **The UI and motion system** (the first structural piece, below).
-3. **A two-mirror spike.** A rough grey-box test that two facing mirrors can
-   make an endless path in the engine, since the finale depends on it. No
-   art, no polish.
-4. **The slice in grey box.** The title, the prologue and chapter 1, "The
-   Garden", designed from the story, taught without text, and readable
+3. **The first five minutes** (DECIDED 2026-10-30, replaces the two-mirror
+   spike here): the title, the wordless prologue scene, and the first garden
+   place, as one continuous grey-box stretch with its feel and sound. See
+   [its brief](briefs/first-five-minutes.md). The two-mirror finale waits;
+   if the real mechanic cannot make the endless path, the end stage gets
+   its own programming.
+4. **The rest of the slice in grey box.** Chapter 1, "The Garden",
+   designed from the story, taught without text, and readable
    before any art. One feature brief per new piece, approved before code.
    The stuck-on-a-ledge bug (playtest 2, fix 9) is fixed here, since the
    slice reuses the fall.
@@ -363,7 +373,8 @@ Named after round 1 (2026-10-30), each with a recommendation.
    today. DRAFT recommendation: plan the mechanic arc backwards from the
    finale, so a second mirror arrives a chapter or two before it, and test
    two facing mirrors in grey box early, since it is the game's biggest
-   promise.
+   promise. DECIDED (2026-10-30): no early spike; if the real mechanic
+   cannot do it, the end stage is programmed for it.
 7. **Grim against light-hearted.** DRAFT recommendation: a tone curve, grim
    through the middle and lifting at the end, with small moments of light
    throughout so the dark never becomes despair.
