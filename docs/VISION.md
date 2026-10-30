@@ -70,10 +70,79 @@ DRAFT (2026-10-30), from round 1. Each pillar is a test a feature must pass.
 
 ## Moment-to-moment feel
 
-How each verb should feel. A feature brief cites these.
+How each verb should feel. A feature brief cites these. DRAFT (2026-10-30),
+for the owner to edit and approve. Each entry: the feeling, the motion, the
+sound, and what changes from today.
 
-- OPEN: walking, raising the mirror, dragging it, turning it, lowering it,
-  falling, turning the view, reaching the goal, moving to the next stage.
+**Rules for every moment**
+
+- Slower and softer than today. Only the response to a touch is instant: a
+  press is answered in the same frame, by light or sound.
+- Nothing appears or vanishes in a cut. Things grow, frost, bloom, settle.
+- Every change has a cause the player can see in the world.
+- Silence is allowed. The music thins at the important moments.
+- Words never teach. The world shows; the player tries.
+
+**Opening the game.** Feeling: stillness, a held breath before a story.
+Motion: the snowed garden from far above, snow drifting, the title in the
+sky; a tap anywhere and the camera sinks down into the first place, with no
+cut and no menu. Sound: wind, one piano note on the tap. Today: a pale veil
+with a button.
+
+**Walking.** Feeling: careful and small, a child in snow. Motion: she eases
+in and out; short steps; footprints in the snow that slowly fill. The way she
+would walk shows as soft light on the ground, not a line. Sound: soft steps
+that change with the ground. Today: a ring, a capsule glide and a thin line.
+
+**Turning the view.** Feeling: walking round a model on a table; "look
+again" (pillar 1). Motion: unhurried, about 0.7 s, easing out, the stage
+staying centred. Sound: a soft swell of wind. Today: 0.4 s with no sound.
+
+**Raising the mirror.** The signature moment. Feeling: looking back; wonder
+with an ache. Motion: the glass rises out of the ground like ice forming,
+about 0.8 s. The copy blooms outward from the glass in summer colour; the
+ground it replaces frosts over and fades, never vanishing at once. Sound: a
+sustained glass tone that opens into a chord of the chapter's theme. Today:
+the frame appears and the ground is deleted at once.
+
+**Sliding the mirror.** Feeling: tuning, like moving a lamp to see better;
+precise and in control. Motion: the copy follows the hand with no lag; each
+half step settles softly. Sound: each grid position plays a note of the
+chapter's scale, so a slide plays a phrase. Today: silent snaps.
+
+**Turning the mirror.** Feeling: choosing where to look. Motion: the glass
+swings about its centre with a little weight, settling at each direction.
+Sound: a rising or falling interval. Today: a 0.22 s turn.
+
+**Lowering the mirror.** Feeling: letting go; an exhale, bittersweet. Motion:
+the summer copy wilts back into frost and snow, and the real ground returns
+and settles; the light dims a little. Sound: the raised chord resolves.
+Today: an instant swap.
+
+**Falling.** Feeling: a drop, then a gentle catch; never punishing. Motion: a
+short, slightly slowed fall; she lands in a small puff of snow and crouches.
+A refused change: the fall plays as a ghost, the glass rings flat, and the
+mirror drifts back, with no sentence. Today: a hint in words.
+
+**Undo.** Feeling: time rewinds kindly. Motion: a quick reverse of the last
+change, with a soft breath of sound. An icon, not a word.
+
+**The glimpse of her sister.** Feeling: was that her? Never explained.
+Motion: for under a second her sister appears in the glass only, waving with
+her right hand; the music thins; then only snow.
+
+**Reaching the goal.** Feeling: a small homecoming. The goal is where her
+sister was a moment ago. Motion: the light warms, she pauses, a held note,
+one to two seconds of stillness before anything moves. Today: a ring, then
+the sweep.
+
+**Moving on.** Keep the mirror sweep: the next place as the reflection of
+the last. Slower, carried by the music. Between chapters, the chapter title
+is written on the world, not on a card.
+
+**The interface.** Feeling: almost absent. Icons only, in one drawn style;
+they appear when they can be used and leave quietly. Today: four button
+styles and words.
 
 ## The one-hour arc
 
@@ -195,7 +264,7 @@ vision and pillars ──> feature brief ──> grey-box feel test ──> buil
 
 ## Order of work
 
-DRAFT (2026-10-30), waiting for the owner's approval.
+DECIDED (2026-10-30): the owner approved this order of work.
 
 1. **Write down how it should feel.** Fill in "Moment-to-moment feel" for the
    slice's verbs (walk, raise, slide, lower, fall, reach, move on), from
