@@ -1,5 +1,8 @@
 # Story directions: possible lives and loss and acceptance
 
+Decided 2026-10-30: loss and acceptance, with twin sisters as the spine; see
+[the vision](VISION.md). This comparison is kept as background.
+
 Written 2026-10-06 for the story choice. The owner shortlisted **possible
 lives**, with **loss and acceptance** as the alternative "if it fits", and
 asked to compare them. Both are drafts to react to; nothing here is agreed.

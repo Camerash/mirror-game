@@ -23,9 +23,17 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
   reflections. Through the mirror the player uses another dimension to make
   paths and solutions that seem not to be there. Solving the puzzles uncovers
   the tragic past of the main character, helps her reach the end, and is
-  about putting down: loss and acceptance.
+  about putting down: loss and acceptance. ("Her" is a girl; see below.)
 - DECIDED (2026-10-30): the line to a friend: "If you love Monument Valley,
   you will love this."
+
+## Her
+
+- DECIDED (2026-10-30): pictured like the little girl in Deemo. The small
+  hooded traveller in the game is the owner's version of her for this game.
+- DRAFT (2026-10-30): alone on screen, like Ida; a second figure is optional.
+- OPEN: whether she carries the mirror from the start or finds it in the
+  first minutes. Test both.
 
 ## Players
 
@@ -75,17 +83,20 @@ How each verb should feel. A feature brief cites these.
   mirrors to build an infinite pathway, to reach something she has long hoped
   for. Inspired by Inception. The mechanic arc builds toward it.
 - DECIDED (2026-10-30): the last minutes feel light-hearted and hopeful.
-- DRAFT: chapters of 8 to 12 minutes, each ending on a story beat, so a phone
-  player can also stop between them.
+- OPEN (2026-10-30): the number of chapters should be symbolic: 5, for the
+  five stages of grief, or 7, for the holiness of the number. DRAFT
+  recommendation: five chapters of about 12 minutes, one for each stage of
+  grief as an undercurrent (never as titles), framed by a short prologue and
+  epilogue: seven parts in all.
 
 ## Story and telling
 
 - DECIDED (2026-10-06): nearly wordless, with chapter titles; the world and
   the art carry the story.
 - DECIDED (2026-10-30): the emotional heart is loss and acceptance: putting
-  down. The main character is a woman, and the story uncovers her tragic
-  past. (Replaces the 2026-10-06 shortlist, in which possible lives led;
-  `GAME_DESIGN.md` changes once the owner confirms.)
+  down. The main character is a girl, and the story uncovers her tragic
+  past. (Replaces the 2026-10-06 shortlist, in which possible lives led.
+  `GAME_DESIGN.md` updated 2026-10-30.)
 - DECIDED (2026-10-30): the mirror means reflection on oneself; a glimpse of,
   or portal to, another dimension; uncovering the unknown; exploring what is
   deep within.
@@ -97,10 +108,16 @@ How each verb should feel. A feature brief cites these.
   that might have been is a good fit (DRAFT), depending on the story.
 - DRAFT (2026-10-30): "putting down" is not literal; whether the last puzzle
   is solved without the mirror stays an open idea.
-- DRAFT: the blend in [story directions](story-directions.md), "possible
-  lives, after a loss": the mirror shows the lives in which the loss did not
-  happen, made walkable; the ending is putting the mirror down. Her own past
-  replaces the mentor and the friend.
+- DECIDED (2026-10-30): the spine is twin sisters (seed B of round 2). She
+  goes through the puzzles hoping to save her twin sister, who she believes
+  has died. At the end she realises that she is the one who died. The twin
+  resonates with a mirror's reflection.
+- DRAFT: let the mechanic carry the reveal. All game the player reads the
+  original side as real and the copy as the other side; the reveal is that
+  she has been on the other side all along.
+- OPEN: how a dead girl's realisation becomes a light-hearted, hopeful last
+  few minutes. DRAFT recommendation: her acceptance frees her sister to live;
+  the last scene is the living twin walking into morning light.
 - DRAFT (2026-10-06): a few characters who give a line or two of quiet lore
   or a hint when the traveller walks up to them.
 
@@ -206,7 +223,12 @@ Named after round 1 (2026-10-30), each with a recommendation.
 7. **Grim against light-hearted.** DRAFT recommendation: a tone curve, grim
    through the middle and lifting at the end, with small moments of light
    throughout so the dark never becomes despair.
-8. **One sitting against phone sessions.** DRAFT recommendation: short
+8. **Deemo.** A small girl, a loss in the family, and a reveal about who is
+   really gone is Deemo's combination. DRAFT recommendation: the twins and
+   the mirror's rules make it ours, and the inversion (she is the one who
+   died) differs from Deemo's; keep her look from echoing Deemo's girl too
+   closely, and tell the reveal through the mirror, not a cutscene.
+9. **One sitting against phone sessions.** DRAFT recommendation: short
    chapters that each end on a beat serve both.
 
 ### Where today's game breaks the draft pillars
@@ -219,4 +241,3 @@ Named after round 1 (2026-10-30), each with a recommendation.
 - The HUD uses words ("Undo", "Restart stage") and four unrelated button
   styles.
 - Stages 4 to 6 were solved by trial and error in the blind playtest.
-- `GAME_DESIGN.md` calls the traveller "he"; she is a woman.

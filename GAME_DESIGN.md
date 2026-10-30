@@ -1,16 +1,17 @@
 # Mirror — Living Game Design
 
-Updated: 2026-10-06
+Updated: 2026-10-30
 
-This is the current design record. Agreed rules are separate from later milestones and playtest questions.
+This is the current design record. Agreed rules are separate from later milestones and playtest questions. [The vision](docs/VISION.md) says what the game should feel like; read it first.
 
 ## Experience and platforms
 
-- A calm spatial puzzle about discovery and creative experiments. The story is narrowed to two directions; see **Story direction**.
+- An emotional puzzle game about mirrors and reflections. Through the mirror the player uses another dimension to make paths that seem not to be there, and uncovers the tragic past of the main character, a girl. The theme is loss and acceptance: putting down. The feeling it aims at is **light after rain**: mysterious, holy, hopeful, sad. See **Story direction**.
 - Players change reflected structures to reach places that ordinary paths cannot reach.
 - Previews, short failure feedback, undo, cancel, and reset make experiments inexpensive.
 - The full game lasts about an hour, perhaps a little longer, like the first Monument Valley, and stays shorter than Chants of Sennaar or Viewfinder. The final length follows from how deep the mechanics go.
 - The game is nearly wordless, with chapter titles. The world and the art carry the story.
+- It opens on a title screen like Monument Valley's.
 - The four turning views stay for the whole game. Monument Valley's impossible geometry depends on a fixed view; here, turning the view is part of play.
 - Release order: Steam first, then iPhone and iPad, then Android. The game view and controls support all of them: complete mouse and keyboard input on Steam, and touch with large reachable targets on phones and tablets. Camera framing and controls adapt to safe areas and aspect ratio. On a short landscape screen (play height under 560 units, wider than 1.3 times its height) the stage takes the full height between two equal side columns that hold the corner controls; a narrow portrait screen lets it use the full width; a small screen keeps a smaller fit margin (8% of the shorter side, at most 48 units). Mac stays the development runtime.
 - The first milestone is one chapter at release quality, 4 to 6 levels and 10 to 15 minutes long, before more levels are made. [The polish gap](docs/polish-gap.md) defines the bar and the milestone.
@@ -75,7 +76,7 @@ Level 2, “Reveal the exit” (shown as “The path beneath”), tests safe res
 
 Level 3, “Only the ground” (`11_aperture`), teaches that the frame decides what is copied: with the direct controls by dragging the mirror down one unit, in the classic editor by Resize. A ledge carries a tower that floats half a unit above its far end; the goal sits across a five-unit gap. A new mirror starts at the traveller's feet height, so its 3-high panel copies the lower part of the tower, and the copy blocks the bridge. Pulling the top edge down to 2 high copies only the ledge. At 1 high the bridge is too low to reach. The wrong answer is reachable and visibly wrong, which is the point: the player builds the wall themselves, then unbuilds it. `tests/level_solvability_tests.gd` checks every state through the real hold-to-create path.
 
-Reaching the goal of a puzzle starts the **mirror sweep**: after a short pause, a glass panel crosses the stage, and behind it the next stage replaces the old one, as if it were its reflection. Each stage stays a self-contained file. The next stage is placed so that its start meets the old goal, so the traveller keeps his place. Input is locked during the sweep. **Together** ends the tutorial and shows the end card; Undo after the goal is available on this last stage only. The menu gives direct access to all puzzles and fixtures; the menu and Reset change the stage at once. Entering a level clears previous movement and Undo history.
+Reaching the goal of a puzzle starts the **mirror sweep**: after a short pause, a glass panel crosses the stage, and behind it the next stage replaces the old one, as if it were its reflection. Each stage stays a self-contained file. The next stage is placed so that its start meets the old goal, so the traveller keeps her place. Input is locked during the sweep. **Together** ends the tutorial and shows the end card; Undo after the goal is available on this last stage only. The menu gives direct access to all puzzles and fixtures; the menu and Reset change the stage at once. Entering a level clears previous movement and Undo history.
 
 Later level:
 
@@ -102,7 +103,7 @@ Later level:
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.
 - Every stage uses a quiet mauve background without fog, ivory ceramic originals, cool porcelain reflections, and carved jade absolutes. `levels/12_block_gallery.json` is the demo ground for this one block set; `tests/block_gallery_review.gd` is its native review. The bounded aperture limits width and height, while depth along the normal stays unlimited. The two sides have no assigned sun/moon meaning. An even, softly feathered edge light extends along the full perimeter toward reflected space, with no point spikes or bright corners. Walking surfaces remain solid and readable.
 - Absolutes on every stage use solid jade grain, shallow nested arch carvings, and a top border on both sides, including the goal platform. A fine, steady pearl seam with a wider soft cyan mist glow follows the exact intersections of the mirror panel and the four replacement-prism side boundaries on visible top and side faces of original and absolute structures. The contact glow excludes a mirror’s own reflected structures. The perimeter light and prism guides remain. Absolutes remain solid and unchanged. The glow fades across the object surface, with slow, subtle variation around the stable centre. Contact light updates during editing and stays after placement; removal proposals fade it. Collision and overlap rules are unchanged.
-- Watercolour-like modular forms, soft piano, muffled percussion, and subtle boundary changes remain candidates. Validate readability before adding effects.
+- The music and sound aim at light after rain: mysterious, holy, hopeful, sad (decided 2026-10-30). The owner's references are "City Ruins - Rays of Light", "Copied City" and "Weight of the World" from the Nier Automata soundtrack. Validate readability before adding effects.
 
 ### Separate ceramic reference scene
 
@@ -167,20 +168,17 @@ The classic editor. It is now reached through the debug switch **Classic editor*
 
 ## Story direction
 
-The shortlist is **possible lives**, with **loss and acceptance** as the alternative if it fits. Connection and belonging is not on it. [The story comparison](docs/story-directions.md) sets the two side by side before one is chosen.
+Decided 2026-10-30; [the vision](docs/VISION.md) holds the detail and the open questions.
 
-| Direction | Candidate story | Connection to play |
-| --- | --- | --- |
-| Identity and possible lives | Someone returns to a place they left and explores how different choices change relationships. | The same source structures offer different routes and possibilities. |
-| Loss and acceptance | Someone inherits unfinished work and gives it a purpose of their own. | Familiar structures remain useful as paths and needs change. |
-
-The workshop concept remains one loss-and-acceptance candidate: the protagonist returns to close a deceased mentor’s workshop, completes repairs for residents, and adapts that work to present needs. Character identities, opening scene, and ending remain open.
-
-Compare each story through an opening, one relationship, a puzzle with emotional meaning, and an ending.
-
-The story is told nearly without words, with chapter titles; the art shows more than words say.
+- **Loss and acceptance.** The spine is twin sisters. The girl goes through the puzzles hoping to save her twin sister, who she believes has died. At the end she realises that she is the one who died. The story can be grim, but it stays uplifting and hopeful, and its last minutes feel light-hearted. Inspirations: Inception, Nier Automata, Death Stranding. The story is written together with the owner.
+- **She** is pictured like the little girl in Deemo; the small hooded traveller is the owner's version of her for this game.
+- The mirror shows the mirrored structures, as the rules require, and may show more on its other side, such as the life that might have been.
+- The owner's idea for the finale: two parallel mirrors make an infinite pathway to what she has long hoped for.
+- The story is told nearly without words, with chapter titles; the art shows more than words say. She is probably alone on screen.
 
 Proposal, not yet agreed: a few characters stand in some stage areas. Walking up to one reveals a line or two of quiet lore or a hint. The main story stays nearly wordless.
+
+[The earlier story comparison](docs/story-directions.md) is kept as background.
 
 ## Later exploration
 
