@@ -314,6 +314,10 @@ placeholder; and the owner says it feels like light after rain.
 - **Review:** a style gallery scene with every token, icon, button and
   motion, which the owner opens on a Mac; stills of each screen; and one
   Movie Maker clip of the motion verbs and of the title into the prologue.
+- Status (2026-10-30): the look test is built and waits for the owner:
+  `ui/style/` (`UiStyle`, `UiIcons`, the gallery scene), `ui/motion/motion.gd`
+  (`Motion`), the typeface Cormorant Garamond (SIL Open Font License, in
+  `assets/fonts/`). Still and clip: `docs/ui-style/`. No screen uses it yet.
 
 ## Open tensions
 

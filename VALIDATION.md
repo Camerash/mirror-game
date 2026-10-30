@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: UI style look test — 2026-10-30
+
+- New files only; no game screen uses them yet. The gallery scene rendered under Xvfb with software Vulkan (still and a 330-frame Movie Maker clip at 30 fps, `docs/ui-style/`); the motion row was checked frame by frame from the clip. A headless `--import` finished without errors. No game tests run: no game code changed.
+
 # Latest check: playtest fix 8, small fixes — 2026-10-29
 
 - Drawn camera-button icons, a forgiving mirror grab with a desktop hover cue, no mirror on stage 1, Restart stage in the release settings, larger phone framing. New `tests/small_fix_tests.gd` **56/0** (the grab through a block in "Only the ground", hover cursor and glow, stage 1, the loader field, Restart stage, and the stage area against the controls at 844×390, 390×844 and 1152×800). Regression, headless, once: `run_tests` (the full classic suite) **597/0**, `level_solvability_tests` (classic and direct) **68/0**, `prompt_tests` **82/0**, `app_flow_tests` **80/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**, `readability_tests` **11/0**, `step_tests` **20/0**. `tests/tutorial_playthrough.gd` under Xvfb: **16/0**. Visual: captures under Xvfb with software Vulkan at 844×390, 390×844 and 1152×800 (`docs/playtests/2026-10-fixes/`). Hover was driven by injected mouse motion; the real system cursor shape was not seen. No Mac check, no real phone.
