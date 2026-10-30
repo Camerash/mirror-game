@@ -90,8 +90,11 @@ How each verb should feel. A feature brief cites these.
 - DECIDED (2026-10-30): a prologue, five chapters and an epilogue, seven
   parts in all. The five stages of grief run underneath the chapters, never
   as titles. About 12 minutes a chapter.
-- DRAFT: two story arcs, chapter by chapter, in [story arcs](story-arcs.md).
-  Recommended: A, the pond.
+- DECIDED (2026-10-30): the story is arc A, "the pond", in
+  [story arcs](story-arcs.md): the ice of the garden pond is the first
+  mirror, the game takes place on its far side, and the chapters run from
+  winter to spring. The keepsake is a pair of mittens. The drowning is never
+  shown directly.
 
 ## Story and telling
 

@@ -171,6 +171,7 @@ The classic editor. It is now reached through the debug switch **Classic editor*
 Decided 2026-10-30; [the vision](docs/VISION.md) holds the detail and the open questions.
 
 - **Loss and acceptance.** The spine is twin sisters. The girl goes through the puzzles hoping to save her twin sister, who she believes has died. At the end she realises that she is the one who died. The story can be grim, but it stays uplifting and hopeful, and its last minutes feel light-hearted. Inspirations: Inception, Nier Automata, Death Stranding. The story is written together with the owner.
+- **The pond** ([story arcs](docs/story-arcs.md), arc A, decided 2026-10-30). One winter the ice on the garden pond broke, and only one sister came back. The ice is the first mirror; the game takes place on its far side. A prologue, five chapters (the stages of grief underneath, never as titles) and an epilogue run from winter to spring; in the finale two facing mirrors make an endless path to the living sister. The twins are a lefty and a righty; the keepsake is a pair of mittens. The drowning is never shown directly.
 - **She** is pictured like the little girl in Deemo; the small hooded traveller is the owner's version of her for this game.
 - The mirror shows the mirrored structures, as the rules require, and may show more on its other side, such as the life that might have been.
 - The owner's idea for the finale: two parallel mirrors make an infinite pathway to what she has long hoped for.

@@ -1,6 +1,8 @@
 # Story arcs: two drafts
 
-DRAFT, 2026-10-30. Written for the owner to react to; nothing here is agreed.
+**Decided 2026-10-30: A, the pond, is the story**, with the mittens as the
+keepsake. The drowning is never shown directly. B is kept as background;
+its best clue, the sister growing older in each glimpse, may live inside A.
 [The vision](VISION.md) holds what is decided. Both drafts keep the
 decisions so far:
 
