@@ -10,15 +10,41 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
 
 ## Fantasy
 
-- OPEN: what it feels like to play, in one line a player would tell a friend.
+- DECIDED (2026-10-30): an emotional puzzle game about mirrors and
+  reflections. Through the mirror the player uses another dimension to make
+  paths and solutions that seem not to be there. Solving the puzzles uncovers
+  the tragic past of the main character, helps her reach the end, and is
+  about putting down: loss and acceptance.
+- DECIDED (2026-10-30): the line to a friend: "If you love Monument Valley,
+  you will love this."
 
 ## Players
 
-- OPEN: who they are, and which games they already love.
+- DECIDED (2026-10-30): players who love Monument Valley, Journey and
+  Viewfinder.
+- DRAFT: they play for wonder and feeling more than for difficulty. They
+  expect every screen to be beautiful and every puzzle to be fair. They will
+  finish an hour-long game in one sitting if it pulls them on.
 
 ## Pillars
 
-- OPEN: three to five, drafted after the first interview round.
+DRAFT (2026-10-30), from round 1. Each pillar is a test a feature must pass.
+
+1. **The way that isn't there.** Every solution is a shift in how the player
+   sees the place: a path appears from the other side of the mirror. The
+   moment of insight is the reward. Difficulty comes from insight, never from
+   misreading the space or from trial and error.
+2. **The mirror looks inward.** The other side is a glimpse of another
+   dimension: what was, what might have been, what lies deep within her. What
+   the player does with the mirror is what the story means. Raising it is
+   looking back; lowering it is letting go; the ending is putting it down.
+3. **Felt, not told.** Nearly wordless. Light, music, place and motion carry
+   the emotion. A late reveal reframes what the player has seen, as Nier
+   Automata reframes the androids and the machines.
+4. **Made by hand, every screen a picture.** One coherent, intentional look,
+   curated frame by frame. Nothing generic, nothing that reads as AI slop.
+5. **Respect the hour.** One sitting, no grind, no cash grab. Every chapter
+   moves the story and adds one idea.
 
 ## Moment-to-moment feel
 
@@ -32,16 +58,27 @@ How each verb should feel. A feature brief cites these.
 - DECIDED (2026-10-06): about an hour, perhaps a little longer, like the
   first Monument Valley; the depth of the mechanics decides.
 - DECIDED (2026-10-06): the four turning views stay for the whole game.
-- OPEN: how the puzzles and the story build across the hour; what pulls the
-  player into the next chapter.
+- DECIDED (2026-10-30): played in one sitting of about an hour, on Steam or
+  on a phone. Each chapter moves the story on meaningfully and brings
+  slightly more complex places.
+- DRAFT: chapters of 8 to 12 minutes, each ending on a story beat, so a phone
+  player can also stop between them.
 
 ## Story and telling
 
 - DECIDED (2026-10-06): nearly wordless, with chapter titles; the world and
   the art carry the story.
-- DECIDED (2026-10-06): the shortlist is possible lives, with loss and
-  acceptance as the alternative ([comparison](story-directions.md)).
-- OPEN: which story.
+- DECIDED (2026-10-30): the emotional heart is loss and acceptance: putting
+  down. The main character is a woman, and the story uncovers her tragic
+  past. (Replaces the 2026-10-06 shortlist, in which possible lives led;
+  `GAME_DESIGN.md` changes once the owner confirms.)
+- DECIDED (2026-10-30): the mirror means reflection on oneself; a glimpse of,
+  or portal to, another dimension; uncovering the unknown; exploring what is
+  deep within.
+- DRAFT: the blend in [story directions](story-directions.md), "possible
+  lives, after a loss": the mirror shows the lives in which the loss did not
+  happen, made walkable; the ending is putting the mirror down. Her own past
+  replaces the mentor and the friend.
 - DRAFT (2026-10-06): a few characters who give a line or two of quiet lore
   or a hint when the traveller walks up to them.
 
@@ -55,7 +92,12 @@ How each verb should feel. A feature brief cites these.
 - DECIDED (2026-10-29): overgrown garden is the art direction to try, on a
   real stage before it replaces anything ([look pilot](look-pilot.md)).
 - DECIDED (2026-10-06): agents make all art and music; music uses Lyria.
-- OPEN: the specific reference moments, and what makes each work.
+- DECIDED (2026-10-30), reference moments:
+  - Monument Valley: first discovering the impossible geometry.
+  - Viewfinder: making geometry out of a photograph, walking round it, and
+    realising it is now part of the real place.
+  - Nier Automata: realising the androids and the machines are the same.
+- OPEN: the visual references for mood, light and colour.
 
 ## Sound
 
@@ -63,7 +105,8 @@ How each verb should feel. A feature brief cites these.
 
 ## Money
 
-- OPEN: the price model. DRAFT: one price, no in-game purchases.
+- OPEN: the price model. DRAFT: one price, no in-game purchases (the "never"
+  list rules out a cash grab).
 
 ## Platforms
 
@@ -72,8 +115,10 @@ How each verb should feel. A feature brief cites these.
 
 ## Never
 
+- DECIDED (2026-10-30): AI slop.
+- DECIDED (2026-10-30): a cash-grab game, such as Kingshot.
+- DECIDED (2026-10-30): grind.
 - DRAFT: no scores or timers (stated in `GAME_DESIGN.md`, never dated).
-- OPEN: what else the game must never become.
 
 ## Process
 
@@ -101,4 +146,42 @@ vision and pillars ──> feature brief ──> grey-box feel test ──> buil
 
 ## Open tensions
 
-- OPEN: named after each interview round.
+Named after round 1 (2026-10-30), each with a recommendation.
+
+1. **"Never AI slop" against "agents make all the art and music."** The
+   largest risk. Slop reads as generic, inconsistent and without intent.
+   DRAFT recommendation: a small, strict visual language built in the engine
+   (kit, shaders, light) rather than generated images shipped as they are;
+   the owner approves each screen; recurring motifs, not variety; music
+   directed around one theme, with Lyria output curated, not used raw.
+2. **The mirror today is a copy tool; the vision wants a window into another
+   dimension.** Today the other side copies blocks that are already visible,
+   and the puzzles are spatial bookkeeping. DRAFT recommendation: test,
+   in grey box, a mirror whose other side shows a different version of the
+   place (her past, or the life that might have been). Keep the current rules
+   until the test shows it plays better.
+3. **Insight against misreading.** Both playtests found the difficulty in
+   reading height and distance, not in ideas. That breaks pillar 1. DRAFT
+   recommendation: legibility is a first-class feature of the slice, not a
+   later fix.
+4. **A Nier-style reveal in a nearly wordless game.** A reframing twist
+   usually needs words. DRAFT recommendation: carry it with a change the
+   player has already learned to read, such as the mirror's other side
+   turning out to be the real world.
+5. **The garden look and a tragic past.** They fit: overgrowth is time since
+   the loss; the copy in full bloom is what was. DRAFT recommendation: keep
+   the garden and tie its two states to the story.
+6. **One sitting against phone sessions.** DRAFT recommendation: short
+   chapters that each end on a beat serve both.
+
+### Where today's game breaks the draft pillars
+
+- Text prompts teach every stage, and refusal messages are sentences:
+  against "felt, not told".
+- Stages are named after rules ("Only the ground") and are cubes in a void,
+  with a ring as the goal: no place, no memory, against pillars 2 and 4.
+- The tutorial is a separate six-stage block before any story.
+- The HUD uses words ("Undo", "Restart stage") and four unrelated button
+  styles.
+- Stages 4 to 6 were solved by trial and error in the blind playtest.
+- `GAME_DESIGN.md` calls the traveller "he"; she is a woman.
