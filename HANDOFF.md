@@ -15,8 +15,10 @@ measured and failed, and which traps cost real time.
   (`docs/story-arcs.md`, arc A), an hour long in five chapters. Its **Order
   of work** (DECIDED) replaces the older order below: 1 the feel doc (done),
   2 the UI and motion system (done, waits for the owner's Mac review),
-  3 a two-mirror spike, 4 the slice in grey box (title, prologue, chapter 1
-  "The Garden", and the stage-6 perch bug from playtest 2), 5 sound and a
+  3 the first five minutes (`docs/briefs/first-five-minutes.md`: title,
+  wordless prologue, first garden place, walking from place to place
+  instead of the sweep, feel and sound), 4 the rest of the slice in grey box
+  (chapter 1 "The Garden", and the stage-6 perch bug from playtest 2), 5 sound and a
   Lyria theme, 6 art on the slice, 7 feel reviews. Write a feature brief
   per new piece (`docs/briefs/`) and get it approved before code.
 - **The UI system.** `ui/style/` (`UiStyle` tokens and theme, `UiIcons`),
