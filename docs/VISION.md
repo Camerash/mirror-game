@@ -316,11 +316,13 @@ placeholder; and the owner says it feels like light after rain.
   Movie Maker clip of the motion verbs and of the title into the prologue.
 - Status (2026-10-30): the look test is built and waits for the owner:
   `ui/style/` (`UiStyle`, `UiIcons`, the gallery scene), `ui/motion/motion.gd`
-  (`Motion`), the typeface Cormorant Garamond (SIL Open Font License, in
-  `assets/fonts/`). Still and clip: `docs/ui-style/`. No screen uses it yet.
+  (`Motion`), the typeface (see below, in `assets/fonts/`). Still and clip: `docs/ui-style/`. No screen uses it yet.
 - DECIDED (2026-10-30): the owner approved the colours, the icons and the
-  motion timings. The typeface is close but not final: eleven free options
-  are compared in `docs/ui-style/typeface-options.jpg`.
+  motion timings.
+- DECIDED (2026-10-30): the typeface is Spectral (SIL Open Font License),
+  chosen from eleven options (`docs/ui-style/typeface-options.jpg`) for its
+  feel, its spacing and its clear weights. Light for titles and chapter
+  names, Regular for the few other words.
 - DECIDED (2026-10-30): use UI elements sparingly in the game. Show a control
   only when it can be used and is needed.
 

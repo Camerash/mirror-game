@@ -26,25 +26,29 @@ const RADIUS := 14
 
 ## The type scale: [size, weight, letter spacing].
 const TYPE := {
-	"title": [64, 300, 6],
-	"chapter": [34, 400, 3],
-	"body": [21, 500, 0],
-	"small": [17, 600, 1],
+	"title": [60, 300, 6],
+	"chapter": [30, 300, 3],
+	"body": [20, 400, 0],
+	"small": [16, 400, 1],
 }
 
-const FONT_FILE := preload("res://assets/fonts/CormorantGaramond.ttf")
+## The typeface, Spectral (SIL Open Font License), by weight.
+const FONT_FILES := {
+	300: preload("res://assets/fonts/Spectral-Light.ttf"),
+	400: preload("res://assets/fonts/Spectral-Regular.ttf"),
+	500: preload("res://assets/fonts/Spectral-Medium.ttf"),
+}
 
 static var _fonts := {}
 static var _theme: Theme
 
 
 ## The one typeface at a weight, with optional letter spacing.
-static func font(weight := 500, spacing := 0) -> FontVariation:
+static func font(weight := 400, spacing := 0) -> FontVariation:
 	var key := "%d/%d" % [weight, spacing]
 	if not _fonts.has(key):
 		var variation := FontVariation.new()
-		variation.base_font = FONT_FILE
-		variation.variation_opentype = {"wght": weight}
+		variation.base_font = FONT_FILES.get(weight, FONT_FILES[400])
 		variation.spacing_glyph = spacing
 		_fonts[key] = variation
 	return _fonts[key]
@@ -85,7 +89,7 @@ static func theme() -> Theme:
 	if _theme:
 		return _theme
 	var built := Theme.new()
-	built.default_font = font(500)
+	built.default_font = font(400)
 	built.default_font_size = TYPE["body"][0]
 	var normal := frost()
 	var hover := frost(0.94)
