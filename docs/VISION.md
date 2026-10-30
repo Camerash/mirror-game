@@ -195,7 +195,50 @@ vision and pillars ──> feature brief ──> grey-box feel test ──> buil
 
 ## Order of work
 
-- OPEN: proposed after the interview.
+DRAFT (2026-10-30), waiting for the owner's approval.
+
+1. **Write down how it should feel.** Fill in "Moment-to-moment feel" for the
+   slice's verbs (walk, raise, slide, lower, fall, reach, move on), from
+   light after rain. The owner approves it.
+2. **The UI and motion system** (the first structural piece, below).
+3. **A two-mirror spike.** A rough grey-box test that two facing mirrors can
+   make an endless path in the engine, since the finale depends on it. No
+   art, no polish.
+4. **The slice in grey box.** The title, the prologue and chapter 1, "The
+   Garden", designed from the story, taught without text, and readable
+   before any art. One feature brief per new piece, approved before code.
+   The stuck-on-a-ledge bug (playtest 2, fix 9) is fixed here, since the
+   slice reuses the fall.
+5. **Sound and music early.** A Lyria trial of the main theme against light
+   after rain, and the interaction sounds, while the slice is still grey.
+6. **Art on the slice.** The garden look in winter, the copy side in summer
+   bloom, the pond, her and the mittens.
+7. **Feel reviews** at each step: a Movie Maker clip, and the owner playing
+   on a Mac.
+
+### The first slice
+
+The title, the prologue and chapter 1, "The Garden", about 15 minutes. It is
+the 2026-10-06 milestone (one chapter at release quality) with the story now
+chosen. Done when: five first-time players finish it without help and can say
+what happened; every screen holds up beside Monument Valley; nothing is
+placeholder; and the owner says it feels like light after rain.
+
+### The UI and motion system
+
+- **Style:** `ui/style/` holds the tokens (colours, one typeface and its
+  sizes, spacing, corner radius), one drawn icon set with one stroke weight,
+  and a Godot `Theme` built from them. Every button and panel uses the theme;
+  no per-button style overrides.
+- **Motion:** one `Motion` module with a few named verbs and fixed timings
+  and easing: appear, dismiss, press, settle, reveal, breathe, and the scene
+  transition. Every tween in the game goes through it (about 20 today).
+- **Screens:** the title (the first place from afar, tap to begin), pause and
+  settings, the chapter card and the end, all built from the same pieces.
+  The HUD becomes icons only.
+- **Review:** a style gallery scene with every token, icon, button and
+  motion, which the owner opens on a Mac; stills of each screen; and one
+  Movie Maker clip of the motion verbs and of the title into the prologue.
 
 ## Open tensions
 
