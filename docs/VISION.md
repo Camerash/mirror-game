@@ -318,6 +318,11 @@ placeholder; and the owner says it feels like light after rain.
   `ui/style/` (`UiStyle`, `UiIcons`, the gallery scene), `ui/motion/motion.gd`
   (`Motion`), the typeface Cormorant Garamond (SIL Open Font License, in
   `assets/fonts/`). Still and clip: `docs/ui-style/`. No screen uses it yet.
+- DECIDED (2026-10-30): the owner approved the colours, the icons and the
+  motion timings. The typeface is close but not final: eleven free options
+  are compared in `docs/ui-style/typeface-options.jpg`.
+- DECIDED (2026-10-30): use UI elements sparingly in the game. Show a control
+  only when it can be used and is needed.
 
 ## Open tensions
 
