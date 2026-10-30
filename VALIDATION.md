@@ -1,6 +1,11 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: the screens on the UI system — 2026-10-30
+
+- Every screen moved onto `UiStyle`, `UiIcons` and `Motion` (`docs/briefs/ui-screens.md`). Tests updated for the button-free title, the 1.6 s sink and the dismiss fades. Regression, headless, once: `run_tests` **653/0**, `level_solvability_tests` **68/0**, `prompt_tests` **82/0**, `app_flow_tests` **88/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**, `readability_tests` **11/0**, `step_tests` **20/0**, `small_fix_tests` **58/0** (one conditional check), `constellation_tuning_tests` **25/0**, `sound_tests` **33/0**, `edit_mode_tests` **22/0**; `mode_ui_tests` and `constellation_ui_tests` exit 0 with no failure lines (the portrait debug-panel check failed once under the new typeface and passes with the panel's smaller dev type). `tests/tutorial_playthrough.gd` under Xvfb: **16/0** (its screenshots fail to save: no `test-output/` in the container); headless it hangs on its first screenshot.
+- Visual: stills of every screen at 1152×800, 844×390 and 390×844, and a 20 s Movie Maker clip from the title through the sink into "First steps" and the sweep to "A place to stand", under Xvfb with software Vulkan (`docs/ui-style/screens/`). No Mac check, no real phone; hover was not driven with a real cursor.
+
 # Latest check: UI style look test — 2026-10-30
 
 - New files only; no game screen uses them yet. The gallery scene rendered under Xvfb with software Vulkan (still and a 330-frame Movie Maker clip at 30 fps, `docs/ui-style/`); the motion row was checked frame by frame from the clip. A headless `--import` finished without errors. No game tests run: no game code changed.
