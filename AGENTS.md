@@ -14,6 +14,10 @@
 - Use the Mobile renderer exclusively, with Metal on Apple platforms. Do not add Compatibility fallbacks or Simulator workarounds. iOS Simulator is not a supported target; use native Mac checks and later physical iOS/Android validation.
 - Use the `godot-runtime` MCP server for Mac scene inspection, input, and screenshots when available. Call `stop_project` after testing. Before export or commit, confirm that its temporary `McpBridge` autoload and `mcp_bridge.gd` are removed. Keep `.mcp/` output out of Git and exports.
 
+## Gemini generation
+
+- Use a Gemini Flash model for drafts (boards, explorations, iterations): today `gemini-3.1-flash-image` for images. Use a Pro model only for a finalised render the owner has approved as final. Check the exact Pro model name in the API's model list when it is first needed; keep model names in one config file.
+
 ## Blender workflow — required for all agents
 
 - These rules apply to the main agent and every subagent that works on Blender assets in this project. Include this file's absolute path in each Blender worker brief. Require the worker to read it before edits. Send changed rules to an existing worker before it resumes work.

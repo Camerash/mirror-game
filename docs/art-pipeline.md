@@ -175,6 +175,8 @@ out before the end. **†** marks a fact from a single source.
   decals and painted backdrops. Imagen 4 and `gemini-2.5-flash-image` were
   retired from the Gemini API in 2026, so model names belong in one config
   file.
+- **Draft with Flash, finish with Pro** (owner, 2026-10-30): Flash for every
+  draft and iteration; a Pro image model only for a finalised render.
 - **Music:**
   - **Lyria 3.5** (September 2026) writes pieces of up to three minutes,
     instrumental if asked, with tempo and sections set in the prompt, for
