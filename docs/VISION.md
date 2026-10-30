@@ -70,8 +70,8 @@ DRAFT (2026-10-30), from round 1. Each pillar is a test a feature must pass.
 
 ## Moment-to-moment feel
 
-How each verb should feel. A feature brief cites these. DRAFT (2026-10-30),
-for the owner to edit and approve. Each entry: the feeling, the motion, the
+How each verb should feel. A feature brief cites these. DECIDED
+(2026-10-30): the owner approved this section. Each entry: the feeling, the motion, the
 sound, and what changes from today.
 
 **Rules for every moment**
@@ -82,6 +82,10 @@ sound, and what changes from today.
 - Every change has a cause the player can see in the world.
 - Silence is allowed. The music thins at the important moments.
 - Words never teach. The world shows; the player tries.
+- **A reflection always looks like a reflection** (owner, 2026-10-30). The
+  copy may differ in look (season, colour, light), but its shape and its
+  behaviour are always those of the mirrored object: the same form, mirrored,
+  standing and acting exactly as the reflected original would.
 
 **Opening the game.** Feeling: stillness, a held breath before a story.
 Motion: the snowed garden from far above, snow drifting, the title in the
@@ -101,7 +105,9 @@ staying centred. Sound: a soft swell of wind. Today: 0.4 s with no sound.
 **Raising the mirror.** The signature moment. Feeling: looking back; wonder
 with an ache. Motion: the glass rises out of the ground like ice forming,
 about 0.8 s. The copy blooms outward from the glass in summer colour; the
-ground it replaces frosts over and fades, never vanishing at once. Sound: a
+ground it replaces frosts over and fades, never vanishing at once. The
+summer colour is a difference of look only: the copy keeps the exact
+mirrored shape of what it reflects. Sound: a
 sustained glass tone that opens into a chord of the chapter's theme. Today:
 the frame appears and the ground is deleted at once.
 
