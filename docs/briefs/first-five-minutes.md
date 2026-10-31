@@ -104,5 +104,12 @@ sequencer, the mirror raise).
   as the mirror button's animation.
 - **Sound:** one palette (`art_sources/audio/generate_sounds.py`), the title
   note, and a Lyria draft theme (not used in game).
-- **Her:** a new model is being built in Blender (`art_sources/girl/`);
-  the game still shows the traveller until it is integrated.
+- **Her:** the new girl is in the game (`assets/character/girl.glb`, built
+  in Blender from `art_sources/girl/girl.blend`): 0.8 u, 21 bones, Idle,
+  Walk (1.1 u/s, slide-free), Wake, Lift, Raise, Lower, Wave. She wakes,
+  lifts the hand mirror, and holds it up whenever the pane rises; her sister
+  is the same model reflected, in pale frost. In-game materials are relit
+  for the game's dim light (`TONE_LIFT` in `world/character_visual.gd`).
+- **Review clip:** `docs/briefs/media/first-minute-2026-10-31.mp4` (35 s,
+  with the game's sound), from the title to raising the mirror on the
+  second place.

@@ -42,6 +42,9 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
   down, grey tights, dark boots, and one red-ochre mitten on her LEFT hand
   (the drawing puts it on the right). Her twin is the mirror image: mitten
   on the right hand, parting on the right.
+- AGENT DECISION (2026-10-31, under the owner's delegation): she is
+  modelled and animated in Blender (`art_sources/girl/`) and replaces the
+  traveller in the game; her walk is a careful 1.1 u/s.
 - DRAFT (2026-10-30): alone on screen, like Ida; a second figure is optional.
 - OPEN: whether the sister appears in reflections or as a figure on the copy
   side; it depends on the story. The prologue's glimpse (grey box,

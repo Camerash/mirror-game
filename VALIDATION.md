@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: her model in the game — 2026-10-31
+
+- The Blender girl replaces the traveller; story beats play her animations. Checked once: `direct_controls_tests` **123/0**, `goal_tests` **9/0** (now waits on physics frames), `gameplay_art_tests` **73/0** (rewritten for the girl: height, the seven animations, walk/idle/freeze). In Blender (worker, `check_motion.py`): no foot slide at 1.1 u/s, no leg through the coat, nothing below the snow, mitten clear of the head. Visual: Movie Maker clips under Xvfb (prologue, colour crops, the 35 s review clip with sound). Renderer errors on freeing a figure with both surface and whole-mesh material overrides were reproduced in a probe and fixed. No Mac check; no one has listened to the clip's sound.
+
 # Latest check: prologue and sound — 2026-10-31
 
 - Prologue on "First steps" and the new sounds. Checked once: `prompt_tests` **82/0**, `app_flow_tests` **88/0** (its release check now waits for her to wake), `sound_tests` **38/0** (run by the sound worker), `tutorial_playthrough` under Xvfb **18/0** (now walks to the hand mirror first; its screenshots still fail to save). Visual: a Movie Maker clip under Xvfb from the title through the wake, the pickup, the glimpse, the view turn and the goal, read frame by frame. Nobody has listened to the sounds; only levels, seams and spectrograms were checked. No Mac check.
