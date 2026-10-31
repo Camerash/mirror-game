@@ -67,6 +67,13 @@ func begin(app: App) -> void:
 		await process_frame
 
 
+## Waits while she wakes in the snow at the start of a new game.
+func awake(app: App) -> void:
+	var deadline := Time.get_ticks_msec() + 8000
+	while app.game.phase != "play" and Time.get_ticks_msec() < deadline:
+		await process_frame
+
+
 func make_app(path: String, force_release := false) -> App:
 	var app := App.new()
 	app.progress_path = path
@@ -174,7 +181,9 @@ func check_release_settings() -> void:
 	var app := make_app(path, true)
 	await idle(app)
 	await begin(app)
-	# The game is paused behind the title, so it settles after Begin.
+	# The game is paused behind the title, so it settles after Begin; on a new
+	# game she first wakes in the snow (the prologue), then the prompt shows.
+	await awake(app)
 	await frames(6)
 	check(app.game.release_mode, "Release: release_mode_override takes effect")
 	var hud := app.game.hud

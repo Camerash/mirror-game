@@ -1,5 +1,7 @@
 {
-  "_note": "The one place for Gemini model names (AGENTS.md). Flash for drafts; Pro only for a final render the owner has approved. Fill in the Pro name from the API's model list when it is first needed.",
+  "_note": "The one place for Gemini model names (AGENTS.md). Flash for drafts; Pro only for a final render the owner has approved. Fill in a final name from the API's model list when it is first needed. Music: lyria-3-clip-preview is the draft tier (30 s clips); lyria-3-pro-preview and lyria-3.5 are listed for later.",
   "image_draft": "gemini-3.1-flash-image",
-  "image_final": ""
+  "image_final": "",
+  "music_draft": "lyria-3-clip-preview",
+  "music_final": ""
 }

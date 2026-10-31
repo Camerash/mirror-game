@@ -145,6 +145,16 @@
     0,
     -4
   ],
+  "keepsake": [
+    2,
+    0,
+    0
+  ],
+  "glimpse": [
+    3,
+    0,
+    0
+  ],
   "mirror": {
     "enabled": false,
     "axis": 0,
@@ -184,7 +194,8 @@
     {
       "id": "turn_view",
       "text": "The way on is out of sight. Drag sideways, or use the arrows in the corner, to turn the view.",
-      "until": "camera_turn"
+      "until": "camera_turn",
+      "after": "glimpse"
     }
   ]
 }

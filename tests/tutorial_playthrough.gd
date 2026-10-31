@@ -41,6 +41,13 @@ func next_stage(expected: String) -> void:
 	await shot(expected)
 
 
+func until_phase(wanted: String) -> void:
+	for index: int in 900:
+		if game.phase == wanted:
+			return
+		await process_frame
+
+
 func run() -> void:
 	root.size = Vector2i(1152, 800)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
@@ -59,6 +66,16 @@ func run() -> void:
 	await idle()
 	check(stage_file() == "13_first_steps", "Playthrough: Begin starts First steps")
 	await shot("13_first_steps")
+
+	# The prologue: she wakes in the snow, finds the hand mirror on the ice,
+	# and sees her sister in the glass.
+	await until_phase("play")
+	# She stops as she reaches it, a little short of the block's centre.
+	check(game.request_walk(Vector3(2, 0, 0)), "Playthrough: she walks to the hand mirror")
+	await until_phase("transition")
+	await until_phase("play")
+	check(game._prompt_done("prologue"), "Playthrough: the prologue plays and is saved")
+	await idle()
 
 	# First steps: turn the view, then walk to the goal.
 	game.turn_camera(1)

@@ -7,19 +7,20 @@ const App := preload("res://app.gd")
 const Sounds := preload("res://world/sounds.gd")
 const Walker := preload("res://world/walker.gd")
 
-const AUDIO_NAMES: Array[String] = ["step_1", "step_2", "step_3", "ui", "create",
-	"confirm", "remove", "goal", "sweep", "land", "ambient_loop"]
+const AUDIO_NAMES: Array[String] = ["step_1", "step_2", "step_3", "ui", "swing", "view",
+	"create", "confirm", "remove", "goal", "sweep", "land", "title_tap", "ambient_loop"]
 
 ## `tutorial_event` name to the file `game.sounds` must play for it. `walk`
-## is checked apart, since it must play nothing.
+## and `lower` are checked apart, since they must play nothing.
 const EVENT_FILES := {
 	"create": "create.wav",
 	"confirm": "confirm.wav",
 	"remove": "remove.wav",
 	"goal": "goal.wav",
 	"fall": "land.wav",
+	"camera_turn": "view.wav",
 	"resize": "ui.wav",
-	"turn": "ui.wav",
+	"turn": "swing.wav",
 	"move": "ui.wav",
 }
 
@@ -110,6 +111,8 @@ func check_event_map() -> void:
 	game.sounds.last_player = null
 	game.tutorial_event.emit("walk")
 	check(game.sounds.last_player == null, "Sound map: walk plays nothing (footsteps cover it)")
+	game.tutorial_event.emit("lower")
+	check(game.sounds.last_player == null, "Sound map: lower plays nothing (its move already ticks)")
 	game.queue_free()
 	await frames(1)
 

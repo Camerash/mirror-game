@@ -34,6 +34,7 @@ const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
 const Sounds := preload("res://world/sounds.gd")
+const PrologueScene := preload("res://world/prologue.gd")
 ## A moment of stillness at the goal before she moves on.
 const ADVANCE_PAUSE := 1.2
 ## How long a refused fall's ghost stays on screen before the mirror goes back.
@@ -164,6 +165,10 @@ var viewport_size := Vector2.ZERO
 var sweep := Sweep.new()
 ## Plays the tutorial events, the sweep, and the traveller's footsteps.
 var sounds := Sounds.new()
+## The story beats on the first place. They play only with `story` on.
+var prologue := PrologueScene.new()
+## The app turns the story on; tests leave it off, so stages start in play.
+var story := false
 var auto_advance := true
 var _advance_timer: Tween
 var _air_time := 0.0
@@ -241,6 +246,8 @@ func _setup_scene() -> void:
 	predictor.ready_result.connect(_prediction_ready)
 	walker.route_finished.connect(_route_finished)
 	add_child(sounds)
+	add_child(prologue)
+	prologue.finished.connect(_on_prologue_finished)
 	sounds.walker = walker
 	tutorial_event.connect(sounds.play_event)
 	add_child(goal_root)
@@ -307,8 +314,18 @@ func load_level(index: int) -> bool:
 	for child: Node in goal_root.get_children():
 		child.free()
 	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
+	prologue.clear()
+	if story and level.has("keepsake") and not _prompt_done(PrologueScene.DONE_ID):
+		var wake := not _loading_via_sweep
+		prologue.begin(level, walker, wake)
+		if wake:
+			phase = "transition"
 	status = "Tap a platform to walk. Tap the mirror button to raise the mirror." if direct_controls else "Tap a platform to walk. Hold empty space to create a mirror."
 	_build_prompt_queue()
+	if not prologue.active:
+		# Without the story, or once it has played, prompts waiting for the
+		# glimpse show as usual.
+		_stage_events["glimpse"] = true
 	_refresh()
 	_fit_camera(hud.get_play_rect(), true)
 	if not _loading_via_sweep:
@@ -335,7 +352,13 @@ func _physics_process(delta: float) -> void:
 	if can_edit() != edit_available:
 		_refresh()
 	_track_fall(delta)
-	if walker.position.y < float(level["kill_y"]):
+	if prologue.reach(walker.position):
+		walker.stop()
+		phase = "transition"
+		_hide_prompt_card()
+		_refresh()
+		_lean_camera(-0.3)
+	elif walker.position.y < float(level["kill_y"]):
 		_fail()
 	elif not level.get("is_test", false) and walker.position.distance_to(Geometry.vector(level["goal"])) < 0.22:
 		phase = "complete"
@@ -345,6 +368,7 @@ func _physics_process(delta: float) -> void:
 		status = "The end of the tutorial so far." if is_final else "A new way through. You reached the goal."
 		if is_final:
 			tutorial_finished.emit()
+		_warm_goal()
 		if auto_advance and not is_final:
 			phase = "transition"
 			_start_advance_pause()
@@ -360,6 +384,34 @@ func _track_fall(delta: float) -> void:
 	else:
 		_air_time += delta
 	_was_grounded = walker.grounded
+
+## The goal is where her sister stood a moment ago: the light there warms.
+func _warm_goal() -> void:
+	var warmth := OmniLight3D.new()
+	warmth.light_color = Color("ffc58a")
+	warmth.omni_range = 2.2
+	warmth.light_energy = 0.0
+	warmth.position = Geometry.vector(level["goal"]) + Vector3.UP * 0.6
+	goal_root.add_child(warmth)
+	create_tween().tween_property(warmth, "light_energy", 1.6, ADVANCE_PAUSE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+## A story beat has ended: she has woken, or the glimpse has passed.
+func _on_prologue_finished() -> void:
+	if not prologue.active:
+		_mark_prompt_done(PrologueScene.DONE_ID)
+		tutorial_event.emit("glimpse")
+	phase = "play"
+	_lean_camera(0.0)
+	_refresh()
+	_start_prompts()
+
+## Leans the camera in (negative) or back to the stage view (0), for a story
+## beat that wants to be seen closer.
+func _lean_camera(afar: float) -> void:
+	var start := camera.afar
+	Motion.blend(self, func(weight: float) -> void:
+		camera.afar = lerpf(start, afar, weight)
+		camera.refresh(), "transition")
 
 func _start_advance_pause() -> void:
 	walker.stop()

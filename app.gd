@@ -52,6 +52,9 @@ var _music_player: AudioStreamPlayer
 ## Plays a click for every row `_row` creates. One player, one
 ## wire-up point, instead of a play call in each button's own press handler.
 var _click_player: AudioStreamPlayer
+## One felt-piano note on the tap that leaves the title. Here, not in the
+## game's sounds, because the game is paused behind the title.
+var _tap_player: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -68,6 +71,10 @@ func _ready() -> void:
 	_click_player.stream = preload("res://assets/audio/ui.wav")
 	_click_player.bus = "Effects"
 	add_child(_click_player)
+	_tap_player = AudioStreamPlayer.new()
+	_tap_player.stream = preload("res://assets/audio/title_tap.wav")
+	_tap_player.bus = "Effects"
+	add_child(_tap_player)
 	game = Game.new()
 	game.progress = progress
 	game.release_mode = release_mode_override if release_mode_override != null \
@@ -76,6 +83,8 @@ func _ready() -> void:
 	# The game plays with the direct mirror controls; the gear's debug panel
 	# can switch back to the classic editor to compare.
 	game.direct_controls = true
+	# Her story plays in the app; tests that build a bare Game skip it.
+	game.story = true
 	add_child(game)
 	game.stage_reached.connect(_on_stage_reached)
 	game.tutorial_finished.connect(_on_tutorial_finished)
@@ -241,6 +250,7 @@ func _on_primary_pressed() -> void:
 	if _sinking or not _title_layer.visible:
 		return
 	_sinking = true
+	_tap_player.play()
 	if is_instance_valid(_title_motion):
 		_title_motion.kill()
 	Motion.fade(_title_label, false)

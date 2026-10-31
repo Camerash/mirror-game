@@ -1,7 +1,8 @@
 class_name GameSounds
 extends Node
-## Plays the game's sound effects: the tutorial events, the stage sweep, and
-## footsteps while the traveller walks.
+## Plays the game's sound effects: the tutorial events, moving on to the next
+## place ("sweep"), and footsteps while the traveller walks. The sounds are
+## made by `art_sources/audio/generate_sounds.py`.
 ##
 ## `game.gd` creates one instance in `_setup_scene`, adds it as a child,
 ## connects `tutorial_event` to `play_event`, and points `walker` at the
@@ -22,21 +23,27 @@ const STEP_NAMES: Array[String] = ["step_1", "step_2", "step_3"]
 const Walker := preload("res://world/walker.gd")
 
 ## `tutorial_event` name to the sound it plays. `volume_db` defaults to 0.0
-## when left out. `resize`, `turn`, and `move` share a quiet "ui" click: they
-## are small adjustments during an edit, not a fresh action like create or
-## confirm. `camera_turn` has no entry: the arrow buttons already click, and a
-## second click would double it. `walk` has no entry: footsteps already cover it, and a
-## failed jump has no entry either, since the fall (or its absence) and the
-## failure veil already read as the failure.
+## when left out. `resize` and `move` share a quiet glass tick ("ui"): they are
+## small adjustments during an edit, not a fresh action like create or
+## confirm. `turn` plays "swing", a breath of air and a soft rising fourth for
+## the mirror swinging round. `camera_turn` plays "view", a soft swell of wind
+## under the turn of the view; it has no pitch or attack, so it does not
+## double the arrow buttons' own click. `lower` has no entry: it marks the
+## mirror stepping down in height and always comes with a `move`, which
+## already ticks (taking the mirror away is `remove`). `walk` has no entry:
+## footsteps already cover it. `no_path` and a failed jump have no entry
+## either, since the fall (or its absence) and the failure veil already read
+## as the failure.
 const EVENT_SOUNDS := {
 	"create": {"name": "create"},
 	"confirm": {"name": "confirm"},
 	"remove": {"name": "remove"},
 	"goal": {"name": "goal"},
 	"fall": {"name": "land"},
-	"resize": {"name": "ui", "volume_db": -8.0},
-	"turn": {"name": "ui", "volume_db": -8.0},
-	"move": {"name": "ui", "volume_db": -8.0},
+	"camera_turn": {"name": "view"},
+	"turn": {"name": "swing"},
+	"resize": {"name": "ui", "volume_db": -4.0},
+	"move": {"name": "ui", "volume_db": -4.0},
 }
 
 ## The traveller to follow for footsteps. Left null (the default) until
