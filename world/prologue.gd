@@ -201,6 +201,7 @@ func _glimpse() -> void:
 	add_child(pane)
 	# Her sister: the same girl, reflected in the pane.
 	twin = CharacterVisual.new()
+	twin.self_driven = true
 	add_child(twin)
 	var reflect := _reflection(normal)
 	var her := _visual()

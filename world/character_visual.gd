@@ -51,6 +51,12 @@ var turn_rate := 0.0
 var action := ""
 var holding := false
 var frozen := false
+## A figure no walker drives (her sister in the glass) runs its own clock.
+var self_driven := false
+## Her meshes and materials, tuned once for the game's light and shared by
+## every figure of her.
+static var _lit_meshes := {}
+static var _tuned_materials := {}
 
 
 func _ready() -> void:
@@ -73,8 +79,17 @@ func _ready() -> void:
 	_stand()
 
 
+func _process(delta: float) -> void:
+	if self_driven:
+		update_motion(delta, Vector3.ZERO, true, false)
+
+
 func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused: bool) -> void:
 	if is_paused:
+		# The game holds her still while it edits or tells a story beat, but
+		# an action she was given (waking, lifting, raising) plays on.
+		if player != null and action != "" and not frozen:
+			player.advance(minf(maxf(delta, 0.0), MAX_STEP))
 		return
 	var planar_speed := Vector2(movement.x, movement.z).length()
 	if planar_speed > 0.01:
@@ -143,28 +158,39 @@ func _relight(root: Node) -> void:
 	# renderer rejects these materials with an error per surface.
 	if DisplayServer.get_name() == "headless":
 		return
-	var tuned := {}
 	for mesh: MeshInstance3D in root.find_children("*", "MeshInstance3D", true, false):
-		for surface: int in mesh.mesh.get_surface_count():
-			var source := mesh.mesh.surface_get_material(surface) as BaseMaterial3D
-			if source == null:
-				continue
-			if not tuned.has(source):
-				var material := StandardMaterial3D.new()
-				material.resource_name = source.resource_name
-				material.albedo_color = source.albedo_color
-				material.metallic = 0.0
-				material.metallic_specular = TONE_SPECULAR
-				material.roughness = TONE_ROUGHNESS
-				material.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
-				material.emission_enabled = true
-				material.emission = source.albedo_color
-				material.emission_energy_multiplier = TONE_LIFT
-				material.rim_enabled = true
-				material.rim = TONE_RIM
-				material.rim_tint = 0.6
-				tuned[source] = material
-			mesh.set_surface_override_material(surface, tuned[source])
+		# The tuned materials live on a shared copy of the mesh, not as
+		# per-instance surface overrides, so a `material_override` (the fall
+		# ghost, her sister in the glass) sits on top cleanly; overrides of
+		# both kinds on one instance make the renderer error when it is freed.
+		if not _lit_meshes.has(mesh.mesh):
+			var lit := mesh.mesh.duplicate() as Mesh
+			for surface: int in lit.get_surface_count():
+				var source := lit.surface_get_material(surface) as BaseMaterial3D
+				if source != null:
+					lit.surface_set_material(surface, _tuned(source))
+			_lit_meshes[mesh.mesh] = lit
+		mesh.mesh = _lit_meshes[mesh.mesh]
+
+
+static func _tuned(source: BaseMaterial3D) -> StandardMaterial3D:
+	if _tuned_materials.has(source):
+		return _tuned_materials[source]
+	var material := StandardMaterial3D.new()
+	material.resource_name = source.resource_name
+	material.albedo_color = source.albedo_color
+	material.metallic = 0.0
+	material.metallic_specular = TONE_SPECULAR
+	material.roughness = TONE_ROUGHNESS
+	material.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
+	material.emission_enabled = true
+	material.emission = source.albedo_color
+	material.emission_energy_multiplier = TONE_LIFT
+	material.rim_enabled = true
+	material.rim = TONE_RIM
+	material.rim_tint = 0.6
+	_tuned_materials[source] = material
+	return material
 
 
 func _stand() -> void:

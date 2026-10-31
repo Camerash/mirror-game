@@ -572,8 +572,21 @@ func toggle_mirror() -> void:
 		_direct_event = event
 		if proposal["enabled"]:
 			sheet.rise()
+			_hold_up_hand_mirror()
 	else:
 		world.cancel_reveal()
+
+## The pane is her hand mirror, grown: she holds it up while it rises.
+func _hold_up_hand_mirror() -> void:
+	var visual := walker.character_visual
+	if visual == null or visual.player == null:
+		return
+	visual.play_action("Raise")
+	var lower := create_tween()
+	lower.tween_interval(Motion.duration("reveal"))
+	lower.tween_callback(func() -> void:
+		if visual.action == "Raise":
+			visual.play_action("Lower"))
 
 func _direct_fresh_mirror() -> Dictionary:
 	var fresh := MirrorRules.normalized(level["mirror"])
