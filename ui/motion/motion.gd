@@ -15,6 +15,8 @@ const VERBS := {
 	"dismiss": [0.24, Tween.TRANS_CUBIC, Tween.EASE_IN],
 	## A value comes to rest after a change: a snap, a step, a camera fit.
 	"settle": [0.34, Tween.TRANS_QUINT, Tween.EASE_OUT],
+	## Something with weight swings to a new direction and settles past it a little.
+	"swing": [0.6, Tween.TRANS_BACK, Tween.EASE_OUT],
 	## A change of the world: the mirror rising, a copy blooming, the view turning.
 	"reveal": [0.8, Tween.TRANS_SINE, Tween.EASE_IN_OUT],
 	## A slow idle pulse, one half-cycle.

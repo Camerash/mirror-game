@@ -24,9 +24,15 @@ var visual_generation := 0
 var debug_signature := ""
 var debug_collision := false
 var clip_plane := Plane()
+## Set by `reveal_from` for the next draw only: the mirror's plane. Copies new
+## in that draw grow out of it, and fragments that leave sink into it, so the
+## world changes like ice forming, never in a cut. Presentation only.
+var _reveal_plane := Plane()
+var _revealing := false
+var ghost_root := Node3D.new()
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, collision_root, overlay_root, path_root, hidden_root, shadow_root, hover_root, mark_root]:
+	for node: Node3D in [visual_root, ghost_root, collision_root, overlay_root, path_root, hidden_root, shadow_root, hover_root, mark_root]:
 		add_child(node)
 	shadow_root.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var shade := ShaderMaterial.new()
@@ -40,14 +46,31 @@ func commit(solids: Array[Dictionary]) -> void:
 	draw_world(solids)
 	_discard_inactive_slots()
 
+## The next `draw_world` reveals its changes from `plane` (the mirror).
+func reveal_from(plane: Plane) -> void:
+	_reveal_plane = plane
+	_revealing = true
+
+func cancel_reveal() -> void:
+	_revealing = false
+
 func draw_world(solids: Array[Dictionary]) -> void:
 	drawn_solids = solids
 	visual_generation += 1
 	var occurrences := {}
 	var visible_index := 0
+	var revealing := _revealing
+	_revealing = false
+	var shown_before := {}
+	if revealing:
+		for key: String in visual_slots:
+			if (visual_slots[key]["instance"] as MeshInstance3D).visible:
+				shown_before[key] = true
+	var grown: Array[MeshInstance3D] = []
 	for solid: Dictionary in solids:
 		var key := _fragment_key(solid, occurrences)
 		var slot: Dictionary = visual_slots.get(key, {})
+		var grows := revealing and not shown_before.has(key) and str(solid.get("kind", "original")) != "original"
 		if slot.is_empty():
 			var instance := MeshInstance3D.new()
 			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -60,14 +83,22 @@ func draw_world(solids: Array[Dictionary]) -> void:
 			_apply_mesh(instance, solid)
 			slot["mesh_signature"] = mesh_signature
 		_configure_material(slot, solid)
+		if grows:
+			grown.append(instance)
 		instance.visible = true
 		visual_root.move_child(instance, visible_index)
 		visible_index += 1
 		slot["generation"] = visual_generation
 		visual_slots[key] = slot
-	for slot: Dictionary in visual_slots.values():
+	for key: String in visual_slots:
+		var slot: Dictionary = visual_slots[key]
 		if slot.get("generation", -1) != visual_generation:
+			if revealing and shown_before.has(key):
+				_sink(slot["instance"])
 			slot["instance"].visible = false
+	if revealing:
+		for instance: MeshInstance3D in grown:
+			_grow(instance)
 	_draw_drop_shadows(solids)
 	update_debug()
 
@@ -101,6 +132,37 @@ func _draw_drop_shadows(solids: Array[Dictionary]) -> void:
 				tool.add_vertex(Vector3(low.x + size.x * corner.x, height, low.y + size.y * corner.y))
 			count += 1
 	shadow_root.mesh = tool.commit() if count > 0 else null
+
+## Grows a fragment out of the mirror's plane to its full shape.
+func _grow(instance: MeshInstance3D) -> void:
+	var rest := instance.transform
+	var plane := _reveal_plane
+	_squash(instance, rest, plane, 0.0)
+	var motion := Motion.blend(instance, func(weight: float) -> void: _squash(instance, rest, plane, weight), "reveal")
+	motion.tween_callback(func() -> void: instance.transform = rest)
+
+## A leaving fragment: a copy of it sinks into the mirror's plane, then goes.
+func _sink(instance: MeshInstance3D) -> void:
+	if instance.mesh == null:
+		return
+	var ghost := MeshInstance3D.new()
+	ghost.mesh = instance.mesh
+	ghost.material_override = instance.material_override
+	ghost.transform = instance.transform
+	ghost_root.add_child(ghost)
+	var rest := ghost.transform
+	var plane := _reveal_plane
+	var motion := Motion.blend(ghost, func(weight: float) -> void: _squash(ghost, rest, plane, 1.0 - weight), "reveal")
+	motion.tween_callback(ghost.queue_free)
+
+## Scales `rest` along the plane's normal about the plane, by `amount`.
+func _squash(instance: MeshInstance3D, rest: Transform3D, plane: Plane, amount: float) -> void:
+	var keep := maxf(amount, 0.02)
+	var normal := plane.normal
+	var squash := Basis(Vector3.RIGHT - normal * normal.x * (1.0 - keep),
+		Vector3.UP - normal * normal.y * (1.0 - keep),
+		Vector3.BACK - normal * normal.z * (1.0 - keep))
+	instance.transform = Transform3D(squash, normal * plane.d * (1.0 - keep)) * rest
 
 func _discard_inactive_slots() -> void:
 	for key: String in visual_slots.keys():

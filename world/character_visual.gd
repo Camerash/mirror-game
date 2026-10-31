@@ -27,7 +27,8 @@ const DRIFT_PER_SPEED := 1.0
 const DRIFT_PER_TURN := 0.55
 ## Yaw rate, in radians a second, that counts as a full turn.
 const FULL_TURN_RATE := 2.4
-## The speed the cycle is authored for: `MirrorWalker.SPEED`.
+## The speed the cycle is authored for. Her pace is slower and eased, so the
+## cycle plays at the speed she actually moves.
 const WALK_SPEED := 2.0
 ## Below this the character is standing, not walking.
 const MOVING_SPEED := 0.05
@@ -73,7 +74,7 @@ func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused
 	var planar_velocity := Vector2(movement.x, movement.z)
 	var planar_speed := planar_velocity.length()
 	if planar_speed > 0.01:
-		rotation.y = lerp_angle(rotation.y, atan2(movement.x, movement.z), minf(delta * 12.0, 1.0))
+		rotation.y = lerp_angle(rotation.y, atan2(movement.x, movement.z), minf(delta * 8.0, 1.0))
 	var step := minf(maxf(delta, 0.0), DRIFT_MAX_STEP)
 	turn_rate = angle_difference(facing, rotation.y) / maxf(step, 0.001)
 	facing = rotation.y

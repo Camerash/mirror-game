@@ -12,6 +12,9 @@ const GuideShader := preload("res://world/mirror_guides.gdshader")
 const MoteShader := preload("res://world/mirror_motes.gdshader")
 
 var frame := Frame.new()
+## Holds every visible part, so the whole pane can rise without touching the
+## mirror's own pose.
+var body := Node3D.new()
 var panel_size := Vector2(3, 3)
 var rotation_motion: Tween
 var sheet := MeshInstance3D.new()
@@ -63,12 +66,9 @@ func _ready() -> void:
 	mote_material.shader = MoteShader
 	mote_material.render_priority = 74
 	motes.material_override = mote_material
-	add_child(frame)
-	add_child(sheet)
-	add_child(edges)
-	add_child(ribbons)
-	add_child(guides)
-	add_child(motes)
+	add_child(body)
+	for part: Node3D in [frame, sheet, edges, ribbons, guides, motes]:
+		body.add_child(part)
 
 func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	if next_state == state and bounds == drawn_bounds and editing == is_editing:
@@ -112,6 +112,19 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 	mote_material.set_shader_parameter("source_sign", source_sign)
 	settle_time = 0.18 if not editing else 0.0
 
+## The pane forms up out of the ground like ice: it grows from its lower edge
+## to its full height. Presentation only; the mirror is already in place.
+func rise() -> void:
+	var half := panel_size.y * 0.5
+	var grow := func(weight: float) -> void:
+		var height := maxf(weight, 0.02)
+		body.scale = Vector3(1, height, 1)
+		body.position = Vector3(0, -half * (1.0 - height), 0)
+	grow.call(0.0)
+	Motion.blend(self, grow, "reveal").tween_callback(func() -> void:
+		body.scale = Vector3.ONE
+		body.position = Vector3.ZERO)
+
 func set_hover(value: bool) -> void:
 	hovered = value
 	frame.set_glow(value)
@@ -134,7 +147,7 @@ func animate_to(next_state: Dictionary, bounds: AABB) -> void:
 	transitioning = true
 	rotation_motion = Motion.blend(self, func(weight: float) -> void:
 		global_basis = previous.slerp(target, weight)
-		pose_changed.emit(), "settle")
+		pose_changed.emit(), "swing")
 	rotation_motion.tween_callback(func() -> void:
 		global_basis = target
 		transitioning = false

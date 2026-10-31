@@ -504,9 +504,16 @@ func toggle_mirror() -> void:
 		proposal = mirror.duplicate(true) if mirror.has("pivot") else _direct_fresh_mirror()
 		proposal["enabled"] = true
 		event = "create"
+	# The change shows as a reveal from the glass: the copy grows out of it,
+	# what it replaces sinks into it, and a new pane rises from the ground.
+	world.reveal_from(Plane(MirrorRules.normal(proposal), proposal["pivot"]))
 	if _open_direct_preview(proposal):
 		_direct_apply = true
 		_direct_event = event
+		if proposal["enabled"]:
+			sheet.rise()
+	else:
+		world.cancel_reveal()
 
 func _direct_fresh_mirror() -> Dictionary:
 	var fresh := MirrorRules.normalized(level["mirror"])
