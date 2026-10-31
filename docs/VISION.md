@@ -36,6 +36,12 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
 - DECIDED (2026-10-30): her model may change to fit the story (a small girl
   in winter, the left mitten). A Gemini Flash mockup round comes first; the
   owner picks before any Blender work.
+- DECIDED (2026-10-31): her look is round 2's variant 2
+  (`docs/art/her/beanie_b.jpg`): a dark bob with a fringe, a cream knitted
+  beanie with a pompom, a mist-blue duffle coat with toggles and a hood
+  down, grey tights, dark boots, and one red-ochre mitten on her LEFT hand
+  (the drawing puts it on the right). Her twin is the mirror image: mitten
+  on the right hand, parting on the right.
 - DRAFT (2026-10-30): alone on screen, like Ida; a second figure is optional.
 - OPEN: whether the sister appears in reflections or as a figure on the copy
   side; it depends on the story.
