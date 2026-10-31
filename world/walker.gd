@@ -3,14 +3,15 @@ extends CharacterBody3D
 
 const Geometry := preload("res://core/world_geometry.gd")
 const CharacterVisual := preload("res://world/character_visual.gd")
-## Her top pace: a child's careful walk in snow.
-const SPEED := 1.5
+## Her top pace: a child's careful walk in snow. Her Walk animation is
+## authored for this speed (`CharacterVisual.WALK_SPEED`), so her feet hold.
+const SPEED := 1.1
 ## Seconds from standing to full pace.
 const EASE_IN := 0.35
 ## Over this last stretch of a route she slows into her final step.
 const EASE_OUT := 0.4
 ## The slowest she goes before she stops, so the last step always arrives.
-const MIN_PACE := 0.35
+const MIN_PACE := 0.25
 const GRAVITY := 9.8
 signal route_finished
 

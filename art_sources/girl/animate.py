@@ -19,9 +19,9 @@ from mathutils import Euler, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 
 FPS = 60
-WALK_SPEED = 1.5            # ground speed the Walk is authored for, units/s
-WALK_FRAMES = 18            # one cycle: 0.3 s, two steps
-STRIDE = WALK_SPEED * WALK_FRAMES / FPS / 2   # one step = stance travel, 0.225
+WALK_SPEED = 1.1            # ground speed the Walk is authored for, units/s
+WALK_FRAMES = 26            # one cycle: 0.433 s, two steps (4.6 steps/s)
+STRIDE = WALK_SPEED * WALK_FRAMES / FPS / 2   # one step = stance travel, 0.238
 ANKLE_Z = 0.045
 FOOT_X = 0.040
 
@@ -154,7 +154,7 @@ def idle(t):
 
 
 # --------------------------------------------------------------------------
-# Walk: a careful child's walk in snow on bent knees, 0.3 s a cycle.
+# Walk: a careful child's walk in snow on bent knees, 0.433 s a cycle.
 
 def walk_foot(ph, side):
     s = 1 if side == 'L' else -1
@@ -188,7 +188,7 @@ def walk(t):
         'LowerArm.L': E(-14 + 4 * math.cos(a)), 'LowerArm.R': E(-14 - 4 * math.cos(a)),
         'Hand.L': E(-8), 'Hand.R': E(-8),
     }
-    loc = Vector((0.006 * side_sway, 0.0, -0.034 + 0.008 * bob))
+    loc = Vector((0.006 * side_sway, 0.0, -0.038 + 0.008 * bob))
     return solve({'loc': loc, 'rel': rel,
                   'legs': {'L': walk_foot(ph, 'L'), 'R': walk_foot((ph + 0.5) % 1.0, 'R')}})
 

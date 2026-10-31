@@ -49,10 +49,12 @@ func check_tap_on_goal_tile(offset: Vector3) -> void:
 		await process_frame
 	var goal := Geometry.vector(game.level["goal"])
 	check(game.request_walk(goal + offset), "A walk to the goal tile at offset %s starts" % offset)
-	for index: int in 900:
+	# Physics frames: her walk is timed in physics ticks, and headless process
+	# frames run uncapped.
+	for index: int in 1200:
 		if game.phase == "complete" or (game.walker.route.is_empty() and index > 30):
 			break
-		await process_frame
+		await physics_frame
 	await frames(5)
 	check(game.phase == "complete", "Standing on the goal tile at offset %s completes the stage (phase %s, %.2f from the goal)" % [offset, game.phase, game.walker.position.distance_to(goal)])
 	game.queue_free()

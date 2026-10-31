@@ -13,7 +13,7 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
 FPS = 60
-WALK_SPEED = 1.5
+WALK_SPEED = 1.1
 rig = bpy.data.objects['Girl']
 coll = bpy.data.collections['Girl']
 
