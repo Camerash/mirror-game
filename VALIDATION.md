@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: prologue and sound — 2026-10-31
+
+- Prologue on "First steps" and the new sounds. Checked once: `prompt_tests` **82/0**, `app_flow_tests` **88/0** (its release check now waits for her to wake), `sound_tests` **38/0** (run by the sound worker), `tutorial_playthrough` under Xvfb **18/0** (now walks to the hand mirror first; its screenshots still fail to save). Visual: a Movie Maker clip under Xvfb from the title through the wake, the pickup, the glimpse, the view turn and the goal, read frame by frame. Nobody has listened to the sounds; only levels, seams and spectrograms were checked. No Mac check.
+
 # Latest check: feel pass and moving on — 2026-10-31
 
 - Eased walk (`walker.gd`), slower turn, mirror swing (0.6 s), the pane rising and the copy growing from the mirror plane, and moving on in place of the sweep. Checked once, headless: `direct_controls_tests` **123/0**, `goal_tests` **9/0** after the walk and mirror changes; `run_tests` **655/0** after moving on (its sweep-cancel setup now waits past the 1.2 s stillness). Visual: two Movie Maker clips under Xvfb with software Vulkan (raise and lower on "First steps"; the walk-on from "First steps" to "A place to stand"), read frame by frame. No other suites, no Mac check.

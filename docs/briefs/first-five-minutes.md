@@ -1,6 +1,8 @@
 # Brief: the first five minutes
 
-DRAFT, 2026-10-30, for the owner's approval before code. Step 3 of the order
+IN PROGRESS. Drafted 2026-10-30; the owner delegated decisions on
+2026-10-31 ("make your own decision"), so the build went ahead. See "As
+built" at the end. Step 3 of the order
 of work in [the vision](../VISION.md). Story: arc A, the pond
 ([story arcs](../story-arcs.md)).
 
@@ -70,11 +72,11 @@ a machine with Blender (not this cloud container).
 - **The hand mirror** becomes the mirror button's source: raising it plays
   her holding it up.
 
-## Recommendation to decide
+## Decision
 
 - **The hand mirror is the game's mirror.** She finds it in the prologue and
-  every raised pane is it, grown. This answers the open question "carries
-  the mirror from the start or finds it". Recommended: yes.
+  every raised pane is it, grown. Agent decision, 2026-10-31, under the
+  owner's delegation.
 
 ## Not in this brief
 
@@ -86,3 +88,21 @@ mirror.
 One Movie Maker clip of the five minutes, then the owner plays it on a Mac.
 Checks: only the tests for what changes (the walk between places, the scene
 sequencer, the mirror raise).
+
+## As built (2026-10-31, grey box)
+
+- **Feel:** eased walk at 1.5 u/s (`world/walker.gd`), slower turning, the
+  mirror swing 0.6 s, the pane rising and the copy growing from the plane
+  over 0.8 s.
+- **Moving on** replaced the sweep: about a second of stillness and warm
+  light at the goal, then the next place grows from her feet while the camera
+  travels, and the old place drifts away. All places are not yet one loaded
+  world, and the next place is not visible ahead.
+- **Prologue** (`world/prologue.gd`): wake, the glinting hand mirror, the
+  pickup, and the glimpse behind a frost pane. Not built: the pond itself,
+  footprints, "The Garden" written on the world, and raising the hand mirror
+  as the mirror button's animation.
+- **Sound:** one palette (`art_sources/audio/generate_sounds.py`), the title
+  note, and a Lyria draft theme (not used in game).
+- **Her:** a new model is being built in Blender (`art_sources/girl/`);
+  the game still shows the traveller until it is integrated.

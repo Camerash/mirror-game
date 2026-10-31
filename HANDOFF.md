@@ -28,6 +28,12 @@ measured and failed, and which traps cost real time.
   after the title must wait out the 1.6 s sink (see `begin` in
   `tests/app_flow_tests.gd`). `tests/tutorial_playthrough.gd` needs a
   renderer (xvfb); headless, it hangs on its first screenshot.
+- **2026-10-31, owner away, decisions delegated.** Built under that
+  delegation: moving on (replaces the sweep), the prologue
+  (`world/prologue.gd`, `Game.story`, on in the app only), the sound palette
+  (`art_sources/audio/generate_sounds.py`), and a new girl in Blender
+  (`art_sources/girl/`, `docs/art/her/`). Status per piece in
+  `docs/briefs/first-five-minutes.md`, "As built".
 - **Gemini:** Flash for drafts, Pro only for an owner-approved final render
   (`AGENTS.md`).
 

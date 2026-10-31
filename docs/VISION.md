@@ -44,9 +44,11 @@ agreed) or **OPEN** (not yet discussed). Only the owner decides.
   on the right hand, parting on the right.
 - DRAFT (2026-10-30): alone on screen, like Ida; a second figure is optional.
 - OPEN: whether the sister appears in reflections or as a figure on the copy
-  side; it depends on the story.
-- OPEN: whether she carries the mirror from the start or finds it in the
-  first minutes. Test both.
+  side; it depends on the story. The prologue's glimpse (grey box,
+  2026-10-31) shows her as a pale reflection behind a frost pane.
+- AGENT DECISION (2026-10-31, under the owner's delegation): she finds a
+  hand mirror on the ice in the first minute, and every raised pane is that
+  mirror, grown. Built in grey box; the owner can reverse it.
 
 ## Players
 
@@ -244,7 +246,10 @@ styles and words.
 - DECIDED (2026-10-30): mysterious, holy, hopeful, sad, grieving: light
   after rain (see the top). References: Nier Automata, "City Ruins - Rays of
   Light", "Copied City", "Weight of the World".
-- OPEN: what the mirror itself sounds like.
+- OPEN: what the mirror itself sounds like. First try (2026-10-31, agent):
+  glass and ice in D Dorian; raising blooms into a soft chord, lowering
+  resolves down, turning is a breath and a rising fourth. Nobody has
+  listened yet; a Lyria draft theme is in `art_trial/audio/`.
 
 ## Money
 
