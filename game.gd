@@ -34,7 +34,8 @@ const WorldGesture := preload("res://ui/world_gesture.gd")
 const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
 const Sounds := preload("res://world/sounds.gd")
-const ADVANCE_PAUSE := 0.5
+## A moment of stillness at the goal before she moves on.
+const ADVANCE_PAUSE := 1.2
 ## How long a refused fall's ghost stays on screen before the mirror goes back.
 const REFUSE_HOLD := 1.2
 ## How long a fall stays on screen before the direct controls rewind it.
@@ -382,11 +383,18 @@ func _begin_sweep() -> void:
 	phase = "transition"
 	walker.paused = true
 	var shift := Geometry.vector(level["start"]) - old_goal
+	# The new place grows out from where she stands, along the way she came.
+	var heading := old_goal - old_start
+	var across := Vector3.RIGHT if absf(heading.x) >= absf(heading.z) else Vector3.BACK
+	world.reveal_from(Plane(across, Geometry.vector(level["start"])), true)
+	world.draw_world(world.drawn_solids)
 	hud.show_stage_title(str(level["title"]))
 	camera.fit(AABB(old_framing.position + shift, old_framing.size), hud.get_camera_rect(), true)
 	sounds.play("sweep")
 	sweep.start(old_solids, Geometry.total_bounds(world.drawn_solids), shift, old_start, old_goal,
 		Geometry.vector(level["goal"]), world, goal_root, sheet, contact)
+	# The camera travels with her from the old place to the new one.
+	camera.travel_verb = "transition"
 	_fit_camera(hud.get_play_rect())
 
 func _finish_sweep() -> void:

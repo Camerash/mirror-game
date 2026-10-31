@@ -148,14 +148,17 @@ her right hand; the music thins; then only snow.
 
 **Reaching the goal.** Feeling: a small homecoming. The goal is where her
 sister was a moment ago. Motion: the light warms, she pauses, a held note,
-one to two seconds of stillness before anything moves. Today: a ring, then
-the sweep.
+one to two seconds of stillness before anything moves. Today: a ring, 1.2 s
+of stillness, then she moves on.
 
 **Moving on.** DECIDED (2026-10-30, replaces "keep the mirror sweep"): the
 places of a chapter sit in one continuous garden. She walks out of one place
 and the camera travels with her to the next, with no transition effect.
 Between chapters, a short wordless memory scene carries the change, and the
-chapter title is written on the world, not on a card.
+chapter title is written on the world, not on a card. Built in grey box
+(2026-10-31): the next place grows from her feet while the camera travels,
+and the old place drifts away. The chapter world (all places loaded at once)
+is not built yet.
 
 **The interface.** Feeling: almost absent. Icons only, in one drawn style;
 they appear when they can be used and leave quietly. Today: four button

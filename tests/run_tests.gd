@@ -211,7 +211,8 @@ func _test_sweep_cancel() -> void:
 	game.auto_advance = true
 	game.phase = "complete"
 	game._start_advance_pause()
-	await _frames(50)
+	# Past the stillness at the goal (Game.ADVANCE_PAUSE), into the walk-on.
+	await _frames(int(Game.ADVANCE_PAUSE * 60) + 30)
 	_check(game.sweep.active, "Sweep test setup: the sweep is running mid-transition")
 	game.load_level(reveal_index)
 	await _frames(3)

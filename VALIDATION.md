@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: feel pass and moving on — 2026-10-31
+
+- Eased walk (`walker.gd`), slower turn, mirror swing (0.6 s), the pane rising and the copy growing from the mirror plane, and moving on in place of the sweep. Checked once, headless: `direct_controls_tests` **123/0**, `goal_tests` **9/0** after the walk and mirror changes; `run_tests` **655/0** after moving on (its sweep-cancel setup now waits past the 1.2 s stillness). Visual: two Movie Maker clips under Xvfb with software Vulkan (raise and lower on "First steps"; the walk-on from "First steps" to "A place to stand"), read frame by frame. No other suites, no Mac check.
+
 # Latest check: the screens on the UI system — 2026-10-30
 
 - Every screen moved onto `UiStyle`, `UiIcons` and `Motion` (`docs/briefs/ui-screens.md`). Tests updated for the button-free title, the 1.6 s sink and the dismiss fades. Regression, headless, once: `run_tests` **653/0**, `level_solvability_tests` **68/0**, `prompt_tests` **82/0**, `app_flow_tests` **88/0**, `direct_controls_tests` **123/0**, `goal_tests` **9/0**, `readability_tests` **11/0**, `step_tests` **20/0**, `small_fix_tests` **58/0** (one conditional check), `constellation_tuning_tests` **25/0**, `sound_tests` **33/0**, `edit_mode_tests` **22/0**; `mode_ui_tests` and `constellation_ui_tests` exit 0 with no failure lines (the portrait debug-panel check failed once under the new typeface and passes with the panel's smaller dev type). `tests/tutorial_playthrough.gd` under Xvfb: **16/0** (its screenshots fail to save: no `test-output/` in the container); headless it hangs on its first screenshot.

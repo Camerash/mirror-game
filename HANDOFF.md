@@ -367,25 +367,20 @@ reflected piece cut at the aperture edge, and the jade start and goal.
 `tests/block_gallery_review.gd` (native) saves four turns, a phone size, a close
 view, and a 30 degree turn that shows the angled polygon cut path.
 
-### The stage sweep
+### Moving on (replaced the stage sweep, 2026-10-31)
 
 Each stage stays a self-contained JSON file in its own coordinates. At the goal
-of a puzzle that has a next puzzle, `game.gd` waits 0.5 s, then loads the next
-stage at once. The real world, collision, walker and HUD are the new stage from
-that moment. `world/stage_sweep.gd` then draws the old stage for 1.7 s only: a
-second, visual-only `MirrorWorldView`, moved by `new start - old goal` so the
-traveller stays where he stood. A glass panel sweeps from the far end back past
-the traveller. A clip plane in both block shaders hides the new stage ahead of
-the panel and the old stage behind it. Phase is `"transition"` during the
-sweep: editing, walking, Undo, the pointer and camera turns are refused. The
-last puzzle does not sweep; it stays complete with "The end of the tutorial so
-far." The level picker and Reset stay instant and cancel a sweep. There is no
-Next button.
-
-Known limits: a clipped box is open at the plane for about one second, and the
-camera frames both stages together, so each stage is smaller during the sweep.
-The user chose the sweep over a Monument Valley style diorama join, so that
-the join comes from the game's own mirror rule.
+of a puzzle that has a next puzzle, `game.gd` holds still for `ADVANCE_PAUSE`
+(1.2 s), then loads the next stage at once. The real world, collision, walker
+and HUD are the new stage from that moment. `world_view.reveal_from(plane,
+true)` grows every block of the new stage out of the plane at her feet.
+`world/stage_sweep.gd` (name kept) draws the old stage as a visual-only
+`MirrorWorldView`, moved by `new start - old goal` and trimmed at the join,
+while the camera travels (`camera.travel_verb = "transition"`). After the
+transition the old place drifts down and is freed. Phase is `"transition"`
+throughout: editing, walking, Undo, the pointer and camera turns are refused.
+The level picker and Reset stay instant and cancel it. The code names
+(`sweep`, `_begin_sweep`) are old; rename when the chapter world lands.
 
 ### The tutorial MVP
 
@@ -424,7 +419,7 @@ the join comes from the game's own mirror rule.
   playtest decide.
 - **One block set on every stage**, made from the Level 1 ceramic look. The
   reference scene's look is a source of ideas, not the base.
-- **Stages join by the mirror sweep**, not a diorama take-apart or a title card.
+- **Stages join by moving on** (2026-10-31): the next place grows from her feet and the camera travels. The mirror sweep is gone.
 - **The tutorial is six stages** (the short list). Tilt and Reverse sides wait.
 - **Prompts show one time**, are saved as done, and **?** replays them.
 - **Release builds are a normal game**: settings only, no Reset, no dev tools.

@@ -15,6 +15,9 @@ var initialized := false
 var afar := 0.0
 ## The title's slow sway about the stage, in radians, scaled by `afar`.
 var drift := 0.0
+## The verb for the next fit only, when it is not a settle: moving on between
+## places travels with "transition".
+var travel_verb := ""
 
 func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
 	if rect.size.x < 10 or rect.size.y < 10:
@@ -34,8 +37,10 @@ func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
 	var start_position := position
 	var start_size := size
 	var start_basis := basis
+	var verb := travel_verb if not travel_verb.is_empty() else "settle"
+	travel_verb = ""
 	motion = Motion.blend(self, func(weight: float) -> void:
-		_apply(start_position.lerp(pose["position"], weight), start_basis.slerp(pose["basis"], weight), lerpf(start_size, pose["size"], weight)), "settle")
+		_apply(start_position.lerp(pose["position"], weight), start_basis.slerp(pose["basis"], weight), lerpf(start_size, pose["size"], weight)), verb)
 	motion.tween_callback(_finish)
 
 ## True when the current view already shows all of `stage_bounds` inside

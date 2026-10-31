@@ -29,6 +29,8 @@ var clip_plane := Plane()
 ## world changes like ice forming, never in a cut. Presentation only.
 var _reveal_plane := Plane()
 var _revealing := false
+## The reveal grows every fragment, not only copies: a whole new place.
+var _reveal_all := false
 var ghost_root := Node3D.new()
 
 func _ready() -> void:
@@ -46,10 +48,12 @@ func commit(solids: Array[Dictionary]) -> void:
 	draw_world(solids)
 	_discard_inactive_slots()
 
-## The next `draw_world` reveals its changes from `plane` (the mirror).
-func reveal_from(plane: Plane) -> void:
+## The next `draw_world` reveals its changes from `plane` (the mirror). With
+## `everything`, every fragment grows out of the plane: a whole new place.
+func reveal_from(plane: Plane, everything := false) -> void:
 	_reveal_plane = plane
 	_revealing = true
+	_reveal_all = everything
 
 func cancel_reveal() -> void:
 	_revealing = false
@@ -62,7 +66,9 @@ func draw_world(solids: Array[Dictionary]) -> void:
 	var revealing := _revealing
 	_revealing = false
 	var shown_before := {}
-	if revealing:
+	var reveal_all := _reveal_all
+	_reveal_all = false
+	if revealing and not reveal_all:
 		for key: String in visual_slots:
 			if (visual_slots[key]["instance"] as MeshInstance3D).visible:
 				shown_before[key] = true
@@ -70,7 +76,7 @@ func draw_world(solids: Array[Dictionary]) -> void:
 	for solid: Dictionary in solids:
 		var key := _fragment_key(solid, occurrences)
 		var slot: Dictionary = visual_slots.get(key, {})
-		var grows := revealing and not shown_before.has(key) and str(solid.get("kind", "original")) != "original"
+		var grows := revealing and (reveal_all or (not shown_before.has(key) and str(solid.get("kind", "original")) != "original"))
 		if slot.is_empty():
 			var instance := MeshInstance3D.new()
 			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
