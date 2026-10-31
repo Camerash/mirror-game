@@ -1,0 +1,12 @@
+Character design sheet for a quiet, emotional isometric puzzle game about two twin sisters, a frozen garden pond, and loss. Mood: "light after rain" - mysterious, holy, hopeful, sad. Handmade and crafted: a small tactile figure like a painted wooden or felted toy, soft matte materials, gentle rim light. Muted winter palette: wet slate, snow white, mist blue. The ONLY strong colour is a single small warm red-ochre mitten. No text, no labels, no logos, no watermark, no UI.
+
+IMPORTANT, the mitten: she wears exactly ONE mitten, on her LEFT hand. Her RIGHT hand is bare, small and pink from the cold. Never two mittens.
+
+Layout on one plain pale snow-grey background, evenly spaced:
+1. The girl, full body, front view.
+2. The same girl, three-quarter view.
+3. The same girl, back view.
+4. The twin sisters side by side, facing the viewer, as mirror images of each other: the girl on the left wears her one mitten on her LEFT hand and parts her hair on the left; the girl on the right wears her one mitten on her RIGHT hand and parts her hair on the right. Otherwise identical. About 7 years old.
+5. Far right: the girl very small, as in the game, on a snowy floating stone block seen from a high isometric camera; the silhouette must still read at this tiny size.
+
+She is a small child with simple readable proportions (large head, about 3 heads tall) and a calm face with very simple features: she reads as a little girl, not a doll, not a mascot, not anime. She wears a soft knitted BEANIE (a round close-fitting knit cap), not a pointed hat and not a hood.
