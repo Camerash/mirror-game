@@ -7,6 +7,7 @@ Writes PNGs to docs/art/her/blockout/. game_small uses the game's pixel
 density: 80 px for her 0.8 units, standing on a 1-unit snowy cube.
 """
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -14,7 +15,7 @@ import bpy
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = ROOT / 'docs/art/her/blockout'
+OUT = Path(os.environ.get('GIRL_REVIEW_OUT', ROOT / 'docs/art/her/blockout'))
 HEIGHT = 0.8
 GAME_PX = 80.0                      # her on-screen height in the game
 ELEV = math.radians(30)
@@ -145,4 +146,5 @@ def main():
         print('### rendered', scene.render.filepath)
 
 
-main()
+if __name__ == "__main__" and not os.environ.get("GIRL_REVIEW_IMPORT"):
+    main()
