@@ -161,8 +161,10 @@ func walk_to(target: Vector3) -> bool:
 	## `_walk_finished` does. Returns whether the walker arrived.
 	if not game.request_walk(target):
 		return false
-	for index: int in 600:
-		await process_frame
+	# Physics frames: her walk is timed in physics ticks, and headless process
+	# frames run uncapped.
+	for index: int in 1200:
+		await physics_frame
 		if game.walker.route.is_empty():
 			await frames(3)
 			break

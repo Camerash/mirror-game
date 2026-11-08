@@ -198,16 +198,20 @@ func run() -> void:
 
 
 func check_first_steps() -> void:
-	await load_stage("res://levels/13_first_steps.json")
-	check(active_prompt_id() == "walk_tap", "First steps: the walk prompt is first")
+	# The walk prompt is on the pond, the first place; the turn prompt on
+	# First steps, the second.
+	await load_stage("res://levels/00_pond.json")
+	check(active_prompt_id() == "walk_tap", "The pond: the walk prompt is first")
 	check(game.hud._prompt.visible and game.hud._prompt.text == "Tap a block to walk there.",
-		"First steps: the walk prompt text shows on load")
+		"The pond: the walk prompt text shows on load")
 	game.tutorial_event.emit("camera_turn")
 	await frames(1)
-	check(active_prompt_id() == "walk_tap", "First steps: a non-matching event does not advance the prompt")
-	check(game.request_walk(Vector3(1, 0, 0)), "First steps: the walk to path_1 is accepted")
+	check(active_prompt_id() == "walk_tap", "The pond: a non-matching event does not advance the prompt")
+	check(game.request_walk(Vector3(1, 0, 0)), "The pond: a walk is accepted")
 	await frames(1)
-	check(active_prompt_id() == "turn_view", "First steps: walking advances to the turn prompt")
+	check(queue_and_active_empty(), "The pond: walking closes its only prompt")
+	await load_stage("res://levels/13_first_steps.json")
+	check(active_prompt_id() == "turn_view", "First steps: the turn prompt shows, with no story playing")
 	await idle()
 	var start := Vector2(root.size) * Vector2(0.3, 0.8)
 	for event: InputEvent in [mouse(start, true), mouse_motion(start + Vector2(60, 0)), mouse_motion(start + Vector2(140, 0)), mouse(start + Vector2(140, 0), false)]:
@@ -330,12 +334,12 @@ func check_progress_stub() -> void:
 
 
 func check_transition_guard() -> void:
-	# 13_first_steps starts a fresh two-prompt queue. Clearing the active
+	# 01_route starts a fresh two-prompt queue. Clearing the active
 	# prompt without its real event, the way `_on_tutorial_event` does just
 	# before calling `_start_prompts` again, isolates the phase guard from
 	# the cost and the fade timing of a full stage-sweep transition.
-	await load_stage("res://levels/13_first_steps.json")
-	check(active_prompt_id() == "walk_tap", "Transition guard: the prompt shows before the transition")
+	await load_stage("res://levels/01_route.json")
+	check(active_prompt_id() == "make_mirror", "Transition guard: the prompt shows before the transition")
 	game._active_prompt = {}
 	game._prompt_shown_id = ""
 	game.phase = "transition"
@@ -343,7 +347,7 @@ func check_transition_guard() -> void:
 	check(active_prompt_id() == "", "Transition guard: the next prompt does not start while phase is transition")
 	game.phase = "play"
 	game._start_prompts()
-	check(active_prompt_id() == "turn_view", "Transition guard: the next prompt starts once phase leaves transition")
+	check(active_prompt_id() == "move_mirror", "Transition guard: the next prompt starts once phase leaves transition")
 	check_no_empty_cards("Transition guard")
 
 

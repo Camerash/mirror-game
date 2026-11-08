@@ -1,83 +1,124 @@
 class_name Prologue
 extends Node3D
-## The story on the first place: she wakes in the snow, finds the hand mirror
-## on the ice, and for a moment sees her sister in the glass.
+## The story at the pond, before the first puzzle. She lies in the snow until
+## the player touches her. Three lit things hold optional memories, shown as
+## pale figures in a pane of frost. Her sister's footprints end on the ice at
+## the hand mirror; she picks it up and sees her sister in the glass, and then
+## her sister's footprints show the way on, where there were none.
 ##
-## `game.gd` owns one. `begin` sets it up when a level has a `keepsake` and
-## the game plays with its story on (the app; tests leave it off). The game
-## holds phase "transition" while a beat plays, so walking, the mirror and
-## the camera are all refused, and calls `reach` each play frame. Every
-## timeline is a tween on this node, so it waits while the title holds the
-## game disabled. Wordless; the one sound is the game's own.
+## `game.gd` owns one. `begin` sets it up from the level's `story` when the
+## game plays with its story on (the app; tests leave it off). The game holds
+## phase "transition" while a beat plays, so walking, the mirror and the
+## camera are refused, and calls `reach` each play frame and `tap` on a tap.
+## Every timeline is a tween on this node, so it waits while the title holds
+## the game disabled. Wordless.
 
+## A beat has ended: she has woken, a memory has passed, or (with `active`
+## now false) the whole story is done.
 signal finished
+## A sound the game should play: "pane", "fade" or "glimpse".
+signal cue(name: String)
 
 const CharacterVisual := preload("res://world/character_visual.gd")
 const Geometry := preload("res://core/world_geometry.gd")
-## Saved with the done prompts, so the prologue plays once.
+## Saved with the done prompts, so the story plays once.
 const DONE_ID := "prologue"
-## She notices the hand mirror once she is this close to it.
-const REACH := 0.3
-## Seconds she lies still before she wakes, once play begins.
-const LIE_TIME := 1.2
-## How long her sister stays in the glass.
-const GLIMPSE_TIME := 1.1
+## She notices a lit thing once she is this close to its spot.
+const REACH := 0.35
+## Seconds she lies still before a soft light shows the player where to touch.
+const HINT_DELAY := 3.0
+## How long a memory and her sister stay in the frost.
+const MEMORY_TIME := 2.6
+const GLIMPSE_TIME := 1.8
 ## How far the music falls while her sister is there, in dB.
 const MUSIC_DIP := -18.0
+## Seconds between her sister's footprints appearing, after the glimpse.
+const WAY_STEP := 0.07
 
 var active := false
-var at := Vector3.ZERO
-var glimpse := Vector3.ZERO
 var walker: Node3D
+var props: Node3D
+var story: Dictionary = {}
 var keepsake: Node3D
-var pane: MeshInstance3D
-var twin: CharacterVisual
-var _glint: Tween
+## Memories not yet seen: id to their entry, plus their glint.
+var _memories := {}
+var _glints := {}
+var _awaiting_tap := false
+var _hint: OmniLight3D
 var _scene: Tween
-## The music bus level before the glimpse dipped it; NAN when not dipped.
+var _loops: Array[Tween] = []
+## The music bus level before a dip; NAN when not dipped.
 var _music_db := NAN
 
-## Sets up the place. With `wake`, she starts lying in the snow and wakes on
-## her own once play begins.
-func begin(level: Dictionary, her: Node3D, wake: bool) -> void:
+## Sets up the place. With `wake`, she starts lying in the snow and waits for
+## the player's touch. `scenery` is the place's props, where her sister's
+## footprints are drawn so they leave with the place.
+func begin(level: Dictionary, her: Node3D, wake: bool, scenery: Node3D) -> void:
 	clear()
 	walker = her
-	at = Geometry.vector(level["keepsake"])
-	glimpse = Geometry.vector(level.get("glimpse", level["goal"]))
+	props = scenery
+	story = level["story"]
 	active = true
-	_build_keepsake()
+	for memory: Dictionary in story.get("memories", []):
+		_memories[str(memory["id"])] = memory
+		_glints[str(memory["id"])] = _glint(Geometry.vector(memory.get("glint", memory["at"])), Color("ffe2bd"))
+	keepsake = _build_keepsake(Geometry.vector(story["keepsake"]))
 	if wake:
 		_lie()
 
 func clear() -> void:
-	for tween: Tween in [_glint, _scene]:
+	for tween: Tween in _loops + [_scene]:
 		if tween != null and tween.is_valid():
 			tween.kill()
+	_loops.clear()
 	for child: Node in get_children():
 		child.free()
+	_memories.clear()
+	_glints.clear()
 	keepsake = null
-	pane = null
-	twin = null
+	_hint = null
+	_awaiting_tap = false
 	_set_music_dip(0.0)
-	if walker != null and is_instance_valid(walker):
-		var visual := _visual()
-		if visual != null:
-			visual.rotation.x = 0.0
 	active = false
 
 ## True while a beat holds the game still.
 func is_playing() -> bool:
-	return _scene != null and _scene.is_valid() and _scene.is_running()
+	return _awaiting_tap or (_scene != null and _scene.is_valid() and _scene.is_running())
 
-## Called by the game each play frame. Starts the find when she reaches the
-## hand mirror; returns true when it did.
-func reach(feet: Vector3) -> bool:
-	if not active or keepsake == null or is_playing():
+## The player's tap. While she lies in the snow it wakes her; returns true
+## when it did.
+func tap() -> bool:
+	if not _awaiting_tap:
 		return false
-	if Vector2(feet.x - at.x, feet.z - at.z).length() > REACH:
-		return false
-	_find()
+	_awaiting_tap = false
+	if _scene != null and _scene.is_valid():
+		_scene.kill()
+	if _hint != null:
+		create_tween().tween_property(_hint, "light_energy", 0.0, 0.4)
+	var visual := _visual()
+	_scene = create_tween()
+	if visual != null and visual.player != null and visual.player.has_animation("Wake"):
+		visual.play_action("Wake")
+		_scene.tween_interval(visual.player.get_animation("Wake").length)
+	_scene.tween_callback(finished.emit)
 	return true
+
+## Called by the game each play frame. Starts a beat when she reaches a lit
+## thing; returns true when it did.
+func reach(feet: Vector3) -> bool:
+	if not active or is_playing():
+		return false
+	for id: String in _memories.keys():
+		if _near(feet, Geometry.vector(_memories[id]["at"])):
+			_remember(id)
+			return true
+	if keepsake != null and _near(feet, Geometry.vector(story["keepsake"])):
+		_find()
+		return true
+	return false
+
+static func _near(feet: Vector3, spot: Vector3) -> bool:
+	return Vector2(feet.x - spot.x, feet.z - spot.z).length() <= REACH
 
 func _visual() -> CharacterVisual:
 	return walker.get("character_visual") as CharacterVisual if walker != null else null
@@ -86,108 +127,174 @@ func _visual() -> CharacterVisual:
 
 func _lie() -> void:
 	var visual := _visual()
-	var has_wake := visual != null and visual.has_method("play_action")
-	if has_wake:
-		visual.call("hold_pose", "Wake", 0.0)
-	elif visual != null:
-		visual.rotation.x = -PI * 0.5
+	if visual != null:
+		visual.hold_pose("Wake", 0.0)
+	_awaiting_tap = true
+	# After a while, a soft warm light breathes on her: touch here.
+	_hint = OmniLight3D.new()
+	_hint.light_color = Color("ffd9b0")
+	_hint.omni_range = 1.1
+	_hint.light_energy = 0.0
+	_hint.position = walker.position + Vector3.UP * 0.35
+	add_child(_hint)
+	var breathe := create_tween()
+	breathe.tween_interval(HINT_DELAY)
+	breathe.tween_callback(func() -> void:
+		var loop := create_tween().set_loops()
+		loop.tween_property(_hint, "light_energy", 1.4, Motion.duration("breathe")).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		loop.tween_property(_hint, "light_energy", 0.3, Motion.duration("breathe")).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_loops.append(loop))
+	_loops.append(breathe)
+
+# --- Memories ----------------------------------------------------------------
+
+## Pale figures of the two of them, remembered in a pane of frost by the thing
+## she has walked to.
+func _remember(id: String) -> void:
+	var memory: Dictionary = _memories[id]
+	_memories.erase(id)
+	var glint: Node3D = _glints[id]
+	_glints.erase(id)
+	var figures: Array[CharacterVisual] = []
+	var ghost := _ghost_material()
+	var centre := Vector3.ZERO
+	for entry: Dictionary in memory.get("figures", []):
+		var figure := _figure(entry, ghost)
+		figures.append(figure)
+		centre += figure.position
+	centre /= maxf(1.0, figures.size())
+	var feet := walker.position
+	_face(Geometry.vector(memory.get("glint", centre)))
+	# The pane stands just behind the figures, seen from where she is.
+	var toward := centre - feet
+	toward.y = 0.0
+	var normal := toward.normalized() if toward.length() > 0.01 else Vector3.BACK
+	var pane := _pane(centre + normal * 0.35, normal, Vector2(1.3, 1.1))
 	_scene = create_tween()
-	_scene.tween_interval(LIE_TIME)
-	if has_wake:
-		_scene.tween_callback(func() -> void: visual.call("play_action", "Wake"))
-		_scene.tween_interval(_action_length(visual, "Wake", 2.4))
-	elif visual != null:
-		_scene.tween_property(visual, "rotation:x", 0.0, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_scene.tween_callback(finished.emit)
+	_scene.tween_interval(0.3)
+	_scene.tween_callback(cue.emit.bind("pane"))
+	_scene.tween_callback(_put_out.bind(glint))
+	_rise(pane, 0.35)
+	_scene.parallel().tween_method(_set_music_dip, 0.0, 0.5, Motion.duration("reveal"))
+	_scene.tween_property(ghost, "albedo_color:a", 0.75, 0.5)
+	_scene.tween_interval(MEMORY_TIME)
+	_scene.tween_callback(cue.emit.bind("fade"))
+	_scene.tween_property(ghost, "albedo_color:a", 0.0, 0.5)
+	_sink(pane)
+	_scene.parallel().tween_method(_set_music_dip, 0.5, 0.0, 1.2)
+	_scene.tween_callback(func() -> void:
+		for figure: CharacterVisual in figures:
+			figure.queue_free()
+		pane.queue_free()
+		finished.emit())
 
-# --- The hand mirror -------------------------------------------------------
+## One remembered figure: a pose and a place. `mirror` makes it her sister
+## (the mitten on the other hand).
+func _figure(entry: Dictionary, ghost: Material) -> CharacterVisual:
+	var figure := CharacterVisual.new()
+	figure.self_driven = true
+	add_child(figure)
+	figure.position = Geometry.vector(entry["at"])
+	var face := Geometry.vector(entry.get("face", story["keepsake"])) - figure.position
+	figure.rotation.y = atan2(face.x, face.z)
+	if entry.get("mirror", false):
+		figure.scale = Vector3(-1.0, 1.0, 1.0)
+	var pose := str(entry.get("pose", "Idle"))
+	if pose == "Wave":
+		figure.play_action("Wave")
+	elif pose != "Idle":
+		figure.hold_pose(pose, float(entry.get("time", 0.0)))
+	for node: Node in figure.find_children("*", "GeometryInstance3D", true, false):
+		(node as GeometryInstance3D).material_override = ghost
+	return figure
 
-func _build_keepsake() -> void:
-	keepsake = Node3D.new()
-	keepsake.position = at + Vector3.UP * 0.012
-	add_child(keepsake)
-	# A small oval glass in a dark gold rim, lying on the snow.
-	var rim := MeshInstance3D.new()
-	var rim_mesh := CylinderMesh.new()
-	rim_mesh.top_radius = 0.085
-	rim_mesh.bottom_radius = 0.085
-	rim_mesh.height = 0.018
-	rim.mesh = rim_mesh
-	rim.scale = Vector3(1.0, 1.0, 1.3)
-	rim.material_override = _material(Color("8a6a3a"), 0.0)
-	keepsake.add_child(rim)
-	var glass := MeshInstance3D.new()
-	var glass_mesh := CylinderMesh.new()
-	glass_mesh.top_radius = 0.068
-	glass_mesh.bottom_radius = 0.068
-	glass_mesh.height = 0.02
-	glass.mesh = glass_mesh
-	glass.scale = Vector3(1.0, 1.0, 1.3)
-	glass.material_override = _material(Color("e9f2f8"), 1.4)
-	keepsake.add_child(glass)
-	var handle := MeshInstance3D.new()
-	var handle_mesh := BoxMesh.new()
-	handle_mesh.size = Vector3(0.026, 0.016, 0.11)
-	handle.mesh = handle_mesh
-	handle.position = Vector3(0.0, 0.0, 0.15)
-	handle.material_override = rim.material_override
-	keepsake.add_child(handle)
-	# The glint: a soft cool light that breathes, so light marks what matters.
-	var light := OmniLight3D.new()
-	light.light_color = Color("dfeeff")
-	light.omni_range = 0.9
-	light.light_energy = 0.0
-	light.position = Vector3.UP * 0.25
-	keepsake.add_child(light)
-	var star := Sprite3D.new()
-	star.texture = _star_texture()
-	star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	star.pixel_size = 0.0022
-	star.shaded = false
-	star.no_depth_test = false
-	star.modulate = Color(1, 1, 1, 0)
-	star.position = Vector3(0.03, 0.05, -0.02)
-	keepsake.add_child(star)
-	_glint = create_tween().set_loops()
-	_glint.tween_property(light, "light_energy", 1.2, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_glint.parallel().tween_property(star, "modulate:a", 1.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_glint.tween_property(light, "light_energy", 0.25, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_glint.parallel().tween_property(star, "modulate:a", 0.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+# --- The hand mirror and the glimpse ------------------------------------------
 
 func _find() -> void:
 	var visual := _visual()
-	if _glint != null and _glint.is_valid():
-		_glint.kill()
+	var at := Geometry.vector(story["keepsake"])
+	_face(at)
 	_scene = create_tween()
-	# She stops, faces the glass, and lifts it.
+	_scene.tween_interval(0.3)
 	if visual != null:
-		var toward := at - walker.position
-		if Vector2(toward.x, toward.z).length() > 0.01:
-			_scene.tween_property(visual, "rotation:y", visual.rotation.y + angle_difference(visual.rotation.y, atan2(toward.x, toward.z)), 0.3)
-		if visual.has_method("play_action"):
-			_scene.tween_callback(func() -> void: visual.call("play_action", "Lift"))
-	_scene.tween_interval(0.35)
+		_scene.tween_callback(visual.play_action.bind("Lift"))
+	_scene.tween_interval(0.45)
 	_scene.tween_property(keepsake, "position", walker.position + Vector3.UP * 0.42, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_scene.parallel().tween_property(keepsake, "scale", Vector3.ONE * 0.4, 0.6)
-	_scene.tween_callback(func() -> void: keepsake.visible = false)
-	_scene.tween_interval(0.4)
+	_scene.tween_callback(func() -> void:
+		_put_out(keepsake)
+		keepsake = null)
+	_scene.tween_interval(0.5)
 	_scene.tween_callback(_glimpse)
 
-# --- The glimpse -------------------------------------------------------------
-
 ## A pane of frost stands up between her and where her sister was; in it,
-## her mirror image waves. Then only snow.
+## her mirror image waves. Then her sister's footprints go on across the snow.
 func _glimpse() -> void:
 	var feet := walker.position
-	var across := glimpse - feet
+	var sister := Geometry.vector(story["glimpse"])
+	var across := sister - feet
 	across.y = 0.0
-	if across.length() < 0.01:
-		across = Vector3.RIGHT
-	var normal := across.normalized()
-	var middle := (feet + glimpse) * 0.5
-	pane = MeshInstance3D.new()
+	var normal := across.normalized() if across.length() > 0.01 else Vector3.RIGHT
+	var middle := (feet + sister) * 0.5
+	var pane := _pane(Vector3(middle.x, feet.y, middle.z), normal, Vector2(1.0, 1.15))
+	# Her sister: the same girl, reflected in the pane.
+	var twin := CharacterVisual.new()
+	twin.self_driven = true
+	add_child(twin)
+	var reflect := _reflection(normal)
+	var her := _visual()
+	var her_basis := her.global_basis if her != null else Basis.IDENTITY
+	twin.global_transform = Transform3D(reflect * her_basis, middle + reflect * (feet - middle))
+	var ghost := _ghost_material()
+	for node: Node in twin.find_children("*", "GeometryInstance3D", true, false):
+		(node as GeometryInstance3D).material_override = ghost
+	_scene = create_tween()
+	_scene.tween_callback(cue.emit.bind("glimpse"))
+	_rise(pane, 0.3)
+	_scene.parallel().tween_method(_set_music_dip, 0.0, 1.0, Motion.duration("reveal"))
+	_scene.tween_property(ghost, "albedo_color:a", 0.8, 0.5)
+	_scene.tween_callback(twin.play_action.bind("Wave"))
+	_scene.tween_interval(GLIMPSE_TIME)
+	_scene.tween_property(ghost, "albedo_color:a", 0.0, 0.4)
+	_scene.tween_callback(twin.queue_free)
+	_sink(pane)
+	_scene.tween_callback(pane.queue_free)
+	# Her sister's footprints, one by one, where there were none.
+	var prints: Array[Node3D] = []
+	if props != null and props.has_method("add_prints"):
+		var way := PackedVector3Array()
+		for point: Variant in story.get("way", []):
+			way.append(Geometry.vector(point))
+		prints = props.add_prints(way, Color(0.82, 0.92, 1.0, 0.85), 1.0)
+		for step: Node3D in prints:
+			step.visible = false
+	for step: Node3D in prints:
+		_scene.tween_interval(WAY_STEP)
+		_scene.tween_callback(step.set_visible.bind(true))
+	_scene.parallel().tween_method(_set_music_dip, 1.0, 0.0, 1.6)
+	_scene.tween_interval(0.4)
+	_scene.tween_callback(func() -> void:
+		active = false
+		finished.emit())
+
+# --- Pieces ------------------------------------------------------------------
+
+## She turns to face a point before a beat.
+func _face(point: Vector3) -> void:
+	var visual := _visual()
+	if visual == null:
+		return
+	var toward := point - walker.position
+	if Vector2(toward.x, toward.z).length() < 0.01:
+		return
+	create_tween().tween_property(visual, "rotation:y",
+		visual.rotation.y + angle_difference(visual.rotation.y, atan2(toward.x, toward.z)), 0.3)
+
+func _pane(feet: Vector3, normal: Vector3, size: Vector2) -> MeshInstance3D:
+	var pane := MeshInstance3D.new()
 	var quad := QuadMesh.new()
-	quad.size = Vector2(1.0, 1.15)
+	quad.size = size
+	quad.center_offset = Vector3(0.0, size.y * 0.5, 0.0)
 	pane.mesh = quad
 	var frost := StandardMaterial3D.new()
 	frost.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -195,44 +302,93 @@ func _glimpse() -> void:
 	frost.cull_mode = BaseMaterial3D.CULL_DISABLED
 	frost.albedo_color = Color(0.9, 0.95, 1.0, 0.0)
 	pane.material_override = frost
-	pane.position = Vector3(middle.x, feet.y + 0.575, middle.z)
+	pane.position = feet
 	pane.basis = Basis.looking_at(normal, Vector3.UP)
 	pane.scale = Vector3(1.0, 0.02, 1.0)
 	add_child(pane)
-	# Her sister: the same girl, reflected in the pane.
-	twin = CharacterVisual.new()
-	twin.self_driven = true
-	add_child(twin)
-	var reflect := _reflection(normal)
-	var her := _visual()
-	var her_basis := her.global_basis if her != null else Basis.IDENTITY
-	twin.global_transform = Transform3D(reflect * her_basis, middle + reflect * (feet - middle))
-	# She is seen in the glass only: a pale, frosted likeness.
-	var ghost := StandardMaterial3D.new()
-	ghost.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	ghost.albedo_color = Color(0.93, 0.96, 1.0, 0.0)
-	for node: Node in twin.find_children("*", "GeometryInstance3D", true, false):
-		(node as GeometryInstance3D).material_override = ghost
-	var glass := Color(0.9, 0.95, 1.0, 0.3)
-	_scene = create_tween()
+	return pane
+
+## The pane forms from the ground like ice.
+func _rise(pane: MeshInstance3D, alpha: float) -> void:
+	var frost := pane.material_override as StandardMaterial3D
 	_scene.tween_property(pane, "scale:y", 1.0, Motion.duration("reveal")).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_scene.parallel().tween_property(frost, "albedo_color", glass, Motion.duration("reveal"))
-	_scene.parallel().tween_method(_set_music_dip, 0.0, 1.0, Motion.duration("reveal"))
-	_scene.tween_property(ghost, "albedo_color:a", 0.8, 0.35)
-	_scene.tween_callback(func() -> void:
-		if twin.has_method("play_action"):
-			twin.call("play_action", "Wave"))
-	_scene.tween_interval(GLIMPSE_TIME)
-	_scene.tween_property(ghost, "albedo_color:a", 0.0, 0.25)
-	_scene.tween_callback(twin.queue_free)
-	_scene.tween_property(frost, "albedo_color", Color(glass, 0.0), 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	_scene.parallel().tween_property(frost, "albedo_color:a", alpha, Motion.duration("reveal"))
+
+func _sink(pane: MeshInstance3D) -> void:
+	var frost := pane.material_override as StandardMaterial3D
+	_scene.tween_property(frost, "albedo_color:a", 0.0, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	_scene.parallel().tween_property(pane, "scale:y", 0.02, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	_scene.parallel().tween_method(_set_music_dip, 1.0, 0.0, 1.6)
-	_scene.tween_callback(func() -> void:
-		pane.queue_free()
-		active = false
-		finished.emit())
+
+## Pale and frosted, but lit, so a remembered figure keeps its shape.
+static func _ghost_material() -> StandardMaterial3D:
+	var ghost := StandardMaterial3D.new()
+	ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ghost.albedo_color = Color(0.86, 0.92, 1.0, 0.0)
+	ghost.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
+	ghost.emission_enabled = true
+	ghost.emission = Color(0.6, 0.7, 0.85)
+	ghost.emission_energy_multiplier = 0.55
+	ghost.rim_enabled = true
+	ghost.rim = 0.6
+	return ghost
+
+## A soft light that breathes on a thing that matters, with a small star.
+func _glint(at: Vector3, color: Color) -> Node3D:
+	var root := Node3D.new()
+	root.position = at
+	add_child(root)
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.omni_range = 0.7
+	light.light_energy = 0.0
+	light.position = Vector3.UP * 0.3
+	root.add_child(light)
+	var star := Sprite3D.new()
+	star.texture = _star_texture()
+	star.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	star.pixel_size = 0.0022
+	star.shaded = false
+	star.modulate = Color(1, 1, 1, 0)
+	star.position = Vector3(0.0, 0.12, 0.0)
+	root.add_child(star)
+	var loop := create_tween().set_loops()
+	loop.tween_property(light, "light_energy", 0.7, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	loop.parallel().tween_property(star, "modulate:a", 1.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	loop.tween_property(light, "light_energy", 0.15, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	loop.parallel().tween_property(star, "modulate:a", 0.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_loops.append(loop)
+	root.set_meta("loop", loop)
+	return root
+
+## Ends a glint and its breathing.
+func _put_out(glint: Node3D) -> void:
+	var loop: Tween = glint.get_meta("loop")
+	if loop != null and loop.is_valid():
+		loop.kill()
+	glint.queue_free()
+
+## The small oval hand mirror lying on the ice, glinting cool.
+func _build_keepsake(at: Vector3) -> Node3D:
+	var root := _glint(at + Vector3.UP * 0.012, Color("dfeeff"))
+	var rim_material := _material(Color("8a6a3a"), 0.0)
+	for part: Array in [[0.085, 0.018, rim_material], [0.068, 0.02, _material(Color("e9f2f8"), 1.4)]]:
+		var disc := MeshInstance3D.new()
+		var mesh := CylinderMesh.new()
+		mesh.top_radius = part[0]
+		mesh.bottom_radius = part[0]
+		mesh.height = part[1]
+		disc.mesh = mesh
+		disc.scale = Vector3(1.0, 1.0, 1.3)
+		disc.material_override = part[2]
+		root.add_child(disc)
+	var handle := MeshInstance3D.new()
+	var handle_mesh := BoxMesh.new()
+	handle_mesh.size = Vector3(0.026, 0.016, 0.11)
+	handle.mesh = handle_mesh
+	handle.position = Vector3(0.0, 0.0, 0.15)
+	handle.material_override = rim_material
+	root.add_child(handle)
+	return root
 
 # --- Helpers -----------------------------------------------------------------
 
@@ -251,12 +407,6 @@ func _set_music_dip(weight: float) -> void:
 	AudioServer.set_bus_volume_db(bus, _music_db + MUSIC_DIP * weight)
 	if weight <= 0.0:
 		_music_db = NAN
-
-static func _action_length(visual: Node, action: String, fallback: float) -> float:
-	var player := visual.get("player") as AnimationPlayer
-	if player != null and player.has_animation(action):
-		return player.get_animation(action).length
-	return fallback
 
 static func _material(color: Color, emission: float) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()

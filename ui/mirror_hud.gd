@@ -183,6 +183,8 @@ func show_hint(text: String) -> void:
 ## The stage's name, written on the world in chapter type: it appears, holds,
 ## and leaves.
 func show_stage_title(text: String) -> void:
+	if text.is_empty():
+		return
 	if is_instance_valid(_stage_title_tween): _stage_title_tween.kill()
 	_stage_title.text = text
 	_responsive_layout()

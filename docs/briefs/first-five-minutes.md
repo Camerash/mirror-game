@@ -98,6 +98,8 @@ sequencer, the mirror raise).
   light at the goal, then the next place grows from her feet while the camera
   travels, and the old place drifts away. All places are not yet one loaded
   world, and the next place is not visible ahead.
+- **Replaced 2026-11-08 by the pond** (`docs/briefs/the-pond.md`): the
+  story now has its own place before "First steps".
 - **Prologue** (`world/prologue.gd`): wake, the glinting hand mirror, the
   pickup, and the glimpse behind a frost pane. Not built: the pond itself,
   footprints, "The Garden" written on the world, and raising the hand mirror

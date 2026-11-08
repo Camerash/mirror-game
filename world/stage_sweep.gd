@@ -59,6 +59,16 @@ func start(old_solids: Array[Dictionary], new_bounds: AABB, shift: Vector3,
 	_elapsed = 0.0
 	active = true
 
+## Takes a node of the old place (its scenery) along: it moves, drifts and
+## is freed with the old place.
+func carry(node: Node3D) -> void:
+	if not is_instance_valid(_old_view):
+		node.queue_free()
+		return
+	if node.get_parent() != null:
+		node.get_parent().remove_child(node)
+	_old_view.add_child(node)
+
 func cancel() -> void:
 	active = false
 	if _drift and _drift.is_valid():

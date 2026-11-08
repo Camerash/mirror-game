@@ -64,18 +64,23 @@ func run() -> void:
 		await process_frame
 	await frames(6)
 	await idle()
-	check(stage_file() == "13_first_steps", "Playthrough: Begin starts First steps")
-	await shot("13_first_steps")
+	check(stage_file() == "00_pond", "Playthrough: Begin starts at the pond")
+	await shot("00_pond")
 
-	# The prologue: she wakes in the snow, finds the hand mirror on the ice,
-	# and sees her sister in the glass.
+	# The pond: a tap wakes her; one memory, the hand mirror and the glimpse;
+	# then her sister's footprints lead to the way on.
+	check(game.prologue.tap(), "Playthrough: a tap wakes her")
 	await until_phase("play")
-	# She stops as she reaches it, a little short of the block's centre.
-	check(game.request_walk(Vector3(2, 0, 0)), "Playthrough: she walks to the hand mirror")
+	check(game.request_walk(Vector3(1, 0, -1)), "Playthrough: she walks to the snowmen")
 	await until_phase("transition")
 	await until_phase("play")
-	check(game._prompt_done("prologue"), "Playthrough: the prologue plays and is saved")
+	check(game.request_walk(Vector3(3.5, 0, 0)), "Playthrough: she walks to the hand mirror")
+	await until_phase("transition")
+	await until_phase("play")
+	check(game._prompt_done("prologue") and not game.prologue.active, "Playthrough: the story plays and is saved")
 	await idle()
+	check(await walk_to(goal_point()), "Playthrough: the pond is left by its far corner")
+	await next_stage("13_first_steps")
 
 	# First steps: turn the view, then walk to the goal.
 	game.turn_camera(1)

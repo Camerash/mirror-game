@@ -35,6 +35,7 @@ const StageCameraView := preload("res://world/stage_camera.gd")
 const Sweep := preload("res://world/stage_sweep.gd")
 const Sounds := preload("res://world/sounds.gd")
 const PrologueScene := preload("res://world/prologue.gd")
+const PropsScene := preload("res://world/place_props.gd")
 ## A moment of stillness at the goal before she moves on.
 const ADVANCE_PAUSE := 1.2
 ## How long a refused fall's ghost stays on screen before the mirror goes back.
@@ -53,7 +54,7 @@ const GRAB_MARGIN := 0.25
 const DIRECT_IGNORED_KEYS: Array[Key] = [KEY_D, KEY_1, KEY_2, KEY_3, KEY_LEFT, KEY_RIGHT,
 	KEY_UP, KEY_DOWN, KEY_PAGEUP, KEY_PAGEDOWN, KEY_BRACKETLEFT, KEY_BRACKETRIGHT, KEY_ENTER]
 ## The tutorial, in play order. Each stage teaches one new idea.
-const PUZZLE_PATHS: Array[String] = ["res://levels/13_first_steps.json", "res://levels/01_route.json",
+const PUZZLE_PATHS: Array[String] = ["res://levels/00_pond.json", "res://levels/13_first_steps.json", "res://levels/01_route.json",
 	"res://levels/08_reveal.json", "res://levels/11_aperture.json", "res://levels/14_turn.json",
 	"res://levels/15_together.json"]
 const LEVEL_PATHS: Array[String] = PUZZLE_PATHS + ["res://levels/02_partial_cut.json",
@@ -169,6 +170,9 @@ var sounds := Sounds.new()
 var prologue := PrologueScene.new()
 ## The app turns the story on; tests leave it off, so stages start in play.
 var story := false
+## The place's scenery (`props` in the level). Handed to the old place when
+## she moves on, so it leaves with it.
+var props := PropsScene.new()
 var auto_advance := true
 var _advance_timer: Tween
 var _air_time := 0.0
@@ -248,6 +252,7 @@ func _setup_scene() -> void:
 	add_child(sounds)
 	add_child(prologue)
 	prologue.finished.connect(_on_prologue_finished)
+	prologue.cue.connect(_on_prologue_cue)
 	sounds.walker = walker
 	tutorial_event.connect(sounds.play_event)
 	add_child(goal_root)
@@ -313,11 +318,17 @@ func load_level(index: int) -> bool:
 	_commit_world()
 	for child: Node in goal_root.get_children():
 		child.free()
-	world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
+	if not level.get("goal_hidden", false):
+		world.add_ring(goal_root, Geometry.vector(level["goal"]), Color("805534"))
+	if props.get_parent() == self:
+		props.free()
+	props = PropsScene.new()
+	add_child(props)
+	props.build(level.get("props", []))
 	prologue.clear()
-	if story and level.has("keepsake") and not _prompt_done(PrologueScene.DONE_ID):
+	if story and level.has("story") and not _prompt_done(PrologueScene.DONE_ID):
 		var wake := not _loading_via_sweep
-		prologue.begin(level, walker, wake)
+		prologue.begin(level, walker, wake, props)
 		if wake:
 			phase = "transition"
 	status = "Tap a platform to walk. Tap the mirror button to raise the mirror." if direct_controls else "Tap a platform to walk. Hold empty space to create a mirror."
@@ -357,10 +368,10 @@ func _physics_process(delta: float) -> void:
 		phase = "transition"
 		_hide_prompt_card()
 		_refresh()
-		_lean_camera(-0.3)
+		_lean_camera(-0.15)
 	elif walker.position.y < float(level["kill_y"]):
 		_fail()
-	elif not level.get("is_test", false) and walker.position.distance_to(Geometry.vector(level["goal"])) < 0.22:
+	elif not level.get("is_test", false) and not prologue.active and walker.position.distance_to(Geometry.vector(level["goal"])) < 0.22:
 		phase = "complete"
 		walker.stop()
 		tutorial_event.emit("goal")
@@ -405,6 +416,17 @@ func _on_prologue_finished() -> void:
 	_refresh()
 	_start_prompts()
 
+## The story asks for a sound.
+func _on_prologue_cue(name: String) -> void:
+	match name:
+		"pane": sounds.play("create", -8.0)
+		"fade": sounds.play("remove", -10.0)
+		"glimpse": sounds.play("create", -3.0)
+
+## The name written on the world as she arrives; a place can go unnamed.
+func stage_title() -> String:
+	return "" if level.get("untitled", false) else str(level.get("title", ""))
+
 ## Leans the camera in (negative) or back to the stage view (0), for a story
 ## beat that wants to be seen closer.
 func _lean_camera(afar: float) -> void:
@@ -429,6 +451,8 @@ func _begin_sweep() -> void:
 	var old_start := Geometry.vector(level["start"])
 	var old_goal := Geometry.vector(level["goal"])
 	var old_framing := Geometry.total_bounds(old_solids).grow(0.3)
+	var old_props := props
+	remove_child(old_props)
 	_loading_via_sweep = true
 	load_level(level_index + 1)
 	_loading_via_sweep = false
@@ -440,11 +464,12 @@ func _begin_sweep() -> void:
 	var across := Vector3.RIGHT if absf(heading.x) >= absf(heading.z) else Vector3.BACK
 	world.reveal_from(Plane(across, Geometry.vector(level["start"])), true)
 	world.draw_world(world.drawn_solids)
-	hud.show_stage_title(str(level["title"]))
+	hud.show_stage_title(stage_title())
 	camera.fit(AABB(old_framing.position + shift, old_framing.size), hud.get_camera_rect(), true)
 	sounds.play("sweep")
 	sweep.start(old_solids, Geometry.total_bounds(world.drawn_solids), shift, old_start, old_goal,
 		Geometry.vector(level["goal"]), world, goal_root, sheet, contact)
+	sweep.carry(old_props)
 	# The camera travels with her from the old place to the new one.
 	camera.travel_verb = "transition"
 	_fit_camera(hud.get_play_rect())
@@ -1493,6 +1518,9 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 		_begin_constellation("ground", preview)
 
 func _gesture_action(action: String, value: Variant) -> void:
+	# While she lies in the snow, the player's first touch wakes her.
+	if action == "walk" and prologue.tap():
+		return
 	match action:
 		"create": create_mirror(value)
 		"edit": edit_mirror()

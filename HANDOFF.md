@@ -28,6 +28,9 @@ measured and failed, and which traps cost real time.
   after the title must wait out the 1.6 s sink (see `begin` in
   `tests/app_flow_tests.gd`). `tests/tutorial_playthrough.gd` needs a
   renderer (xvfb); headless, it hangs on its first screenshot.
+- **2026-11-08: the pond.** A story place before "First steps"
+  (`docs/briefs/the-pond.md`). `PUZZLE_PATHS` now starts with
+  `00_pond.json`, so stage indexes moved up by one.
 - **2026-10-31, owner away, decisions delegated.** Built under that
   delegation: moving on (replaces the sweep), the prologue
   (`world/prologue.gd`, `Game.story`, on in the app only), the sound palette

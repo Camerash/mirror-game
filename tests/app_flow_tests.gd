@@ -67,10 +67,11 @@ func begin(app: App) -> void:
 		await process_frame
 
 
-## Waits while she wakes in the snow at the start of a new game.
+## Wakes her with a tap at the start of a new game, and waits while she gets up.
 func awake(app: App) -> void:
 	var deadline := Time.get_ticks_msec() + 8000
 	while app.game.phase != "play" and Time.get_ticks_msec() < deadline:
+		app.game.prologue.tap()
 		await process_frame
 
 
@@ -116,7 +117,8 @@ func check_title_and_start() -> void:
 		await process_frame
 	check(not app._title_layer.visible, "Title: the sink ends on the stage and hides the title")
 	check(app.game.camera.afar == 0.0, "Title: the camera is back at the play view")
-	check(app.game.hud._stage_title.visible and app.game.hud._stage_title.text == str(app.game.level["title"]), "Title: the stage's name is written on the world")
+	# The first place, the pond, goes unnamed; names start with First steps.
+	check(app.game.level.get("untitled", false) and not app.game.hud._stage_title.visible, "Title: the first place, the pond, writes no name")
 	check(app.game.input_enabled, "Title: Tap to begin turns game input on")
 	check(app.game.process_mode == Node.PROCESS_MODE_INHERIT, "Title: Tap to begin resumes the game")
 	check(app.game.level_index == 0, "Title: a fresh app starts at stage 0")

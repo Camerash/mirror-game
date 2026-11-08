@@ -145,16 +145,6 @@
     0,
     -4
   ],
-  "keepsake": [
-    2,
-    0,
-    0
-  ],
-  "glimpse": [
-    3,
-    0,
-    0
-  ],
   "mirror": {
     "enabled": false,
     "axis": 0,
@@ -186,11 +176,6 @@
   },
   "kill_y": -5,
   "prompts": [
-    {
-      "id": "walk_tap",
-      "text": "Tap a block to walk there.",
-      "until": "walk"
-    },
     {
       "id": "turn_view",
       "text": "The way on is out of sight. Drag sideways, or use the arrows in the corner, to turn the view.",

@@ -229,7 +229,7 @@ func _hide_title() -> void:
 	_set_game_active(true)
 	game.hud.modulate.a = 0.0
 	Motion.tween(game.hud, "modulate:a", 1.0, "appear")
-	game.hud.show_stage_title(str(game.level.get("title", "")))
+	game.hud.show_stage_title(game.stage_title())
 
 
 func _on_title_input(event: InputEvent) -> void:
@@ -268,7 +268,7 @@ func _on_primary_pressed() -> void:
 func _start_again() -> void:
 	progress.reset_progress()
 	game.load_level(0)
-	game.hud.show_stage_title(str(game.level.get("title", "")))
+	game.hud.show_stage_title(game.stage_title())
 
 
 ## --- End card ------------------------------------------------------------
@@ -302,7 +302,7 @@ func _on_play_again_pressed() -> void:
 	game.load_level(0)
 	_hide_end_card()
 	_set_game_active(true)
-	game.hud.show_stage_title(str(game.level.get("title", "")))
+	game.hud.show_stage_title(game.stage_title())
 
 
 func _on_end_title_pressed() -> void:

@@ -1,6 +1,10 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: the pond — 2026-11-08
+
+- New first place with the story (`levels/00_pond.json`, `world/prologue.gd`, `world/place_props.gd`). Checked once: `prompt_tests` **84/0**, `app_flow_tests` **88/0**, `level_solvability_tests` **68/0** (its walk now waits on physics frames, as the slower walk outlasted its loop), `run_tests` **693/0**, `small_fix_tests` **58/0**, `tutorial_playthrough` under Xvfb **22/0** (now starts at the pond). Visual: a 51 s Movie Maker clip with sound from the title through the three memories, the glimpse and moving on into "First steps", read frame by frame. No Mac check; no one has listened.
+
 # Latest check: her model in the game — 2026-10-31
 
 - The Blender girl replaces the traveller; story beats play her animations. Checked once: `direct_controls_tests` **123/0**, `goal_tests` **9/0** (now waits on physics frames), `gameplay_art_tests` **73/0** (rewritten for the girl: height, the seven animations, walk/idle/freeze). In Blender (worker, `check_motion.py`): no foot slide at 1.1 u/s, no leg through the coat, nothing below the snow, mitten clear of the head. Visual: Movie Maker clips under Xvfb (prologue, colour crops, the 35 s review clip with sound). Renderer errors on freeing a figure with both surface and whole-mesh material overrides were reproduced in a probe and fixed. No Mac check; no one has listened to the clip's sound.
