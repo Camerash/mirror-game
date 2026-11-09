@@ -7,8 +7,8 @@ const DropShadowShader := preload("res://world/drop_shadow.gdshader")
 ## Gaps under a block smaller than this count as resting on the surface.
 const SHADOW_GAP := 0.05
 const UNREACHABLE := Color(0.82, 0.38, 0.3, 0.95)
-const HIDDEN_FILL := Color(0.86, 0.9, 0.96, 0.16)
-const HIDDEN_EDGE := Color(0.92, 0.95, 1.0, 0.75)
+const HIDDEN_FILL := Color(0.5, 0.58, 0.68, 0.14)
+const HIDDEN_EDGE := Color(0.36, 0.44, 0.55, 0.8)
 const HIDDEN_INSET := 0.985
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
@@ -263,7 +263,9 @@ func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	material.set_shader_parameter("polygon_surface", solid.has("faces") and not solid["faces"].is_empty())
 	material.set_shader_parameter("box_centre", bounds.get_center())
 	material.set_shader_parameter("box_size", bounds.size)
-	material.set_shader_parameter("source_size", (solid.get("source_bounds", bounds) as AABB).size)
+	var source: AABB = solid.get("source_bounds", bounds)
+	material.set_shader_parameter("source_size", source.size)
+	material.set_shader_parameter("seed", source.get_center())
 	_apply_source_mapping(material, solid, bounds)
 	material.set_shader_parameter("clip_plane", _clip_vector())
 	slot["instance"].material_override = material

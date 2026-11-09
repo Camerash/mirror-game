@@ -1,6 +1,11 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: the look port — 2026-11-09
+
+- New light, sky, mist and block surface (`world/trial_lighting.gd`, `assets/environment/backdrop.gdshader`, `world/stone.gdshader`); the old ceramic and porcelain shaders are removed. Checked once, headless: `run_tests` **693/0** (before the last colour tuning), `gameplay_art_tests` **58/0** (after it). Pictures: "A place to stand" with the mirror raised, its opposite view, and "Together", under Xvfb with software Vulkan (llvmpipe), Mobile renderer; the first is kept as `docs/art/target/look-port-2026-11-09.jpg`. An independent reviewer compared them with the target frame: a clear step in palette and mood; still short on shape (cubes, no pillars, no snow volume), ambient occlusion and a frosted pane. Not checked: a Mac, frame time, other stages, the pond.
+- Finding: under llvmpipe, with shadows or fog on, a `StandardMaterial3D` in the default Burley diffuse mode receives no directional light. Earlier cloud captures therefore showed the stage without sunlight. Lambert works; the block surface, mirror frame and goal ring now use it. Whether a real GPU behaves the same is unknown.
+
 # Latest check: the pond — 2026-11-08
 
 - New first place with the story (`levels/00_pond.json`, `world/prologue.gd`, `world/place_props.gd`). Checked once: `prompt_tests` **84/0**, `app_flow_tests` **88/0**, `level_solvability_tests` **68/0** (its walk now waits on physics frames, as the slower walk outlasted its loop), `run_tests` **693/0**, `small_fix_tests` **58/0**, `tutorial_playthrough` under Xvfb **22/0** (now starts at the pond). Visual: a 51 s Movie Maker clip with sound from the title through the three memories, the glimpse and moving on into "First steps", read frame by frame. No Mac check; no one has listened.

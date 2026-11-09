@@ -1,10 +1,12 @@
-# Style guide — DRAFT, waiting for the owner
+# Style guide
 
 One page. Every art change is judged against the target frame below.
 
-**Target frame:** `docs/art/target/place-to-stand-v4.jpg` (draft; a Gemini
-paintover of the real "A place to stand" capture). Known fix for the final:
-the summer copy floats on no pillar; a copy is a reflection, not a built thing.
+**Target frame:** `docs/art/target/place-to-stand-v4.jpg` (a Gemini paintover
+of the real "A place to stand" capture). The owner accepted it on 2026-11-09
+as the direction for mood, palette and light, not as a pixel spec. The block
+itself may be redesigned to fit the story. Known fix: the summer copy floats
+on no pillar; a copy is a reflection, not a built thing.
 
 ## The bar
 
@@ -15,8 +17,9 @@ is chosen. What that bar means here:
 - **One palette, few hues.** Snow, warm stone, sage and patina, one gold. A
   second state (summer copy, night) re-colours the same palette; it never adds
   new hues.
-- **One light story per place.** A low warm sun behind the camera's left;
-  blue snow shadows. One warm accent at most (the goal, the summer copy).
+- **One light story per place.** A low warm sun behind the first view's
+  left, fixed in the world; blue snow shadows. One warm accent at most (the
+  goal, the summer copy).
 - **Material contrast does the work.** Matte snow and stone against clear,
   bright glass. Nothing else is shiny.
 - **A clear focus, small rewards.** She, the mirror and the goal read first.

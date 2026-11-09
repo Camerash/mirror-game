@@ -6,37 +6,35 @@ in the history of this file before 2026-11-09.
 
 ## Now: art and scene quality (owner, 2026-11-09)
 
-The owner paused the first-scene work to raise art and scene quality. Three
-independent reviews found the causes: the visuals are the collision boxes,
-props are code primitives, there is no art direction in the game, and
-pictures are not the gate. The renderer is not the limit. The owner approved
-this plan; "A place to stand" (`01_route`) is the first quality target.
+The owner paused the first-scene work to raise art and scene quality. The
+visuals were the collision boxes and there was no art direction in the game.
+"A place to stand" (`01_route`) is the first quality target. The plan:
 
-0. **Process cuts** (done 2026-11-09): `AGENTS.md` rewritten for the cloud
-   container, this file trimmed, look-asserting tests removed, no video in Git.
-1. **Style guide and target frame**: `docs/art/STYLE.md`, one page, and one
-   target frame for "A place to stand" made as a paintover of a real capture.
-   The owner approves both before step 2.
-2. **A real look in the game**: filmic or AgX tonemap, a back sun, fog, a
-   gradient backdrop, a face-direction snow shader, ambient occlusion baked in
-   Blender Cycles. Remove the emission lifts in `world/trial_lighting.gd`.
-   The look pilot (`art_trial/look_pilot/`) already built most of this and was
-   never ported.
-3. **An art layer over the grid**: the level JSON keeps driving collision; a
-   Blender-made scene snapped to the grid dresses it. Mirror copies instance
-   the source cell's dressing, mirrored, through the existing
-   `source_bounds`/`world_to_material` and `clip_plane`. `world_view` stays as
-   the debug grey box.
-4. **A kit**: our own pieces first. CC0 kits (KayKit, Quaternius, Kenney) are
-   fine for fast iteration and as modelling reference.
+0. **Process cuts** (done): see `AGENTS.md`.
+1. **Style guide and target frame** (done): the owner accepted v4 as the
+   direction for mood, palette and light. It is not a pixel spec.
+2. **A real look in the game** (first pass done): a low warm sun, a
+   sky-to-mist backdrop, mist tied to each place's fall height, a filmic
+   tonemap (`world/trial_lighting.gd`, `assets/environment/backdrop.gdshader`)
+   and one block surface drawn by rule (`world/stone.gdshader`): stone, snow
+   with a lip, a patina band on absolutes, summer on a copy. Not done: baked
+   AO, the mirror pane and preview on a pale sky, the goal ring.
+3. **Blocks dressed by rule** (owner approved; replaces a hand-made scene per
+   level): the game builds each block's dressing from the level file, so
+   every stage, copy and cut works. The owner wants the block itself
+   redesigned to fit the story; it need not stay a cube. Start with concept
+   sheets for the owner to pick from. Only the backdrop, which is never
+   mirrored, is hand-made in Blender, once per chapter.
+4. **A kit**: our own pieces first; CC0 kits for iteration and reference.
 5. **Density and life**: scatter, falling snow, wind, ice.
-6. **The art gate** (see `AGENTS.md`).
+6. **The art gate** (see `AGENTS.md`). Make a second target frame for a hard
+   case ("Together", mid-solve) before the block kit is built.
 
-Open with the owner: the target frame (v4 proposed), the style guide, and new
-level names (proposed: Hush, Glass, Footing, Beneath, Sliver, Turning,
-Twofold). AI 3D trial (2026-11-09): Meshy is the default (15 credits, under a
-minute); cleaned rocks fit, trees need a hand pass. Cleanup script:
-`art_sources/props/ai3d_trial/clean.py`.
+Known gaps in the surface: snow is drawn on a side face even where another
+block sits on top; the sun is fixed in the world, so the opposite view is
+back-lit. Open with the owner: level names of one to three words. AI 3D
+(2026-11-09): Meshy is the default; rocks fit after
+`art_sources/props/ai3d_trial/clean.py`, trees need a hand pass.
 
 **On hold: the first scene.** The owner found the pond story place
 (`levels/00_pond.json`, `world/prologue.gd`, `docs/briefs/the-pond.md`) gives
@@ -83,8 +81,9 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
 - Direct mirror controls (`game.direct_controls`, on in the app): the mirror
   button raises and lowers; a drag on the mirror slides it; a drag on its
   arrow points it; Undo takes it back. `GAME_DESIGN.md` has the rules.
-- `world/world_view.gd` draws one mesh per solid; `world/block_set.gd` picks
-  the material by kind; `world/trial_lighting.gd` is the light.
+- `world/world_view.gd` draws one mesh per solid; `world/block_set.gd` sets
+  the kind on `world/stone.gdshader`; `world/trial_lighting.gd` is the light,
+  sky and mist.
 - `world/character_visual.gd` plays the girl (`assets/character/girl.glb`,
   0.8 u, Idle/Walk/Wake/Lift/Raise/Lower/Wave). Sources in
   `art_sources/girl/`. `assets/character/traveller.glb` is the old character,
@@ -126,6 +125,11 @@ covers a change. `VALIDATION.md` records what was checked.
 
 ## Traps
 
+- **The cloud container's software renderer can drop the sun.** With shadows
+  or fog on, a `StandardMaterial3D` in its default Burley diffuse mode gets no
+  directional light under llvmpipe. Lambert and Lambert-wrap work. Captures
+  made here before 2026-11-09 showed the stage without sunlight. Not checked
+  on a Mac. Use Lambert for new materials and check a capture for sun.
 - **Headless frames run uncapped.** A test that waits for walking must count
   `physics_frame`, not `process_frame`.
 - **Godot's glTF import drops the first mesh part's vertex colours.** Put a

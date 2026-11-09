@@ -31,11 +31,10 @@ const BLEND_TIME := 0.18
 ## The longest step the animation is advanced by. A long frame gap is cut
 ## rather than paid back as one lurch.
 const MAX_STEP := 0.1
-## The stage light is dim and tuned for near-white ceramic with a strong sky
-## reflection. Her flat felt colours (sampled from the concept) would read grey
-## in it, so each material is relit: matte, soft-wrapped shading, and part of
-## its own colour given back as emission so the colour holds on the shadow side.
-const TONE_LIFT := 0.45
+## Her flat felt colours (sampled from the concept) are relit for the stage:
+## matte, soft-wrapped shading, and a little of each colour given back as
+## emission so it holds on the shadow side.
+const TONE_LIFT := 0.16
 const TONE_ROUGHNESS := 0.9
 const TONE_SPECULAR := 0.2
 const TONE_RIM := 0.25

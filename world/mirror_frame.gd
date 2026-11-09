@@ -1,14 +1,15 @@
 extends MeshInstance3D
 ## Rounded metal tube. Cross-section dimensions stay fixed when the panel resizes.
-const THICKNESS := 0.022
+const THICKNESS := 0.03
 const CORNER := 0.065
 var dimensions := Vector2.ZERO
 var metal := StandardMaterial3D.new()
 var ghost := StandardMaterial3D.new()
 
 func _init() -> void:
-	metal.albedo_color = Color("b8a787")
+	metal.albedo_color = Color("a8894f")
 	metal.metallic = 0.8
+	metal.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT
 	metal.roughness = 0.24
 	# Off until the pointer rests on the mirror; always enabled so the hover
 	# does not compile a new shader.

@@ -316,6 +316,7 @@ func load_level(index: int) -> bool:
 	dragging = false
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
 	_commit_world()
+	trial_lighting.set_floor(float(level.get("kill_y", -5.0)), Geometry.total_bounds(world.drawn_solids).position.y)
 	for child: Node in goal_root.get_children():
 		child.free()
 	if not level.get("goal_hidden", false):

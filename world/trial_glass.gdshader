@@ -15,9 +15,9 @@ void fragment() {
 	vec2 distance_to_edge = panel_size * 0.5 - abs(local_position.xy);
 	float edge = 1.0 - smoothstep(0.01, 0.16, min(distance_to_edge.x, distance_to_edge.y));
 	float cloud = sin(local_position.x * 1.7 + sin(local_position.y * 2.1) + sheet_time * 0.025) * 0.5 + 0.5;
-	ALBEDO = mix(vec3(0.63, 0.74, 0.79), vec3(0.91, 0.94, 0.93), cloud);
+	ALBEDO = mix(vec3(0.52, 0.66, 0.76), vec3(0.80, 0.88, 0.92), cloud);
 	ROUGHNESS = 0.16 + cloud * 0.035;
 	SPECULAR = 0.7;
 	METALLIC = 0.1;
-	ALPHA = (0.04 + cloud * 0.025 + edge * 0.06) * (removal ? 0.3 : 1.0) * presence;
+	ALPHA = (0.09 + cloud * 0.04 + edge * 0.12) * (removal ? 0.3 : 1.0) * presence;
 }
