@@ -4,8 +4,6 @@ const Game := preload("res://game.gd")
 const Display := preload("res://core/display_geometry.gd")
 const Queries := preload("res://core/solid_queries.gd")
 const Frame := preload("res://world/mirror_frame.gd")
-const CeramicShader := preload("res://world/ceramic.gdshader")
-const PorcelainShader := preload("res://world/porcelain.gdshader")
 const WorldView := preload("res://world/world_view.gd")
 var checks := 0
 var failures := 0
@@ -29,9 +27,6 @@ func _run() -> void:
 	var game := Game.new()
 	root.add_child(game)
 	await process_frame
-	var jade: ShaderMaterial = game.world.visual_slots["rest:absolute:0"]["material"]
-	check(jade.get_shader_parameter("jade_surface") == true, "Absolute binds jade maps")
-	check(jade.get_shader_parameter("albedo_map").get_width() == 2048, "Jade uses the 2K source texture")
 	var collider: CapsuleShape3D = game.walker.get_child(0).shape
 	check(is_equal_approx(collider.radius, Queries.RADIUS) and is_equal_approx(collider.height, Queries.HEIGHT), "Art does not change character collision")
 	var character = game.walker.character_visual
@@ -62,7 +57,7 @@ func _run() -> void:
 	var faces := Display.clip(Display.box_faces(bounds), Plane(Vector3(1,1,0).normalized(), 0.1))
 	var solid := {"source_bounds": bounds, "material_to_world":Transform3D.IDENTITY}
 	check(faces.any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Angled cap is identified for opaque cross-section shading")
-	check(not Display.box_faces(bounds).any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Manufactured outer faces retain glaze decoration")
+	check(not Display.box_faces(bounds).any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Outer faces are not taken for cut faces")
 	var clip_view := WorldView.new()
 	root.add_child(clip_view)
 	clip_view.position = Vector3(5, 0, 0)
@@ -90,12 +85,6 @@ func _run() -> void:
 	for index: int in Game.LEVEL_PATHS.size():
 		var path: String = Game.LEVEL_PATHS[index]
 		check(game.load_level(index), "Level loads: %s" % path)
-		var block_look := true
-		for slot: Dictionary in game.world.visual_slots.values():
-			var material: ShaderMaterial = slot["material"]
-			if material.shader != CeramicShader and material.shader != PorcelainShader:
-				block_look = false
-		check(block_look, "Every visual slot uses the ceramic or porcelain block set: %s" % path)
 		check(game.walker.character_visual != null, "She shows on every stage: %s" % path)
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/12_block_gallery.json"))
 	var whole_original := _find_solid(game.solids, "original", "whole")

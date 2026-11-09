@@ -12,3 +12,8 @@ test-output/
 # Asset generator bytecode
 __pycache__/
 *.pyc
+
+# No video in Git (AGENTS.md); send it to the owner instead.
+*.mp4
+*.avi
+*.mov
