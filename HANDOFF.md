@@ -32,8 +32,11 @@ this plan; "A place to stand" (`01_route`) is the first quality target.
 5. **Density and life**: scatter, falling snow, wind, ice.
 6. **The art gate** (see `AGENTS.md`).
 
-Open with the owner: new level names (1–2 poetic words each); the AI 3D trial
-(Tripo and Meshy keys are in the environment).
+Open with the owner: the target frame (v4 proposed), the style guide, and new
+level names (proposed: Hush, Glass, Footing, Beneath, Sliver, Turning,
+Twofold). AI 3D trial (2026-11-09): Meshy is the default (15 credits, under a
+minute); cleaned rocks fit, trees need a hand pass. Cleanup script:
+`art_sources/props/ai3d_trial/clean.py`.
 
 **On hold: the first scene.** The owner found the pond story place
 (`levels/00_pond.json`, `world/prologue.gd`, `docs/briefs/the-pond.md`) gives
