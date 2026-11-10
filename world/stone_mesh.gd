@@ -9,11 +9,11 @@ extends ArrayMesh
 ## `stone.gdshader` paints a rounded stone by the same rules as a plain box.
 
 ## The radius of the stone's worn corners and foot, and of the cover's.
-const WORN := 0.085
-const COVER_WORN := 0.05
+const WORN := 0.11
+const COVER_WORN := 0.07
 ## How far the cover rolls out past the box, and how far down it hangs.
-const OVERHANG := 0.045
-const LIP := 0.06
+const OVERHANG := 0.06
+const LIP := 0.075
 const TURN_STEPS := 4
 ## The sides have a vertex about this often, for the dressing of the faces.
 const GRAIN := 0.1

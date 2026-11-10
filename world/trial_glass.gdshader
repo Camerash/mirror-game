@@ -13,11 +13,18 @@ void vertex() {
 }
 void fragment() {
 	vec2 distance_to_edge = panel_size * 0.5 - abs(local_position.xy);
-	float edge = 1.0 - smoothstep(0.01, 0.16, min(distance_to_edge.x, distance_to_edge.y));
-	float cloud = sin(local_position.x * 1.7 + sin(local_position.y * 2.1) + sheet_time * 0.025) * 0.5 + 0.5;
-	ALBEDO = mix(vec3(0.52, 0.66, 0.76), vec3(0.80, 0.88, 0.92), cloud);
-	ROUGHNESS = 0.16 + cloud * 0.035;
-	SPECULAR = 0.7;
-	METALLIC = 0.1;
-	ALPHA = (0.09 + cloud * 0.04 + edge * 0.12) * (removal ? 0.3 : 1.0) * presence;
+	float nearest = min(distance_to_edge.x, distance_to_edge.y);
+	// Frost grows in from the frame in fine crystals; the middle stays clear,
+	// so what stands behind the glass is not washed out.
+	float frost = pow(1.0 - smoothstep(0.0, 0.6, nearest), 2.2);
+	float crystals = 0.62 + 0.38 * sin(local_position.x * 31.0 + sin(local_position.y * 27.0) * 2.0) * sin(local_position.y * 23.0 + local_position.x * 7.0);
+	// A slow sheen crosses the pane, as on glass turned in the light.
+	float across = local_position.x * 0.8 + local_position.y * 0.55 - sheet_time * 0.11;
+	float sheen = pow(0.5 + 0.5 * sin(across * 2.1), 6.0) * 0.6 + pow(0.5 + 0.5 * sin(across * 0.9 + 1.7), 10.0);
+	ALBEDO = mix(vec3(0.62, 0.76, 0.86), vec3(0.95, 0.97, 1.0), clamp(frost * crystals + sheen * 0.6, 0.0, 1.0));
+	ROUGHNESS = 0.2;
+	SPECULAR = 0.5;
+	METALLIC = 0.0;
+	EMISSION = ALBEDO * (0.22 * frost + 0.16 * sheen);
+	ALPHA = (0.04 + frost * crystals * 0.30 + sheen * 0.07) * (removal ? 0.3 : 1.0) * presence;
 }

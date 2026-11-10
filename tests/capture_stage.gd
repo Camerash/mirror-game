@@ -34,6 +34,10 @@ func _run() -> void:
 	await _save(out, "plain")
 	game.toggle_mirror()
 	await create_timer(2.5).timeout
+	if not game.mirror.get("enabled", false):
+		# A slow first frame can refuse the first raise.
+		game.toggle_mirror()
+		await create_timer(2.5).timeout
 	await _save(out, "mirror")
 	if args.has("motion"):
 		for frame: int in 6:

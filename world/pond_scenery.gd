@@ -19,7 +19,7 @@ const REED := Color(0.66, 0.50, 0.30, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
 const PLUME := Color(0.33, 0.23, 0.24, 0.0)
 const TWIG := Color(0.17, 0.12, 0.16, 0.7)
-const ROCK := Color(0.22, 0.21, 0.29, 0.4)
+const ROCK := Color(0.20, 0.19, 0.27, 0.15)
 const POST := Color(0.21, 0.16, 0.18, 1.0)
 const CAP := Color(0.74, 0.75, 0.84, 1.0)
 
@@ -51,12 +51,12 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var pick := _random.randf()
 			# The scenery stands in loose groups, with open ice between them.
 			var group := sin(spot.x * 0.31 + float(_random.seed % 7)) * cos(spot.y * 0.27 + 1.3)
-			if keep_clear.has_point(spot) or group < 0.12 or pick > 0.56:
+			if keep_clear.has_point(spot) or group < 0.0 or pick > 0.72:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
-			if pick < 0.34:
+			if pick < 0.46:
 				_reeds(at)
-			elif pick < 0.45:
+			elif pick < 0.57:
 				_rocks(at)
 			else:
 				_shrub(at)
@@ -88,8 +88,8 @@ func _reeds(at: Vector3) -> void:
 func _rocks(at: Vector3) -> void:
 	for index: int in _random.randi_range(1, 3):
 		var size := _random.randf_range(0.28, 0.62)
-		var centre := at + Vector3(_random.randf_range(-0.6, 0.6), size * 0.18, _random.randf_range(-0.6, 0.6))
-		_blob(centre, Vector3(size * _random.randf_range(0.8, 1.2), size * _random.randf_range(0.8, 1.15), size * _random.randf_range(0.8, 1.1)), ROCK)
+		var centre := at + Vector3(_random.randf_range(-0.6, 0.6), size * 0.3, _random.randf_range(-0.6, 0.6))
+		_blob(centre, Vector3(size * _random.randf_range(0.7, 1.0), size * _random.randf_range(1.0, 1.4), size * _random.randf_range(0.7, 1.0)), ROCK)
 
 ## A bare shrub: a short stem that forks and forks again.
 func _shrub(at: Vector3) -> void:

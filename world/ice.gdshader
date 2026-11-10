@@ -18,7 +18,7 @@ uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
 uniform vec3 shore_color : source_color = vec3(0.16, 0.14, 0.28);
 uniform vec3 snow_color : source_color = vec3(0.81, 0.76, 0.90);
-uniform float mirror = 0.44;
+uniform float mirror = 0.36;
 // How much the sun's shadow darkens the ice.
 uniform float shade = 0.4;
 // Each pool: the light's place in the world (xyz) and its strength (w).
@@ -109,6 +109,48 @@ float trees(float along, float depth, float reach, float thin) {
 	return across * (1.0 - smoothstep(length_here * 0.35, length_here, depth)) * step(0.22, pick);
 }
 
+// A lily pad from the summer, frozen in where it lay: how much of the ice it
+// covers (x) and its frosted rim (y). The pads lie in loose groups.
+vec2 pad(vec2 plain) {
+	float group = smoothstep(0.60, 0.80, noise(plain * 0.16 + 20.0));
+	vec2 grid = plain / 1.25;
+	vec2 cell = floor(grid);
+	float pick = hash(cell + 1.3);
+	if (pick > group * 0.7) {
+		return vec2(0.0);
+	}
+	vec2 from = (fract(grid) - 0.5 - (hash2(cell + 4.0) - 0.5) * 0.35) * 1.25;
+	float radius = 0.13 + 0.30 * hash(cell + 8.0) * hash(cell + 2.0);
+	float wedge = smoothstep(0.10, 0.16, abs(sin((atan(from.y, from.x) + pick * 40.0) * 0.5)));
+	float within = length(from);
+	float cover = (1.0 - smoothstep(radius - 0.015, radius, within)) * wedge;
+	return vec2(cover, cover * smoothstep(radius - 0.08, radius, within));
+}
+
+// A fish under the ice, one to each wide patch of the pond, on a slow round
+// of its own. Returns its dark shape; `blotch` is the pale pattern on a koi.
+float fish(vec2 plain, float time, out float blotch) {
+	vec2 cell = floor(plain / 9.0);
+	float pick = hash(cell + 3.7);
+	blotch = 0.0;
+	if (pick < 0.3) {
+		return 0.0;
+	}
+	float pace = (0.10 + 0.08 * pick) * (hash(cell + 9.1) > 0.5 ? 1.0 : -1.0);
+	float turn = time * pace + pick * 40.0;
+	vec2 round_size = vec2(2.4 + pick, 1.5 + 1.2 * hash(cell + 5.5));
+	vec2 heading = normalize(vec2(-sin(turn) * round_size.x, cos(turn) * round_size.y) * sign(pace));
+	vec2 from = plain - (cell + 0.5) * 9.0 - vec2(cos(turn), sin(turn)) * round_size;
+	float along = dot(from, heading);
+	float across = dot(from, vec2(-heading.y, heading.x));
+	// It swims: the tail leads the body from side to side.
+	across += sin(along * 13.0 - time * 4.0) * 0.024 * smoothstep(0.05, -0.25, along);
+	float girth = 0.058 * smoothstep(0.21, 0.03, along) * smoothstep(-0.25, -0.02, along) + 0.05 * smoothstep(-0.15, -0.27, along);
+	float body = (1.0 - smoothstep(girth * 0.35, girth + 0.012, abs(across))) * step(-0.27, along) * step(along, 0.21);
+	blotch = body * smoothstep(0.5, 0.66, noise(vec2(along * 9.0 + pick * 20.0, across * 12.0)));
+	return body;
+}
+
 void fragment() {
 	float depth = SCREEN_UV.y;
 	vec2 plain = world_position.xz;
@@ -122,7 +164,7 @@ void fragment() {
 	float streak = noise(vec2(drift_at.x * 5.0, drift_at.y * 16.0));
 	float snow = smoothstep(0.54, 0.80, drift + (streak - 0.5) * 0.05);
 	// Loose snow moves over the ice in thin veils.
-	vec2 veil_at = vec2(drift_at.x * 3.0 - ice_time * 0.03, drift_at.y * 5.0);
+	vec2 veil_at = vec2(drift_at.x * 3.0 - ice_time * 0.08, drift_at.y * 5.0);
 	float veil = smoothstep(0.58, 0.88, fbm(veil_at)) * 0.22;
 	// Frost: the ice is clear and dark in places, pale in others.
 	float frost = fbm(plain * 0.17 + 3.0);
@@ -158,7 +200,7 @@ void fragment() {
 	float spread = 0.07 + depth * 0.20;
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.08, 0.72, depth));
 	vec2 dash_at = vec2(dot(plain, view_right) * 1.7, dot(plain, view_forward) * 7.5);
-	float spark = noise(dash_at + vec2(ice_time * 0.11, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.19));
+	float spark = noise(dash_at + vec2(ice_time * 0.22, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.38));
 	float glitter = smoothstep(0.26, 0.56, spark) * path * (1.0 - shore * 0.7);
 
 	// The stones, mirrored: dark, stretched down the ice and wavering, and
@@ -175,10 +217,22 @@ void fragment() {
 		+ (texture(reflection, at + step_y * 4.2).rgb + texture(reflection, at - step_y * 4.2).rgb) * 0.05;
 	float cover = clamp(max(image.r, max(image.g, image.b)) / 0.7, 0.0, 1.0);
 	// The ice takes the image into its own colour and depth.
-	image *= mix(vec3(1.0), colour * 1.7, 0.6) * 0.78;
-	float held = mirror * (1.0 - snow * 0.85);
+	image *= mix(vec3(1.0), colour * 1.7, 0.75) * 0.7;
+	// Rough ice breaks the image into streaks across the view.
+	float broken = 0.50 + 0.50 * noise(vec2(dot(plain, view_right) * 1.3, dot(plain, view_forward) * 8.0));
+	float held = mirror * (1.0 - snow * 0.85) * broken;
 	colour = colour * (1.0 - cover * held) + image * held;
 	colour += sun_color * glitter * 0.85 * (1.0 - snow) * (1.0 - cover * 0.6);
+
+	// Life in the pond: fish move under the ice, and last summer's lily pads
+	// lie frozen into it.
+	float blotch;
+	float swimmer = fish(plain, ice_time, blotch) * (1.0 - snow * 0.7);
+	colour = mix(colour, colour * 0.42, swimmer * 0.62);
+	colour += vec3(0.55, 0.26, 0.10) * blotch * 0.20 * (1.0 - snow * 0.7);
+	vec2 lily = pad(plain);
+	vec3 leaf = mix(vec3(0.07, 0.09, 0.05), colour, 0.30);
+	colour = mix(colour, mix(leaf, snow_color, lily.y * 0.25), lily.x * 0.88);
 
 	// Cracks run through the clear ice, pale where they catch the light.
 	vec2 crack_at = plain * 0.15 + vec2(fbm(plain * 0.3), fbm(plain * 0.3 + 5.0)) * 0.45;

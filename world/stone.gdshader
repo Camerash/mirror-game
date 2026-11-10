@@ -20,7 +20,7 @@ uniform vec4 clip_plane = vec4(0.0);
 // The height of the ice below the place, and how far above it a stone still
 // shows in the ice.
 uniform float ice_height = -100.0;
-uniform float image_reach = 1.5;
+uniform float image_reach = 1.15;
 
 uniform vec3 stone : source_color = vec3(0.74, 0.69, 0.60);
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
@@ -73,8 +73,11 @@ void vertex() {
 		bool x_face = abs(face_here.x) > 0.5;
 		vec2 on_face = vec2(x_face ? at.z + half_source.z : at.x + half_source.x, half_source.y - at.y);
 		vec2 face_size = vec2(x_face ? source_size.z : source_size.x, source_size.y);
-		float under_cover = smoothstep(0.085, 0.14, on_face.y);
-		VERTEX += face_here * dressing(on_face, face_size, at + seed) * under_cover * 0.034;
+		float under_cover = smoothstep(0.10, 0.16, on_face.y);
+		VERTEX += face_here * dressing(on_face, face_size, at + seed) * under_cover * 0.05;
+		// The cover hangs unevenly: its roll is deeper in places.
+		float roll = 1.0 - smoothstep(0.02, 0.105, on_face.y);
+		VERTEX += face_here * roll * (value_noise(vec3(on_face.x * 4.0, 1.0, 2.0) + seed) - 0.4) * 0.035;
 	}
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -120,7 +123,8 @@ void fragment() {
 		if (summer) {
 			// Moss grows in cushions: darker between them, bright on top.
 			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
-			base *= 0.74 + 0.5 * smoothstep(0.25, 0.75, cushion);
+			base *= 0.58 + 0.72 * smoothstep(0.25, 0.75, cushion);
+			base = mix(base, vec3(0.62, 0.66, 0.24), smoothstep(0.62, 0.9, cushion) * 0.5);
 			float e = 0.05;
 			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
@@ -130,7 +134,9 @@ void fragment() {
 			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;
 			vec2 within = fract(place.xz * 6.0) - 0.5 - jitter;
 			float pick = hash(vec3(cell, 3.0));
-			float flower = step(0.72, pick) * smoothstep(0.20, 0.10, length(within) * (0.7 + pick * 0.6));
+			// Each has five petals.
+			float petals = 0.75 + 0.25 * cos(atan(within.y, within.x) * 5.0 + pick * 6.0);
+			float flower = step(0.66, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
 			base = mix(base, pick > 0.9 ? vec3(1.0, 0.80, 0.30) : vec3(1.0, 0.97, 0.90), flower);
 		} else {
 			// Snow lies in soft drifts, not flat.
@@ -145,7 +151,7 @@ void fragment() {
 		float lip = 0.07 + 0.11 * value_noise(vec3(along * 2.3, 1.7, seed.y)) + 0.04 * value_noise(vec3(along * 7.0, 4.1, seed.y));
 		if (shaped) {
 			// The roll of the cover is real; only its drips are painted.
-			lip = 0.082 + 0.07 * value_noise(vec3(along * 3.1, 1.7, seed.y)) * value_noise(vec3(along * 9.0, 4.1, seed.y));
+			lip = 0.10 + 0.09 * value_noise(vec3(along * 3.1, 1.7, seed.y)) * value_noise(vec3(along * 9.0, 4.1, seed.y));
 		}
 		float covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
 		if (summer) {
@@ -176,7 +182,7 @@ void fragment() {
 			bool x_face = face.x > face.z;
 			vec2 on_face = vec2(x_face ? source_position.z + half_source.z : source_position.x + half_source.x, below_top);
 			float dressed = dressing(on_face, vec2(x_face ? source_size.z : source_size.x, source_size.y), place);
-			base *= 1.06 - 0.22 * smoothstep(0.05, 0.6, dressed);
+			base *= 1.08 - 0.30 * smoothstep(0.05, 0.6, dressed);
 			vec3 facet = normalize(cross(dFdy(world_position), dFdx(world_position)));
 			facet = dot(facet, world_normal) < 0.0 ? -facet : facet;
 			relief = normalize(mix(relief, normalize(world_to_source * facet), 0.65));
@@ -218,7 +224,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.60, 0.24) * 1.1, vec3(0.86, 0.40, 0.18) * 0.42, rim) * (0.85 + 0.3 * blotch);
+		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.60, 0.24) * 0.8, vec3(0.86, 0.40, 0.18) * 0.36, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	if (!FRONT_FACING) {
 		relief = -relief;
