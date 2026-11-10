@@ -127,8 +127,7 @@ void fragment() {
 		if (summer) {
 			// Moss grows in cushions: darker between them, bright on top.
 			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
-			base *= 0.58 + 0.72 * smoothstep(0.25, 0.75, cushion);
-			base = mix(base, vec3(0.62, 0.66, 0.24), smoothstep(0.62, 0.9, cushion) * 0.5);
+			base *= 0.62 + 0.62 * smoothstep(0.25, 0.75, cushion);
 			float e = 0.05;
 			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
@@ -165,7 +164,7 @@ void fragment() {
 		if (summer) {
 			// Moss hangs lower, and trails down the stone here and there.
 			float trail = value_noise(vec3(along * 12.0, 2.2, seed.y));
-			lip += 0.04 + 0.30 * smoothstep(0.5, 0.9, trail) * value_noise(vec3(along * 2.6, 8.0, seed.y));
+			lip += 0.03 + 0.16 * smoothstep(0.5, 0.9, trail) * value_noise(vec3(along * 2.6, 8.0, seed.y));
 			covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
 		}
 		// Its shadow on the stone just under it.
@@ -241,8 +240,9 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.60, 0.24) * 1.0, vec3(0.86, 0.40, 0.18) * 0.4, rim) * (base / max(summer_stone, vec3(0.01)));
+		glow = top_face && !cut_face ? base * 0.42 : mix(vec3(1.0, 0.60, 0.24) * 1.0, vec3(0.86, 0.40, 0.18) * 0.4, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
+	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
 	if (!FRONT_FACING) {
 		relief = -relief;
 	}
@@ -260,6 +260,9 @@ void fragment() {
 		// much of it is left from its brightness.
 		float keep = 1.0 - smoothstep(0.0, image_reach, world_position.y - ice_height);
 		float lit = 0.55 + 0.45 * max(dot(normalize(source_to_world * relief), vec3(0.25, 0.51, 0.82)), 0.0);
+		// A stone that floats shows its underside in the ice; it must not
+		// read as a hole.
+		lit = source_normal.y < -0.5 ? 0.8 : lit;
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		METALLIC = 0.0;

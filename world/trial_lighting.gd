@@ -30,9 +30,9 @@ const SCRIPTS := {
 	},
 }
 const DEFAULT_SCRIPT := "morning"
-## The ice lies this far under the place's lowest ground, close enough that
-## each stone stands over its own image.
-const ICE_CLEAR := 0.35
+## The lowest ground of a place stands on the ice, so each stone joins its
+## own image at the foot and the image cannot be taken for a second stone.
+const ICE_CLEAR := 0.01
 ## The ice is alone on this render layer, so a light can leave it out.
 const ICE_LAYER := 1 << 11
 

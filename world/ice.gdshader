@@ -153,8 +153,8 @@ void fragment() {
 	float frost = noise(plain * 0.17 + 3.0) * 0.65 + noise(plain * 0.45 + 8.0) * 0.35;
 
 	// The sky the ice holds, from the far ice to the near.
-	vec3 colour = mix(far_color, mid_color, smoothstep(-0.04, 0.19, depth));
-	colour = mix(colour, near_color, smoothstep(0.16, 0.85, depth));
+	vec3 colour = mix(far_color, mid_color, pow(smoothstep(-0.06, 0.52, depth), 0.62));
+	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth));
 	colour *= 0.86 + 0.26 * frost;
 
 	// The far trees, mirrored: bare trunks that reach from the far edge
@@ -177,11 +177,11 @@ void fragment() {
 
 	// Its glitter path: short bright dashes that lie on the ice, down the
 	// line from the sun to the viewer. Each one comes and goes.
-	float spread = 0.07 + depth * 0.20;
+	float spread = 0.05 + depth * 0.13;
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.08, 0.72, depth));
 	vec2 dash_at = vec2(dot(plain, view_right) * 4.2, dot(plain, view_forward) * 8.5);
 	float spark = noise(dash_at + vec2(ice_time * 0.22, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.38));
-	float glitter = smoothstep(0.34, 0.60, spark) * path * (1.0 - shore * 0.7);
+	float glitter = smoothstep(0.40, 0.62, spark) * path * (1.0 - shore * 0.7);
 
 	// The stones, mirrored: dark, stretched down the ice and wavering, and
 	// thinning with height. The image arrives already darkened by height; its
@@ -220,13 +220,13 @@ void fragment() {
 
 	// Warm light from each summer copy, pooled on the ice below it. The light
 	// of a copy high above the ice does not reach it. The light breathes.
-	float breath = 0.86 + 0.14 * sin(ice_time * 2.1) * (0.6 + 0.4 * sin(ice_time * 0.53 + 1.0));
+	float breath = 0.82 + 0.18 * sin(ice_time * 2.6) * (0.55 + 0.45 * sin(ice_time * 0.9 + 1.0));
 	for (int index = 0; index < pool_count; index++) {
 		float lift = max(pools[index].y - world_position.y, 0.0);
 		float reach = 2.0 + lift * 0.4;
 		float distance_to = length(plain - pools[index].xz) / reach;
-		float warm = pools[index].w * breath * 2.6 * exp(-lift * 1.2);
-		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.4) * 0.95 + exp(-distance_to * distance_to * 0.7) * 0.10) * (0.85 + snow * 0.5);
+		float warm = pools[index].w * breath * 1.45 * exp(-lift * lift * 0.6);
+		colour += pool_color * warm * (exp(-distance_to * distance_to * 4.5) * 0.80 + exp(-distance_to * distance_to * 0.9) * 0.12) * (0.85 + snow * 0.5);
 	}
 
 	// The corners fall away, so the eye stays on the place.

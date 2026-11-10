@@ -49,8 +49,8 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var spot := band.position + (Vector2(column, row) + Vector2(_random.randf(), _random.randf())) * SPACING
 			var pick := _random.randf()
 			# The scenery stands in loose groups, with open ice between them.
-			var group := sin(spot.x * 0.31 + float(_random.seed % 7)) * cos(spot.y * 0.27 + 1.3)
-			if keep_clear.has_point(spot) or group < 0.22 or pick > 0.8:
+			var group := sin(spot.x * 0.23 + float(_random.seed % 7)) * cos(spot.y * 0.21 + 1.3)
+			if keep_clear.has_point(spot) or group < 0.38 or pick > 0.85:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
 			if pick < 0.54:
@@ -113,9 +113,9 @@ func _posts(from: Vector3, heading: Vector2) -> void:
 		at += Vector3(heading.x, 0.0, heading.y) * _random.randf_range(0.95, 1.35)
 		if _random.randf() < 0.22:
 			continue
-		var height := _random.randf_range(0.45, 0.95)
+		var height := _random.randf_range(0.3, 0.6)
 		var top := at + Vector3(_random.randf_range(-0.14, 0.14), height, _random.randf_range(-0.14, 0.14))
-		var radius := _random.randf_range(0.085, 0.12)
+		var radius := _random.randf_range(0.06, 0.085)
 		# Each post is worn to a blunt point, so its top is not a place to stand.
 		_prism(at - Vector3.UP * 0.05, top, radius, radius * 0.8, 7, POST, 0.0, 0.0)
 		_prism(top, top + (top - at).normalized() * radius * 1.4, radius * 0.8, 0.01, 7, POST, 0.0, 0.0)
