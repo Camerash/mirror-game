@@ -22,11 +22,11 @@ const SCRIPTS := {
 		"shore": Color("3e4f66"), "ice_snow": Color("e3e9f2"), "shade": 0.3,
 	},
 	"dusk": {
-		"sun": Color("ffc4a2"), "sun_energy": 2.1, "fill": Color("c4a8d8"), "fill_energy": 0.42,
-		"sky": Color("8a80c0"), "ground": Color("90708a"), "ambient": 0.33,
-		"ice_far": Color("eeaa9c"), "ice_mid": Color("6667a8"), "ice_near": Color("23244a"),
+		"sun": Color("ffc4a2"), "sun_energy": 2.1, "fill": Color("c4a8d8"), "fill_energy": 0.30,
+		"sky": Color("8a80c0"), "ground": Color("90708a"), "ambient": 0.22,
+		"ice_far": Color("f0a48e"), "ice_mid": Color("35367a"), "ice_near": Color("0b0c26"),
 		"glow": Color("ffc980"), "sun_from": Vector3(-0.17, 0.44, -0.98),
-		"shore": Color("2a2348"), "ice_snow": Color("cfc3e6"), "shade": 0.42,
+		"shore": Color("1c1838"), "ice_snow": Color("a9a0d0"), "shade": 0.34,
 	},
 }
 const DEFAULT_SCRIPT := "morning"
@@ -57,12 +57,12 @@ func _ready() -> void:
 	settings.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	settings.tonemap_white = 2.4
 	settings.glow_enabled = true
-	settings.glow_intensity = 0.25
-	settings.glow_bloom = 0.03
+	settings.glow_intensity = 0.55
+	settings.glow_bloom = 0.05
 	environment.environment = settings
 	add_child(environment)
 	key.shadow_enabled = true
-	key.shadow_blur = 1.6
+	key.shadow_blur = 3.0
 	# The stage camera stands 40 units from the place; one shadow map covers
 	# the whole view.
 	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL

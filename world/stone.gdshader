@@ -117,6 +117,20 @@ void fragment() {
 		// Old stone is darker and damp toward its foot.
 		float foot = smoothstep(0.15, 1.1, below_top);
 		base *= 1.0 - foot * 0.24;
+		// Weather runs down it in streaks; it is pitted, and lichen has
+		// taken hold in pale patches.
+		float run = value_noise(vec3(along * 8.0, below_top * 0.8, seed.y + 7.0));
+		base *= 1.0 - smoothstep(0.50, 0.95, run) * 0.30 * (1.0 - foot * 0.5);
+		base *= 0.90 + 0.20 * value_noise(place * 21.0);
+		float lichen = smoothstep(0.62, 0.74, value_noise(place * 3.1 + 17.0)) * smoothstep(0.3, 0.7, value_noise(place * 13.0));
+		base = mix(base, vec3(0.62, 0.64, 0.52) * (summer ? 1.1 : 0.9), lichen * 0.55);
+		// A crack or two, where frost has split it.
+		float split = abs(value_noise(vec3(along * 1.9, below_top * 1.4, seed.y + 21.0)) - 0.5);
+		float fissure = (1.0 - smoothstep(0.0, 0.012, split)) * smoothstep(0.35, 0.6, value_noise(place * 1.3 + 40.0));
+		base *= 1.0 - fissure * 0.45;
+		// Rime climbs the foot, over the cold of the ice.
+		float rime = (1.0 - smoothstep(0.0, 0.16 + 0.10 * value_noise(vec3(along * 6.0, 9.0, seed.y)), half_source.y * 2.0 - below_top)) * (summer ? 0.0 : 0.55);
+		base = mix(base, snow * 0.92, rime);
 		if (kind == 2) {
 			float band = smoothstep(0.34, 0.35, below_top) * (1.0 - smoothstep(0.50, 0.51, below_top));
 			float streak = value_noise(vec3(along * 11.0, below_top * 2.0, 2.3));
@@ -149,7 +163,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.62 : summer_glow * vec3(1.0, 0.88, 0.70) * mix(0.78, 0.36, rim);
+		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.66, 0.30) * 1.15, vec3(0.90, 0.46, 0.22) * 0.45, rim) * (0.85 + 0.3 * blotch);
 	}
 	if (!FRONT_FACING) {
 		relief = -relief;
