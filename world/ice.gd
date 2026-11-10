@@ -103,6 +103,7 @@ func follow() -> void:
 	var ahead := Vector2(sight.x, sight.z).normalized()
 	var across := Vector2(pose.basis.x.x, pose.basis.x.z).normalized()
 	material.set_shader_parameter("view_forward", ahead)
+	material.set_shader_parameter("sun_along", Vector2(_sun_from.x, _sun_from.z).normalized())
 	material.set_shader_parameter("view_right", across)
 	material.set_shader_parameter("view_bearing", ahead.angle())
 	material.set_shader_parameter("sun_bearing", angle_difference(ahead.angle(), Vector2(_sun_from.x, _sun_from.z).angle()))

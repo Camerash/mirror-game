@@ -194,7 +194,7 @@ void fragment() {
 			bool x_face = face.x > face.z;
 			vec2 on_face = vec2(x_face ? source_position.z + half_source.z : source_position.x + half_source.x, below_top);
 			float dressed = dressing(on_face, vec2(x_face ? source_size.z : source_size.x, source_size.y), place);
-			base *= 1.08 - 0.30 * smoothstep(0.05, 0.6, dressed);
+			base *= 1.10 - 0.42 * smoothstep(0.05, 0.6, dressed);
 			vec3 facet = normalize(cross(dFdy(world_position), dFdx(world_position)));
 			facet = dot(facet, world_normal) < 0.0 ? -facet : facet;
 			relief = normalize(mix(relief, normalize(world_to_source * facet), 0.65));
@@ -240,7 +240,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.42 : mix(vec3(1.0, 0.60, 0.24) * 1.0, vec3(0.86, 0.40, 0.18) * 0.4, rim) * (base / max(summer_stone, vec3(0.01)));
+		glow = top_face && !cut_face ? base * 0.55 : mix(vec3(1.0, 0.60, 0.24) * 1.25, vec3(0.86, 0.40, 0.18) * 0.45, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
 	if (!FRONT_FACING) {

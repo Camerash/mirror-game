@@ -1,6 +1,6 @@
 shader_type spatial;
 render_mode diffuse_lambert, cull_disabled;
-// One surface for the pond's scenery: reeds, twigs, rocks and posts.
+// One surface for the pond's scenery: reeds, twigs and posts.
 // COLOR.rgb is the bare colour, COLOR.a how readily snow lies on it, and
 // UV.y how far the wind moves it.
 

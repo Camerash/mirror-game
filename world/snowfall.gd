@@ -2,7 +2,9 @@ extends GPUParticles3D
 ## Snow falling slowly over a place. It follows the view, so it falls
 ## wherever the stage camera looks. Presentation only.
 
-const FLAKES := 420
+const FLAKES := 260
+## Far flakes are small and dim.
+const FAR_FLAKES := 320
 ## Some flakes fall nearer the eye: a little larger and softer.
 const NEAR_FLAKES := 70
 const SPAN := 30.0
@@ -14,9 +16,12 @@ var camera: Camera3D
 var lift := 9.0
 
 func _ready() -> void:
-	_fall(self, FLAKES, 0.075, 0.75, 1.0)
+	_fall(self, FLAKES, 0.08, 0.8, 1.0)
+	var far := GPUParticles3D.new()
+	_fall(far, FAR_FLAKES, 0.045, 0.38, 0.7)
+	add_child(far)
 	var near := GPUParticles3D.new()
-	_fall(near, NEAR_FLAKES, 0.13, 0.5, 1.4)
+	_fall(near, NEAR_FLAKES, 0.15, 0.55, 1.5)
 	add_child(near)
 
 ## Sets `layer` up as falling snow: `count` flakes of `size`, at `alpha`.

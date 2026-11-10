@@ -12,21 +12,22 @@ const BackdropShader := preload("res://assets/environment/backdrop.gdshader")
 ## `ground` the ambient light from above and below, and the three `ice`
 ## colours run from the far ice (top of the screen) to the near. `sun_from`
 ## points from the place to the sun. `shore` is the dark of the far trees the
-## ice holds, and `ice_snow` the blown snow that lies on the ice.
+## ice holds, `ice_snow` the blown snow that lies on the ice, and `haze` the
+## colour of the air, which the pond's scenery takes on.
 const SCRIPTS := {
 	"morning": {
 		"sun": Color("ffe2bd"), "sun_energy": 1.9, "fill": Color("e8d2b8"), "fill_energy": 0.30,
 		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.22,
 		"ice_far": Color("efc79c"), "ice_mid": Color("2f5a78"), "ice_near": Color("08192a"),
 		"glow": Color("ffb665"), "sun_from": Vector3(-0.17, 0.5, -0.98),
-		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.22,
+		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.22, "haze": Color("33485a"),
 	},
 	"dusk": {
-		"sun": Color("ffc4a2"), "sun_energy": 2.1, "fill": Color("f0b8a0"), "fill_energy": 0.38,
+		"sun": Color("ffd4bc"), "sun_energy": 2.5, "fill": Color("f0b8a0"), "fill_energy": 0.38,
 		"sky": Color("a08cb8"), "ground": Color("a8807e"), "ambient": 0.24,
 		"ice_far": Color("f0a48e"), "ice_mid": Color("26276a"), "ice_near": Color("06071a"),
 		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.44, -0.98),
-		"shore": Color("1c1838"), "ice_snow": Color("a9a0d0"), "shade": 0.22,
+		"shore": Color("1c1838"), "ice_snow": Color("a9a0d0"), "shade": 0.22, "haze": Color("372c58"),
 	},
 }
 const DEFAULT_SCRIPT := "morning"

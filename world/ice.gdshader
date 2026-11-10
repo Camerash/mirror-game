@@ -31,6 +31,8 @@ uniform vec2 view_forward = vec2(0.0, -1.0);
 uniform vec2 view_right = vec2(1.0, 0.0);
 uniform float view_bearing = 0.0;
 uniform float sun_bearing = 0.6;
+// The direction on the ice (x, z) from the place toward the sun.
+uniform vec2 sun_along = vec2(0.0, -1.0);
 
 // The screen spans this much of the panorama the ice holds, in radians.
 const float SPAN = 1.5;
@@ -156,6 +158,14 @@ void fragment() {
 	vec3 colour = mix(far_color, mid_color, pow(smoothstep(-0.06, 0.52, depth), 0.62));
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth));
 	colour *= 0.86 + 0.26 * frost;
+	// The low sun comes through the far trees: long bars of light lie over
+	// the ice between their shadows, all the way to the viewer.
+	float across_sun = dot(plain, vec2(-sun_along.y, sun_along.x));
+	float along_sun = dot(plain, sun_along);
+	float bars = noise(vec2(across_sun * 0.9, along_sun * 0.03 + 3.0)) * 0.6 + noise(vec2(across_sun * 2.3 + 7.0, along_sun * 0.05)) * 0.4;
+	float sunlit = smoothstep(0.50, 0.68, bars);
+	// The light lifts the ice in its own colour, so the dark stays deep.
+	colour = colour * (1.0 + sunlit * mix(0.20, 1.0, smoothstep(0.15, 0.9, depth))) + sun_color * sunlit * 0.018;
 
 	// The far trees, mirrored: bare trunks that reach from the far edge
 	// toward the viewer. The image wavers a little.
@@ -181,7 +191,7 @@ void fragment() {
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.08, 0.72, depth));
 	vec2 dash_at = vec2(dot(plain, view_right) * 4.2, dot(plain, view_forward) * 8.5);
 	float spark = noise(dash_at + vec2(ice_time * 0.22, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.38));
-	float glitter = smoothstep(0.40, 0.62, spark) * path * (1.0 - shore * 0.7);
+	float glitter = smoothstep(0.44, 0.64, spark) * path * (1.0 - shore * 0.7);
 
 	// The stones, mirrored: dark, stretched down the ice and wavering, and
 	// thinning with height. The image arrives already darkened by height; its
@@ -211,7 +221,7 @@ void fragment() {
 	float crack = crack_distance(crack_at);
 	float thin = fwidth(crack) * 1.2 + 0.004;
 	float line = (1.0 - smoothstep(0.0, thin, crack)) * 0.07 + (1.0 - smoothstep(0.0, 0.035, crack)) * 0.02;
-	colour += mix(mid_color, vec3(1.0), 0.5) * line * smoothstep(0.35, 0.8, noise(plain * 0.33 + 9.0)) * (1.0 - depth * 0.35);
+	colour += mix(mid_color, vec3(1.0), 0.5) * line * smoothstep(0.5, 0.85, noise(plain * 0.33 + 9.0)) * (1.0 - depth * 0.35);
 
 	// The snow that lies on the ice hides what the ice holds.
 	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));
@@ -226,7 +236,7 @@ void fragment() {
 		float reach = 2.0 + lift * 0.4;
 		float distance_to = length(plain - pools[index].xz) / reach;
 		float warm = pools[index].w * breath * 1.45 * exp(-lift * lift * 0.6);
-		colour += pool_color * warm * (exp(-distance_to * distance_to * 4.5) * 0.80 + exp(-distance_to * distance_to * 0.9) * 0.12) * (0.85 + snow * 0.5);
+		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.6) * 1.0 + exp(-distance_to * distance_to * 0.8) * 0.2) * (0.85 + snow * 0.5) * (1.0 - cover * 0.55);
 	}
 
 	// The corners fall away, so the eye stays on the place.

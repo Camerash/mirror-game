@@ -27,5 +27,5 @@ void fragment() {
 	SPECULAR = 0.5;
 	METALLIC = 0.0;
 	EMISSION = ALBEDO * (0.22 * frost + 0.16 * sheen);
-	ALPHA = (0.04 + frost * crystals * 0.30 + sheen * 0.07) * (removal ? 0.3 : 1.0) * presence;
+	ALPHA = (0.06 + frost * crystals * 0.40 + sheen * 0.13) * (removal ? 0.3 : 1.0) * presence;
 }

@@ -1,6 +1,6 @@
 class_name PondScenery
 extends MeshInstance3D
-## The pond round a place: reeds, bare shrubs, rocks and old posts that
+## The pond round a place: reeds, bare shrubs and old posts that
 ## stand in the ice, outside the ground the puzzle can use. Built by
 ## rule from the place's limits, the same every time for the same place.
 ##
@@ -19,17 +19,18 @@ const REED := Color(0.50, 0.43, 0.36, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
 const PLUME := Color(0.30, 0.24, 0.27, 0.0)
 const TWIG := Color(0.17, 0.12, 0.16, 0.7)
-const ROCK := Color(0.33, 0.32, 0.41, 0.0)
 const POST := Color(0.21, 0.16, 0.18, 0.0)
 
 var _tool := SurfaceTool.new()
 var _random := RandomNumberGenerator.new()
 
 ## Builds the scenery round `limits` (a level's mirror limits) on the ice at
-## `ice_height`. `place` names the place and seeds the layout.
-static func build(limits: Dictionary, ice_height: float, place: String) -> PondScenery:
+## `ice_height`. `place` names the place and seeds the layout; `haze` is the
+## colour of the air there, which the scenery takes on.
+static func build(limits: Dictionary, ice_height: float, place: String, haze: Color) -> PondScenery:
 	var scenery := PondScenery.new()
 	scenery._build(limits, ice_height, place)
+	(scenery.material_override as ShaderMaterial).set_shader_parameter("haze", haze)
 	return scenery
 
 func _build(limits: Dictionary, ice_height: float, place: String) -> void:
@@ -53,10 +54,8 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			if keep_clear.has_point(spot) or group < 0.38 or pick > 0.85:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
-			if pick < 0.54:
+			if pick < 0.6:
 				_reeds(at)
-			elif pick < 0.60:
-				_rocks(at)
 			else:
 				_shrub(at)
 	mesh = _tool.commit()
@@ -67,7 +66,7 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 ## A stand of dry reeds.
 func _reeds(at: Vector3) -> void:
 	var spread := _random.randf_range(0.35, 0.8)
-	for index: int in _random.randi_range(12, 24):
+	for index: int in _random.randi_range(9, 18):
 		var foot := at + Vector3(_random.randfn(0.0, spread * 0.45), 0.0, _random.randfn(0.0, spread * 0.45))
 		var height := _random.randf_range(0.45, 1.35)
 		var lean := Vector3(_random.randf_range(-0.22, 0.22), 1.0, _random.randf_range(-0.22, 0.22)).normalized()
@@ -82,13 +81,6 @@ func _reeds(at: Vector3) -> void:
 		if _random.randf() < 0.45:
 			var hang := Vector3(_random.randf_range(-1.0, 1.0), -0.25, _random.randf_range(-1.0, 1.0)).normalized()
 			_blade(knee, knee + hang * _random.randf_range(0.15, 0.3), 0.03, 0.004, REED, REED.lerp(REED_FOOT, 0.3), 0.45, 0.8)
-
-## One to three round rocks, half in the ice, with snow on their backs.
-func _rocks(at: Vector3) -> void:
-	for index: int in _random.randi_range(1, 3):
-		var size := _random.randf_range(0.22, 0.42)
-		var centre := at + Vector3(_random.randf_range(-0.6, 0.6), size * 0.3, _random.randf_range(-0.6, 0.6))
-		_blob(centre, Vector3(size * _random.randf_range(0.7, 1.0), size * _random.randf_range(1.0, 1.4), size * _random.randf_range(0.7, 1.0)), ROCK)
 
 ## A bare shrub: a short stem that forks and forks again.
 func _shrub(at: Vector3) -> void:
@@ -152,25 +144,3 @@ func _prism(from: Vector3, to: Vector3, radius_from: float, radius_to: float, si
 			_tool.set_color(color)
 			_tool.set_uv(Vector2(0.0, quad[corner][2]))
 			_tool.add_vertex(quad[corner][0])
-
-## A round, uneven lump about `centre`.
-func _blob(centre: Vector3, radii: Vector3, color: Color) -> void:
-	var rings := 6
-	var segments := 10
-	var bumps: Array[float] = []
-	for index: int in (rings + 1) * segments:
-		bumps.append(_random.randf_range(0.78, 1.14))
-	var point := func(ring: int, segment: int) -> Array:
-		var polar := PI * float(ring) / rings
-		var turn := TAU * float(segment % segments) / segments
-		var unit := Vector3(sin(polar) * cos(turn), cos(polar), sin(polar) * sin(turn))
-		var bump: float = 1.0 if ring == 0 or ring == rings else bumps[ring * segments + segment % segments]
-		return [centre + unit * radii * bump, (unit / radii).normalized()]
-	for ring: int in rings:
-		for segment: int in segments:
-			var quad := [point.call(ring, segment), point.call(ring, segment + 1), point.call(ring + 1, segment + 1), point.call(ring + 1, segment)]
-			for corner: int in [0, 1, 2, 0, 2, 3]:
-				_tool.set_normal(quad[corner][1])
-				_tool.set_color(color)
-				_tool.set_uv(Vector2.ZERO)
-				_tool.add_vertex(quad[corner][0])
