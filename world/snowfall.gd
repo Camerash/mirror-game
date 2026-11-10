@@ -21,7 +21,7 @@ func _ready() -> void:
 	_fall(far, FAR_FLAKES, 0.045, 0.38, 0.7)
 	add_child(far)
 	var near := GPUParticles3D.new()
-	_fall(near, NEAR_FLAKES, 0.15, 0.55, 1.5)
+	_fall(near, NEAR_FLAKES, 0.115, 0.6, 1.5)
 	add_child(near)
 
 ## Sets `layer` up as falling snow: `count` flakes of `size`, at `alpha`.

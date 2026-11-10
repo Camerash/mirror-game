@@ -155,7 +155,7 @@ void fragment() {
 	float frost = noise(plain * 0.17 + 3.0) * 0.65 + noise(plain * 0.45 + 8.0) * 0.35;
 
 	// The sky the ice holds, from the far ice to the near.
-	vec3 colour = mix(far_color, mid_color, pow(smoothstep(-0.06, 0.52, depth), 0.62));
+	vec3 colour = mix(far_color, mid_color, pow(smoothstep(-0.06, 0.38, depth), 0.8));
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth));
 	colour *= 0.86 + 0.26 * frost;
 	// The low sun comes through the far trees: long bars of light lie over
@@ -163,9 +163,10 @@ void fragment() {
 	float across_sun = dot(plain, vec2(-sun_along.y, sun_along.x));
 	float along_sun = dot(plain, sun_along);
 	float bars = noise(vec2(across_sun * 0.9, along_sun * 0.03 + 3.0)) * 0.6 + noise(vec2(across_sun * 2.3 + 7.0, along_sun * 0.05)) * 0.4;
-	float sunlit = smoothstep(0.50, 0.68, bars);
+	// The bars are soft and broken along their length, so none reads as a path.
+	float sunlit = smoothstep(0.40, 0.82, bars) * (0.45 + 0.55 * noise(vec2(across_sun * 0.3 + 11.0, along_sun * 0.22)));
 	// The light lifts the ice in its own colour, so the dark stays deep.
-	colour = colour * (1.0 + sunlit * mix(0.20, 1.0, smoothstep(0.15, 0.9, depth))) + sun_color * sunlit * 0.018;
+	colour = colour * (1.0 + sunlit * mix(0.15, 0.85, smoothstep(0.15, 0.9, depth))) + sun_color * sunlit * 0.012;
 
 	// The far trees, mirrored: bare trunks that reach from the far edge
 	// toward the viewer. The image wavers a little.

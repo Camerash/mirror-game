@@ -1,6 +1,6 @@
 class_name PondScenery
 extends MeshInstance3D
-## The pond round a place: reeds, bare shrubs and old posts that
+## The pond round a place: reeds and bare shrubs that
 ## stand in the ice, outside the ground the puzzle can use. Built by
 ## rule from the place's limits, the same every time for the same place.
 ##
@@ -19,7 +19,6 @@ const REED := Color(0.50, 0.43, 0.36, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
 const PLUME := Color(0.30, 0.24, 0.27, 0.0)
 const TWIG := Color(0.17, 0.12, 0.16, 0.7)
-const POST := Color(0.21, 0.16, 0.18, 0.0)
 
 var _tool := SurfaceTool.new()
 var _random := RandomNumberGenerator.new()
@@ -40,9 +39,6 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 	var band := keep_clear.grow(REACH)
 	_random.seed = hash(place)
 	_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	# One row of old posts walks away from the place.
-	var corner := keep_clear.position + keep_clear.size * Vector2(_random.randf_range(0.1, 0.9), 1.0)
-	_posts(Vector3(corner.x, ice_height, corner.y + 1.0), Vector2(_random.randf_range(-0.5, 0.5), 1.0).normalized())
 	var columns := ceili(band.size.x / SPACING)
 	var rows := ceili(band.size.y / SPACING)
 	for row: int in rows:
@@ -97,20 +93,6 @@ func _branch(from: Vector3, heading: Vector3, length: float, radius: float, dept
 	for fork: int in _random.randi_range(2, 3):
 		var turn := Vector3(_random.randf_range(-0.8, 0.8), _random.randf_range(0.15, 0.6), _random.randf_range(-0.8, 0.8))
 		_branch(to, (heading * 0.9 + turn).normalized(), length * _random.randf_range(0.62, 0.85), radius * 0.72, depth - 1)
-
-## A broken row of leaning posts from an old jetty.
-func _posts(from: Vector3, heading: Vector2) -> void:
-	var at := from
-	for index: int in 6:
-		at += Vector3(heading.x, 0.0, heading.y) * _random.randf_range(0.95, 1.35)
-		if _random.randf() < 0.22:
-			continue
-		var height := _random.randf_range(0.3, 0.6)
-		var top := at + Vector3(_random.randf_range(-0.14, 0.14), height, _random.randf_range(-0.14, 0.14))
-		var radius := _random.randf_range(0.06, 0.085)
-		# Each post is worn to a blunt point, so its top is not a place to stand.
-		_prism(at - Vector3.UP * 0.05, top, radius, radius * 0.8, 7, POST, 0.0, 0.0)
-		_prism(top, top + (top - at).normalized() * radius * 1.4, radius * 0.8, 0.01, 7, POST, 0.0, 0.0)
 
 ## A thin ribbon from `from` to `to`, crossed so it shows from every side.
 func _blade(from: Vector3, to: Vector3, width_from: float, width_to: float, color_from: Color, color_to: Color, sway_from: float, sway_to: float) -> void:

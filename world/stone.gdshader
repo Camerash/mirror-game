@@ -180,8 +180,8 @@ void fragment() {
 		float run = value_noise(vec3(along * 8.0, below_top * 0.8, seed.y + 7.0));
 		base *= 1.0 - smoothstep(0.50, 0.95, run) * 0.30 * (1.0 - foot * 0.5);
 		base *= 0.90 + 0.20 * value_noise(place * 21.0);
-		float lichen = smoothstep(0.62, 0.74, value_noise(place * 3.1 + 17.0)) * smoothstep(0.3, 0.7, value_noise(place * 13.0));
-		base = mix(base, vec3(0.62, 0.64, 0.52) * (summer ? 1.1 : 0.9), lichen * 0.55);
+		float lichen = smoothstep(0.58, 0.80, value_noise(place * 3.1 + 17.0));
+		base = mix(base, vec3(0.62, 0.64, 0.52) * 0.9, lichen * (summer ? 0.0 : 0.4));
 		// A crack or two, where frost has split it.
 		float split = abs(fract(along * 0.83 + 0.11 * value_noise(vec3(below_top * 5.0, along * 0.7, seed.y + 21.0)) + 0.05 * value_noise(vec3(below_top * 17.0, 3.0, seed.y))) - 0.5);
 		float fissure = (1.0 - smoothstep(0.0, 0.007, split)) * smoothstep(0.45, 0.62, value_noise(vec3(along * 0.5, below_top * 1.6, seed.y + 40.0)));

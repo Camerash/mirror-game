@@ -23,7 +23,7 @@ const SCRIPTS := {
 		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.22, "haze": Color("33485a"),
 	},
 	"dusk": {
-		"sun": Color("ffd4bc"), "sun_energy": 2.5, "fill": Color("f0b8a0"), "fill_energy": 0.38,
+		"sun": Color("ffdfca"), "sun_energy": 2.5, "fill": Color("dccab6"), "fill_energy": 0.38,
 		"sky": Color("a08cb8"), "ground": Color("a8807e"), "ambient": 0.24,
 		"ice_far": Color("f0a48e"), "ice_mid": Color("26276a"), "ice_near": Color("06071a"),
 		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.44, -0.98),
