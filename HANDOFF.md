@@ -1,67 +1,59 @@
 # Handoff
 
-Current state only, kept under about 150 lines. Git history keeps the rest:
-the old traveller and its hood work are in `docs/art/traveller-handoff.md` and
-in the history of this file before 2026-11-09.
+Current state only, kept under about 150 lines. Git history keeps the rest;
+the old traveller is in `docs/art/traveller-handoff.md`.
 
 ## Now: art and scene quality (owner, 2026-11-10)
 
-The owner paused the first-scene work to raise art and scene quality.
-"A place to stand" (`01_route`) is the first quality target. Read
-`docs/art/STYLE.md`: the feel reference is now a painterly journey over
-still water, and art is judged on real frames from the game's camera.
+**The work moves to the owner's Mac from here.** The branch is
+`claude/funny-dirac-7dv0hf`; everything is pushed. Start with
+`docs/briefs/polish-loop.md`: the next job, its limits, the first checks on
+the Mac and three questions the owner has not answered yet. Then read
+`docs/art/STYLE.md`. "A place to stand" (`01_route`) is the first quality
+target; art is judged on real frames from the game's camera.
 
-Done so far:
+Not carried over from the cloud session: the image and 3D keys
+(`GEMINI_API_KEY`, `TRIPO_API_KEY`, `MESHY_API_KEY`) must be set in the
+Mac's environment; raw captures and reference contact sheets were scratch
+files and are gone. The references are linked in the brief.
 
-- **Process cuts**: see `AGENTS.md`.
-- **The look in the game** (2026-11-09): a low sun, a filmic tonemap, and one
-  block surface drawn by rule (`world/stone.gdshader`): stone, snow with a
-  lip, a patina band on absolutes, summer on a copy.
-- **The ice** (2026-11-10): `world/ice.gd` and `ice.gdshader` put the pond's
-  ice 0.35 under a place's lowest ground. A second camera, the stage camera
-  mirrored through the ice, draws the stones at half size (render layer 11;
-  nothing else is mirrored). `stone.gdshader` darkens that image with height,
-  so it never looks solid. The ice is the whole backdrop: a painted gradient,
-  soft cloud, the image, and warm pools under the copies.
-  `world/snowfall.gd` is the falling snow. `world_view` keeps one warm light
-  in each copy.
+In the game now:
+
+- **The look** (`world/trial_lighting.gd`, `world/stone.gdshader`): a low
+  sun, a filmic tonemap, and one block surface drawn by rule: stone, snow
+  with a lip, a patina band on absolutes, summer on a copy.
+- **The ice** (`world/ice.gd`, `ice.gdshader`): the pond's ice 0.35 under a
+  place's lowest ground, and the whole backdrop. A second camera, the stage
+  camera mirrored through the ice, draws only the stones at half size
+  (render layer 11); `stone.gdshader` darkens that image with height.
+  `world/snowfall.gd` is the snow; `world_view` keeps a warm light in each
+  copy, which also pools on the ice.
 - **Colour scripts**: `SCRIPTS` in `world/trial_lighting.gd` (`morning`,
   `dusk`); a level names one with `"light"`. Only `01_route` is dusk.
+- **Captures**: `tests/capture_stage.gd`.
 
-Next, in order:
+Decided by the owner: blocks are dressed by rule from the level file; the
+block may be redesigned to fit the story; our own art first, drawn by code.
 
-1. The owner judges the ice frame and picks the colour script per stage.
-2. **Blocks dressed by rule** (owner approved): the game builds each block's
-   dressing from the level file, so every stage, copy and cut works. The
-   owner wants the block itself redesigned to fit the story. Start with
-   concept sheets on a hard case ("Together", mid-solve).
-3. Far scenery on the ice, plants, wind. Our own art first; CC0 kits and
-   Meshy (rocks only, after `art_sources/props/ai3d_trial/clean.py`) for
-   drafts.
-4. Vistas between puzzles with a low camera, perhaps as the new opening.
-   Not decided.
+Known gaps: the colour script cuts when moving on; snow is drawn on a side
+face under a stacked block; the opposite view is back-lit; the second
+camera's cost is unmeasured. The reviewer's list is in the brief.
 
-Known gaps (the reviewer's list is in `VALIDATION.md`): the colour script
-changes in a cut when moving on; snow is drawn on a side face even where
-another block sits on top; the opposite view is back-lit; no ambient
-occlusion; she is pale against snow and glass; the morning script is plain;
-the second camera's cost is not measured on a real device. Open with the owner: level names of
-one to three words (proposal sent 2026-11-09).
+Open with the owner: the brief's three questions; the colour script per
+stage; whether her image in the ice becomes where her sister shows; vistas
+between puzzles; level names (proposed 2026-11-09: Fresh Snow, Borrowed
+Ground, Still There, Just Enough, The Other Way, Side by Side).
 
-**On hold: the first scene.** The owner found the pond story place
-(`levels/00_pond.json`, `world/prologue.gd`, `docs/briefs/the-pond.md`) gives
-away too much story. Agreed direction: an empty, slow opening that explains
-nothing. Unanswered: where the sister's glimpse goes; whether the hand mirror
-is found. Do not build on the pond until the owner resumes it.
+**On hold: the first scene.** The pond story place (`levels/00_pond.json`,
+`world/prologue.gd`, `docs/briefs/the-pond.md`) gives away too much story.
+Agreed direction: an empty, slow opening that explains nothing. Do not build
+on the pond until the owner resumes it.
 
 ## What the game is
 
-A calm spatial puzzle. One bounded mirror panel copies the geometry inside its
-aperture into the column on the other side; the copy is real, walkable ground.
-Absolutes cannot be copied, moved or cut. Gravity points down. Only the lower
-boundary kills. One mirror at a time for now. `docs/VISION.md` sets the feel:
-loss and acceptance, "light after rain", about an hour in five chapters.
-`GAME_DESIGN.md` has the rules.
+A calm spatial puzzle: one mirror panel copies the geometry in its aperture
+to the other side, and the copy is real ground. `docs/VISION.md` sets the
+feel; `GAME_DESIGN.md` has the rules.
 
 ## The stages
 
@@ -100,7 +92,7 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
   0.8 u, Idle/Walk/Wake/Lift/Raise/Lower/Wave). Sources in
   `art_sources/girl/`. `assets/character/traveller.glb` is the old character,
   unused by gameplay.
-- `world/place_props.gd`: grey-box props; `world/prologue.gd`: the pond story.
+- `world/place_props.gd`: grey-box props; `world/prologue.gd`: the pond.
 - UI: `ui/style/` tokens, `ui/motion/motion.gd` verbs (press, appear,
   dismiss, settle, swing 0.6, reveal 0.8, breathe 1.6, transition 1.6). Use
   them; no raw tween timings.
@@ -116,32 +108,29 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
 - Release builds are a normal game: settings only, no dev tools.
 - Our own art first; CC0 kits for iteration and reference.
 
-## How to run and check (cloud container)
+## How to run and check
+
+On the Mac, see the appendix in `AGENTS.md`; use the local Godot 4.7.2 in
+place of `$G` and drop `xvfb-run -a`. In the cloud container:
 
 ```bash
 G=<scratchpad>/godot/Godot_v4.7.2-stable_linux.x86_64   # downloaded per session
 $G --headless --path . --editor --quit                  # import changed assets
 $G --headless --path . -s res://tests/<name>.gd         # most tests
 xvfb-run -a $G --path . --rendering-method mobile -s res://tests/tutorial_playthrough.gd
-xvfb-run -a $G --path . --rendering-method mobile --write-movie out.avi --fixed-fps 30 -s <script>.gd
+xvfb-run -a $G --path . --rendering-method mobile -s res://tests/capture_stage.gd -- --level 01_route --out /abs/dir --clean 1 --turns 1
 blender -b art_sources/girl/girl.blend --python art_sources/girl/export.py
 ```
 
-Movie Maker records 1152x800 with the game's audio; convert with
-`ffmpeg -c:v libx264 -pix_fmt yuv420p -crf 24 -vf scale=960:-2 -c:a aac`.
-
-Main tests: `run_tests` (≈690 checks), `level_solvability_tests`,
-`direct_controls_tests`, `prompt_tests`, `app_flow_tests`, `goal_tests`,
-`gameplay_art_tests`, `sound_tests`, `small_fix_tests`. Run only the one that
-covers a change. `VALIDATION.md` records what was checked.
+Tests are in `tests/`; `run_tests` is the main one (≈690 checks). Run only
+the one that covers a change. `VALIDATION.md` records what was checked.
 
 ## Traps
 
 - **The cloud container's software renderer can drop the sun.** With shadows
-  or fog on, a `StandardMaterial3D` in its default Burley diffuse mode gets no
-  directional light under llvmpipe. Lambert and Lambert-wrap work. Captures
-  made here before 2026-11-09 showed the stage without sunlight. Not checked
-  on a Mac. Use Lambert for new materials and check a capture for sun.
+  or fog on, default Burley diffuse gets no directional light under llvmpipe;
+  Lambert works. Cloud captures before 2026-11-09 had no sunlight. Not
+  checked on a Mac. Use Lambert for new materials.
 - **Headless frames run uncapped.** A test that waits for walking must count
   `physics_frame`, not `process_frame`.
 - **Godot's glTF import drops the first mesh part's vertex colours.** Put a
