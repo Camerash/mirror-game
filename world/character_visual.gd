@@ -34,7 +34,7 @@ const MAX_STEP := 0.1
 ## Her flat felt colours (sampled from the concept) are relit for the stage:
 ## matte, soft-wrapped shading, and a little of each colour given back as
 ## emission so it holds on the shadow side.
-const TONE_LIFT := 0.16
+const TONE_LIFT := 0.05
 const TONE_ROUGHNESS := 0.9
 const TONE_SPECULAR := 0.2
 const TONE_RIM := 0.25

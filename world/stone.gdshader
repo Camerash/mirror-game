@@ -20,7 +20,7 @@ uniform vec4 clip_plane = vec4(0.0);
 // The height of the ice below the place, and how far above it a stone still
 // shows in the ice.
 uniform float ice_height = -100.0;
-uniform float image_reach = 2.3;
+uniform float image_reach = 1.5;
 
 uniform vec3 stone : source_color = vec3(0.74, 0.69, 0.60);
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
@@ -31,10 +31,14 @@ uniform vec3 summer_glow : source_color = vec3(0.95, 0.85, 0.63);
 
 varying vec3 world_position;
 varying vec3 world_normal;
+// The box face a vertex of a shaped stone belongs to (`world/stone_mesh.gd`);
+// zero on a plain box and on a cut fragment.
+varying vec3 box_face;
 
 void vertex() {
 	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	box_face = (MODEL_MATRIX * vec4(CUSTOM0.xyz, 0.0)).xyz;
 }
 
 float hash(vec3 p) {
@@ -59,13 +63,17 @@ void fragment() {
 	}
 	vec3 source_position = (world_to_material * vec4(world_position, 1.0)).xyz;
 	mat3 world_to_source = mat3(world_to_material);
-	vec3 source_normal = normalize(world_to_source * world_normal);
+	// A shaped stone is painted by the box face it stands for, and lit by
+	// its own rounded surface.
+	bool shaped = dot(box_face, box_face) > 0.25;
+	vec3 true_normal = normalize(world_to_source * world_normal);
+	vec3 source_normal = shaped ? normalize(world_to_source * box_face) : true_normal;
 	vec3 half_source = max(source_size * 0.5, vec3(0.0001));
 	vec3 face = abs(source_normal);
 	vec3 source_plane_distance = abs(abs(source_position) - half_source);
 	float source_boundary = dot(source_plane_distance, face);
 	// A face the mirror cut, or the inside of a clipped block, shows bare stone.
-	bool cut_face = (polygon_surface && COLOR.g > 0.5) || source_boundary > 0.003 || !FRONT_FACING;
+	bool cut_face = (polygon_surface && COLOR.g > 0.5) || (!shaped && source_boundary > 0.003) || !FRONT_FACING;
 	bool top_face = source_normal.y > 0.72;
 	bool side_face = face.y < 0.72;
 	bool summer = kind == 1;
@@ -76,7 +84,7 @@ void fragment() {
 	vec3 base = (summer ? summer_stone : stone) * (0.93 + blotch * 0.12);
 	float roughness = 0.82;
 	float metallic = 0.0;
-	vec3 relief = source_normal;
+	vec3 relief = true_normal;
 	vec3 glow = vec3(0.0);
 	vec3 cover = summer ? moss * (0.82 + value_noise(place * 9.0) * 0.36) : snow;
 
@@ -111,6 +119,10 @@ void fragment() {
 		// The cover hangs over the edge in an uneven lip.
 		float along = face.x > face.z ? place.z : place.x;
 		float lip = 0.07 + 0.11 * value_noise(vec3(along * 2.3, 1.7, seed.y)) + 0.04 * value_noise(vec3(along * 7.0, 4.1, seed.y));
+		if (shaped) {
+			// The roll of the cover is real; only its drips are painted.
+			lip = 0.082 + 0.07 * value_noise(vec3(along * 3.1, 1.7, seed.y)) * value_noise(vec3(along * 9.0, 4.1, seed.y));
+		}
 		float covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
 		// Its shadow on the stone just under it.
 		float under = (1.0 - smoothstep(lip, lip + 0.11, below_top)) * (1.0 - covered);
@@ -147,11 +159,13 @@ void fragment() {
 		roughness = mix(roughness, summer ? 0.9 : 0.72, covered);
 		metallic *= 1.0 - covered;
 		// The lip is round: it turns up toward the sky.
-		relief = normalize(relief + vec3(0.0, 1.0, 0.0) * covered * (0.35 + 0.5 * (1.0 - below_top / max(lip, 0.001))));
+		if (!shaped) {
+			relief = normalize(relief + vec3(0.0, 1.0, 0.0) * covered * (0.35 + 0.5 * (1.0 - below_top / max(lip, 0.001))));
+		}
 	} else {
 		base *= 0.8;
 	}
-	if (!cut_face && !top_face) {
+	if (!cut_face && !top_face && !shaped) {
 		// Worn edges: the sides round into each other. Tops stay flat, so
 		// the cover runs unbroken over neighbouring blocks.
 		vec3 edge = max(abs(source_position) - (half_source - vec3(0.04)), vec3(0.0)) * (vec3(1.0) - face);

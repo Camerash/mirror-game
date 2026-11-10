@@ -1,9 +1,8 @@
 shader_type spatial;
 render_mode diffuse_lambert, cull_disabled;
-// One surface for the pond's scenery: reeds, twigs, rocks, posts and drifts.
+// One surface for the pond's scenery: reeds, twigs, rocks and posts.
 // COLOR.rgb is the bare colour, COLOR.a how readily snow lies on it, and
-// UV.y how far the wind moves it. UV.x runs from 0 at the heart of a drift to
-// 1 at its edge, where the snow thins to scattered grains.
+// UV.y how far the wind moves it.
 
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
 
@@ -27,11 +26,9 @@ void vertex() {
 
 void fragment() {
 	float grain = hash(floor(world_position * 14.0));
-	if (UV.x > 0.0 && smoothstep(0.25, 1.0, UV.x) > hash(floor(world_position * vec3(46.0, 1.0, 46.0))) * 0.96 + 0.02) {
-		discard;
-	}
 	float lies = smoothstep(0.30, 0.62, world_normal.y + (grain - 0.5) * 0.25) * COLOR.a;
-	ALBEDO = mix(COLOR.rgb * (0.88 + 0.24 * grain), snow, lies);
+	// Vertex colours arrive as written; bring them into the light's space.
+	ALBEDO = mix(pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.24 * grain), snow * 0.86, lies);
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.2;
 }

@@ -15,11 +15,11 @@ const BackdropShader := preload("res://assets/environment/backdrop.gdshader")
 ## ice holds, and `ice_snow` the blown snow that lies on the ice.
 const SCRIPTS := {
 	"morning": {
-		"sun": Color("ffe6c8"), "sun_energy": 2.0, "fill": Color("b4c8f0"), "fill_energy": 0.4,
-		"sky": Color("8fabdc"), "ground": Color("a9a7ad"), "ambient": 0.48,
-		"ice_far": Color("e9edf0"), "ice_mid": Color("9db0c6"), "ice_near": Color("4c627f"),
-		"glow": Color("ffd596"), "sun_from": Vector3(-0.17, 0.5, -0.98),
-		"shore": Color("3e4f66"), "ice_snow": Color("e3e9f2"), "shade": 0.3,
+		"sun": Color("ffe2bd"), "sun_energy": 2.1, "fill": Color("b4c8f0"), "fill_energy": 0.32,
+		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.27,
+		"ice_far": Color("f7dfbe"), "ice_mid": Color("3f6884"), "ice_near": Color("0d2233"),
+		"glow": Color("ffd08a"), "sun_from": Vector3(-0.17, 0.5, -0.98),
+		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.32,
 	},
 	"dusk": {
 		"sun": Color("ffc4a2"), "sun_energy": 2.1, "fill": Color("c4a8d8"), "fill_energy": 0.30,
@@ -62,13 +62,13 @@ func _ready() -> void:
 	environment.environment = settings
 	add_child(environment)
 	key.shadow_enabled = true
-	key.shadow_blur = 3.0
+	key.shadow_blur = 2.2
 	# The stage camera stands 40 units from the place; one shadow map covers
 	# the whole view.
 	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	key.directional_shadow_max_distance = 80.0
 	key.shadow_bias = 0.05
-	key.shadow_normal_bias = 1.0
+	key.shadow_normal_bias = 0.5
 	add_child(key)
 	# A weak cool light from behind the first view keeps the shaded faces in
 	# shape. It does not light the ice, which takes only the sun's shadow.

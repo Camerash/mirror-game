@@ -7,8 +7,8 @@ const DropShadowShader := preload("res://world/drop_shadow.gdshader")
 ## Gaps under a block smaller than this count as resting on the surface.
 const SHADOW_GAP := 0.05
 const UNREACHABLE := Color(0.82, 0.38, 0.3, 0.95)
-const HIDDEN_FILL := Color(0.5, 0.58, 0.68, 0.14)
-const HIDDEN_EDGE := Color(0.36, 0.44, 0.55, 0.8)
+const HIDDEN_FILL := Color(0.72, 0.80, 0.95, 0.08)
+const HIDDEN_EDGE := Color(0.80, 0.86, 1.0, 0.42)
 const HIDDEN_INSET := 0.985
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
@@ -251,9 +251,12 @@ func _apply_mesh(instance: MeshInstance3D, solid: Dictionary) -> void:
 		instance.position = Vector3.ZERO
 		return
 	var bounds: AABB = solid["bounds"]
-	var mesh := BoxMesh.new()
-	mesh.size = bounds.size
-	instance.mesh = mesh
+	if StoneMesh.fits(bounds.size):
+		instance.mesh = StoneMesh.of(bounds.size)
+	else:
+		var mesh := BoxMesh.new()
+		mesh.size = bounds.size
+		instance.mesh = mesh
 	instance.position = bounds.get_center()
 
 func _polygon_mesh(faces: Array, solid: Dictionary = {}) -> ArrayMesh:

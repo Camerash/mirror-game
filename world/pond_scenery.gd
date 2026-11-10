@@ -1,7 +1,7 @@
 class_name PondScenery
 extends MeshInstance3D
-## The pond round a place: reeds, bare shrubs, rocks, old posts and drifts of
-## snow that stand on the ice, outside the ground the puzzle can use. Built by
+## The pond round a place: reeds, bare shrubs, rocks and old posts that
+## stand in the ice, outside the ground the puzzle can use. Built by
 ## rule from the place's limits, the same every time for the same place.
 ##
 ## Things to look at, not to stand on: every piece is round, thin or low, none
@@ -18,10 +18,10 @@ const SPACING := 2.4
 const REED := Color(0.66, 0.50, 0.30, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
 const PLUME := Color(0.33, 0.23, 0.24, 0.0)
-const TWIG := Color(0.17, 0.12, 0.16, 1.0)
-const ROCK := Color(0.25, 0.24, 0.31, 1.0)
+const TWIG := Color(0.17, 0.12, 0.16, 0.7)
+const ROCK := Color(0.22, 0.21, 0.29, 0.55)
 const POST := Color(0.21, 0.16, 0.18, 1.0)
-const DRIFT := Color(0.74, 0.75, 0.84, 1.0)
+const CAP := Color(0.74, 0.75, 0.84, 1.0)
 
 var _tool := SurfaceTool.new()
 var _random := RandomNumberGenerator.new()
@@ -51,12 +51,12 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var pick := _random.randf()
 			# The scenery stands in loose groups, with open ice between them.
 			var group := sin(spot.x * 0.31 + float(_random.seed % 7)) * cos(spot.y * 0.27 + 1.3)
-			if keep_clear.has_point(spot) or group < 0.05 or pick > 0.62:
+			if keep_clear.has_point(spot) or group < 0.12 or pick > 0.56:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
-			if pick < 0.36:
+			if pick < 0.34:
 				_reeds(at)
-			elif pick < 0.50:
+			elif pick < 0.45:
 				_rocks(at)
 			else:
 				_shrub(at)
@@ -65,10 +65,9 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 	material.shader = SceneryShader
 	material_override = material
 
-## A stand of dry reeds in a low drift.
+## A stand of dry reeds.
 func _reeds(at: Vector3) -> void:
 	var spread := _random.randf_range(0.35, 0.8)
-	_drift(at, spread * 1.9, 0.06)
 	for index: int in _random.randi_range(24, 48):
 		var foot := at + Vector3(_random.randfn(0.0, spread * 0.45), 0.0, _random.randfn(0.0, spread * 0.45))
 		var height := _random.randf_range(0.45, 1.35)
@@ -87,7 +86,6 @@ func _reeds(at: Vector3) -> void:
 
 ## One to three round rocks, half in the ice, with snow on their backs.
 func _rocks(at: Vector3) -> void:
-	_drift(at, _random.randf_range(1.2, 1.8), 0.05)
 	for index: int in _random.randi_range(1, 3):
 		var size := _random.randf_range(0.28, 0.62)
 		var centre := at + Vector3(_random.randf_range(-0.6, 0.6), size * 0.18, _random.randf_range(-0.6, 0.6))
@@ -95,7 +93,6 @@ func _rocks(at: Vector3) -> void:
 
 ## A bare shrub: a short stem that forks and forks again.
 func _shrub(at: Vector3) -> void:
-	_drift(at, _random.randf_range(1.0, 1.5), 0.08)
 	for stem: int in _random.randi_range(2, 4):
 		var lean := Vector3(_random.randf_range(-0.35, 0.35), 1.0, _random.randf_range(-0.35, 0.35)).normalized()
 		_branch(at + Vector3(_random.randf_range(-0.12, 0.12), 0.0, _random.randf_range(-0.12, 0.12)), lean, _random.randf_range(0.32, 0.5), 0.028, 4)
@@ -121,8 +118,7 @@ func _posts(from: Vector3, heading: Vector2) -> void:
 		var top := at + Vector3(_random.randf_range(-0.07, 0.07), height, _random.randf_range(-0.07, 0.07))
 		var radius := _random.randf_range(0.085, 0.12)
 		_prism(at - Vector3.UP * 0.05, top, radius, radius * 0.9, 7, POST, 0.0, 0.0)
-		_blob(top + Vector3.UP * 0.01, Vector3(radius * 1.25, radius * 0.75, radius * 1.25), DRIFT)
-		_drift(at, _random.randf_range(0.5, 0.8), 0.04)
+		_blob(top + Vector3.UP * 0.01, Vector3(radius * 1.25, radius * 0.75, radius * 1.25), CAP)
 
 ## A thin ribbon from `from` to `to`, crossed so it shows from every side.
 func _blade(from: Vector3, to: Vector3, width_from: float, width_to: float, color_from: Color, color_to: Color, sway_from: float, sway_to: float) -> void:
@@ -177,32 +173,4 @@ func _blob(centre: Vector3, radii: Vector3, color: Color) -> void:
 				_tool.set_normal(quad[corner][1])
 				_tool.set_color(color)
 				_tool.set_uv(Vector2.ZERO)
-				_tool.add_vertex(quad[corner][0])
-
-## A low drift of snow on the ice, with an uneven edge.
-func _drift(at: Vector3, radius: float, height: float) -> void:
-	var rings := 4
-	var segments := 20
-	var edge: Array[float] = []
-	var wobble := _random.randf() * TAU
-	for index: int in segments:
-		var turn := TAU * float(index) / segments
-		edge.append(1.0 + 0.16 * sin(turn * 2.0 + wobble) + 0.09 * sin(turn * 3.0 - wobble * 2.0))
-	var stretch := Vector3(_random.randf_range(1.0, 1.7), 1.0, 1.0)
-	var turn_by := _random.randf() * TAU
-	var point := func(ring: int, segment: int) -> Array:
-		var reach := float(ring) / rings
-		var turn := TAU * float(segment % segments) / segments
-		var out := Vector3(cos(turn), 0.0, sin(turn))
-		var rise := height * pow(1.0 - reach * reach, 2.0)
-		var slope := 4.0 * height * reach * (1.0 - reach * reach) / radius
-		var flat := (out * reach * radius * edge[segment % segments] * stretch).rotated(Vector3.UP, turn_by)
-		return [at + flat + Vector3.UP * (rise + 0.004), (Vector3.UP + out.rotated(Vector3.UP, turn_by) * slope).normalized(), reach]
-	for ring: int in rings:
-		for segment: int in segments:
-			var quad := [point.call(ring, segment), point.call(ring, segment + 1), point.call(ring + 1, segment + 1), point.call(ring + 1, segment)]
-			for corner: int in [0, 2, 1, 0, 3, 2]:
-				_tool.set_normal(quad[corner][1])
-				_tool.set_color(DRIFT)
-				_tool.set_uv(Vector2(maxf(quad[corner][2], 0.001), 0.0))
 				_tool.add_vertex(quad[corner][0])

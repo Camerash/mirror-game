@@ -18,7 +18,7 @@ uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
 uniform vec3 shore_color : source_color = vec3(0.16, 0.14, 0.28);
 uniform vec3 snow_color : source_color = vec3(0.81, 0.76, 0.90);
-uniform float mirror = 0.62;
+uniform float mirror = 0.44;
 // How much the sun's shadow darkens the ice.
 uniform float shade = 0.4;
 // Each pool: the light's place in the world (xyz) and its strength (w).
@@ -135,16 +135,16 @@ void fragment() {
 	float cloud = smoothstep(0.42, 0.78, fbm(cloud_at + vec2(fbm(cloud_at * 1.7 + 4.0), fbm(cloud_at * 1.7 + 9.0)) * 0.9));
 	colour = mix(colour, mix(far_color, vec3(1.0), 0.25), cloud * mix(0.20, 0.03, smoothstep(0.0, 0.5, depth)));
 
-	// The far trees, mirrored: a dark bank at the far edge and bare trunks
-	// that reach toward the viewer. The image wavers a little.
+	// The far trees, mirrored: bare trunks that reach from the far edge
+	// toward the viewer. The image wavers a little.
 	float waver = sin(depth * 40.0 + ice_time * 0.8) * 0.003 * (0.4 + depth * 4.0);
 	float along = (view_bearing + bearing + waver) * 7.0;
-	float bank = 0.10 * smoothstep(0.30, 0.75, fbm(vec2(along * 0.45, 2.0)));
-	float shore = 1.0 - smoothstep(bank * 0.5, bank, depth);
-	shore = max(shore, trees(along, depth, 0.30, 0.10) * 0.85);
+	float shore = trees(along, depth, 0.30, 0.10) * 0.85;
 	shore = max(shore, trees(along * 2.7 + 13.0, depth, 0.22, 0.13) * 0.6);
 	shore = max(shore, trees(along * 6.1 + 31.0, depth, 0.15, 0.2) * 0.4);
 	shore *= 1.0 - smoothstep(0.04, 0.34, depth) * 0.55;
+	// No bank: the trees hang from beyond the view, so the ice has no horizon.
+	shore *= 0.55 + 0.45 * smoothstep(0.0, 0.05, depth);
 
 	// The low sun, held in the far ice, behind the trees.
 	float off_sun = bearing - sun_bearing;
@@ -165,9 +165,9 @@ void fragment() {
 	// thinning with height. The image arrives already darkened by height; its
 	// brightness says how much of the ice it covers.
 	vec2 at = vec2(SCREEN_UV.x, 1.0 - SCREEN_UV.y);
-	at.x += sin(depth * 170.0 + ice_time * 1.3) * 0.0010 + sin(depth * 63.0 - ice_time * 0.7) * 0.0014;
-	vec2 step_x = vec2(0.0022, 0.0);
-	vec2 step_y = vec2(0.0, 0.0040);
+	at.x += sin(depth * 170.0 + ice_time * 1.3) * 0.0016 + sin(depth * 63.0 - ice_time * 0.7) * 0.0026;
+	vec2 step_x = vec2(0.0034, 0.0);
+	vec2 step_y = vec2(0.0, 0.0062);
 	vec3 image = texture(reflection, at).rgb * 0.24
 		+ (texture(reflection, at + step_x).rgb + texture(reflection, at - step_x).rgb) * 0.10
 		+ (texture(reflection, at + step_y).rgb + texture(reflection, at - step_y).rgb) * 0.14
@@ -190,11 +190,11 @@ void fragment() {
 	// The snow that lies on the ice hides what the ice holds.
 	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));
 	lying += sun_color * halo * 0.25;
-	colour = mix(colour, lying, (snow * 0.30 + veil * (1.0 - snow) * 0.4) * mix(1.0, 0.6, depth));
+	colour = mix(colour, lying, (snow * 0.13 + veil * (1.0 - snow) * 0.30) * mix(1.0, 0.6, depth));
 
 	// Warm light from each summer copy, pooled on the ice below it. A copy
 	// high above the ice lights it wider and much fainter. The light breathes.
-	float breath = 0.94 + 0.06 * sin(ice_time * 1.3);
+	float breath = 0.90 + 0.10 * sin(ice_time * 1.3) * sin(ice_time * 0.37 + 1.0);
 	for (int index = 0; index < pool_count; index++) {
 		float lift = max(pools[index].y - world_position.y, 0.0);
 		float reach = 2.0 + lift * 0.4;
