@@ -15,13 +15,12 @@ const CLEAR := 1.7
 const REACH := 9.0
 const SPACING := 2.4
 
-const REED := Color(0.66, 0.50, 0.30, 0.0)
+const REED := Color(0.50, 0.43, 0.36, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
-const PLUME := Color(0.33, 0.23, 0.24, 0.0)
+const PLUME := Color(0.30, 0.24, 0.27, 0.0)
 const TWIG := Color(0.17, 0.12, 0.16, 0.7)
-const ROCK := Color(0.36, 0.34, 0.42, 0.25)
-const POST := Color(0.21, 0.16, 0.18, 1.0)
-const CAP := Color(0.74, 0.75, 0.84, 1.0)
+const ROCK := Color(0.33, 0.32, 0.41, 0.0)
+const POST := Color(0.21, 0.16, 0.18, 0.0)
 
 var _tool := SurfaceTool.new()
 var _random := RandomNumberGenerator.new()
@@ -107,7 +106,7 @@ func _branch(from: Vector3, heading: Vector3, length: float, radius: float, dept
 		var turn := Vector3(_random.randf_range(-0.8, 0.8), _random.randf_range(0.15, 0.6), _random.randf_range(-0.8, 0.8))
 		_branch(to, (heading * 0.9 + turn).normalized(), length * _random.randf_range(0.62, 0.85), radius * 0.72, depth - 1)
 
-## A broken row of posts from an old jetty, each under a cap of snow.
+## A broken row of leaning posts from an old jetty.
 func _posts(from: Vector3, heading: Vector2) -> void:
 	var at := from
 	for index: int in 6:
@@ -115,10 +114,11 @@ func _posts(from: Vector3, heading: Vector2) -> void:
 		if _random.randf() < 0.22:
 			continue
 		var height := _random.randf_range(0.45, 0.95)
-		var top := at + Vector3(_random.randf_range(-0.07, 0.07), height, _random.randf_range(-0.07, 0.07))
+		var top := at + Vector3(_random.randf_range(-0.14, 0.14), height, _random.randf_range(-0.14, 0.14))
 		var radius := _random.randf_range(0.085, 0.12)
-		_prism(at - Vector3.UP * 0.05, top, radius, radius * 0.9, 7, POST, 0.0, 0.0)
-		_blob(top + Vector3.UP * 0.01, Vector3(radius * 1.25, radius * 0.75, radius * 1.25), CAP)
+		# Each post is worn to a blunt point, so its top is not a place to stand.
+		_prism(at - Vector3.UP * 0.05, top, radius, radius * 0.8, 7, POST, 0.0, 0.0)
+		_prism(top, top + (top - at).normalized() * radius * 1.4, radius * 0.8, 0.01, 7, POST, 0.0, 0.0)
 
 ## A thin ribbon from `from` to `to`, crossed so it shows from every side.
 func _blade(from: Vector3, to: Vector3, width_from: float, width_to: float, color_from: Color, color_to: Color, sway_from: float, sway_to: float) -> void:

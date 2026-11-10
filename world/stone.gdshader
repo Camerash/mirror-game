@@ -169,10 +169,13 @@ void fragment() {
 			covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
 		}
 		// Its shadow on the stone just under it.
-		float under = (1.0 - smoothstep(lip, lip + 0.11, below_top)) * (1.0 - covered);
+		float under = (1.0 - smoothstep(lip, lip + 0.22, below_top)) * (1.0 - covered);
 		// Old stone is darker and damp toward its foot.
 		float foot = smoothstep(0.15, 1.1, below_top);
-		base *= 0.90 - foot * 0.22;
+		base *= 0.92 - foot * 0.34;
+		// Damp stains spread up from the foot and down from the cover.
+		float stain = value_noise(vec3(along * 2.2, below_top * 1.1, seed.y + 3.0));
+		base *= 1.0 - smoothstep(0.45, 0.8, stain) * 0.22;
 		// Weather runs down it in streaks; it is pitted, and lichen has
 		// taken hold in pale patches.
 		float run = value_noise(vec3(along * 8.0, below_top * 0.8, seed.y + 7.0));
@@ -205,7 +208,8 @@ void fragment() {
 			float streak = value_noise(vec3(along * 11.0, below_top * 2.0, 2.3));
 			vec3 bronze = mix(patina, patina * 1.35 + vec3(0.02, 0.05, 0.04), streak * 0.6);
 			float rim = smoothstep(0.014, 0.0, abs(below_top - 0.355)) + smoothstep(0.014, 0.0, abs(below_top - 0.495));
-			base = mix(base, bronze * (1.0 - rim * 0.35), band);
+			float rivet = 1.0 - smoothstep(0.012, 0.022, length(vec2(fract(along * 4.0) - 0.5, (below_top - 0.425) * 4.0)));
+			base = mix(base, bronze * (1.0 - rim * 0.35) + vec3(0.20, 0.26, 0.20) * rivet + vec3(0.10, 0.14, 0.11) * smoothstep(0.38, 0.35, below_top), band);
 			roughness = mix(roughness, 0.48, band);
 			metallic = band * 0.35;
 			// Verdigris has run down the stone under the band.
@@ -214,7 +218,7 @@ void fragment() {
 			// The stone under the band is in its shadow.
 			base *= 1.0 - (1.0 - smoothstep(0.51, 0.58, below_top)) * step(0.51, below_top) * 0.22;
 		}
-		base *= 1.0 - under * (summer ? 0.20 : 0.26);
+		base *= 1.0 - under * (summer ? 0.26 : 0.40);
 		base = mix(base, cover, covered);
 		roughness = mix(roughness, summer ? 0.9 : 0.72, covered);
 		metallic *= 1.0 - covered;
@@ -237,7 +241,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.60, 0.24) * 0.8, vec3(0.86, 0.40, 0.18) * 0.36, rim) * (base / max(summer_stone, vec3(0.01)));
+		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.60, 0.24) * 1.0, vec3(0.86, 0.40, 0.18) * 0.4, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	if (!FRONT_FACING) {
 		relief = -relief;
