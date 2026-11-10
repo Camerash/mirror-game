@@ -18,7 +18,9 @@ camera, and are not built yet.
 **Earlier target:** `docs/art/target/place-to-stand-v4.jpg` still stands for
 the block's materials (stone, snow, patina band, summer copy). Its sky and
 pillars are replaced by the ice. `look-port-2026-11-09.jpg` is the first
-in-game pass; `ice-dusk-2026-11-10.jpg` is the first frame with the ice.
+in-game pass; `ice-dusk-2026-11-10.jpg` is the first frame with the ice;
+`polish-loop-2026-11-10.jpg` is the frame after the polish loop, not yet
+approved by the owner.
 
 ## The bar
 
@@ -41,9 +43,11 @@ in-game pass; `ice-dusk-2026-11-10.jpg` is the first frame with the ice.
 
 ## The place
 
-A garden pond in deep winter, seen from its far side. Gameplay blocks are
-old garden stones standing over the ice, edges softly rounded, snow on every
-top that hangs over the edge. Absolutes (the ground that stays) carry a dark
+A garden pond in deep winter, seen from its far side, at an hour when the
+low sun comes through the far trees. Gameplay blocks are old garden stones
+that stand on the ice, each on a plinth, edges worn round, snow on every
+top that rolls over the edge. Reeds and bare shrubs stand in the ice
+outside the ground the puzzle can use. Absolutes (the ground that stays) carry a dark
 bronze-green band. A mirror copy is the same shape in summer: warm stone,
 moss, small flowers, a soft glow. The mirror is a thin frosted pane in a
 slim brass frame. The owner wants the block itself redesigned to fit the
@@ -59,6 +63,8 @@ story; it need not stay a cube.
 | gold (goal ring) | `#C99A4A` |
 | moss, summer | `#667538` |
 | summer glow | `#F3D9A0` |
+| reed | `#806E5C` |
+| twig | `#2B1F29` |
 
 Sun, sky and ice colours belong to each colour script.
 
@@ -70,5 +76,8 @@ Sun, sky and ice colours belong to each colour script.
 - Every piece is mirrorable: no text, no handed details that look wrong
   flipped.
 - Every piece must read in every colour script and from all four views.
-- New materials use Lambert diffuse (see the trap in `HANDOFF.md`).
+- The scenery stays behind the stones in value: it takes on the colour of
+  the air (`haze` in the colour script). Nothing in it has a flat top.
+- Lambert diffuse is needed only for captures in the cloud container (see
+  the trap in `HANDOFF.md`).
 - AI 3D results are drafts: remesh, then repaint in this palette.

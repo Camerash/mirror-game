@@ -5,44 +5,50 @@ the old traveller is in `docs/art/traveller-handoff.md`.
 
 ## Now: art and scene quality (owner, 2026-11-10)
 
-**The work moves to the owner's Mac from here.** The branch is
-`claude/funny-dirac-7dv0hf`; everything is pushed. Start with
-`docs/briefs/polish-loop.md`: the next job, its limits, the first checks on
-the Mac and three questions the owner has not answered yet. Then read
-`docs/art/STYLE.md`. "A place to stand" (`01_route`) is the first quality
-target; art is judged on real frames from the game's camera.
+The polish loop (`docs/briefs/polish-loop.md`) ran on the owner's Mac on
+2026-11-10: eleven rounds, each judged by an independent reviewer. The last
+frame is `docs/art/target/polish-loop-2026-11-10.jpg`. **The owner has not
+approved it.** The reviewers moved it from 3/10 to 5/10 against the feel
+reference (readability 6/10 to 7/10): the brief's goal is not reached.
+Branch `claude/funny-dirac-7dv0hf`; everything is pushed.
 
-Not carried over from the cloud session: the image and 3D keys
-(`GEMINI_API_KEY`, `TRIPO_API_KEY`, `MESHY_API_KEY`) must be set in the
-Mac's environment; raw captures and reference contact sheets were scratch
-files and are gone. The references are linked in the brief.
+In the game now (`docs/art/STYLE.md` has the look; file names are in "The
+code, briefly"): the sun stands ahead of the first view; the ice is the
+whole backdrop, painted in `ice.gdshader`, and the lowest ground of a place
+stands on it (`ICE_CLEAR`); a whole block is a worn stone on a plinth under
+a cover that rolls over the edge, top flat and on the grid (a block cut at
+an angle keeps the old plain shape); reeds and bare shrubs stand outside the
+mirror's limits (none in a place with a `story`); snow falls in three
+depths; the stone shader paints a shade under the girl from the global
+shader value `walker_at` (`project.godot`, `walker.gd`). Each colour script
+in `SCRIPTS` names its sun, sky, ice, haze and shade; only `01_route` is
+dusk. Captures: `tests/capture_stage.gd` (`--turns`, `--motion`, `--nudge`).
 
-In the game now:
+Changed by the loop, for the owner to confirm or reverse:
 
-- **The look** (`world/trial_lighting.gd`, `world/stone.gdshader`): a low
-  sun, a filmic tonemap, and one block surface drawn by rule: stone, snow
-  with a lip, a patina band on absolutes, summer on a copy.
-- **The ice** (`world/ice.gd`, `ice.gdshader`): the pond's ice 0.35 under a
-  place's lowest ground, and the whole backdrop. A second camera, the stage
-  camera mirrored through the ice, draws only the stones at half size
-  (render layer 11); `stone.gdshader` darkens that image with height.
-  `world/snowfall.gd` is the snow; `world_view` keeps a warm light in each
-  copy, which also pools on the ice.
-- **Colour scripts**: `SCRIPTS` in `world/trial_lighting.gd` (`morning`,
-  `dusk`); a level names one with `"light"`. Only `01_route` is dusk.
-- **Captures**: `tests/capture_stage.gd`.
+- **The hidden-ground ghost is drawn clear.** Every visible strength of it
+  read as a glass block to stand on. `HIDDEN_FILL` and `HIDDEN_EDGE` in
+  `world/world_view.gd` bring the cue back.
+- The mirror's guide lines and side bands are much fainter.
+- The pond and the first scene were not edited, but they share the light,
+  the ice and the stone shape, so they look different. Nobody has looked.
 
-Decided by the owner: blocks are dressed by rule from the level file; the
-block may be redesigned to fit the story; our own art first, drawn by code.
+Open from the last review, worst first: the stones read as parcels (flat
+sides, the band like tape); the frame is empty between the copy and the
+ring; the reeds are the sharpest marks; the far band reads as a sky; the
+girl is small and pale on snow; "Together" hides its copy from one view.
+Other gaps: the colour script cuts when moving on; the scenery appears at
+once with a new place; the title screen was not checked.
 
-Known gaps: the colour script cuts when moving on; snow is drawn on a side
-face under a stacked block; the opposite view is back-lit; the second
-camera's cost is unmeasured. The reviewer's list is in the brief.
+Frame time on the Mac (M2 Pro, unpresented draws): 2.2 ms at 1152x800 and
+5.2 ms at 2532x1170, from 1.0 and 1.9 before the loop; the ice shader is
+most of it. **No phone has run this.** The shadow map is now 4096 wide.
 
-Open with the owner: the brief's three questions; the colour script per
-stage; whether her image in the ice becomes where her sister shows; vistas
-between puzzles; level names (proposed 2026-11-09: Fresh Snow, Borrowed
-Ground, Still There, Just Enough, The Other Way, Side by Side).
+Open with the owner: approval of the frame; the ghost cue; the colour
+script per stage; whether her image in the ice becomes where her sister
+shows; vistas between puzzles; level names (proposed 2026-11-09: Fresh
+Snow, Borrowed Ground, Still There, Just Enough, The Other Way, Side by
+Side).
 
 **On hold: the first scene.** The pond story place (`levels/00_pond.json`,
 `world/prologue.gd`, `docs/briefs/the-pond.md`) gives away too much story.
@@ -86,8 +92,10 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
   button raises and lowers; a drag on the mirror slides it; a drag on its
   arrow points it; Undo takes it back. `GAME_DESIGN.md` has the rules.
 - `world/world_view.gd` draws one mesh per solid; `world/block_set.gd` sets
-  the kind on `world/stone.gdshader`; `world/trial_lighting.gd` is the light
-  and the colour scripts; `world/ice.gd` is the ice and its mirror image.
+  the kind on `world/stone.gdshader`; `world/stone_mesh.gd` is a whole
+  stone's shape; `world/trial_lighting.gd` is the light and the colour
+  scripts; `world/ice.gd` is the ice and its mirror image;
+  `world/pond_scenery.gd` is the reeds and shrubs round a place.
 - `world/character_visual.gd` plays the girl (`assets/character/girl.glb`,
   0.8 u, Idle/Walk/Wake/Lift/Raise/Lower/Wave). Sources in
   `art_sources/girl/`. `assets/character/traveller.glb` is the old character,
@@ -110,8 +118,9 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
 
 ## How to run and check
 
-On the Mac, see the appendix in `AGENTS.md`; use the local Godot 4.7.2 in
-place of `$G` and drop `xvfb-run -a`. In the cloud container:
+On the Mac, see the appendix in `AGENTS.md`; use
+`/Applications/Godot.app/Contents/MacOS/godot` in place of `$G` and drop
+`xvfb-run -a`. In the cloud container:
 
 ```bash
 G=<scratchpad>/godot/Godot_v4.7.2-stable_linux.x86_64   # downloaded per session
@@ -129,8 +138,13 @@ the one that covers a change. `VALIDATION.md` records what was checked.
 
 - **The cloud container's software renderer can drop the sun.** With shadows
   or fog on, default Burley diffuse gets no directional light under llvmpipe;
-  Lambert works. Cloud captures before 2026-11-09 had no sunlight. Not
-  checked on a Mac. Use Lambert for new materials.
+  Lambert works. Metal on the Mac is fine with both (checked 2026-11-10), so
+  this matters only for cloud captures.
+- **Vertex colours reach a shader as written**, not converted like a
+  `source_color`. `scenery.gdshader` converts them itself.
+- **The first capture after a script change can miss the mirror's raise.**
+- **The low sun gives a small thing almost no shadow.** A transparent quad
+  under the girl did not draw (cause unknown); her shade is painted instead.
 - **Headless frames run uncapped.** A test that waits for walking must count
   `physics_frame`, not `process_frame`.
 - **Godot's glTF import drops the first mesh part's vertex colours.** Put a

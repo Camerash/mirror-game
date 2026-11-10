@@ -1,7 +1,10 @@
 # Brief: the polish loop on "A place to stand"
 
-Status: proposed to the owner on 2026-11-10, to be run on the owner's Mac.
-The owner has not yet answered the three questions at the end.
+Status: run on the owner's Mac on 2026-11-10, eleven rounds. The result and
+what is still open are in `HANDOFF.md` and `VALIDATION.md`. The owner's
+answers to the three questions: run it now; stones may be reshaped while
+walkable edges stay on the grid and the tests pass; stay on the Mobile
+renderer.
 
 ## Why
 
