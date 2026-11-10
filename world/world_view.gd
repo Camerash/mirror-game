@@ -7,8 +7,8 @@ const DropShadowShader := preload("res://world/drop_shadow.gdshader")
 ## Gaps under a block smaller than this count as resting on the surface.
 const SHADOW_GAP := 0.05
 const UNREACHABLE := Color(0.82, 0.38, 0.3, 0.95)
-const HIDDEN_FILL := Color(0.72, 0.82, 1.0, 0.06)
-const HIDDEN_EDGE := Color(0.82, 0.90, 1.0, 0.09)
+const HIDDEN_FILL := Color(0.72, 0.82, 1.0, 0.045)
+const HIDDEN_EDGE := Color(0.82, 0.90, 1.0, 0.035)
 const HIDDEN_INSET := 0.985
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()

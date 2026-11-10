@@ -112,11 +112,11 @@ float trees(float along, float depth, float reach, float thin) {
 // A lily pad from the summer, frozen in where it lay: how much of the ice it
 // covers (x) and its frosted rim (y). The pads lie in loose groups.
 vec2 pad(vec2 plain) {
-	float group = smoothstep(0.60, 0.80, noise(plain * 0.16 + 20.0));
+	float group = smoothstep(0.70, 0.84, noise(plain * 0.21 + 20.0));
 	vec2 grid = plain / 1.25;
 	vec2 cell = floor(grid);
 	float pick = hash(cell + 1.3);
-	if (pick > group * 0.7) {
+	if (pick > group * 0.55) {
 		return vec2(0.0);
 	}
 	vec2 from = (fract(grid) - 0.5 - (hash2(cell + 4.0) - 0.5) * 0.35) * 1.25;
@@ -179,7 +179,7 @@ void fragment() {
 
 	// The far trees, mirrored: bare trunks that reach from the far edge
 	// toward the viewer. The image wavers a little.
-	float waver = sin(depth * 40.0 + ice_time * 0.8) * 0.003 * (0.4 + depth * 4.0);
+	float waver = sin(depth * 40.0 + ice_time * 1.1) * 0.0035 * (0.4 + depth * 4.0) + sin(depth * 13.0 - ice_time * 0.6) * 0.002;
 	float along = (view_bearing + bearing + waver) * 7.0;
 	float shore = trees(along, depth, 0.30, 0.10) * 0.85;
 	shore = max(shore, trees(along * 2.7 + 13.0, depth, 0.22, 0.13) * 0.6);
@@ -248,7 +248,7 @@ void fragment() {
 
 	// Warm light from each summer copy, pooled on the ice below it. The light
 	// of a copy high above the ice does not reach it. The light breathes.
-	float breath = 0.90 + 0.10 * sin(ice_time * 1.3) * sin(ice_time * 0.37 + 1.0);
+	float breath = 0.86 + 0.14 * sin(ice_time * 2.1) * (0.6 + 0.4 * sin(ice_time * 0.53 + 1.0));
 	for (int index = 0; index < pool_count; index++) {
 		float lift = max(pools[index].y - world_position.y, 0.0);
 		float reach = 2.0 + lift * 0.4;

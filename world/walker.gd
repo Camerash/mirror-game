@@ -42,6 +42,11 @@ func _ready() -> void:
 		character_visual = CharacterVisual.new()
 		add_child(character_visual)
 
+func _process(_delta: float) -> void:
+	if build_visuals:
+		# The ground under her paints her shade (`world/stone.gdshader`).
+		RenderingServer.global_shader_parameter_set(&"walker_at", global_position)
+
 func _physics_process(delta: float) -> void:
 	if paused:
 		if character_visual != null:

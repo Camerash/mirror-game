@@ -19,7 +19,7 @@ const REED := Color(0.66, 0.50, 0.30, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
 const PLUME := Color(0.33, 0.23, 0.24, 0.0)
 const TWIG := Color(0.17, 0.12, 0.16, 0.7)
-const ROCK := Color(0.20, 0.19, 0.27, 0.15)
+const ROCK := Color(0.36, 0.34, 0.42, 0.25)
 const POST := Color(0.21, 0.16, 0.18, 1.0)
 const CAP := Color(0.74, 0.75, 0.84, 1.0)
 
@@ -54,9 +54,9 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			if keep_clear.has_point(spot) or group < 0.0 or pick > 0.72:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
-			if pick < 0.46:
+			if pick < 0.48:
 				_reeds(at)
-			elif pick < 0.57:
+			elif pick < 0.54:
 				_rocks(at)
 			else:
 				_shrub(at)
@@ -68,17 +68,17 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 ## A stand of dry reeds.
 func _reeds(at: Vector3) -> void:
 	var spread := _random.randf_range(0.35, 0.8)
-	for index: int in _random.randi_range(24, 48):
+	for index: int in _random.randi_range(12, 24):
 		var foot := at + Vector3(_random.randfn(0.0, spread * 0.45), 0.0, _random.randfn(0.0, spread * 0.45))
 		var height := _random.randf_range(0.45, 1.35)
 		var lean := Vector3(_random.randf_range(-0.22, 0.22), 1.0, _random.randf_range(-0.22, 0.22)).normalized()
 		var knee := foot + lean * height * 0.55
 		var tip := knee + (lean + Vector3(_random.randf_range(-0.2, 0.2), 0.0, _random.randf_range(-0.2, 0.2))).normalized() * height * 0.45
-		_blade(foot, knee, 0.028, 0.022, REED_FOOT, REED.lerp(REED_FOOT, 0.4), 0.0, 0.45)
-		_blade(knee, tip, 0.022, 0.012, REED.lerp(REED_FOOT, 0.4), REED, 0.45, 1.0)
+		_blade(foot, knee, 0.05, 0.04, REED_FOOT, REED.lerp(REED_FOOT, 0.4), 0.0, 0.45)
+		_blade(knee, tip, 0.04, 0.02, REED.lerp(REED_FOOT, 0.4), REED, 0.45, 1.0)
 		if _random.randf() < 0.5:
 			var droop := (lean + Vector3(_random.randf_range(-0.5, 0.5), 0.0, _random.randf_range(-0.5, 0.5))).normalized()
-			_blade(tip, tip + droop * _random.randf_range(0.10, 0.18), 0.034, 0.006, PLUME, PLUME, 1.0, 1.2)
+			_blade(tip, tip + droop * _random.randf_range(0.12, 0.2), 0.045, 0.01, PLUME, PLUME, 1.0, 1.2)
 		# A dry leaf hangs from the knee of some.
 		if _random.randf() < 0.45:
 			var hang := Vector3(_random.randf_range(-1.0, 1.0), -0.25, _random.randf_range(-1.0, 1.0)).normalized()
@@ -87,7 +87,7 @@ func _reeds(at: Vector3) -> void:
 ## One to three round rocks, half in the ice, with snow on their backs.
 func _rocks(at: Vector3) -> void:
 	for index: int in _random.randi_range(1, 3):
-		var size := _random.randf_range(0.28, 0.62)
+		var size := _random.randf_range(0.22, 0.42)
 		var centre := at + Vector3(_random.randf_range(-0.6, 0.6), size * 0.3, _random.randf_range(-0.6, 0.6))
 		_blob(centre, Vector3(size * _random.randf_range(0.7, 1.0), size * _random.randf_range(1.0, 1.4), size * _random.randf_range(0.7, 1.0)), ROCK)
 
@@ -95,7 +95,7 @@ func _rocks(at: Vector3) -> void:
 func _shrub(at: Vector3) -> void:
 	for stem: int in _random.randi_range(2, 4):
 		var lean := Vector3(_random.randf_range(-0.35, 0.35), 1.0, _random.randf_range(-0.35, 0.35)).normalized()
-		_branch(at + Vector3(_random.randf_range(-0.12, 0.12), 0.0, _random.randf_range(-0.12, 0.12)), lean, _random.randf_range(0.32, 0.5), 0.028, 4)
+		_branch(at + Vector3(_random.randf_range(-0.12, 0.12), 0.0, _random.randf_range(-0.12, 0.12)), lean, _random.randf_range(0.36, 0.55), 0.045, 3)
 
 func _branch(from: Vector3, heading: Vector3, length: float, radius: float, depth: int) -> void:
 	var to := from + heading * length

@@ -21,6 +21,10 @@ uniform vec4 clip_plane = vec4(0.0);
 // shows in the ice.
 uniform float ice_height = -100.0;
 uniform float image_reach = 1.15;
+// Where the girl stands. The ground under her carries a soft shade, drawn
+// out the way the sun's shadows fall: her own shadow is too fine for the
+// sun's shadow map, and she must not be lost on the snow.
+global uniform vec3 walker_at;
 
 uniform vec3 stone : source_color = vec3(0.74, 0.69, 0.60);
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
@@ -73,7 +77,7 @@ void vertex() {
 		bool x_face = abs(face_here.x) > 0.5;
 		vec2 on_face = vec2(x_face ? at.z + half_source.z : at.x + half_source.x, half_source.y - at.y);
 		vec2 face_size = vec2(x_face ? source_size.z : source_size.x, source_size.y);
-		float under_cover = smoothstep(0.10, 0.16, on_face.y);
+		float under_cover = smoothstep(0.10, 0.16, on_face.y) * smoothstep(0.17, 0.24, source_size.y - on_face.y);
 		VERTEX += face_here * dressing(on_face, face_size, at + seed) * under_cover * 0.05;
 		// The cover hangs unevenly: its roll is deeper in places.
 		float roll = 1.0 - smoothstep(0.02, 0.105, on_face.y);
@@ -145,6 +149,10 @@ void fragment() {
 			float drift_z = value_noise(vec3(place.x, 0.0, place.z + e) * 2.6) - value_noise(vec3(place.x, 0.0, place.z - e) * 2.6);
 			relief = normalize(relief - vec3(drift_x, 0.0, drift_z) * 0.7);
 		}
+		vec2 from_her = world_position.xz - walker_at.xz;
+		vec2 drawn_out = from_her - vec2(0.03, 0.15);
+		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 20.0 + drawn_out.y * drawn_out.y * 7.0)), exp(-dot(from_her, from_her) * 45.0)) * step(abs(world_position.y - walker_at.y), 0.2);
+		base = mix(base, base * vec3(0.30, 0.29, 0.52), her_shade * 0.92);
 	} else if (side_face) {
 		// The cover hangs over the edge in an uneven lip.
 		float along = face.x > face.z ? place.z : place.x;
@@ -164,7 +172,7 @@ void fragment() {
 		float under = (1.0 - smoothstep(lip, lip + 0.11, below_top)) * (1.0 - covered);
 		// Old stone is darker and damp toward its foot.
 		float foot = smoothstep(0.15, 1.1, below_top);
-		base *= 1.0 - foot * 0.24;
+		base *= 0.90 - foot * 0.22;
 		// Weather runs down it in streaks; it is pitted, and lichen has
 		// taken hold in pale patches.
 		float run = value_noise(vec3(along * 8.0, below_top * 0.8, seed.y + 7.0));
@@ -177,6 +185,8 @@ void fragment() {
 		float fissure = (1.0 - smoothstep(0.0, 0.007, split)) * smoothstep(0.45, 0.62, value_noise(vec3(along * 0.5, below_top * 1.6, seed.y + 40.0)));
 		base *= 1.0 - fissure * 0.45;
 		if (shaped) {
+			float above_foot = source_size.y - below_top;
+			base *= 1.0 - 0.30 * (1.0 - smoothstep(0.0, 0.05, abs(above_foot - 0.165))) * step(0.5, source_size.y);
 			// Dressed stone: a smooth margin round each panel, a rough, darker
 			// middle, and the facets the chisel left.
 			bool x_face = face.x > face.z;
@@ -198,6 +208,9 @@ void fragment() {
 			base = mix(base, bronze * (1.0 - rim * 0.35), band);
 			roughness = mix(roughness, 0.48, band);
 			metallic = band * 0.35;
+			// Verdigris has run down the stone under the band.
+			float drip = smoothstep(0.55, 0.85, value_noise(vec3(along * 9.0, 5.0, seed.y))) * (1.0 - smoothstep(0.50, 0.50 + 0.30 * value_noise(vec3(along * 4.0, 7.0, seed.y)), below_top)) * step(0.50, below_top);
+			base = mix(base, vec3(0.30, 0.47, 0.40), drip * 0.5);
 			// The stone under the band is in its shadow.
 			base *= 1.0 - (1.0 - smoothstep(0.51, 0.58, below_top)) * step(0.51, below_top) * 0.22;
 		}

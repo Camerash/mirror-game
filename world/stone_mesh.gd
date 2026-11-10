@@ -1,6 +1,6 @@
 class_name StoneMesh
 extends ArrayMesh
-## The shape of a whole garden stone: a box with worn corners and a rounded
+## The shape of a whole garden stone: a worn block on a plinth with a rounded
 ## foot, under a cover (snow, or moss on a copy) that rolls out over its edge.
 ## The top stays flat, at the box's height and inside its outline, so the
 ## walkable edge is where the grid says. The roll overhangs by `OVERHANG`.
@@ -14,6 +14,9 @@ const COVER_WORN := 0.07
 ## How far the cover rolls out past the box, and how far down it hangs.
 const OVERHANG := 0.06
 const LIP := 0.075
+## The stone stands in this far from its plinth, which is this high.
+const INSET := 0.035
+const PLINTH := 0.165
 const TURN_STEPS := 4
 ## The sides have a vertex about this often, for the dressing of the faces.
 const GRAIN := 0.1
@@ -44,15 +47,20 @@ static func _make(box: Vector3) -> StoneMesh:
 		[OVERHANG * 0.7, half.y - 0.012, COVER_WORN, 0.6, 0.8, false],
 		[OVERHANG, half.y - 0.035, COVER_WORN, 1.0, 0.1, false],
 		[OVERHANG, half.y - LIP, COVER_WORN, 1.0, 0.0, false],
-		[0.0, half.y - LIP - 0.022, WORN, 0.45, -0.9, false],
+		[-INSET, half.y - LIP - 0.022, WORN, 0.45, -0.9, false],
 	]
-	# The sides have rows and columns enough for `stone.gdshader` to dress
-	# each face (see its `vertex`).
+	# Under the cover the stone stands in a little from the box, on a plinth
+	# as wide as the box. The sides have rows and columns enough for
+	# `stone.gdshader` to dress each face (see its `vertex`).
 	var side_top := half.y - LIP - 0.023
 	var side_foot := -half.y + WORN
-	var side_rows := ceili((side_top - side_foot) / GRAIN)
+	var plinth_top := minf(-half.y + PLINTH, side_top - 0.1)
+	var side_rows := ceili((side_top - plinth_top - 0.03) / GRAIN)
 	for index: int in side_rows + 1:
-		rows.append([0.0, lerpf(side_top, side_foot, float(index) / side_rows), WORN, 1.0, 0.0, false])
+		rows.append([-INSET, lerpf(side_top, plinth_top + 0.03, float(index) / side_rows), WORN, 1.0, 0.0, false])
+	rows.append([0.0, plinth_top, WORN, 0.6, 0.8, false])
+	rows.append([0.0, plinth_top - 0.001, WORN, 1.0, 0.0, false])
+	rows.append([0.0, side_foot, WORN, 1.0, 0.0, false])
 	rows.append([-WORN * 0.29, -half.y + WORN * 0.29, WORN, 0.707, -0.707, false])
 	rows.append([-WORN, -half.y, WORN, 0.0, -1.0, false])
 	# The path round the stone: a quarter turn at each corner, then the

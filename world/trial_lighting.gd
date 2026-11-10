@@ -15,8 +15,8 @@ const BackdropShader := preload("res://assets/environment/backdrop.gdshader")
 ## ice holds, and `ice_snow` the blown snow that lies on the ice.
 const SCRIPTS := {
 	"morning": {
-		"sun": Color("ffe2bd"), "sun_energy": 2.1, "fill": Color("b4c8f0"), "fill_energy": 0.32,
-		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.27,
+		"sun": Color("ffe2bd"), "sun_energy": 1.9, "fill": Color("e8d2b8"), "fill_energy": 0.30,
+		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.22,
 		"ice_far": Color("f7dfbe"), "ice_mid": Color("3f6884"), "ice_near": Color("0d2233"),
 		"glow": Color("ffd08a"), "sun_from": Vector3(-0.17, 0.5, -0.98),
 		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.22,
