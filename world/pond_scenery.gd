@@ -51,12 +51,12 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var pick := _random.randf()
 			# The scenery stands in loose groups, with open ice between them.
 			var group := sin(spot.x * 0.31 + float(_random.seed % 7)) * cos(spot.y * 0.27 + 1.3)
-			if keep_clear.has_point(spot) or group < 0.0 or pick > 0.72:
+			if keep_clear.has_point(spot) or group < 0.22 or pick > 0.8:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
-			if pick < 0.48:
+			if pick < 0.54:
 				_reeds(at)
-			elif pick < 0.54:
+			elif pick < 0.60:
 				_rocks(at)
 			else:
 				_shrub(at)

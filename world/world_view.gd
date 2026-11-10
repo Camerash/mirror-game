@@ -7,8 +7,8 @@ const DropShadowShader := preload("res://world/drop_shadow.gdshader")
 ## Gaps under a block smaller than this count as resting on the surface.
 const SHADOW_GAP := 0.05
 const UNREACHABLE := Color(0.82, 0.38, 0.3, 0.95)
-const HIDDEN_FILL := Color(0.72, 0.82, 1.0, 0.045)
-const HIDDEN_EDGE := Color(0.82, 0.90, 1.0, 0.035)
+const HIDDEN_FILL := Color(0.72, 0.82, 1.0, 0.015)
+const HIDDEN_EDGE := Color(0.82, 0.90, 1.0, 0.0)
 const HIDDEN_INSET := 0.985
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
@@ -370,9 +370,9 @@ func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -
 			points.append(start.lerp(finish, float(index + 1) / count))
 	_lines(parent, points, color)
 
-## The ground a raised mirror hides: a breath of frost with a faint edge,
-## drawn a little inside each fragment so it never fights the blocks around
-## it, and never looks like ground.
+## The ground a raised mirror hides: the faintest breath of frost, drawn a
+## little inside each fragment. Anything stronger reads as a block of glass
+## to stand on (art review, 2026-11-10).
 func draw_hidden(fragments: Array) -> void:
 	_clear(hidden_root)
 	if fragments.is_empty():

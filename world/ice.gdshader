@@ -18,7 +18,7 @@ uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
 uniform vec3 shore_color : source_color = vec3(0.16, 0.14, 0.28);
 uniform vec3 snow_color : source_color = vec3(0.81, 0.76, 0.90);
-uniform float mirror = 0.36;
+uniform float mirror = 0.44;
 // How much the sun's shadow darkens the ice.
 uniform float shade = 0.4;
 // Each pool: the light's place in the world (xyz) and its strength (w).
@@ -112,11 +112,11 @@ float trees(float along, float depth, float reach, float thin) {
 // A lily pad from the summer, frozen in where it lay: how much of the ice it
 // covers (x) and its frosted rim (y). The pads lie in loose groups.
 vec2 pad(vec2 plain) {
-	float group = smoothstep(0.70, 0.84, noise(plain * 0.21 + 20.0));
+	float group = smoothstep(0.74, 0.88, noise(plain * 0.21 + 20.0));
 	vec2 grid = plain / 1.25;
 	vec2 cell = floor(grid);
 	float pick = hash(cell + 1.3);
-	if (pick > group * 0.55) {
+	if (pick > group * 0.42) {
 		return vec2(0.0);
 	}
 	vec2 from = (fract(grid) - 0.5 - (hash2(cell + 4.0) - 0.5) * 0.35) * 1.25;
@@ -170,8 +170,8 @@ void fragment() {
 	float frost = fbm(plain * 0.17 + 3.0);
 
 	// The sky the ice holds, from the far ice to the near.
-	vec3 colour = mix(far_color, mid_color, smoothstep(-0.04, 0.27, depth));
-	colour = mix(colour, near_color, smoothstep(0.22, 0.95, depth));
+	vec3 colour = mix(far_color, mid_color, smoothstep(-0.04, 0.19, depth));
+	colour = mix(colour, near_color, smoothstep(0.16, 0.85, depth));
 	colour *= 0.86 + 0.26 * frost;
 	vec2 cloud_at = plain * 0.07 + vec2(ice_time * 0.004, 0.0);
 	float cloud = smoothstep(0.42, 0.78, fbm(cloud_at + vec2(fbm(cloud_at * 1.7 + 4.0), fbm(cloud_at * 1.7 + 9.0)) * 0.9));
@@ -190,7 +190,7 @@ void fragment() {
 
 	// The low sun, held in the far ice, behind the trees.
 	float off_sun = bearing - sun_bearing;
-	float halo = exp(-(off_sun * off_sun * 2.6 + depth * depth * 7.0));
+	float halo = exp(-(off_sun * off_sun * 3.2 + depth * depth * 16.0));
 	float core = exp(-(off_sun * off_sun * 34.0 + depth * depth * 48.0));
 	colour += sun_color * (halo * 0.42 + core * 1.5) * (1.0 - shore * 0.55);
 	colour = mix(colour, shore_color, shore * (0.86 - core * 0.5));
@@ -244,7 +244,7 @@ void fragment() {
 	// The snow that lies on the ice hides what the ice holds.
 	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));
 	lying += sun_color * halo * 0.25;
-	colour = mix(colour, lying, (snow * 0.13 + veil * (1.0 - snow) * 0.30) * mix(1.0, 0.6, depth));
+	colour = mix(colour, lying, (snow * 0.08 + veil * (1.0 - snow) * 0.20) * mix(1.0, 0.6, depth));
 
 	// Warm light from each summer copy, pooled on the ice below it. The light
 	// of a copy high above the ice does not reach it. The light breathes.
@@ -254,7 +254,7 @@ void fragment() {
 		float reach = 2.0 + lift * 0.4;
 		float distance_to = length(plain - pools[index].xz) / reach;
 		float warm = pools[index].w * breath * 2.6 * exp(-lift * 1.2);
-		colour += pool_color * warm * (exp(-distance_to * distance_to * 2.2) * 0.95 + exp(-distance_to * distance_to * 0.45) * 0.30) * (0.85 + snow * 0.5);
+		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.4) * 0.95 + exp(-distance_to * distance_to * 0.7) * 0.10) * (0.85 + snow * 0.5);
 	}
 
 	// The corners fall away, so the eye stays on the place.

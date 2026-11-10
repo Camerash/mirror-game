@@ -20,7 +20,7 @@ uniform vec4 clip_plane = vec4(0.0);
 // The height of the ice below the place, and how far above it a stone still
 // shows in the ice.
 uniform float ice_height = -100.0;
-uniform float image_reach = 1.15;
+uniform float image_reach = 1.3;
 // Where the girl stands. The ground under her carries a soft shade, drawn
 // out the way the sun's shadows fall: her own shadow is too fine for the
 // sun's shadow map, and she must not be lost on the snow.

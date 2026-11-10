@@ -3,6 +3,7 @@ extends SceneTree
 ##   godot --path . --rendering-method mobile -s res://tests/capture_stage.gd -- --level 01_route --out /abs/dir
 ## Options: `--clean 1` hides the interface, `--turns 1` adds the three
 ## quarter turns, `--motion 1` adds six frames half a second apart,
+## `--nudge 0.5` then slides the mirror that far along X and writes cut.png,
 ## `--size 1600x1000`. In the cloud container, run it under `xvfb-run -a`.
 ## Writes plain.png (mirror down), mirror.png (mirror up), with motion
 ## motion0.png to motion5.png, and with turns turn1.png to turn3.png.
@@ -39,6 +40,11 @@ func _run() -> void:
 		game.toggle_mirror()
 		await create_timer(2.5).timeout
 	await _save(out, "mirror")
+	if args.has("nudge"):
+		# A half step along X leaves the mirror through the middle of a block.
+		game.nudge_mirror(0, float(args["nudge"]))
+		await create_timer(2.5).timeout
+		await _save(out, "cut")
 	if args.has("motion"):
 		for frame: int in 6:
 			await create_timer(0.5).timeout

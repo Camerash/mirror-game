@@ -2,7 +2,7 @@ extends GPUParticles3D
 ## Snow falling slowly over a place. It follows the view, so it falls
 ## wherever the stage camera looks. Presentation only.
 
-const FLAKES := 300
+const FLAKES := 420
 ## Some flakes fall nearer the eye: a little larger and softer.
 const NEAR_FLAKES := 70
 const SPAN := 30.0
@@ -42,8 +42,8 @@ static func _fall(layer: GPUParticles3D, count: int, size: float, alpha: float, 
 	fall.turbulence_influence_min = 0.04
 	fall.turbulence_influence_max = 0.14
 	fall.gravity = Vector3.ZERO
-	fall.scale_min = 0.35
-	fall.scale_max = 2.2
+	fall.scale_min = 0.3
+	fall.scale_max = 2.8
 	layer.process_material = fall
 	var flake := QuadMesh.new()
 	flake.size = Vector2(size, size)

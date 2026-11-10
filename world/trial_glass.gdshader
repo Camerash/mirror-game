@@ -13,7 +13,8 @@ void vertex() {
 }
 void fragment() {
 	vec2 distance_to_edge = panel_size * 0.5 - abs(local_position.xy);
-	float nearest = min(distance_to_edge.x, distance_to_edge.y);
+	// The foot of the pane stays clear, so she and the stones behind it show.
+	float nearest = min(distance_to_edge.x, panel_size.y * 0.5 - local_position.y);
 	// Frost grows in from the frame in fine crystals; the middle stays clear,
 	// so what stands behind the glass is not washed out.
 	float frost = pow(1.0 - smoothstep(0.0, 0.6, nearest), 2.2);
