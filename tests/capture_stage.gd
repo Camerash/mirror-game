@@ -2,7 +2,7 @@ extends SceneTree
 ## Captures one stage for art review. Not a test: it asserts nothing.
 ##   godot --path . --rendering-method mobile -s res://tests/capture_stage.gd -- --level 01_route --out /abs/dir
 ## Options: `--clean 1` hides the interface, `--turns 1` adds the three
-## quarter turns, `--motion 1` adds six frames a quarter second apart,
+## quarter turns, `--motion 1` adds six frames half a second apart,
 ## `--size 1600x1000`. In the cloud container, run it under `xvfb-run -a`.
 ## Writes plain.png (mirror down), mirror.png (mirror up), with motion
 ## motion0.png to motion5.png, and with turns turn1.png to turn3.png.
@@ -37,7 +37,7 @@ func _run() -> void:
 	await _save(out, "mirror")
 	if args.has("motion"):
 		for frame: int in 6:
-			await create_timer(0.25).timeout
+			await create_timer(0.5).timeout
 			await _save(out, "motion%d" % frame)
 	if args.has("turns"):
 		for name: String in ["turn1", "turn2", "turn3"]:

@@ -25,7 +25,7 @@ void vertex() {
 }
 
 void fragment() {
-	float grain = hash(floor(world_position * 14.0));
+	float grain = hash(floor(world_position * 60.0)) * 0.4 + 0.3;
 	float lies = smoothstep(0.30, 0.62, world_normal.y + (grain - 0.5) * 0.25) * COLOR.a;
 	// Vertex colours arrive as written; bring them into the light's space.
 	ALBEDO = mix(pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.24 * grain), snow * 0.86, lies);

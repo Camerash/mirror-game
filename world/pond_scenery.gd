@@ -19,7 +19,7 @@ const REED := Color(0.66, 0.50, 0.30, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
 const PLUME := Color(0.33, 0.23, 0.24, 0.0)
 const TWIG := Color(0.17, 0.12, 0.16, 0.7)
-const ROCK := Color(0.22, 0.21, 0.29, 0.55)
+const ROCK := Color(0.22, 0.21, 0.29, 0.4)
 const POST := Color(0.21, 0.16, 0.18, 1.0)
 const CAP := Color(0.74, 0.75, 0.84, 1.0)
 
@@ -89,7 +89,7 @@ func _rocks(at: Vector3) -> void:
 	for index: int in _random.randi_range(1, 3):
 		var size := _random.randf_range(0.28, 0.62)
 		var centre := at + Vector3(_random.randf_range(-0.6, 0.6), size * 0.18, _random.randf_range(-0.6, 0.6))
-		_blob(centre, Vector3(size * _random.randf_range(0.9, 1.4), size * _random.randf_range(0.5, 0.75), size * _random.randf_range(0.9, 1.3)), ROCK)
+		_blob(centre, Vector3(size * _random.randf_range(0.8, 1.2), size * _random.randf_range(0.8, 1.15), size * _random.randf_range(0.8, 1.1)), ROCK)
 
 ## A bare shrub: a short stem that forks and forks again.
 func _shrub(at: Vector3) -> void:
@@ -159,7 +159,7 @@ func _blob(centre: Vector3, radii: Vector3, color: Color) -> void:
 	var segments := 10
 	var bumps: Array[float] = []
 	for index: int in (rings + 1) * segments:
-		bumps.append(_random.randf_range(0.84, 1.12))
+		bumps.append(_random.randf_range(0.78, 1.14))
 	var point := func(ring: int, segment: int) -> Array:
 		var polar := PI * float(ring) / rings
 		var turn := TAU * float(segment % segments) / segments

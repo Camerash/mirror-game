@@ -192,14 +192,14 @@ void fragment() {
 	lying += sun_color * halo * 0.25;
 	colour = mix(colour, lying, (snow * 0.13 + veil * (1.0 - snow) * 0.30) * mix(1.0, 0.6, depth));
 
-	// Warm light from each summer copy, pooled on the ice below it. A copy
-	// high above the ice lights it wider and much fainter. The light breathes.
+	// Warm light from each summer copy, pooled on the ice below it. The light
+	// of a copy high above the ice does not reach it. The light breathes.
 	float breath = 0.90 + 0.10 * sin(ice_time * 1.3) * sin(ice_time * 0.37 + 1.0);
 	for (int index = 0; index < pool_count; index++) {
 		float lift = max(pools[index].y - world_position.y, 0.0);
 		float reach = 2.0 + lift * 0.4;
 		float distance_to = length(plain - pools[index].xz) / reach;
-		float warm = pools[index].w * breath / (1.0 + lift * lift * lift * 0.12);
+		float warm = pools[index].w * breath * 2.6 * exp(-lift * 1.2);
 		colour += pool_color * warm * (exp(-distance_to * distance_to * 2.2) * 0.95 + exp(-distance_to * distance_to * 0.45) * 0.30) * (0.85 + snow * 0.5);
 	}
 

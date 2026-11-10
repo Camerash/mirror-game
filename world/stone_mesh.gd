@@ -9,12 +9,14 @@ extends ArrayMesh
 ## `stone.gdshader` paints a rounded stone by the same rules as a plain box.
 
 ## The radius of the stone's worn corners and foot, and of the cover's.
-const WORN := 0.06
-const COVER_WORN := 0.035
+const WORN := 0.085
+const COVER_WORN := 0.05
 ## How far the cover rolls out past the box, and how far down it hangs.
 const OVERHANG := 0.045
 const LIP := 0.06
 const TURN_STEPS := 4
+## The sides have a vertex about this often, for the dressing of the faces.
+const GRAIN := 0.1
 
 static var _made := {}
 
@@ -36,33 +38,47 @@ static func _make(box: Vector3) -> StoneMesh:
 	var half := box * 0.5
 	# Each row is one ring round the stone, from the top edge to the foot:
 	# how far it stands out from the box, its height, its corner radius, its
-	# normal (outward part, upward part), and the box face it is painted as.
+	# normal (outward part, upward part), and whether it is the flat top.
 	var rows := [
 		[0.0, half.y, COVER_WORN, 0.0, 1.0, true],
 		[OVERHANG * 0.7, half.y - 0.012, COVER_WORN, 0.6, 0.8, false],
 		[OVERHANG, half.y - 0.035, COVER_WORN, 1.0, 0.1, false],
 		[OVERHANG, half.y - LIP, COVER_WORN, 1.0, 0.0, false],
 		[0.0, half.y - LIP - 0.022, WORN, 0.45, -0.9, false],
-		[0.0, half.y - LIP - 0.023, WORN, 1.0, 0.0, false],
-		[0.0, -half.y + WORN, WORN, 1.0, 0.0, false],
-		[-WORN * 0.29, -half.y + WORN * 0.29, WORN, 0.707, -0.707, false],
-		[-WORN, -half.y, WORN, 0.0, -1.0, false],
 	]
-	var around := 4 * (TURN_STEPS + 1)
+	# The sides have rows and columns enough for `stone.gdshader` to dress
+	# each face (see its `vertex`).
+	var side_top := half.y - LIP - 0.023
+	var side_foot := -half.y + WORN
+	var side_rows := ceili((side_top - side_foot) / GRAIN)
+	for index: int in side_rows + 1:
+		rows.append([0.0, lerpf(side_top, side_foot, float(index) / side_rows), WORN, 1.0, 0.0, false])
+	rows.append([-WORN * 0.29, -half.y + WORN * 0.29, WORN, 0.707, -0.707, false])
+	rows.append([-WORN, -half.y, WORN, 0.0, -1.0, false])
+	# The path round the stone: a quarter turn at each corner, then the
+	# straight side to the next corner. Each point is a corner, an angle on
+	# it, and how far along the side to the next corner it lies.
+	var path: Array = []
+	for corner: int in 4:
+		for step: int in TURN_STEPS + 1:
+			path.append([corner, (float(corner) + float(step) / TURN_STEPS) * PI * 0.5, 0.0])
+		var side_length := (box.x if corner % 2 == 0 else box.z) - 2.0 * WORN
+		var columns := ceili(side_length / GRAIN)
+		for step: int in range(1, columns):
+			path.append([corner, float(corner + 1) * PI * 0.5, float(step) / columns])
+	var around := path.size()
 	var points: Array = []
 	for row: Array in rows:
 		var ring: Array = []
-		for index: int in around:
-			var corner := index / (TURN_STEPS + 1)
-			var angle := (float(corner) + float(index % (TURN_STEPS + 1)) / TURN_STEPS) * PI * 0.5
-			var out := Vector3(cos(angle), 0.0, sin(angle))
-			var radius: float = row[2]
-			var centre := Vector3((half.x - radius) * (1.0 if corner in [0, 3] else -1.0), 0.0, (half.z - radius) * (1.0 if corner < 2 else -1.0))
+		for spot: Array in path:
+			var out := Vector3(cos(spot[1]), 0.0, sin(spot[1]))
+			var place := _corner_centre(half, spot[0], row[2]) + out * (float(row[2]) + float(row[0]))
+			if spot[2] > 0.0:
+				place = place.lerp(_corner_centre(half, (int(spot[0]) + 1) % 4, row[2]) + out * (float(row[2]) + float(row[0])), spot[2])
 			var face := Vector3.UP
 			if not row[5]:
 				face = Vector3(signf(out.x), 0.0, 0.0) if absf(out.x) >= absf(out.z) else Vector3(0.0, 0.0, signf(out.z))
-			ring.append([centre + out * (radius + float(row[0])) + Vector3.UP * float(row[1]),
-				(out * float(row[3]) + Vector3.UP * float(row[4])).normalized(), face])
+			ring.append([place + Vector3.UP * float(row[1]), (out * float(row[3]) + Vector3.UP * float(row[4])).normalized(), face])
 		points.append(ring)
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -78,6 +94,9 @@ static func _make(box: Vector3) -> StoneMesh:
 	mesh.size = box
 	tool.commit(mesh)
 	return mesh
+
+static func _corner_centre(half: Vector3, corner: int, radius: float) -> Vector3:
+	return Vector3((half.x - radius) * (1.0 if corner in [0, 3] else -1.0), 0.0, (half.z - radius) * (1.0 if corner < 2 else -1.0))
 
 ## Adds one triangle, wound so that it faces the way its normals point.
 static func _corner(tool: SurfaceTool, triangle: Array) -> void:

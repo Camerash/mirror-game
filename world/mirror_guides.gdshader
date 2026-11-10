@@ -21,7 +21,7 @@ void vertex() {
 }
 
 void fragment() {
-	float distance_fade = pow(1.0 - smoothstep(0.0, 0.7, UV.y), 2.0);
+	float distance_fade = pow(1.0 - smoothstep(0.0, 0.45, UV.y), 2.0);
 	float lateral_fade = 1.0 - smoothstep(0.2, 0.5, abs(UV.x - 0.5));
 	ALBEDO = vec3(0.70, 0.82, 0.88);
 	ALPHA = distance_fade * lateral_fade * 0.12 * guide_alpha;

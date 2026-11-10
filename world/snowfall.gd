@@ -2,7 +2,9 @@ extends GPUParticles3D
 ## Snow falling slowly over a place. It follows the view, so it falls
 ## wherever the stage camera looks. Presentation only.
 
-const FLAKES := 200
+const FLAKES := 300
+## A few flakes fall close to the eye: large, soft and out of focus.
+const NEAR_FLAKES := 16
 const SPAN := 30.0
 const LIFE := 16.0
 
@@ -12,25 +14,39 @@ var camera: Camera3D
 var lift := 9.0
 
 func _ready() -> void:
-	amount = FLAKES
-	lifetime = LIFE
-	preprocess = LIFE
-	local_coords = false
-	visibility_aabb = AABB(Vector3(-SPAN, -40.0, -SPAN), Vector3(SPAN * 2.0, 60.0, SPAN * 2.0))
-	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_fall(self, FLAKES, 0.075, 0.75, 1.0)
+	var near := GPUParticles3D.new()
+	_fall(near, NEAR_FLAKES, 0.42, 0.16, 1.5)
+	add_child(near)
+
+## Sets `layer` up as falling snow: `count` flakes of `size`, at `alpha`.
+static func _fall(layer: GPUParticles3D, count: int, size: float, alpha: float, speed: float) -> void:
+	layer.amount = count
+	layer.lifetime = LIFE / speed
+	layer.preprocess = LIFE / speed
+	layer.local_coords = false
+	layer.visibility_aabb = AABB(Vector3(-SPAN, -40.0, -SPAN), Vector3(SPAN * 2.0, 60.0, SPAN * 2.0))
+	layer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var fall := ParticleProcessMaterial.new()
 	fall.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
 	fall.emission_box_extents = Vector3(SPAN * 0.5, 0.5, SPAN * 0.5)
 	fall.direction = Vector3(0.18, -1.0, 0.08)
 	fall.spread = 7.0
-	fall.initial_velocity_min = 0.75
-	fall.initial_velocity_max = 1.25
+	fall.initial_velocity_min = 0.75 * speed
+	fall.initial_velocity_max = 1.25 * speed
+	# The air is never quite still: each flake wanders as it falls.
+	fall.turbulence_enabled = true
+	fall.turbulence_noise_strength = 0.35
+	fall.turbulence_noise_scale = 3.0
+	fall.turbulence_noise_speed = Vector3(0.12, 0.0, 0.08)
+	fall.turbulence_influence_min = 0.04
+	fall.turbulence_influence_max = 0.14
 	fall.gravity = Vector3.ZERO
-	fall.scale_min = 0.4
-	fall.scale_max = 1.9
-	process_material = fall
+	fall.scale_min = 0.35
+	fall.scale_max = 2.2
+	layer.process_material = fall
 	var flake := QuadMesh.new()
-	flake.size = Vector2(0.075, 0.075)
+	flake.size = Vector2(size, size)
 	var soft := GradientTexture2D.new()
 	soft.fill = GradientTexture2D.FILL_RADIAL
 	soft.fill_from = Vector2(0.5, 0.5)
@@ -46,9 +62,9 @@ func _ready() -> void:
 	white.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	white.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	white.albedo_texture = soft
-	white.albedo_color = Color(1.0, 0.98, 0.97, 0.75)
+	white.albedo_color = Color(1.0, 0.98, 0.97, alpha)
 	flake.material = white
-	draw_pass_1 = flake
+	layer.draw_pass_1 = flake
 
 func _process(_delta: float) -> void:
 	if camera == null:

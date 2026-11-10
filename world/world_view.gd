@@ -7,8 +7,8 @@ const DropShadowShader := preload("res://world/drop_shadow.gdshader")
 ## Gaps under a block smaller than this count as resting on the surface.
 const SHADOW_GAP := 0.05
 const UNREACHABLE := Color(0.82, 0.38, 0.3, 0.95)
-const HIDDEN_FILL := Color(0.72, 0.80, 0.95, 0.08)
-const HIDDEN_EDGE := Color(0.80, 0.86, 1.0, 0.42)
+const HIDDEN_FILL := Color(0.72, 0.82, 1.0, 0.06)
+const HIDDEN_EDGE := Color(0.82, 0.90, 1.0, 0.20)
 const HIDDEN_INSET := 0.985
 var visual_root := Node3D.new()
 var collision_root := Node3D.new()
@@ -370,8 +370,9 @@ func _outline_box(parent: Node3D, bounds: AABB, color: Color, dashed := false) -
 			points.append(start.lerp(finish, float(index + 1) / count))
 	_lines(parent, points, color)
 
-## The ground a raised mirror hides: a faint fill with dashed edges, drawn
-## a little inside each fragment so it never fights the blocks around it.
+## The ground a raised mirror hides: a breath of frost with a faint edge,
+## drawn a little inside each fragment so it never fights the blocks around
+## it, and never looks like ground.
 func draw_hidden(fragments: Array) -> void:
 	_clear(hidden_root)
 	if fragments.is_empty():
@@ -398,10 +399,8 @@ func draw_hidden(fragments: Array) -> void:
 			for index: int in inset.size():
 				var start := inset[index]
 				var finish := inset[(index + 1) % inset.size()]
-				var dashes := maxi(1, ceili(start.distance_to(finish) / 0.12))
-				for dash: int in range(0, dashes, 2):
-					edges.append(start.lerp(finish, float(dash) / dashes))
-					edges.append(start.lerp(finish, float(dash + 1) / dashes))
+				edges.append(start)
+				edges.append(finish)
 	var surface := MeshInstance3D.new()
 	surface.mesh = fill.commit()
 	var material := _plain(HIDDEN_FILL)

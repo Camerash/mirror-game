@@ -35,12 +35,6 @@ varying vec3 world_normal;
 // zero on a plain box and on a cut fragment.
 varying vec3 box_face;
 
-void vertex() {
-	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	box_face = (MODEL_MATRIX * vec4(CUSTOM0.xyz, 0.0)).xyz;
-}
-
 float hash(vec3 p) {
 	p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
 	p *= 17.0;
@@ -55,6 +49,36 @@ float value_noise(vec3 p) {
 		mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
 		mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
 		f.z);
+}
+
+// How far a point of a side face stands out as dressed stone: each grid cell
+// of a face is one panel, flat at its margin and rough in the middle.
+// `across` and `down` are the place on the face in units; `cells` is how many
+// panels the face has each way.
+float dressing(vec2 on_face, vec2 face_size, vec3 place) {
+	vec2 cells = max(round(face_size), vec2(1.0));
+	vec2 within = fract(on_face / face_size * cells);
+	vec2 to_margin = min(within, 1.0 - within) * face_size / cells;
+	float panel = smoothstep(0.05, 0.15, to_margin.x) * smoothstep(0.05, 0.15, to_margin.y);
+	float rough = value_noise(place * 4.3) * 0.7 + value_noise(place * 11.0) * 0.3;
+	return panel * (0.45 + rough * 0.75);
+}
+
+void vertex() {
+	vec3 face_here = CUSTOM0.xyz;
+	if (dot(face_here, face_here) > 0.25 && abs(face_here.y) < 0.5) {
+		// A side of a shaped stone: push the middle of each panel out.
+		vec3 at = (world_to_material * MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+		vec3 half_source = source_size * 0.5;
+		bool x_face = abs(face_here.x) > 0.5;
+		vec2 on_face = vec2(x_face ? at.z + half_source.z : at.x + half_source.x, half_source.y - at.y);
+		vec2 face_size = vec2(x_face ? source_size.z : source_size.x, source_size.y);
+		float under_cover = smoothstep(0.085, 0.14, on_face.y);
+		VERTEX += face_here * dressing(on_face, face_size, at + seed) * under_cover * 0.034;
+	}
+	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	box_face = (MODEL_MATRIX * vec4(face_here, 0.0)).xyz;
 }
 
 void fragment() {
@@ -124,6 +148,12 @@ void fragment() {
 			lip = 0.082 + 0.07 * value_noise(vec3(along * 3.1, 1.7, seed.y)) * value_noise(vec3(along * 9.0, 4.1, seed.y));
 		}
 		float covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
+		if (summer) {
+			// Moss hangs lower, and trails down the stone here and there.
+			float trail = value_noise(vec3(along * 12.0, 2.2, seed.y));
+			lip += 0.04 + 0.30 * smoothstep(0.5, 0.9, trail) * value_noise(vec3(along * 2.6, 8.0, seed.y));
+			covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
+		}
 		// Its shadow on the stone just under it.
 		float under = (1.0 - smoothstep(lip, lip + 0.11, below_top)) * (1.0 - covered);
 		// Old stone is darker and damp toward its foot.
@@ -137,9 +167,20 @@ void fragment() {
 		float lichen = smoothstep(0.62, 0.74, value_noise(place * 3.1 + 17.0)) * smoothstep(0.3, 0.7, value_noise(place * 13.0));
 		base = mix(base, vec3(0.62, 0.64, 0.52) * (summer ? 1.1 : 0.9), lichen * 0.55);
 		// A crack or two, where frost has split it.
-		float split = abs(value_noise(vec3(along * 1.9, below_top * 1.4, seed.y + 21.0)) - 0.5);
-		float fissure = (1.0 - smoothstep(0.0, 0.012, split)) * smoothstep(0.35, 0.6, value_noise(place * 1.3 + 40.0));
+		float split = abs(fract(along * 0.83 + 0.11 * value_noise(vec3(below_top * 5.0, along * 0.7, seed.y + 21.0)) + 0.05 * value_noise(vec3(below_top * 17.0, 3.0, seed.y))) - 0.5);
+		float fissure = (1.0 - smoothstep(0.0, 0.007, split)) * smoothstep(0.45, 0.62, value_noise(vec3(along * 0.5, below_top * 1.6, seed.y + 40.0)));
 		base *= 1.0 - fissure * 0.45;
+		if (shaped) {
+			// Dressed stone: a smooth margin round each panel, a rough, darker
+			// middle, and the facets the chisel left.
+			bool x_face = face.x > face.z;
+			vec2 on_face = vec2(x_face ? source_position.z + half_source.z : source_position.x + half_source.x, below_top);
+			float dressed = dressing(on_face, vec2(x_face ? source_size.z : source_size.x, source_size.y), place);
+			base *= 1.06 - 0.22 * smoothstep(0.05, 0.6, dressed);
+			vec3 facet = normalize(cross(dFdy(world_position), dFdx(world_position)));
+			facet = dot(facet, world_normal) < 0.0 ? -facet : facet;
+			relief = normalize(mix(relief, normalize(world_to_source * facet), 0.65));
+		}
 		// Rime climbs the foot, over the cold of the ice.
 		float rime = (1.0 - smoothstep(0.0, 0.16 + 0.10 * value_noise(vec3(along * 6.0, 9.0, seed.y)), half_source.y * 2.0 - below_top)) * (summer ? 0.0 : 0.55);
 		base = mix(base, snow * 0.92, rime);
@@ -177,7 +218,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.66, 0.30) * 1.15, vec3(0.90, 0.46, 0.22) * 0.45, rim) * (0.85 + 0.3 * blotch);
+		glow = top_face && !cut_face ? base * 0.85 : mix(vec3(1.0, 0.60, 0.24) * 1.1, vec3(0.86, 0.40, 0.18) * 0.42, rim) * (0.85 + 0.3 * blotch);
 	}
 	if (!FRONT_FACING) {
 		relief = -relief;

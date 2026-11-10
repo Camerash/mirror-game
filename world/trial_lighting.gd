@@ -62,13 +62,13 @@ func _ready() -> void:
 	environment.environment = settings
 	add_child(environment)
 	key.shadow_enabled = true
-	key.shadow_blur = 2.2
+	key.shadow_blur = 1.0
 	# The stage camera stands 40 units from the place; one shadow map covers
 	# the whole view.
 	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	key.directional_shadow_max_distance = 80.0
-	key.shadow_bias = 0.05
-	key.shadow_normal_bias = 0.5
+	key.shadow_bias = 0.06
+	key.shadow_normal_bias = 0.9
 	add_child(key)
 	# A weak cool light from behind the first view keeps the shaded faces in
 	# shape. It does not light the ice, which takes only the sun's shadow.
