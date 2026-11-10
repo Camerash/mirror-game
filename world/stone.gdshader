@@ -86,13 +86,20 @@ void fragment() {
 		base = cover;
 		roughness = summer ? 0.9 : 0.72;
 		if (summer) {
-			// Small flowers, a few to a block.
-			vec2 cell = floor(place.xz * 7.0);
+			// Moss grows in cushions: darker between them, bright on top.
+			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
+			base *= 0.74 + 0.5 * smoothstep(0.25, 0.75, cushion);
+			float e = 0.05;
+			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
+			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
+			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 1.1);
+			// Small flowers, white and a few yellow.
+			vec2 cell = floor(place.xz * 6.0);
 			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;
-			vec2 within = fract(place.xz * 7.0) - 0.5 - jitter;
+			vec2 within = fract(place.xz * 6.0) - 0.5 - jitter;
 			float pick = hash(vec3(cell, 3.0));
-			float flower = step(0.84, pick) * smoothstep(0.17, 0.09, length(within) * (0.7 + pick * 0.6));
-			base = mix(base, pick > 0.93 ? vec3(0.95, 0.80, 0.36) : vec3(0.96, 0.95, 0.90), flower);
+			float flower = step(0.72, pick) * smoothstep(0.20, 0.10, length(within) * (0.7 + pick * 0.6));
+			base = mix(base, pick > 0.9 ? vec3(1.0, 0.80, 0.30) : vec3(1.0, 0.97, 0.90), flower);
 		} else {
 			// Snow lies in soft drifts, not flat.
 			float e = 0.06;
@@ -139,7 +146,10 @@ void fragment() {
 	}
 	if (summer) {
 		// The copy is the lantern of a place: it holds its own colour in any light.
-		glow = top_face && !cut_face ? base * 0.55 : summer_glow * 0.34;
+		// Its sides glow like paper round a flame: most at the heart of each face.
+		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
+		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
+		glow = top_face && !cut_face ? base * 0.62 : summer_glow * vec3(1.0, 0.88, 0.70) * mix(0.78, 0.36, rim);
 	}
 	if (!FRONT_FACING) {
 		relief = -relief;

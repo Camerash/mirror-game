@@ -34,8 +34,8 @@ var _reveal_all := false
 var ghost_root := Node3D.new()
 ## One warm light in each summer copy: the copy is the lantern of a place.
 const GLOW_LIGHTS := 6
-const GLOW_ENERGY := 1.8
-const GLOW_RANGE := 2.8
+const GLOW_ENERGY := 3.4
+const GLOW_RANGE := 3.6
 var glow_root := Node3D.new()
 var glow_color := Color("ffd596")
 var _glow_lights: Array[OmniLight3D] = []

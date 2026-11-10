@@ -11,6 +11,8 @@ const MIRRORED_LAYER := 1 << 10
 const IMAGE_SCALE := 0.5
 const MAX_POOLS := 6
 const EXTENT := 600.0
+## The ice is alone on this render layer (`ICE_LAYER` in the lighting).
+const ICE_LAYER := 1 << 11
 
 ## The stage camera to mirror.
 var camera: Camera3D
@@ -22,12 +24,15 @@ var material := ShaderMaterial.new()
 var view := SubViewport.new()
 var eye := Camera3D.new()
 var _time := 0.0
+## The direction from the place to the sun, from the colour script.
+var _sun_from := Vector3(0.0, 0.5, -1.0)
 
 func _ready() -> void:
 	var quad := PlaneMesh.new()
 	quad.size = Vector2(EXTENT, EXTENT)
 	plane.mesh = quad
 	plane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	plane.layers = ICE_LAYER
 	material.shader = IceShader
 	plane.material_override = material
 	add_child(plane)
@@ -50,6 +55,11 @@ func set_palette(colors: Dictionary) -> void:
 	material.set_shader_parameter("mid_color", colors["ice_mid"])
 	material.set_shader_parameter("far_color", colors["ice_far"])
 	material.set_shader_parameter("pool_color", colors["glow"])
+	material.set_shader_parameter("sun_color", colors["sun"])
+	material.set_shader_parameter("shore_color", colors["shore"])
+	material.set_shader_parameter("snow_color", colors["ice_snow"])
+	material.set_shader_parameter("shade", colors["shade"])
+	_sun_from = colors["sun_from"]
 
 func _process(delta: float) -> void:
 	_time += delta
@@ -88,3 +98,11 @@ func follow() -> void:
 	var reach := (height - pose.origin.y) / sight.y if absf(sight.y) > 0.001 else 0.0
 	var centre := pose.origin + sight * reach
 	plane.global_position = Vector3(centre.x, height, centre.z)
+	# The ice holds the far shore and the sun as a panorama: they slide across
+	# the ice as the view turns.
+	var ahead := Vector2(sight.x, sight.z).normalized()
+	var across := Vector2(pose.basis.x.x, pose.basis.x.z).normalized()
+	material.set_shader_parameter("view_forward", ahead)
+	material.set_shader_parameter("view_right", across)
+	material.set_shader_parameter("view_bearing", ahead.angle())
+	material.set_shader_parameter("sun_bearing", angle_difference(ahead.angle(), Vector2(_sun_from.x, _sun_from.z).angle()))
