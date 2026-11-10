@@ -12,6 +12,8 @@ signal stage_reached(index: int)
 signal tutorial_finished
 
 const TrialLighting := preload("res://world/trial_lighting.gd")
+const Ice := preload("res://world/ice.gd")
+const Snowfall := preload("res://world/snowfall.gd")
 const Targets := preload("res://core/mirror_targets.gd")
 const GuideStyle := preload("res://core/constellation_style.gd")
 const Queries := preload("res://core/solid_queries.gd")
@@ -105,6 +107,8 @@ var edit_available := false
 var predictor := Predictor.new()
 var preview_view := PreviewView.new()
 var trial_lighting := TrialLighting.new()
+var ice := Ice.new()
+var snowfall := Snowfall.new()
 var solids: Array[Dictionary] = []
 var history: Array[Dictionary] = []
 var phase := "play"
@@ -265,6 +269,11 @@ func _setup_scene() -> void:
 	camera.near = 0.05
 	camera.far = 100.0
 	add_child(trial_lighting)
+	ice.camera = camera
+	ice.glows = world.copy_glows
+	add_child(ice)
+	snowfall.camera = camera
+	add_child(snowfall)
 	add_child(overlay_canvas)
 	hud.release_mode = release_mode
 	overlay_canvas.add_child(hud)
@@ -316,7 +325,12 @@ func load_level(index: int) -> bool:
 	dragging = false
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
 	_commit_world()
+	trial_lighting.set_place(str(level.get("light", "")))
 	trial_lighting.set_floor(float(level.get("kill_y", -5.0)), Geometry.total_bounds(world.drawn_solids).position.y)
+	world.glow_color = trial_lighting.palette()["glow"]
+	ice.height = trial_lighting.floor_height
+	world.ice_height = trial_lighting.floor_height
+	ice.set_palette(trial_lighting.palette())
 	for child: Node in goal_root.get_children():
 		child.free()
 	if not level.get("goal_hidden", false):

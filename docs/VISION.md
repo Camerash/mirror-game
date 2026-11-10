@@ -242,7 +242,12 @@ styles and words.
   - Viewfinder: making geometry out of a photograph, walking round it, and
     realising it is now part of the real place.
   - Nier Automata: realising the androids and the machines are the same.
-- OPEN: the visual references for mood, light and colour.
+- DECIDED (2026-11-10): the reference for mood, light and colour is a
+  painterly, wordless journey over still water (see `docs/art/STYLE.md`):
+  each place one painting with its own colour and weather, simple shapes,
+  reflections, one small warm light. The puzzle view cannot show a sky, so
+  the places stand over the pond's ice, which mirrors them.
+- OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound
 

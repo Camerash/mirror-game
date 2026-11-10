@@ -17,6 +17,10 @@ uniform vec3 source_size = vec3(1.0);
 uniform vec3 seed = vec3(0.0);
 uniform mat4 world_to_material;
 uniform vec4 clip_plane = vec4(0.0);
+// The height of the ice below the place, and how far above it a stone still
+// shows in the ice.
+uniform float ice_height = -100.0;
+uniform float image_reach = 2.3;
 
 uniform vec3 stone : source_color = vec3(0.74, 0.69, 0.60);
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
@@ -134,7 +138,8 @@ void fragment() {
 		relief = normalize(relief + sign(source_position) * edge * 9.0);
 	}
 	if (summer) {
-		glow = summer_glow * 0.16;
+		// The copy is the lantern of a place: it holds its own colour in any light.
+		glow = top_face && !cut_face ? base * 0.55 : summer_glow * 0.34;
 	}
 	if (!FRONT_FACING) {
 		relief = -relief;
@@ -146,4 +151,17 @@ void fragment() {
 	SPECULAR = 0.35;
 	ROUGHNESS = roughness;
 	EMISSION = glow;
+	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
+		// Drawn for the image in the ice. The image darkens to nothing with
+		// height above the ice, so it is strongest under the stone and never
+		// looks solid. It carries its own plain light; the ice reads how
+		// much of it is left from its brightness.
+		float keep = 1.0 - smoothstep(0.0, image_reach, world_position.y - ice_height);
+		float lit = 0.55 + 0.45 * max(dot(normalize(source_to_world * relief), vec3(0.25, 0.51, 0.82)), 0.0);
+		ALBEDO = vec3(0.0);
+		SPECULAR = 0.0;
+		METALLIC = 0.0;
+		ROUGHNESS = 1.0;
+		EMISSION = (base * lit + glow) * keep * keep;
+	}
 }

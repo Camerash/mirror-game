@@ -120,5 +120,6 @@
       "text": "Drag the mirror along the path. It copies what is behind it to the other side.",
       "until": "move"
     }
-  ]
+  ],
+  "light": "dusk"
 }

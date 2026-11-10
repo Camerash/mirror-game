@@ -1,6 +1,12 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: the ice and colour scripts — 2026-11-10
+
+- New: the ice under each place with the stones mirrored in it (`world/ice.gd`, `world/ice.gdshader`), falling snow (`world/snowfall.gd`), a warm light in each copy (`world/world_view.gd`), and colour scripts per place (`world/trial_lighting.gd`; `01_route` is dusk). Checked once, headless: `run_tests` **691/0**, then after the last shader changes `app_flow_tests` **88/0** and `gameplay_art_tests` **58/0**. Pictures under Xvfb with software Vulkan (llvmpipe), Mobile renderer: "A place to stand" with and without the interface, its opposite view, "Together", and the title from afar; the first is kept as `docs/art/target/ice-dusk-2026-11-10.jpg`.
+- An independent reviewer judged an earlier pass against the feel reference and found the reflections cost readability: floating stones mirrored as a second, lower platform; the mirror frame, the dashed outline and the guide lines mirrored too; wobbling, sawtoothed edges; the warm light had no visible source. Fixed after that review and not reviewed again: only the stones are mirrored, their image fades with height and is blurred, the ice sits closer, the copy holds its own colour and pools warm light. Still open from the review: no dark accents, the ice holds little sky, she is pale and small, snow reads as stars in a still, a stray glowing dot under the title's island.
+- Not checked: a Mac or any real device, frame time with the second camera, other stages, the pond's story, moving on between two colour scripts.
+
 # Latest check: the look port — 2026-11-09
 
 - New light, sky, mist and block surface (`world/trial_lighting.gd`, `assets/environment/backdrop.gdshader`, `world/stone.gdshader`); the old ceramic and porcelain shaders are removed. Checked once, headless: `run_tests` **693/0** (before the last colour tuning), `gameplay_art_tests` **58/0** (after it). Pictures: "A place to stand" with the mirror raised, its opposite view, and "Together", under Xvfb with software Vulkan (llvmpipe), Mobile renderer; the first is kept as `docs/art/target/look-port-2026-11-09.jpg`. An independent reviewer compared them with the target frame: a clear step in palette and mood; still short on shape (cubes, no pillars, no snow volume), ambient occlusion and a frosted pane. Not checked: a Mac, frame time, other stages, the pond.

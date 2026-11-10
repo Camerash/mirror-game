@@ -1,59 +1,66 @@
 # Style guide
 
-One page. Every art change is judged against the target frame below.
+One page. Every art change is judged on a real frame from the game, taken
+from the game's own camera, against the references below.
 
-**Target frame:** `docs/art/target/place-to-stand-v4.jpg` (a Gemini paintover
-of the real "A place to stand" capture). The owner accepted it on 2026-11-09
-as the direction for mood, palette and light, not as a pixel spec. The block
-itself may be redesigned to fit the story. Known fix: the summer copy floats
-on no pillar; a copy is a reflection, not a built thing.
+**Feel reference (owner, 2026-11-10):** a clip of a slow, wordless journey
+over still water (<https://x.com/kevin_t_ngo/status/2119868968307695818>;
+not kept in Git). Each scene is one painting with its own colour and
+weather; shapes are simple; water mirrors everything; one small warm light
+leads the eye. We take the principles. We do not copy its boat, lantern or
+scenes.
+
+**What our camera can show.** The puzzle view looks down from above, so it
+never sees a sky or a far shore: every line of sight ends on the ice. The
+ice is the backdrop. Vistas belong to moments between puzzles, with another
+camera, and are not built yet.
+
+**Earlier target:** `docs/art/target/place-to-stand-v4.jpg` still stands for
+the block's materials (stone, snow, patina band, summer copy). Its sky and
+pillars are replaced by the ice. `look-port-2026-11-09.jpg` is the first
+in-game pass; `ice-dusk-2026-11-10.jpg` is the first frame with the ice.
 
 ## The bar
 
-The owner's references: a dense, finished diorama rather than a crude one,
-and a day/night toggle (pixel garden in a glass-pill frame) where every detail
-is chosen. What that bar means here:
-
-- **One palette, few hues.** Snow, warm stone, sage and patina, one gold. A
-  second state (summer copy, night) re-colours the same palette; it never adds
-  new hues.
-- **One light story per place.** A low warm sun behind the first view's
-  left, fixed in the world; blue snow shadows. One warm accent at most (the
-  goal, the summer copy).
+- **Two layers.** In front, the puzzle: simple, readable forms that read
+  first. Behind, the ice: rich, soft, and never competing.
+- **One colour script per place.** Each place has one time of day and one
+  weather (`"light"` in its level file; `SCRIPTS` in
+  `world/trial_lighting.gd`). Across the game the scripts run from winter to
+  spring.
+- **One warm light.** The summer copy is the lantern of a place: it glows,
+  lights its neighbours and pools on the ice. The goal ring is the only
+  other warm thing.
+- **The ice mirrors the place.** Each stone stands over its own image. A
+  reflection must never be mistaken for ground.
 - **Material contrast does the work.** Matte snow and stone against clear,
-  bright glass. Nothing else is shiny.
-- **A clear focus, small rewards.** She, the mirror and the goal read first.
-  Details (frosted grass, ivy, a far arbour) reward a closer look and never
-  compete.
+  bright glass and dark ice.
 - **One grain.** Every piece shares the same level of detail and bevel size.
-  No piece is noisier, sharper or smoother than its neighbours.
-- **Grounded, not floating.** Places stand on old pillars that fall into
-  mist; the wider garden shows faintly in the haze.
-- **Nothing is static.** Snow drifts, mist moves, the copy glows softly.
-  Changes ease (`ui/motion/motion.gd`); nothing pops.
+- **Nothing is static.** Snow falls, the image in the ice wavers, the copy
+  glows. Changes ease (`ui/motion/motion.gd`); nothing pops.
 
 ## The place
 
-An old garden in deep winter. Gameplay blocks are weathered limestone garden
-masonry, edges softly rounded, thick snow on every top that drapes over the
-edge. Absolutes (the ground that stays) carry a dark bronze-green patina band.
-A mirror copy is the same shape in summer: warm stone, moss, small flowers,
-a soft glow. The mirror is a thin frosted pane in a slim brass frame.
+A garden pond in deep winter, seen from its far side. Gameplay blocks are
+old garden stones standing over the ice, edges softly rounded, snow on every
+top that hangs over the edge. Absolutes (the ground that stays) carry a dark
+bronze-green band. A mirror copy is the same shape in summer: warm stone,
+moss, small flowers, a soft glow. The mirror is a thin frosted pane in a
+slim brass frame. The owner wants the block itself redesigned to fit the
+story; it need not stay a cube.
 
-## Palette (approximate; tune against the target)
+## Colours shared by every script
 
 | role | colour |
 | --- | --- |
-| sky top | `#B0C1C9` |
-| sky low, mist | `#EEE2D2` |
-| snow, lit | `#F0EBE8` |
-| snow, shadow | `#B9C6D3` |
-| stone, lit | `#D8CCB4` |
-| stone, shade | `#A79F92` |
-| patina (absolutes) | `#4F6A5F` |
+| snow | `#EDEDF2` |
+| stone | `#BDB099` |
+| patina (absolutes) | `#385247` |
 | gold (goal ring) | `#C99A4A` |
-| moss, summer | `#8E9A4A` |
+| moss, summer | `#667538` |
 | summer glow | `#F3D9A0` |
+
+Sun, sky and ice colours belong to each colour script.
 
 ## Rules for pieces
 
@@ -62,5 +69,6 @@ a soft glow. The mirror is a thin frosted pane in a slim brass frame.
   about 0.1 unit and never hides a walkable edge.
 - Every piece is mirrorable: no text, no handed details that look wrong
   flipped.
-- Colour comes from the palette atlas and baked AO, not from noisy textures.
+- Every piece must read in every colour script and from all four views.
+- New materials use Lambert diffuse (see the trap in `HANDOFF.md`).
 - AI 3D results are drafts: remesh, then repaint in this palette.

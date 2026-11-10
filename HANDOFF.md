@@ -4,37 +4,49 @@ Current state only, kept under about 150 lines. Git history keeps the rest:
 the old traveller and its hood work are in `docs/art/traveller-handoff.md` and
 in the history of this file before 2026-11-09.
 
-## Now: art and scene quality (owner, 2026-11-09)
+## Now: art and scene quality (owner, 2026-11-10)
 
-The owner paused the first-scene work to raise art and scene quality. The
-visuals were the collision boxes and there was no art direction in the game.
-"A place to stand" (`01_route`) is the first quality target. The plan:
+The owner paused the first-scene work to raise art and scene quality.
+"A place to stand" (`01_route`) is the first quality target. Read
+`docs/art/STYLE.md`: the feel reference is now a painterly journey over
+still water, and art is judged on real frames from the game's camera.
 
-0. **Process cuts** (done): see `AGENTS.md`.
-1. **Style guide and target frame** (done): the owner accepted v4 as the
-   direction for mood, palette and light. It is not a pixel spec.
-2. **A real look in the game** (first pass done): a low warm sun, a
-   sky-to-mist backdrop, mist tied to each place's fall height, a filmic
-   tonemap (`world/trial_lighting.gd`, `assets/environment/backdrop.gdshader`)
-   and one block surface drawn by rule (`world/stone.gdshader`): stone, snow
-   with a lip, a patina band on absolutes, summer on a copy. Not done: baked
-   AO, the mirror pane and preview on a pale sky, the goal ring.
-3. **Blocks dressed by rule** (owner approved; replaces a hand-made scene per
-   level): the game builds each block's dressing from the level file, so
-   every stage, copy and cut works. The owner wants the block itself
-   redesigned to fit the story; it need not stay a cube. Start with concept
-   sheets for the owner to pick from. Only the backdrop, which is never
-   mirrored, is hand-made in Blender, once per chapter.
-4. **A kit**: our own pieces first; CC0 kits for iteration and reference.
-5. **Density and life**: scatter, falling snow, wind, ice.
-6. **The art gate** (see `AGENTS.md`). Make a second target frame for a hard
-   case ("Together", mid-solve) before the block kit is built.
+Done so far:
 
-Known gaps in the surface: snow is drawn on a side face even where another
-block sits on top; the sun is fixed in the world, so the opposite view is
-back-lit. Open with the owner: level names of one to three words. AI 3D
-(2026-11-09): Meshy is the default; rocks fit after
-`art_sources/props/ai3d_trial/clean.py`, trees need a hand pass.
+- **Process cuts**: see `AGENTS.md`.
+- **The look in the game** (2026-11-09): a low sun, a filmic tonemap, and one
+  block surface drawn by rule (`world/stone.gdshader`): stone, snow with a
+  lip, a patina band on absolutes, summer on a copy.
+- **The ice** (2026-11-10): `world/ice.gd` and `ice.gdshader` put the pond's
+  ice 0.35 under a place's lowest ground. A second camera, the stage camera
+  mirrored through the ice, draws the stones at half size (render layer 11;
+  nothing else is mirrored). `stone.gdshader` darkens that image with height,
+  so it never looks solid. The ice is the whole backdrop: a painted gradient,
+  soft cloud, the image, and warm pools under the copies.
+  `world/snowfall.gd` is the falling snow. `world_view` keeps one warm light
+  in each copy.
+- **Colour scripts**: `SCRIPTS` in `world/trial_lighting.gd` (`morning`,
+  `dusk`); a level names one with `"light"`. Only `01_route` is dusk.
+
+Next, in order:
+
+1. The owner judges the ice frame and picks the colour script per stage.
+2. **Blocks dressed by rule** (owner approved): the game builds each block's
+   dressing from the level file, so every stage, copy and cut works. The
+   owner wants the block itself redesigned to fit the story. Start with
+   concept sheets on a hard case ("Together", mid-solve).
+3. Far scenery on the ice, plants, wind. Our own art first; CC0 kits and
+   Meshy (rocks only, after `art_sources/props/ai3d_trial/clean.py`) for
+   drafts.
+4. Vistas between puzzles with a low camera, perhaps as the new opening.
+   Not decided.
+
+Known gaps (the reviewer's list is in `VALIDATION.md`): the colour script
+changes in a cut when moving on; snow is drawn on a side face even where
+another block sits on top; the opposite view is back-lit; no ambient
+occlusion; she is pale against snow and glass; the morning script is plain;
+the second camera's cost is not measured on a real device. Open with the owner: level names of
+one to three words (proposal sent 2026-11-09).
 
 **On hold: the first scene.** The owner found the pond story place
 (`levels/00_pond.json`, `world/prologue.gd`, `docs/briefs/the-pond.md`) gives
@@ -82,8 +94,8 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
   button raises and lowers; a drag on the mirror slides it; a drag on its
   arrow points it; Undo takes it back. `GAME_DESIGN.md` has the rules.
 - `world/world_view.gd` draws one mesh per solid; `world/block_set.gd` sets
-  the kind on `world/stone.gdshader`; `world/trial_lighting.gd` is the light,
-  sky and mist.
+  the kind on `world/stone.gdshader`; `world/trial_lighting.gd` is the light
+  and the colour scripts; `world/ice.gd` is the ice and its mirror image.
 - `world/character_visual.gd` plays the girl (`assets/character/girl.glb`,
   0.8 u, Idle/Walk/Wake/Lift/Raise/Lower/Wave). Sources in
   `art_sources/girl/`. `assets/character/traveller.glb` is the old character,

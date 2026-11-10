@@ -32,9 +32,24 @@ var _revealing := false
 ## The reveal grows every fragment, not only copies: a whole new place.
 var _reveal_all := false
 var ghost_root := Node3D.new()
+## One warm light in each summer copy: the copy is the lantern of a place.
+const GLOW_LIGHTS := 6
+const GLOW_ENERGY := 1.8
+const GLOW_RANGE := 2.8
+var glow_root := Node3D.new()
+var glow_color := Color("ffd596")
+var _glow_lights: Array[OmniLight3D] = []
+## The stones show in the ice below; see `world/ice.gd`.
+const MIRRORED_LAYER := 1 << 10
+## The height of the ice. A stone's image fades with its height above it.
+var ice_height := -100.0:
+	set(value):
+		ice_height = value
+		for slot: Dictionary in visual_slots.values():
+			(slot["material"] as ShaderMaterial).set_shader_parameter("ice_height", value)
 
 func _ready() -> void:
-	for node: Node3D in [visual_root, ghost_root, collision_root, overlay_root, path_root, hidden_root, shadow_root, hover_root, mark_root]:
+	for node: Node3D in [visual_root, ghost_root, glow_root, collision_root, overlay_root, path_root, hidden_root, shadow_root, hover_root, mark_root]:
 		add_child(node)
 	shadow_root.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var shade := ShaderMaterial.new()
@@ -80,6 +95,7 @@ func draw_world(solids: Array[Dictionary]) -> void:
 		if slot.is_empty():
 			var instance := MeshInstance3D.new()
 			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			instance.layers = 1 | MIRRORED_LAYER
 			visual_root.add_child(instance)
 			slot = {"instance": instance, "material": ShaderMaterial.new(), "mesh_signature": "", "style": ""}
 			visual_slots[key] = slot
@@ -106,7 +122,46 @@ func draw_world(solids: Array[Dictionary]) -> void:
 		for instance: MeshInstance3D in grown:
 			_grow(instance)
 	_draw_drop_shadows(solids)
+	_light_copies(solids)
 	update_debug()
+
+## Puts a warm light at the heart of each copy, the largest first. A light
+## that is new eases in; one that is no longer needed eases out.
+func _light_copies(solids: Array[Dictionary]) -> void:
+	var copies: Array[AABB] = []
+	for solid: Dictionary in solids:
+		if str(solid.get("kind", "")) == "reflected":
+			copies.append(solid["bounds"])
+	copies.sort_custom(func(a: AABB, b: AABB) -> bool: return a.get_volume() > b.get_volume())
+	while _glow_lights.size() < GLOW_LIGHTS:
+		var light := OmniLight3D.new()
+		light.omni_range = GLOW_RANGE
+		light.omni_attenuation = 1.4
+		light.light_energy = 0.0
+		light.shadow_enabled = false
+		glow_root.add_child(light)
+		_glow_lights.append(light)
+	for index: int in GLOW_LIGHTS:
+		var light := _glow_lights[index]
+		var lit := index < copies.size()
+		light.light_color = glow_color
+		if lit:
+			light.position = copies[index].get_center()
+		var wanted := GLOW_ENERGY if lit else 0.0
+		if not is_equal_approx(float(light.get_meta("wanted", 0.0)), wanted):
+			light.set_meta("wanted", wanted)
+			if light.has_meta("motion") and (light.get_meta("motion") as Tween).is_valid():
+				(light.get_meta("motion") as Tween).kill()
+			light.set_meta("motion", Motion.tween(light, "light_energy", wanted, "reveal"))
+
+## The copies' lights, for the ice below: each a place and a strength.
+func copy_glows() -> Array[Vector4]:
+	var glows: Array[Vector4] = []
+	for light: OmniLight3D in _glow_lights:
+		if light.light_energy > 0.01:
+			var at := light.global_position
+			glows.append(Vector4(at.x, at.y, at.z, light.light_energy / GLOW_ENERGY))
+	return glows
 
 ## A soft shadow straight below every floating block, on each surface under
 ## its footprint. A copy beside a path and one above it look alike from an
@@ -268,6 +323,7 @@ func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	material.set_shader_parameter("seed", source.get_center())
 	_apply_source_mapping(material, solid, bounds)
 	material.set_shader_parameter("clip_plane", _clip_vector())
+	material.set_shader_parameter("ice_height", ice_height)
 	slot["instance"].material_override = material
 
 func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: AABB) -> void:
