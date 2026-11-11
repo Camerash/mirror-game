@@ -1,17 +1,18 @@
 shader_type spatial;
-render_mode specular_disabled, ambient_light_disabled, fog_disabled;
+render_mode unshaded, fog_disabled;
 // The still water that lies on the pond's ice, below a place. From the
 // game's view every line of sight ends on it, so it is the whole backdrop.
 // It shows:
 //   the sky it holds: light where it holds the low sun, deep toward the
-//     viewer, with a few long clouds;
+//     viewer;
 //   the place, mirrored (`reflection`): darker than the place, broken by the
 //     ripples, and gone with height (the image arrives darkened by height);
 //   its own motion: a slow swell, rings where a drop falls or where
 //     something disturbs the water (`rings_made`), and the sun's path;
 //   warm light from each summer copy.
 // All of it lies in the world, so it turns with the view; only the sun
-// keeps its bearing. It takes no light but the sun's shadow (see `light`).
+// keeps its bearing. It takes no light and no shadow: a shadow on the water
+// reads as a stone under it.
 
 uniform sampler2D reflection : source_color, filter_linear, repeat_disable;
 uniform vec3 near_color : source_color = vec3(0.15, 0.16, 0.31);
@@ -21,8 +22,6 @@ uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
 // How much of the water the image of the place covers.
 uniform float mirror = 0.6;
-// How much the sun's shadow darkens the water.
-uniform float shade = 0.4;
 // Each pool: the light's place in the world (xyz) and its strength (w).
 uniform vec4 pools[6];
 uniform int pool_count = 0;
@@ -57,17 +56,6 @@ float noise(vec2 p) {
 	vec2 f = fract(p);
 	f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0)), f.x), f.y);
-}
-
-float fbm(vec2 p) {
-	float value = 0.0;
-	float amplitude = 0.5;
-	for (int octave = 0; octave < 4; octave++) {
-		value += amplitude * noise(p);
-		p = p * 2.03 + 7.1;
-		amplitude *= 0.5;
-	}
-	return value;
 }
 
 // The slope of the water at a place: a slow swell.
@@ -123,7 +111,7 @@ void fragment() {
 	for (int index = 0; index < 4; index++) {
 		float age = (ice_time - rings_made[index].z) / RING_LIFE;
 		if (rings_made[index].w > 0.0 && age > 0.0 && age < 1.0) {
-			rings += ring(plain, rings_made[index].xy, age, RING_REACH, 8.0) * rings_made[index].w * 1.5;
+			rings += ring(plain, rings_made[index].xy, age, RING_REACH, 8.0) * rings_made[index].w * 2.6;
 		}
 	}
 	vec2 slope = swell(plain, ice_time) * 0.3 + rings.xy * 1.3;
@@ -138,11 +126,6 @@ void fragment() {
 	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.66;
 	vec3 colour = mix(mid_color, far_color, sun_spread);
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
-	// A few long clouds lie in the water and drift slowly. They are lit
-	// toward the sun.
-	vec2 cloud_at = (plain + slope * 0.3) * vec2(0.05, 0.11) + vec2(ice_time * 0.004, 0.0);
-	float cloud = smoothstep(0.44, 0.70, fbm(cloud_at + vec2(0.0, fbm(cloud_at * 0.6 + 4.0) * 0.9)));
-	colour = mix(colour, mix(mid_color * 1.9, far_color, clamp(0.3 + sun_spread * 1.2, 0.0, 1.0)), cloud * 0.36);
 
 	// The low sun, and its path of light down the water: the swell breaks
 	// it into short bright lines of many sizes.
@@ -173,7 +156,7 @@ void fragment() {
 	colour = mix(colour, image.rgb * mix(vec3(1.0), colour * 1.6, 0.5) * 0.55, cover);
 	colour += sun_color * glitter * 0.42 * (1.0 - cover * 0.7);
 	// A thin light line lies on the crest of each ring.
-	colour += colour * rings.z * 0.55;
+	colour += (colour * 0.5 + mix(mid_color, far_color, 0.4) * 0.07) * rings.z;
 
 	// Warm light from each summer copy lies on the water below it. The light
 	// of a copy high above the water does not reach it. The light breathes.
@@ -189,14 +172,7 @@ void fragment() {
 	vec2 from_centre = (SCREEN_UV - vec2(0.5, 0.46)) * vec2(1.0, 0.86);
 	colour *= 1.0 - smoothstep(0.30, 0.86, length(from_centre)) * 0.42;
 
-	// The part in `ALBEDO` is what the sun's shadow takes away.
-	ALBEDO = colour * shade;
-	EMISSION = colour * (1.0 - shade);
-}
-
-void light() {
-	// Only the sun reaches the water, and only to say where its shadow falls.
-	if (LIGHT_IS_DIRECTIONAL) {
-		DIFFUSE_LIGHT += vec3(ATTENUATION);
-	}
+	// A little grain keeps the dark water from showing steps of colour.
+	colour += (hash(FRAGCOORD.xy) - 0.5) * 0.006;
+	ALBEDO = colour;
 }

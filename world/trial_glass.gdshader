@@ -34,7 +34,7 @@ void fragment() {
 	SPECULAR = 0.5;
 	METALLIC = 0.0;
 	EMISSION = ALBEDO * (0.22 * frost + 0.16 * sheen);
-	ALPHA = (0.025 + frost * crystals * 0.42 + sheen * 0.05) * (removal ? 0.3 : 1.0) * presence;
+	ALPHA = (0.012 + frost * crystals * 0.42 + sheen * 0.025) * (removal ? 0.3 : 1.0) * presence;
 	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
 		// Drawn for the image in the water: a pale sheet, gone with height.
 		ALPHA = 0.5 * image_keep(world_position.y - water_level) * (removal ? 0.3 : 1.0) * presence;

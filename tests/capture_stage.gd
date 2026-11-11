@@ -4,6 +4,7 @@ extends SceneTree
 ## Options: `--clean 1` hides the interface, `--turns 1` adds the three
 ## quarter turns, `--motion 1` adds six frames half a second apart,
 ## `--nudge 0.5` then slides the mirror that far along X and writes cut.png,
+## `--rise 0.9` writes rise.png that many seconds after the mirror is raised,
 ## `--size 1600x1000`. In the cloud container, run it under `xvfb-run -a`.
 ## Writes plain.png (mirror down), mirror.png (mirror up), with motion
 ## motion0.png to motion5.png, and with turns turn1.png to turn3.png.
@@ -34,6 +35,9 @@ func _run() -> void:
 	await create_timer(1.5).timeout
 	await _save(out, "plain")
 	game.toggle_mirror()
+	if args.has("rise"):
+		await create_timer(float(args["rise"])).timeout
+		await _save(out, "rise")
 	await create_timer(2.5).timeout
 	if not game.mirror.get("enabled", false):
 		# A slow first frame can refuse the first raise.

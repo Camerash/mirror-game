@@ -37,7 +37,7 @@ const MAX_STEP := 0.1
 const TONE_LIFT := 0.05
 ## Her colours are taken down by this much, so that her cream hat and pale
 ## coat stand out from the snow she walks on.
-const TONE_DEEPEN := 0.58
+const TONE_DEEPEN := 0.64
 const TONE_ROUGHNESS := 0.9
 const TONE_SPECULAR := 0.2
 const TONE_RIM := 0.25

@@ -17,8 +17,6 @@ const MAX_RINGS := 4
 ## A thing this far above the water does not disturb it.
 const RING_HEIGHT := 2.5
 const EXTENT := 600.0
-## The water is alone on this render layer (`ICE_LAYER` in the lighting).
-const ICE_LAYER := 1 << 11
 
 ## The stage camera to mirror.
 var camera: Camera3D
@@ -41,7 +39,6 @@ func _ready() -> void:
 	quad.size = Vector2(EXTENT, EXTENT)
 	plane.mesh = quad
 	plane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	plane.layers = ICE_LAYER
 	material.shader = IceShader
 	plane.material_override = material
 	add_child(plane)
@@ -65,7 +62,6 @@ func set_palette(colors: Dictionary) -> void:
 	material.set_shader_parameter("far_color", colors["ice_far"])
 	material.set_shader_parameter("pool_color", colors["glow"])
 	material.set_shader_parameter("sun_color", colors["sun"])
-	material.set_shader_parameter("shade", colors["shade"])
 	_sun_from = colors["sun_from"]
 
 ## Something at `at` disturbs the water: a ring spreads from the point below

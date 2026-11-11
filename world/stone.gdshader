@@ -158,7 +158,7 @@ void fragment() {
 		base = mix(base, base * vec3(0.30, 0.29, 0.52), her_shade * 0.92);
 	} else if (side_face) {
 		// The sides are the mid value of a place: only a top is light.
-		base *= summer ? vec3(1.0) : vec3(0.76, 0.76, 0.80);
+		base *= summer ? vec3(1.0) : vec3(0.62, 0.63, 0.70);
 		// The cover hangs over the edge in an uneven lip.
 		float along = face.x > face.z ? place.z : place.x;
 		float lip = 0.07 + 0.11 * value_noise(vec3(along * 2.3, 1.7, seed.y)) + 0.04 * value_noise(vec3(along * 7.0, 4.1, seed.y));

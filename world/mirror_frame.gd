@@ -7,7 +7,8 @@ var metal := StandardMaterial3D.new()
 var ghost := StandardMaterial3D.new()
 
 func _init() -> void:
-	metal.albedo_color = Color("a8894f")
+	# Pale and cool: gold belongs to the goal alone.
+	metal.albedo_color = Color("b9c2cc")
 	metal.metallic = 0.8
 	metal.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT
 	metal.roughness = 0.24
