@@ -37,14 +37,23 @@ Open from the last review, worst first: the lower half of the frame is
 empty; the ice does not read as glass; the reeds toward the sun are a
 lattice of straw; the girl is small; the pane is faint; the copy's moss top
 is flat; "Together" hides its copy from one view. Three need a decision,
-not more shader work:
+not more shader work (the camera is done: see below):
 
-- **The camera frames wider than the stones need** (it also fits the
-  mirror's unseen control points), so the place is small and the girl is
-  about ten pixels on a phone. The loop did not touch the camera.
+- **The hint card on a phone.** At 844x390 it covers the girl, the mirror
+  and both of its stones (`test-output` is not kept; capture with `--size
+  844x390` and no `--clean`). It did so before the camera changed.
 - **How long and sharp the stones' images are.** Long or sharp ones read
   as a second row of stones; short, soft ones as "not a mirror".
 - **How much the girl may differ from her concept colours** on snow.
+
+**The camera** (2026-11-11) is fitted to the points that are drawn (each
+solid, the mirror with room for one step each way, the goal, the girl), not
+to the corners of one box round them all: `points` in
+`world/stage_camera.gd`, `_fit_camera` in `game.gd`. A place is 12% larger
+in the first view of `01_route` and `15_together`, and up to twice as large
+in a turned view. The first view stays the smallest: a long diagonal row and
+a pane three units high set its size. An earlier note here said the camera
+fitted the mirror's unseen control points; that was wrong.
 
 Also open: the colour script cuts when moving on; the scenery appears at
 once with a new place; the title screen was not checked. Frame time on the

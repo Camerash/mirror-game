@@ -1727,22 +1727,36 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 		_update_preview()
 	if _manipulating():
 		return
-	var framing := Geometry.total_bounds(world.drawn_solids).grow(0.3)
+	# The view is fitted to what is drawn: each solid with a little room, the
+	# mirror, the goal and the girl. `framing` is the box round all of them.
+	var shown := PackedVector3Array()
+	for solid: Dictionary in world.drawn_solids:
+		var roomy := (solid["bounds"] as AABB).grow(0.15)
+		for index: int in 8:
+			shown.append(roomy.get_endpoint(index))
 	if sweep.active:
-		framing = framing.merge(sweep.union)
+		for index: int in 8:
+			shown.append(sweep.union.get_endpoint(index))
 	if phase == "preview" or mirror["enabled"]:
+		# Room for one step of the mirror each way, so that a slide is judged
+		# against blocks that stay put and the view does not follow each step.
+		var step := sheet.global_basis.z.normalized()
 		for corner: Vector3 in sheet.get_corners():
-			framing = framing.expand(corner)
-	for point: Vector3 in rings.get_fit_points():
+			shown.append(corner + step)
+			shown.append(corner - step)
+	shown.append_array(rings.get_fit_points())
+	shown.append(Geometry.vector(level["goal"]) + Vector3.UP)
+	shown.append(walker.position)
+	shown.append(walker.position + Vector3.UP)
+	var framing := AABB(shown[0], Vector3.ZERO)
+	for point: Vector3 in shown:
 		framing = framing.expand(point)
-	framing = framing.expand(Geometry.vector(level["goal"]) + Vector3.UP)
-	framing = framing.expand(walker.position).expand(walker.position + Vector3.UP)
 	# The direct controls keep the view still while it already shows the whole
 	# stage, so a moved mirror is judged against blocks that stay put.
 	var keep_view := direct_controls and not instant and not resized and not rect_changed and not sweep.active \
-		and camera.covers(framing, hud.get_camera_rect())
+		and camera.covers(framing, hud.get_camera_rect(), 1.25, shown)
 	if not keep_view:
-		camera.fit(framing, hud.get_camera_rect(), instant)
+		camera.fit(framing, hud.get_camera_rect(), instant, shown)
 	failure_veil.position = rect.position
 	failure_veil.size = rect.size
 

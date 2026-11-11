@@ -1,7 +1,17 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: six more rounds of the polish loop — 2026-11-11
+# Latest check: a tighter camera — 2026-11-11
+
+- Why: the reviews kept listing a small place in an empty frame. Measured first (scratch script, the stage camera's own numbers): the camera fitted the eight corners of one box round everything drawn, and that box has corners where nothing stands. It did not fit unseen control points, as an earlier note said; the ring controls gave no points.
+- Change: `world/stage_camera.gd` takes the points to show (`fit` and `covers` have one new optional argument; with none, they behave as before), and `game.gd` gives it each solid's corners with 0.15 of room, the mirror's corners with one step of room each way, the goal and the girl.
+- Measured scale with the mirror raised, before and after, in pixels per unit: `01_route` 113.4 to 127.2 at 1600x1000 and 44.6 to 50.0 at 844x390; `15_together` 76.3 to 86.0 and 30.0 to 33.8. Turned views gain more (in "Together", about twice the size in its second view). The first view of `01_route` stays the smallest view.
+- Final state, run once, headless, no failures: `run_tests` **689/0**, `gameplay_art_tests` **58/0**, `app_flow_tests` **88/0**, `readability_tests` **11/0**, `level_solvability_tests` **68/0**, `direct_controls_tests` **123/0** (it holds the check that a small slide does not reframe the stage), `edit_mode_tests` **22/0**, `extent_tests` **68/0**, `constellation_tuning_tests` **25/0**, `display_geometry_tests` **4153/0**, `small_fix_tests` **58/0**, `prompt_tests` **84/0**.
+- Pictures: the four views, "Together", the frame with the interface, and for the first time a capture at a true 844x390 with the interface. An independent reviewer (on the state before the room for the mirror's step was added) compared with the wider camera: "closer and larger, so the puzzle reads better", beauty 6/10, readability 6/10 without the interface.
+- Finding, older than this change: **at 844x390 the hint card covers the girl, the mirror and both of its stones.** The reviewer scored readability 3/10 with the interface on a phone. Not fixed.
+- Not checked: how often the view now refits while the mirror slides in play (the room for one step is by reasoning, and by the one test above); the title's view from afar; moving on between places; a played session; a phone.
+
+# Earlier check: six more rounds of the polish loop — 2026-11-11
 
 - Machine and method as in the entry below. The owner asked for more rounds after the first eleven. Rounds 12 to 17, each with a new independent reviewer; from round 14 the reviewer also got a difference image of two frames two seconds apart.
 - What changed: the stone is a pedestal (plinth, rounder shaft, cap slab, a raised bronze band on an absolute); the far light on the ice spreads from the sun's place, not from a level band; tall trees are held far down the ice; the cracks, the fish, the rocks and the posts are gone; reeds and shrubs stand over their own image (a second shader pass, no camera) and are pale toward the sun; the goal ring lights its snow; the girl's colours are taken down by half; snow is drawn out along its fall.

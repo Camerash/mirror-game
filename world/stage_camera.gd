@@ -7,6 +7,10 @@ signal motion_finished
 var yaw := PI * 0.25
 var target_yaw := PI * 0.25
 var bounds := AABB()
+## What the view must show. When it is not empty, the view is fitted to these
+## points and not to the corners of `bounds`: one box round a whole place has
+## corners where nothing stands, and fitting to them leaves the place small.
+var points := PackedVector3Array()
 var play_rect := Rect2()
 var motion: Tween
 var busy := false
@@ -19,15 +23,16 @@ var drift := 0.0
 ## places travels with "transition".
 var travel_verb := ""
 
-func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
+func fit(stage_bounds: AABB, rect: Rect2, instant := false, content := PackedVector3Array()) -> void:
 	if rect.size.x < 10 or rect.size.y < 10:
 		return
-	var changed := not stage_bounds.is_equal_approx(bounds) or not rect.is_equal_approx(play_rect)
+	var changed := not stage_bounds.is_equal_approx(bounds) or not rect.is_equal_approx(play_rect) or content != points
 	if initialized and not changed and not instant:
 		return
 	_stop()
 	bounds = stage_bounds
 	play_rect = rect
+	points = content
 	var pose := _pose(yaw)
 	if instant or not initialized:
 		initialized = true
@@ -46,14 +51,23 @@ func fit(stage_bounds: AABB, rect: Rect2, instant := false) -> void:
 ## True when the current view already shows all of `stage_bounds` inside
 ## `rect`, and is not much wider than a fresh fit would be. While this holds,
 ## the direct controls leave the view where it is.
-func covers(stage_bounds: AABB, rect: Rect2, slack := 1.25) -> bool:
+func covers(stage_bounds: AABB, rect: Rect2, slack := 1.25, content := PackedVector3Array()) -> bool:
 	if not initialized or busy or rect.size.x < 10 or rect.size.y < 10:
 		return false
 	var inner := rect.grow(-12.0)
-	for index: int in range(8):
-		if not inner.has_point(unproject_position(stage_bounds.get_endpoint(index))):
+	for point: Vector3 in _shown(stage_bounds, content):
+		if not inner.has_point(unproject_position(point)):
 			return false
-	return size <= float(_pose(yaw, 0.0, stage_bounds, rect)["size"]) * slack
+	return size <= float(_pose(yaw, 0.0, stage_bounds, rect, content)["size"]) * slack
+
+## The points a view of `framed` must show: `content`, or the box's corners.
+func _shown(framed: AABB, content: PackedVector3Array) -> PackedVector3Array:
+	if not content.is_empty():
+		return content
+	var corners := PackedVector3Array()
+	for index: int in range(8):
+		corners.append(framed.get_endpoint(index))
+	return corners
 
 func turn(direction: int) -> void:
 	if busy or not initialized:
@@ -82,8 +96,9 @@ func _apply_pose(angle: float, height: float) -> void:
 	var pose := _pose(angle, height)
 	_apply(pose["position"], pose["basis"], pose["size"])
 
-func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: Variant = null) -> Dictionary:
+func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: Variant = null, content: Variant = null) -> Dictionary:
 	var framed: AABB = bounds if stage_bounds == null else stage_bounds
+	var shown := _shown(framed, points if content == null else content)
 	var fit_rect: Rect2 = play_rect if area == null else area
 	angle += drift * afar
 	# From afar the view looks down more steeply, and from further away.
@@ -93,13 +108,16 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 	var view_basis := Basis.looking_at(-direction, Vector3.UP)
 	var viewport_size := get_viewport().get_visible_rect().size
 	var pixels := viewport_size.y / fixed_size if fixed_size > 0.0 else 1.0
+	# The view is centred on the middle of what it shows, as seen from this
+	# angle. For a box's own corners that is the box's centre.
+	var low := Vector2(INF, INF)
+	var high := Vector2(-INF, -INF)
+	for point: Vector3 in shown:
+		var seen := view_basis.inverse() * (point - centre)
+		low = low.min(Vector2(seen.x, seen.y))
+		high = high.max(Vector2(seen.x, seen.y))
+	centre += view_basis.x * (low.x + high.x) * 0.5 + view_basis.y * (low.y + high.y) * 0.5
 	if fixed_size <= 0.0:
-		var low := Vector2(INF, INF)
-		var high := Vector2(-INF, -INF)
-		for index: int in range(8):
-			var corner := view_basis.inverse() * (framed.get_endpoint(index) - centre)
-			low = low.min(Vector2(corner.x, corner.y))
-			high = high.max(Vector2(corner.x, corner.y))
 		var extent := (high - low).max(Vector2.ONE)
 		# A small screen keeps a smaller margin, so a phone shows more stage.
 		var margin := minf(48.0, 0.08 * minf(fit_rect.size.x, fit_rect.size.y))
