@@ -24,35 +24,33 @@ under the girl comes from the global shader value `walker_at`
 
 Changed by the loop, for the owner to confirm or reverse:
 
-- **The hidden-ground ghost is drawn clear.** Every visible strength of it
-  read as a glass block to stand on. `HIDDEN_FILL` and `HIDDEN_EDGE` in
+- **The hidden-ground ghost is drawn clear**: every visible strength read as
+  a glass block to stand on. `HIDDEN_FILL` and `HIDDEN_EDGE` in
   `world/world_view.gd` bring the cue back.
 - **The girl's colours are taken down by half in the game's light**
-  (`TONE_DEEPEN` in `world/character_visual.gd`), so she shows on the snow.
-  Her model is not changed.
+  (`TONE_DEEPEN` in `world/character_visual.gd`). Her model is unchanged.
 - The mirror's guide lines, side bands and seam are much fainter.
-- The pond and the first scene were not edited, but they share the light,
-  the ice and the stone shape, so they look different. Nobody has looked.
+- The pond and the first scene were not edited, but they share the changed
+  light, ice and stone shape. Nobody has looked at them.
 
 Open from the last review, worst first: the lower half of the frame is
-empty; the ice does not read as glass, and the stones' images are short and
-pale; the reeds toward the sun are a lattice of straw; the girl is small;
-the pane is faint; the copy's moss top is flat; "Together" hides its copy
-from one view. Three of these need a decision, not more shader work:
+empty; the ice does not read as glass; the reeds toward the sun are a
+lattice of straw; the girl is small; the pane is faint; the copy's moss top
+is flat; "Together" hides its copy from one view. Three need a decision,
+not more shader work:
 
 - **The camera frames wider than the stones need** (it also fits the
-  mirror's unseen control points), so the place is small in the frame and
-  the girl is about ten pixels on a phone. The loop did not touch the camera.
+  mirror's unseen control points), so the place is small and the girl is
+  about ten pixels on a phone. The loop did not touch the camera.
 - **How long and sharp the stones' images are.** Long or sharp ones read
   as a second row of stones; short, soft ones as "not a mirror".
 - **How much the girl may differ from her concept colours** on snow.
 
-Other gaps: the colour script cuts when moving on; the scenery appears at
-once with a new place; the title screen was not checked.
-
-Frame time on the Mac (M2 Pro, unpresented draws): 2.1 ms at 1152x800 and
-4.4 ms at 2532x1170, from 1.0 and 1.9 before the loop; the ice shader is
-most of it. **No phone has run this.** The shadow map is now 4096 wide.
+Also open: the colour script cuts when moving on; the scenery appears at
+once with a new place; the title screen was not checked. Frame time on the
+Mac (M2 Pro): 2.1 ms at 1152x800 and 4.4 ms at 2532x1170, from 1.0 and 1.9
+before the loop; the ice shader is most of it. **No phone has run this.**
+The shadow map is now 4096 wide.
 
 Open with the owner: approval of the frame; the three decisions above;
 the colour script per stage; whether her image in the ice becomes where
