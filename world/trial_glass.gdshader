@@ -25,7 +25,7 @@ void fragment() {
 	// Frost grows in from the frame in fine crystals; the middle stays clear,
 	// so what stands behind the glass is not washed out.
 	float frost = pow(1.0 - smoothstep(0.0, 0.16, nearest), 1.6);
-	float crystals = 0.82 + 0.18 * sin(local_position.x * 31.0 + sin(local_position.y * 27.0) * 2.0) * sin(local_position.y * 23.0 + local_position.x * 7.0);
+	float crystals = 0.86 + 0.14 * sin(local_position.x * 2.9 + sin(local_position.y * 2.3) * 1.5);
 	// A slow sheen crosses the pane, as on glass turned in the light.
 	float across = local_position.x * 0.8 + local_position.y * 0.55 - sheet_time * 0.11;
 	float sheen = pow(0.5 + 0.5 * sin(across * 2.1), 6.0) * 0.6 + pow(0.5 + 0.5 * sin(across * 0.9 + 1.7), 10.0);

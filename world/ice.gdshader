@@ -20,7 +20,7 @@ uniform vec3 far_color : source_color = vec3(0.95, 0.71, 0.66);
 uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
 // How much of the water the image of the place covers.
-uniform float mirror = 0.85;
+uniform float mirror = 0.6;
 // How much the sun's shadow darkens the water.
 uniform float shade = 0.4;
 // Each pool: the light's place in the world (xyz) and its strength (w).
@@ -126,23 +126,23 @@ void fragment() {
 			rings += ring(plain, rings_made[index].xy, age, RING_REACH, 8.0) * rings_made[index].w * 1.5;
 		}
 	}
-	vec2 slope = swell(plain, ice_time) * 0.5 + rings.xy * 1.3;
+	vec2 slope = swell(plain, ice_time) * 0.3 + rings.xy * 1.3;
 	// The slope moves what the water shows, across and down the view.
 	vec2 moved = vec2(dot(slope, view_right), -dot(slope, view_forward) * 0.5) * 0.0042;
 
-	// The sky the water holds: light where it holds the low sun, deep toward
-	// the viewer.
-	float sky_depth = depth + moved.y * 3.0;
-	vec2 from_sun = vec2((bearing + moved.x * 2.0 - sun_bearing) / SPAN, (sky_depth + 0.06) * 1.25);
+	// The sky the water holds: light where it holds the low sun, deep
+	// elsewhere and deepest toward the viewer. The light spreads from the
+	// sun's place; it is not a band across the view, which reads as a
+	// horizon.
+	vec2 from_sun = vec2((bearing - sun_bearing) / SPAN, (depth + 0.06) * 1.25);
 	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.66;
-	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, sky_depth)) * 0.34);
-	vec3 colour = mix(mid_color, far_color, far_light);
-	colour = mix(colour, near_color, smoothstep(0.30, 0.95, sky_depth) * (1.0 - sun_spread * 0.5));
+	vec3 colour = mix(mid_color, far_color, sun_spread);
+	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
 	// A few long clouds lie in the water and drift slowly. They are lit
 	// toward the sun.
-	vec2 cloud_at = (plain + slope * 0.25) * vec2(0.045, 0.10) + vec2(ice_time * 0.004, 0.0);
-	float cloud = smoothstep(0.46, 0.74, fbm(cloud_at + vec2(0.0, fbm(cloud_at * 0.6 + 4.0) * 0.9)));
-	colour = mix(colour, mix(mid_color * 1.7, far_color, clamp(0.25 + sun_spread * 1.2, 0.0, 1.0)), cloud * 0.22);
+	vec2 cloud_at = (plain + slope * 0.3) * vec2(0.05, 0.11) + vec2(ice_time * 0.004, 0.0);
+	float cloud = smoothstep(0.44, 0.70, fbm(cloud_at + vec2(0.0, fbm(cloud_at * 0.6 + 4.0) * 0.9)));
+	colour = mix(colour, mix(mid_color * 1.9, far_color, clamp(0.3 + sun_spread * 1.2, 0.0, 1.0)), cloud * 0.36);
 
 	// The low sun, and its path of light down the water: the swell breaks
 	// it into short bright lines of many sizes.
@@ -153,9 +153,10 @@ void fragment() {
 	float spread = 0.045 + depth * 0.10;
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.10, 0.80, depth));
 	vec2 lines_at = vec2(across, dot(plain, view_forward) * 2.6);
-	float glitter = smoothstep(0.34, 0.50, swell(lines_at * 3.2, ice_time).y);
-	glitter += smoothstep(0.38, 0.52, swell(lines_at * 6.7 + 9.0, ice_time * 1.3).y) * 0.6;
-	glitter *= path * (0.25 + 0.75 * noise(lines_at * 0.6 + vec2(0.0, ice_time * 0.1)));
+	float glitter = smoothstep(0.38, 0.52, swell(lines_at * 3.2, ice_time * 0.6).y);
+	glitter += smoothstep(0.40, 0.52, swell(lines_at * 6.7 + 9.0, ice_time * 0.8).y) * 0.5;
+	// The lines lie in loose groups, with dark water between them.
+	glitter *= path * smoothstep(0.35, 0.75, noise(lines_at * 0.45 + vec2(0.0, ice_time * 0.06)));
 
 	// The place, mirrored: soft, darker than the place, in the water's
 	// colour. The ripples pull it into streaks across the view and open gaps
@@ -163,24 +164,24 @@ void fragment() {
 	vec2 at = vec2(SCREEN_UV.x, 1.0 - SCREEN_UV.y) + moved;
 	at.x += (noise(vec2(depth * 95.0 - ice_time * 0.35, across * 0.7)) - 0.5) * 0.0034
 		+ (noise(vec2(depth * 31.0 + ice_time * 0.2, across * 0.3)) - 0.5) * 0.0050;
-	vec2 soft = vec2(0.0022, 0.0030);
+	vec2 soft = vec2(0.0036, 0.0050);
 	vec4 image = texture(reflection, at) * 0.4
 		+ (texture(reflection, at + vec2(soft.x, 0.0)) + texture(reflection, at - vec2(soft.x, 0.0))
 		+ texture(reflection, at + vec2(0.0, soft.y)) + texture(reflection, at - vec2(0.0, soft.y))) * 0.15;
-	float streak = 0.62 + 0.38 * smoothstep(0.25, 0.60, noise(vec2(across * 0.9, depth * 75.0 - ice_time * 0.5)));
+	float streak = 0.45 + 0.55 * smoothstep(0.25, 0.60, noise(vec2(across * 0.9, depth * 75.0 - ice_time * 0.5)));
 	float cover = image.a * smoothstep(0.0, 0.07, max(image.r, max(image.g, image.b))) * mirror * streak;
 	colour = mix(colour, image.rgb * mix(vec3(1.0), colour * 1.6, 0.5) * 0.55, cover);
-	colour += sun_color * glitter * 0.5 * (1.0 - cover * 0.7);
+	colour += sun_color * glitter * 0.42 * (1.0 - cover * 0.7);
 	// A thin light line lies on the crest of each ring.
 	colour += colour * rings.z * 0.55;
 
 	// Warm light from each summer copy lies on the water below it. The light
 	// of a copy high above the water does not reach it. The light breathes.
-	float breath = 0.82 + 0.18 * sin(ice_time * 2.6) * (0.55 + 0.45 * sin(ice_time * 0.9 + 1.0));
+	float breath = 0.92 + 0.08 * sin(ice_time * 2.6) * (0.55 + 0.45 * sin(ice_time * 0.9 + 1.0));
 	for (int index = 0; index < pool_count; index++) {
 		float lift = max(pools[index].y - world_position.y, 0.0);
-		float distance_to = length(plain + slope * 0.08 - pools[index].xz) / (2.0 + lift * 0.4);
-		float warm = pools[index].w * breath * 1.1 * exp(-lift * lift * 0.6);
+		float distance_to = length(plain + slope * 0.08 - pools[index].xz) / (1.35 + lift * 0.4);
+		float warm = pools[index].w * breath * 0.55 * exp(-lift * lift * 0.6);
 		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.2) * 1.2 + exp(-distance_to * distance_to * 0.8) * 0.24) * (1.0 - cover * 0.55);
 	}
 

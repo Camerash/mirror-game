@@ -66,7 +66,7 @@ func _build(limits: Dictionary, water_height: float, place: String) -> void:
 func _stand(at: Vector3) -> void:
 	var size := _random.randf_range(0.4, 1.0)
 	var spread := 0.2 + 0.4 * size
-	for index: int in _random.randi_range(1, int(2.0 + 4.0 * size)):
+	for index: int in _random.randi_range(2, int(3.0 + 4.0 * size)):
 		var foot := at + Vector3(_random.randfn(0.0, spread * 0.5), 0.0, _random.randfn(0.0, spread * 0.5))
 		var height := _random.randf_range(0.7, 1.0) * (0.8 + 1.4 * size)
 		var lean := Vector3(_random.randf_range(-0.16, 0.16), 1.0, _random.randf_range(-0.16, 0.16)).normalized()
@@ -80,11 +80,11 @@ func _stand(at: Vector3) -> void:
 			_prism(knee, knee + down * hang, 0.022, 0.012, STEM, STEM, 0.5, 0.3)
 		else:
 			_prism(foot, top, 0.028, 0.014, FOOT, STEM, 0.0, 1.0)
-			if _random.randf() < 0.5:
+			if _random.randf() < 0.65:
 				var head := foot + lean * height * _random.randf_range(0.70, 0.80)
 				var girth := _random.randf_range(0.045, 0.062)
 				_prism(head, head + lean * _random.randf_range(0.18, 0.30), girth, girth * 0.9, HEAD, HEAD, 0.75, 0.95)
-		if _random.randf() < 0.6:
+		for leaf: int in _random.randi_range(1, 2):
 			# A long leaf rises beside the stem and bends over in a curve.
 			var out := Vector3(_random.randf_range(-1.0, 1.0), 0.0, _random.randf_range(-1.0, 1.0)).normalized()
 			var reach := height * _random.randf_range(0.5, 0.9)

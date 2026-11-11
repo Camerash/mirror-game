@@ -29,7 +29,7 @@ uniform vec3 stone : source_color = vec3(0.74, 0.69, 0.60);
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
 uniform vec3 patina : source_color = vec3(0.22, 0.32, 0.28);
 uniform vec3 summer_stone : source_color = vec3(0.80, 0.70, 0.55);
-uniform vec3 moss : source_color = vec3(0.40, 0.46, 0.22);
+uniform vec3 moss : source_color = vec3(0.30, 0.38, 0.17);
 uniform vec3 summer_glow : source_color = vec3(0.95, 0.85, 0.63);
 
 varying vec3 world_position;
@@ -136,16 +136,15 @@ void fragment() {
 			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
 			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 1.5);
-			// Small flowers, white and a few yellow.
-			vec2 cell = floor(place.xz * 4.0);
+			// Small flowers grow in a few loose patches, each a warm dot of
+			// its own size, so none is taken for a flake of snow.
+			vec2 cell = floor(place.xz * 7.0);
 			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;
-			vec2 within = fract(place.xz * 4.0) - 0.5 - jitter;
+			vec2 within = fract(place.xz * 7.0) - 0.5 - jitter;
 			float pick = hash(vec3(cell, 3.0));
-			// Each has five petals.
-			float petals = 0.75 + 0.25 * cos(atan(within.y, within.x) * 5.0 + pick * 6.0);
-			float flower = step(0.76, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
-			// They are warm, so none is taken for a flake of snow.
-			base = mix(base, pick > 0.86 ? vec3(1.0, 0.66, 0.70) : vec3(1.0, 0.84, 0.40), flower);
+			float patch_here = smoothstep(0.52, 0.62, value_noise(place * vec3(1.9, 0.0, 1.9) + 11.0));
+			float flower = step(0.45, pick) * patch_here * smoothstep(0.22, 0.10, length(within) / (0.5 + pick * 0.6));
+			base = mix(base, pick > 0.8 ? vec3(1.0, 0.70, 0.62) : vec3(1.0, 0.86, 0.45), flower);
 		} else {
 			// Snow lies in soft drifts, not flat.
 			float e = 0.06;
@@ -158,6 +157,8 @@ void fragment() {
 		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 16.0 + drawn_out.y * drawn_out.y * 6.0)), exp(-dot(from_her, from_her) * 11.0)) * step(abs(world_position.y - walker_at.y), 0.2);
 		base = mix(base, base * vec3(0.30, 0.29, 0.52), her_shade * 0.92);
 	} else if (side_face) {
+		// The sides are the mid value of a place: only a top is light.
+		base *= summer ? vec3(1.0) : vec3(0.76, 0.76, 0.80);
 		// The cover hangs over the edge in an uneven lip.
 		float along = face.x > face.z ? place.z : place.x;
 		float lip = 0.07 + 0.11 * value_noise(vec3(along * 2.3, 1.7, seed.y)) + 0.04 * value_noise(vec3(along * 7.0, 4.1, seed.y));
@@ -199,7 +200,7 @@ void fragment() {
 			base *= 1.0 + 0.10 * (1.0 - smoothstep(0.18, 0.20, below_top)) * tall;
 			base *= 1.0 - 0.36 * (1.0 - smoothstep(0.19, 0.40, below_top)) * step(0.19, below_top) * tall;
 			// The plinth is darker and damp; the shaft is shaded where it meets it.
-			base *= 1.0 - 0.10 * (1.0 - smoothstep(0.16, 0.18, above_foot)) * tall;
+			base *= 1.0 - 0.22 * (1.0 - smoothstep(0.16, 0.18, above_foot)) * tall;
 			base *= 1.0 - 0.26 * (1.0 - smoothstep(0.17, 0.32, above_foot)) * step(0.17, above_foot) * tall;
 			// Dressed stone: a smooth margin round each panel, a rough, darker
 			// middle, and the facets the chisel left.
@@ -211,9 +212,9 @@ void fragment() {
 			facet = dot(facet, world_normal) < 0.0 ? -facet : facet;
 			relief = normalize(mix(relief, normalize(world_to_source * facet), 0.65));
 		}
-		// Rime climbs the foot, over the cold of the ice.
-		float rime = (1.0 - smoothstep(0.0, 0.16 + 0.10 * value_noise(vec3(along * 6.0, 9.0, seed.y)), half_source.y * 2.0 - below_top)) * (summer ? 0.0 : 0.55);
-		base = mix(base, snow * 0.92, rime);
+		// The foot stands in the water: the stone is wet and dark there,
+		// so no pale rim at the water is taken for ground.
+		base *= 1.0 - 0.42 * (1.0 - smoothstep(0.0, 0.26, source_size.y - below_top));
 		if (kind == 2) {
 			float band = smoothstep(0.34, 0.35, below_top) * (1.0 - smoothstep(0.50, 0.51, below_top));
 			float streak = value_noise(vec3(along * 11.0, below_top * 2.0, 2.3));

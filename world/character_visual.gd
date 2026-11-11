@@ -12,7 +12,6 @@ signal action_finished(name: String)
 
 const Geometry := preload("res://core/world_geometry.gd")
 const GirlScene := preload("res://assets/character/girl.glb")
-const Ice := preload("res://world/ice.gd")
 const IDLE := "Idle"
 const WALK := "Walk"
 const GARMENT := "Coat"
@@ -38,7 +37,7 @@ const MAX_STEP := 0.1
 const TONE_LIFT := 0.05
 ## Her colours are taken down by this much, so that her cream hat and pale
 ## coat stand out from the snow she walks on.
-const TONE_DEEPEN := 0.5
+const TONE_DEEPEN := 0.58
 const TONE_ROUGHNESS := 0.9
 const TONE_SPECULAR := 0.2
 const TONE_RIM := 0.25
@@ -56,8 +55,6 @@ var holding := false
 var frozen := false
 ## A figure no walker drives (her sister in the glass) runs its own clock.
 var self_driven := false
-## The pond's water mirrors this figure. Set before it enters the tree.
-var mirrored := false
 ## Her meshes and materials, tuned once for the game's light and shared by
 ## every figure of her.
 static var _lit_meshes := {}
@@ -70,9 +67,6 @@ func _ready() -> void:
 	add_child(girl)
 	primary_mesh = girl.find_child(GARMENT, true, false) as MeshInstance3D
 	_relight(girl)
-	if mirrored:
-		for mesh: MeshInstance3D in girl.find_children("*", "MeshInstance3D", true, false):
-			mesh.layers = 1 | Ice.MIRRORED_LAYER
 	for node: Node in girl.find_children("*", "AnimationPlayer", true, false):
 		player = node as AnimationPlayer
 		break

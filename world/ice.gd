@@ -6,9 +6,10 @@ extends Node3D
 
 const IceShader := preload("res://world/ice.gdshader")
 ## Only what is on this render layer shows in the water: the stones, the
-## girl, the mirror's pane and the reeds. The mirror's frame, guides and
-## outlines and the snow are not mirrored. The image is soft and is gone with
-## height (`stone.gdshader`), so it is never taken for something to stand on.
+## mirror's pane and the reeds. The girl, the mirror's frame, guides and
+## outlines and the snow are not mirrored. The image is soft and is gone
+## with height (`water_image.gdshaderinc`), so it is never taken for
+## something to stand on; she walks too high above the water to show in it.
 const MIRRORED_LAYER := 1 << 10
 const IMAGE_SCALE := 0.5
 const MAX_POOLS := 6

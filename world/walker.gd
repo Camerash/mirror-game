@@ -40,7 +40,6 @@ func _ready() -> void:
 	safe_margin = 0.001
 	if build_visuals:
 		character_visual = CharacterVisual.new()
-		character_visual.mirrored = true
 		add_child(character_visual)
 
 func _process(_delta: float) -> void:

@@ -7,11 +7,11 @@
 // because the water reads from its brightness how much of it is left
 // (`world/ice.gdshader`).
 
-const float IMAGE_REACH = 1.4;
+const float IMAGE_REACH = 1.1;
 
 // How much of the image is left at `lift` above the water.
 float image_keep(float lift) {
-	return pow(1.0 - clamp(lift / IMAGE_REACH, 0.0, 1.0), 1.6);
+	return pow(1.0 - clamp(lift / IMAGE_REACH, 0.0, 1.0), 1.4);
 }
 
 // The colour to write for a surface of colour `lit`, `lift` above the water.
