@@ -14,21 +14,13 @@ it.** The reviewers moved it from 3/10 to 6/10 against the feel reference
 brief's goal is not reached. Branch `claude/funny-dirac-7dv0hf`; everything
 is pushed.
 
-In the game now (`docs/art/STYLE.md` has the look; file names are in "The
-code, briefly"): the sun stands ahead of the first view; the ice is the
-whole backdrop, painted in `ice.gdshader` (far light that spreads from the
-sun's place, tall trees held in it, bars of sunlight), and the lowest ground
-of a place stands on it (`ICE_CLEAR`); a whole block is a pedestal (plinth,
-rounder shaft, cap slab) under a cover that rolls over the edge, top flat
-and on the grid, and an absolute's bronze band stands proud of the shaft (a
-block cut at an angle keeps the old plain shape); reeds and bare shrubs
-stand outside the mirror's limits, each over its image
-(`scenery_image.gdshader`), pale toward the sun (none in a place with a
-`story`); the ring lights the snow round it; snow falls in three depths;
-the stone shader paints a shade under the girl from the global shader value
-`walker_at` (`project.godot`, `walker.gd`). Each colour script in `SCRIPTS`
-names its sun, sky, ice, haze, shade and bars; only `01_route` is dusk.
-Captures: `tests/capture_stage.gd` (`--turns`, `--motion`, `--nudge`).
+`docs/art/STYLE.md` describes the look now in the game, and "The code,
+briefly" names the files. Not in either: the lowest ground of a place
+stands on the ice (`ICE_CLEAR`); a block cut at an angle by the mirror
+keeps the old plain shape; a place with a `story` gets no reeds; the shade
+under the girl comes from the global shader value `walker_at`
+(`project.godot`, `walker.gd`); only `01_route` is dusk. Captures:
+`tests/capture_stage.gd` (`--turns`, `--motion`, `--nudge`).
 
 Changed by the loop, for the owner to confirm or reverse:
 
@@ -51,9 +43,8 @@ from one view. Three of these need a decision, not more shader work:
 - **The camera frames wider than the stones need** (it also fits the
   mirror's unseen control points), so the place is small in the frame and
   the girl is about ten pixels on a phone. The loop did not touch the camera.
-- **How long and how sharp the stones' images are.** Long or sharp images
-  were read as a second row of stones; short, soft ones as "not a mirror".
-  The reviews went back and forth five times.
+- **How long and sharp the stones' images are.** Long or sharp ones read
+  as a second row of stones; short, soft ones as "not a mirror".
 - **How much the girl may differ from her concept colours** on snow.
 
 Other gaps: the colour script cuts when moving on; the scenery appears at
@@ -63,11 +54,11 @@ Frame time on the Mac (M2 Pro, unpresented draws): 2.1 ms at 1152x800 and
 4.4 ms at 2532x1170, from 1.0 and 1.9 before the loop; the ice shader is
 most of it. **No phone has run this.** The shadow map is now 4096 wide.
 
-Open with the owner: approval of the frame; the three decisions above; the
-ghost cue; the colour script per stage; whether her image in the ice
-becomes where her sister shows; vistas between puzzles; level names
-(proposed 2026-11-09: Fresh Snow, Borrowed Ground, Still There, Just
-Enough, The Other Way, Side by Side).
+Open with the owner: approval of the frame; the three decisions above;
+the colour script per stage; whether her image in the ice becomes where
+her sister shows; vistas between puzzles; level names (proposed
+2026-11-09: Fresh Snow, Borrowed Ground, Still There, Just Enough, The
+Other Way, Side by Side).
 
 **On hold: the first scene.** The pond story place (`levels/00_pond.json`,
 `world/prologue.gd`, `docs/briefs/the-pond.md`) gives away too much story.
@@ -114,7 +105,8 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
   the kind on `world/stone.gdshader`; `world/stone_mesh.gd` is a whole
   stone's shape; `world/trial_lighting.gd` is the light and the colour
   scripts; `world/ice.gd` is the ice and its mirror image;
-  `world/pond_scenery.gd` is the reeds and shrubs round a place.
+  `world/pond_scenery.gd` is the reeds and shrubs round a place, and
+  `world/scenery_image.gdshader` their image in the ice.
 - `world/character_visual.gd` plays the girl (`assets/character/girl.glb`,
   0.8 u, Idle/Walk/Wake/Lift/Raise/Lower/Wave). Sources in
   `art_sources/girl/`. `assets/character/traveller.glb` is the old character,
