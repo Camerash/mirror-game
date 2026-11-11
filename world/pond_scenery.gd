@@ -9,6 +9,7 @@ extends MeshInstance3D
 ## Presentation only.
 
 const SceneryShader := preload("res://world/scenery.gdshader")
+const ImageShader := preload("res://world/scenery_image.gdshader")
 ## Nothing stands closer than this to where a mirror, and so a copy, can be.
 const CLEAR := 2.0
 ## The band of scenery round the place is this wide.
@@ -60,7 +61,7 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var group := sin(spot.x * 0.23 + float(_random.seed % 7)) * cos(spot.y * 0.21 + 1.3)
 			# Toward the sun the scenery is lit from behind (see `_lit`).
 			_lit = smoothstep(SUN_GAP - 0.25, SUN_GAP, (spot - keep_clear.get_center()).normalized().dot(_toward_sun))
-			if keep_clear.has_point(spot) or group < -0.2 or pick > 0.9:
+			if keep_clear.has_point(spot) or group < 0.1 or pick > 0.9 - _lit * 0.4:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
 			if pick < 0.6:
@@ -70,6 +71,11 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 	mesh = _tool.commit()
 	var material := ShaderMaterial.new()
 	material.shader = SceneryShader
+	# Each piece stands over its own image in the ice.
+	var image := ShaderMaterial.new()
+	image.shader = ImageShader
+	image.set_shader_parameter("ice_level", ice_height)
+	material.next_pass = image
 	material_override = material
 
 ## A stand of dry reeds.

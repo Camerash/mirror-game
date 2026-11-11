@@ -132,11 +132,11 @@ void fragment() {
 		if (summer) {
 			// Moss grows in cushions: darker between them, bright on top.
 			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
-			base *= 0.45 + 0.75 * smoothstep(0.25, 0.75, cushion);
+			base *= 0.68 + 0.42 * smoothstep(0.25, 0.75, cushion);
 			float e = 0.05;
 			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
-			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 2.4);
+			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 1.5);
 			// Small flowers, white and a few yellow.
 			vec2 cell = floor(place.xz * 6.0);
 			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;

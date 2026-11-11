@@ -92,7 +92,7 @@ void fragment() {
 	float streak = noise(vec2(drift_at.x * 5.0, drift_at.y * 16.0));
 	float snow = smoothstep(0.54, 0.80, drift + (streak - 0.5) * 0.05);
 	// Loose snow moves over the ice in thin veils.
-	vec2 veil_at = vec2(drift_at.x * 3.0 - ice_time * 0.22, drift_at.y * 5.0);
+	vec2 veil_at = vec2(drift_at.x * 3.0 - ice_time * 0.22, drift_at.y * 1.8);
 	float gust = 0.5 + 0.5 * sin(dot(plain, wind) * 0.35 - ice_time * 0.9);
 	float veil = smoothstep(0.55, 0.88, fbm(veil_at)) * (0.05 + 0.20 * gust * gust);
 	// Frost: the ice is clear and dark in places, pale in others.
@@ -127,7 +127,7 @@ void fragment() {
 	shore = max(shore, trees(along * 6.1 + 31.0, depth, 0.15, 0.2) * 0.4);
 	// A few tall trees reach far down the ice, faint, so the near ice holds
 	// something too.
-	float tall_trees = trees(along * 0.8 + 5.0, depth, 1.05, 0.13) * 0.30 + trees(along * 1.7 + 19.0, depth, 0.8, 0.10) * 0.20;
+	float tall_trees = trees(along * 0.8 + 5.0, depth, 1.15, 0.13) * 0.36 + trees(along * 1.7 + 19.0, depth, 0.9, 0.10) * 0.24;
 	shore *= 1.0 - smoothstep(0.04, 0.34, depth) * 0.55;
 	// No bank: the trees hang from beyond the view, so the ice has no horizon.
 	shore *= 0.55 + 0.45 * smoothstep(0.0, 0.05, depth);
@@ -144,7 +144,7 @@ void fragment() {
 	// line from the sun to the viewer. Each one comes and goes.
 	float spread = 0.05 + depth * 0.13;
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.08, 0.72, depth));
-	vec2 dash_at = vec2(dot(plain, view_right) * 4.2, dot(plain, view_forward) * 8.5);
+	vec2 dash_at = vec2(dot(plain, view_right) * 6.5, dot(plain, view_forward) * 13.0);
 	float spark = noise(dash_at + vec2(ice_time * 0.22, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.38));
 	float glitter = smoothstep(0.48, 0.66, spark) * path * (1.0 - shore * 0.7);
 
@@ -163,7 +163,7 @@ void fragment() {
 	float broken = 0.72 + 0.28 * noise(vec2(dot(plain, view_right) * 1.3, dot(plain, view_forward) * 8.0));
 	float held = mirror * (1.0 - snow * 0.85) * broken;
 	colour = colour * (1.0 - cover * held) + image * held;
-	colour += sun_color * glitter * 0.85 * (1.0 - snow) * (1.0 - cover * 0.6);
+	colour += sun_color * glitter * 0.6 * (1.0 - snow) * (1.0 - cover * 0.6);
 
 	// The snow that lies on the ice hides what the ice holds.
 	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));

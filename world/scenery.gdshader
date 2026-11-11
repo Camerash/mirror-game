@@ -40,8 +40,8 @@ void fragment() {
 	// from the other side it stands on dark ice, and is dark.
 	vec3 ahead = -INV_VIEW_MATRIX[2].xyz;
 	float lit = UV.x * smoothstep(0.25, 0.75, dot(normalize(ahead.xz), toward_sun));
-	ALBEDO = mix(mix(ALBEDO, haze, 0.72), backlight * 0.7, lit * 0.65);
-	EMISSION = backlight * lit * 0.22;
+	ALBEDO = mix(mix(ALBEDO, haze, 0.72), backlight * 0.6, lit * 0.5);
+	EMISSION = backlight * lit * 0.12;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.2;
 }
