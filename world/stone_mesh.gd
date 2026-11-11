@@ -1,22 +1,31 @@
 class_name StoneMesh
 extends ArrayMesh
-## The shape of a whole garden stone: a worn block on a plinth with a rounded
-## foot, under a cover (snow, or moss on a copy) that rolls out over its edge.
+## The shape of a whole garden stone: a pedestal (a plinth, a rounder shaft
+## and a cap slab) under a cover (snow, or moss on a copy) that rolls out over its edge.
 ## The top stays flat, at the box's height and inside its outline, so the
 ## walkable edge is where the grid says. The roll overhangs by `OVERHANG`.
 ##
 ## `CUSTOM0` carries the direction of the box face each vertex belongs to, so
 ## `stone.gdshader` paints a rounded stone by the same rules as a plain box.
 
-## The radius of the stone's worn corners and foot, and of the cover's.
-const WORN := 0.11
+## The corner radius of the snow or moss cover, and how far it rolls out past
+## the box and hangs down.
 const COVER_WORN := 0.07
-## How far the cover rolls out past the box, and how far down it hangs.
 const OVERHANG := 0.06
 const LIP := 0.075
-## The stone stands in this far from its plinth, which is this high.
-const INSET := 0.035
-const PLINTH := 0.165
+## The cap slab and the plinth are as wide as the box, with this corner
+## radius; the cap is this high and the plinth's top is this far above the
+## foot.
+const CAP_WORN := 0.06
+const CAP := 0.085
+const PLINTH := 0.17
+const FOOT_WORN := 0.05
+## The shaft stands in this far from the box, with this corner radius.
+const WAIST := 0.075
+const SHAFT_WORN := 0.22
+## An absolute's bronze band lies between these depths below the top
+## (`stone.gdshader` paints and raises it).
+const BAND: Array[float] = [0.34, 0.50]
 const TURN_STEPS := 4
 ## The sides have a vertex about this often, for the dressing of the faces.
 const GRAIN := 0.1
@@ -47,22 +56,45 @@ static func _make(box: Vector3) -> StoneMesh:
 		[OVERHANG * 0.7, half.y - 0.012, COVER_WORN, 0.6, 0.8, false],
 		[OVERHANG, half.y - 0.035, COVER_WORN, 1.0, 0.1, false],
 		[OVERHANG, half.y - LIP, COVER_WORN, 1.0, 0.0, false],
-		[-INSET, half.y - LIP - 0.022, WORN, 0.45, -0.9, false],
 	]
-	# Under the cover the stone stands in a little from the box, on a plinth
-	# as wide as the box. The sides have rows and columns enough for
-	# `stone.gdshader` to dress each face (see its `vertex`).
-	var side_top := half.y - LIP - 0.023
-	var side_foot := -half.y + WORN
-	var plinth_top := minf(-half.y + PLINTH, side_top - 0.1)
-	var side_rows := ceili((side_top - plinth_top - 0.03) / GRAIN)
-	for index: int in side_rows + 1:
-		rows.append([-INSET, lerpf(side_top, plinth_top + 0.03, float(index) / side_rows), WORN, 1.0, 0.0, false])
-	rows.append([0.0, plinth_top, WORN, 0.6, 0.8, false])
-	rows.append([0.0, plinth_top - 0.001, WORN, 1.0, 0.0, false])
-	rows.append([0.0, side_foot, WORN, 1.0, 0.0, false])
-	rows.append([-WORN * 0.29, -half.y + WORN * 0.29, WORN, 0.707, -0.707, false])
-	rows.append([-WORN, -half.y, WORN, 0.0, -1.0, false])
+	var under_cover := half.y - LIP - 0.022
+	var foot := -half.y + FOOT_WORN
+	if box.y >= 0.8:
+		# A tall stone is a pedestal: a cap slab as wide as the box, a
+		# rounder shaft that stands in from it, and a plinth as wide as the
+		# box. The shaft has rows and columns enough for `stone.gdshader` to
+		# dress each face and to raise the band of an absolute (see its
+		# `vertex`).
+		var cap_foot := under_cover - CAP
+		var plinth_top := -half.y + PLINTH
+		rows.append([0.0, under_cover, CAP_WORN, 0.45, -0.9, false])
+		rows.append([0.0, under_cover - 0.001, CAP_WORN, 1.0, 0.0, false])
+		rows.append([0.0, cap_foot, CAP_WORN, 1.0, 0.0, false])
+		rows.append([-WAIST * 0.6, cap_foot - 0.012, SHAFT_WORN, 0.5, -0.85, false])
+		var heights: Array[float] = []
+		var shaft_top := cap_foot - 0.035
+		var shaft_foot := plinth_top + 0.035
+		var shaft_rows := ceili((shaft_top - shaft_foot) / GRAIN)
+		for index: int in shaft_rows + 1:
+			heights.append(lerpf(shaft_top, shaft_foot, float(index) / shaft_rows))
+		# The band of an absolute needs a row at each of its edges.
+		for edge: float in BAND:
+			for side: float in [-0.004, 0.004]:
+				heights.append(half.y - edge + side)
+		heights.sort()
+		heights.reverse()
+		for height: float in heights:
+			if height <= shaft_top and height >= shaft_foot:
+				rows.append([-WAIST, height, SHAFT_WORN, 1.0, 0.0, false])
+		rows.append([-WAIST * 0.6, plinth_top + 0.012, SHAFT_WORN, 0.6, 0.8, false])
+		rows.append([0.0, plinth_top, CAP_WORN, 0.3, 0.95, false])
+		rows.append([0.0, plinth_top - 0.001, CAP_WORN, 1.0, 0.0, false])
+	else:
+		rows.append([0.0, under_cover, CAP_WORN, 0.45, -0.9, false])
+		rows.append([0.0, under_cover - 0.001, CAP_WORN, 1.0, 0.0, false])
+	rows.append([0.0, foot, CAP_WORN, 1.0, 0.0, false])
+	rows.append([-FOOT_WORN * 0.29, -half.y + FOOT_WORN * 0.29, CAP_WORN, 0.707, -0.707, false])
+	rows.append([-FOOT_WORN, -half.y, CAP_WORN, 0.0, -1.0, false])
 	# The path round the stone: a quarter turn at each corner, then the
 	# straight side to the next corner. Each point is a corner, an angle on
 	# it, and how far along the side to the next corner it lies.
@@ -70,7 +102,7 @@ static func _make(box: Vector3) -> StoneMesh:
 	for corner: int in 4:
 		for step: int in TURN_STEPS + 1:
 			path.append([corner, (float(corner) + float(step) / TURN_STEPS) * PI * 0.5, 0.0])
-		var side_length := (box.x if corner % 2 == 0 else box.z) - 2.0 * WORN
+		var side_length := (box.x if corner % 2 == 0 else box.z) - 2.0 * CAP_WORN
 		var columns := ceili(side_length / GRAIN)
 		for step: int in range(1, columns):
 			path.append([corner, float(corner + 1) * PI * 0.5, float(step) / columns])

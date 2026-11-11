@@ -10,7 +10,7 @@ extends MeshInstance3D
 
 const SceneryShader := preload("res://world/scenery.gdshader")
 ## Nothing stands closer than this to where a mirror, and so a copy, can be.
-const CLEAR := 1.7
+const CLEAR := 2.4
 ## The band of scenery round the place is this wide.
 const REACH := 9.0
 const SPACING := 2.4

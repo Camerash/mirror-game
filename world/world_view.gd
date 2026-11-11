@@ -476,6 +476,15 @@ func add_ring(parent: Node3D, feet: Vector3, color: Color, radius := 0.3) -> voi
 	node.material_override = BlockSet.goal_material() if is_goal else _plain(color)
 	parent.add_child(node)
 	if is_goal:
+		# The ring is the other warm thing of a place: it lights the snow
+		# round it a little, so the eye goes from the copy to the goal.
+		var warmth := OmniLight3D.new()
+		warmth.light_color = Color("ffcf8a")
+		warmth.light_energy = 0.8
+		warmth.omni_range = 1.3
+		warmth.omni_attenuation = 1.6
+		warmth.position = Vector3.UP * 0.3
+		node.add_child(warmth)
 		_lines(parent, BlockSet.goal_carving_points(feet, radius), BlockSet.GOAL_CARVING_COLOR)
 
 

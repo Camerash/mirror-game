@@ -155,8 +155,14 @@ void fragment() {
 	float frost = noise(plain * 0.17 + 3.0) * 0.65 + noise(plain * 0.45 + 8.0) * 0.35;
 
 	// The sky the ice holds, from the far ice to the near.
-	vec3 colour = mix(far_color, mid_color, pow(smoothstep(-0.06, 0.38, depth), 0.8));
-	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth));
+	// The light of the low sun spreads over the ice from where the ice holds
+	// the sun; away from it the ice is dark. A little of the dusk stays in
+	// the far ice on every side. So the light has a source, not a horizon.
+	vec2 from_sun = vec2((bearing - sun_bearing) / SPAN, (depth + 0.06) * 1.25);
+	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7);
+	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, depth)) * 0.34);
+	vec3 colour = mix(mid_color, far_color, far_light);
+	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
 	colour *= 0.86 + 0.26 * frost;
 	// The low sun comes through the far trees: long bars of light lie over
 	// the ice between their shadows, all the way to the viewer.

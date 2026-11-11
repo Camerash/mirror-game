@@ -77,8 +77,13 @@ void vertex() {
 		bool x_face = abs(face_here.x) > 0.5;
 		vec2 on_face = vec2(x_face ? at.z + half_source.z : at.x + half_source.x, half_source.y - at.y);
 		vec2 face_size = vec2(x_face ? source_size.z : source_size.x, source_size.y);
-		float under_cover = smoothstep(0.10, 0.16, on_face.y) * smoothstep(0.17, 0.24, source_size.y - on_face.y);
-		VERTEX += face_here * dressing(on_face, face_size, at + seed) * under_cover * 0.05;
+		// Only the shaft is dressed: the cap slab and the plinth stay plain.
+		float shaft = smoothstep(0.24, 0.30, on_face.y) * smoothstep(0.21, 0.27, source_size.y - on_face.y) * step(0.8, source_size.y);
+		VERTEX += face_here * dressing(on_face, face_size, at + seed) * shaft * 0.04;
+		if (kind == 2) {
+			// The bronze band of an absolute stands proud of the stone.
+			VERTEX += face_here * 0.024 * smoothstep(0.336, 0.344, on_face.y) * (1.0 - smoothstep(0.496, 0.504, on_face.y));
+		}
 		// The cover hangs unevenly: its roll is deeper in places.
 		float roll = 1.0 - smoothstep(0.02, 0.105, on_face.y);
 		VERTEX += face_here * roll * (value_noise(vec3(on_face.x * 4.0, 1.0, 2.0) + seed) - 0.4) * 0.035;
@@ -150,7 +155,7 @@ void fragment() {
 		}
 		vec2 from_her = world_position.xz - walker_at.xz;
 		vec2 drawn_out = from_her - vec2(0.03, 0.15);
-		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 20.0 + drawn_out.y * drawn_out.y * 7.0)), exp(-dot(from_her, from_her) * 45.0)) * step(abs(world_position.y - walker_at.y), 0.2);
+		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 16.0 + drawn_out.y * drawn_out.y * 6.0)), exp(-dot(from_her, from_her) * 26.0)) * step(abs(world_position.y - walker_at.y), 0.2);
 		base = mix(base, base * vec3(0.30, 0.29, 0.52), her_shade * 0.92);
 	} else if (side_face) {
 		// The cover hangs over the edge in an uneven lip.
@@ -188,13 +193,20 @@ void fragment() {
 		base *= 1.0 - fissure * 0.45;
 		if (shaped) {
 			float above_foot = source_size.y - below_top;
-			base *= 1.0 - 0.30 * (1.0 - smoothstep(0.0, 0.05, abs(above_foot - 0.165))) * step(0.5, source_size.y);
+			float tall = step(0.8, source_size.y);
+			float shaft = smoothstep(0.24, 0.30, below_top) * smoothstep(0.21, 0.27, above_foot) * tall;
+			// The cap slab is smooth and pale; it shades the shaft under it.
+			base *= 1.0 + 0.10 * (1.0 - smoothstep(0.18, 0.20, below_top)) * tall;
+			base *= 1.0 - 0.36 * (1.0 - smoothstep(0.19, 0.40, below_top)) * step(0.19, below_top) * tall;
+			// The plinth is darker and damp; the shaft is shaded where it meets it.
+			base *= 1.0 - 0.10 * (1.0 - smoothstep(0.16, 0.18, above_foot)) * tall;
+			base *= 1.0 - 0.26 * (1.0 - smoothstep(0.17, 0.32, above_foot)) * step(0.17, above_foot) * tall;
 			// Dressed stone: a smooth margin round each panel, a rough, darker
 			// middle, and the facets the chisel left.
 			bool x_face = face.x > face.z;
 			vec2 on_face = vec2(x_face ? source_position.z + half_source.z : source_position.x + half_source.x, below_top);
 			float dressed = dressing(on_face, vec2(x_face ? source_size.z : source_size.x, source_size.y), place);
-			base *= 1.10 - 0.42 * smoothstep(0.05, 0.6, dressed);
+			base *= 1.0 + shaft * (0.10 - 0.42 * smoothstep(0.05, 0.6, dressed));
 			vec3 facet = normalize(cross(dFdy(world_position), dFdx(world_position)));
 			facet = dot(facet, world_normal) < 0.0 ? -facet : facet;
 			relief = normalize(mix(relief, normalize(world_to_source * facet), 0.65));
