@@ -59,6 +59,7 @@ func set_palette(colors: Dictionary) -> void:
 	material.set_shader_parameter("shore_color", colors["shore"])
 	material.set_shader_parameter("snow_color", colors["ice_snow"])
 	material.set_shader_parameter("shade", colors["shade"])
+	material.set_shader_parameter("bars_strength", colors["bars"])
 	_sun_from = colors["sun_from"]
 
 func _process(delta: float) -> void:

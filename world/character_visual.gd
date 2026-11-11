@@ -35,6 +35,9 @@ const MAX_STEP := 0.1
 ## matte, soft-wrapped shading, and a little of each colour given back as
 ## emission so it holds on the shadow side.
 const TONE_LIFT := 0.05
+## Her colours are taken down by this much, so that her cream hat and pale
+## coat stand out from the snow she walks on.
+const TONE_DEEPEN := 0.3
 const TONE_ROUGHNESS := 0.9
 const TONE_SPECULAR := 0.2
 const TONE_RIM := 0.25
@@ -177,7 +180,7 @@ static func _tuned(source: BaseMaterial3D) -> StandardMaterial3D:
 		return _tuned_materials[source]
 	var material := StandardMaterial3D.new()
 	material.resource_name = source.resource_name
-	material.albedo_color = source.albedo_color
+	material.albedo_color = source.albedo_color.darkened(TONE_DEEPEN)
 	material.metallic = 0.0
 	material.metallic_specular = TONE_SPECULAR
 	material.roughness = TONE_ROUGHNESS

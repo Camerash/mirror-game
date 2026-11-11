@@ -342,7 +342,7 @@ func load_level(index: int) -> bool:
 	props.build(level.get("props", []))
 	if not level.has("story"):
 		# The pond round the place leaves with it, like its props.
-		props.add_child(PondScenery.build(level["limits"], trial_lighting.floor_height, str(level.get("title", "")), trial_lighting.palette()["haze"]))
+		props.add_child(PondScenery.build(level["limits"], trial_lighting.floor_height, str(level.get("title", "")), trial_lighting.palette()["haze"], trial_lighting.palette()["sun_from"]))
 	prologue.clear()
 	if story and level.has("story") and not _prompt_done(PrologueScene.DONE_ID):
 		var wake := not _loading_via_sweep

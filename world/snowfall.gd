@@ -47,11 +47,14 @@ static func _fall(layer: GPUParticles3D, count: int, size: float, alpha: float, 
 	fall.turbulence_influence_min = 0.04
 	fall.turbulence_influence_max = 0.14
 	fall.gravity = Vector3.ZERO
-	fall.scale_min = 0.3
-	fall.scale_max = 2.8
+	fall.scale_min = 0.55
+	fall.scale_max = 1.25
 	layer.process_material = fall
 	var flake := QuadMesh.new()
-	flake.size = Vector2(size, size)
+	# Each flake is drawn out a little along its fall, so that in a still
+	# frame the snow reads as falling, not as stars.
+	flake.size = Vector2(size * 0.8, size * 1.9)
+	layer.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
 	var soft := GradientTexture2D.new()
 	soft.fill = GradientTexture2D.FILL_RADIAL
 	soft.fill_from = Vector2(0.5, 0.5)
@@ -65,7 +68,6 @@ static func _fall(layer: GPUParticles3D, count: int, size: float, alpha: float, 
 	var white := StandardMaterial3D.new()
 	white.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	white.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	white.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	white.albedo_texture = soft
 	white.albedo_color = Color(1.0, 0.98, 0.97, alpha)
 	flake.material = white

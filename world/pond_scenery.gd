@@ -10,10 +10,12 @@ extends MeshInstance3D
 
 const SceneryShader := preload("res://world/scenery.gdshader")
 ## Nothing stands closer than this to where a mirror, and so a copy, can be.
-const CLEAR := 2.4
+const CLEAR := 2.0
 ## The band of scenery round the place is this wide.
 const REACH := 9.0
 const SPACING := 2.4
+## No scenery stands within this cosine of the line from the place to the sun.
+const SUN_GAP := 0.62
 
 const REED := Color(0.50, 0.43, 0.36, 0.0)
 const REED_FOOT := Color(0.24, 0.17, 0.18, 0.0)
@@ -22,12 +24,16 @@ const TWIG := Color(0.17, 0.12, 0.16, 0.7)
 
 var _tool := SurfaceTool.new()
 var _random := RandomNumberGenerator.new()
+var _toward_sun := Vector2.ZERO
 
 ## Builds the scenery round `limits` (a level's mirror limits) on the ice at
 ## `ice_height`. `place` names the place and seeds the layout; `haze` is the
-## colour of the air there, which the scenery takes on.
-static func build(limits: Dictionary, ice_height: float, place: String, haze: Color) -> PondScenery:
+## colour of the air there, which the scenery takes on. Nothing stands
+## between the place and the sun (`sun_from` points to it): there the ice
+## holds the light, and a reed against it would be the darkest mark in view.
+static func build(limits: Dictionary, ice_height: float, place: String, haze: Color, sun_from: Vector3) -> PondScenery:
 	var scenery := PondScenery.new()
+	scenery._toward_sun = Vector2(sun_from.x, sun_from.z).normalized()
 	scenery._build(limits, ice_height, place)
 	(scenery.material_override as ShaderMaterial).set_shader_parameter("haze", haze)
 	return scenery
@@ -47,7 +53,8 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var pick := _random.randf()
 			# The scenery stands in loose groups, with open ice between them.
 			var group := sin(spot.x * 0.23 + float(_random.seed % 7)) * cos(spot.y * 0.21 + 1.3)
-			if keep_clear.has_point(spot) or group < 0.38 or pick > 0.85:
+			var into_sun := (spot - keep_clear.get_center()).normalized().dot(_toward_sun) > SUN_GAP
+			if keep_clear.has_point(spot) or into_sun or group < -0.2 or pick > 0.9:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
 			if pick < 0.6:

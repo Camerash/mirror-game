@@ -33,6 +33,7 @@ uniform float view_bearing = 0.0;
 uniform float sun_bearing = 0.6;
 // The direction on the ice (x, z) from the place toward the sun.
 uniform vec2 sun_along = vec2(0.0, -1.0);
+uniform float bars_strength = 1.0;
 
 // The screen spans this much of the panorama the ice holds, in radians.
 const float SPAN = 1.5;
@@ -172,7 +173,7 @@ void fragment() {
 	// The bars are soft and broken along their length, so none reads as a path.
 	float sunlit = smoothstep(0.40, 0.82, bars) * (0.45 + 0.55 * noise(vec2(across_sun * 0.3 + 11.0, along_sun * 0.22)));
 	// The light lifts the ice in its own colour, so the dark stays deep.
-	colour = colour * (1.0 + sunlit * mix(0.15, 0.85, smoothstep(0.15, 0.9, depth))) + sun_color * sunlit * 0.012;
+	colour = colour * (1.0 + sunlit * bars_strength * mix(0.15, 1.1, smoothstep(0.15, 0.9, depth))) + sun_color * sunlit * bars_strength * 0.014;
 
 	// The far trees, mirrored: bare trunks that reach from the far edge
 	// toward the viewer. The image wavers a little.
@@ -227,7 +228,7 @@ void fragment() {
 	vec2 crack_at = plain * 0.15 + vec2(noise(plain * 0.25), noise(plain * 0.25 + 5.0)) * 0.22;
 	float crack = crack_distance(crack_at);
 	float thin = fwidth(crack) * 1.2 + 0.004;
-	float line = (1.0 - smoothstep(0.0, thin, crack)) * 0.07 + (1.0 - smoothstep(0.0, 0.035, crack)) * 0.02;
+	float line = (1.0 - smoothstep(0.0, thin, crack)) * 0.045 + (1.0 - smoothstep(0.0, 0.035, crack)) * 0.012;
 	colour += mix(mid_color, vec3(1.0), 0.5) * line * smoothstep(0.5, 0.85, noise(plain * 0.33 + 9.0)) * (1.0 - depth * 0.35);
 
 	// The snow that lies on the ice hides what the ice holds.

@@ -132,7 +132,7 @@ void fragment() {
 		if (summer) {
 			// Moss grows in cushions: darker between them, bright on top.
 			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
-			base *= 0.62 + 0.62 * smoothstep(0.25, 0.75, cushion);
+			base *= 0.55 + 0.62 * smoothstep(0.25, 0.75, cushion);
 			float e = 0.05;
 			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
@@ -145,7 +145,8 @@ void fragment() {
 			// Each has five petals.
 			float petals = 0.75 + 0.25 * cos(atan(within.y, within.x) * 5.0 + pick * 6.0);
 			float flower = step(0.66, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
-			base = mix(base, pick > 0.9 ? vec3(1.0, 0.80, 0.30) : vec3(1.0, 0.97, 0.90), flower);
+			// They are warm, so none is taken for a flake of snow.
+			base = mix(base, pick > 0.86 ? vec3(1.0, 0.66, 0.70) : vec3(1.0, 0.84, 0.40), flower);
 		} else {
 			// Snow lies in soft drifts, not flat.
 			float e = 0.06;
@@ -252,7 +253,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.55 : mix(vec3(1.0, 0.60, 0.24) * 1.25, vec3(0.86, 0.40, 0.18) * 0.45, rim) * (base / max(summer_stone, vec3(0.01)));
+		glow = top_face && !cut_face ? base * 0.30 : mix(vec3(1.0, 0.60, 0.24) * 1.25, vec3(0.86, 0.40, 0.18) * 0.45, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
 	if (!FRONT_FACING) {
