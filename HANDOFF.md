@@ -36,15 +36,17 @@ Changed by the loop, for the owner to confirm or reverse:
 Open from the last review, worst first: the lower half of the frame is
 empty; the ice does not read as glass; the reeds toward the sun are a
 lattice of straw; the girl is small; the pane is faint; the copy's moss top
-is flat; "Together" hides its copy from one view. Three need a decision,
+is flat; "Together" hides its copy from one view. Two need a decision,
 not more shader work (the camera is done: see below):
 
-- **The hint card on a phone.** At 844x390 it covers the girl, the mirror
-  and both of its stones (`test-output` is not kept; capture with `--size
-  844x390` and no `--clean`). It did so before the camera changed.
 - **How long and sharp the stones' images are.** Long or sharp ones read
   as a second row of stones; short, soft ones as "not a mirror".
 - **How much the girl may differ from her concept colours** on snow.
+
+**For the interface polish round** (the owner's decision, 2026-11-11: not
+now): at 844x390 the hint card covers the girl, the mirror and both of its
+stones. Capture with `--size 844x390` and no `--clean`. It did so before
+the camera changed.
 
 **The camera** (2026-11-11) is fitted to the points that are drawn (each
 solid, the mirror with room for one step each way, the goal, the girl), not
