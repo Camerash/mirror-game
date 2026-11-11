@@ -73,7 +73,7 @@ float trees(float along, float depth, float reach, float thin) {
 	float cell = floor(along);
 	float pick = hash(vec2(cell, 7.0));
 	float centre = 0.3 + 0.4 * hash(vec2(cell, 3.0));
-	float half_width = thin * (0.5 + pick);
+	float half_width = thin * (0.3 + 1.5 * pick * pick);
 	float length_here = reach * (0.35 + 0.65 * pick * pick);
 	float across = smoothstep(half_width, half_width * 0.25, abs(fract(along) - centre));
 	return across * (1.0 - smoothstep(length_here * 0.35, length_here, depth)) * step(0.42, pick);
@@ -103,7 +103,7 @@ void fragment() {
 	// the sun; away from it the ice is dark. A little of the dusk stays in
 	// the far ice on every side. So the light has a source, not a horizon.
 	vec2 from_sun = vec2((bearing - sun_bearing) / SPAN, (depth + 0.06) * 1.25);
-	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.76;
+	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.62;
 	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, depth)) * 0.34);
 	vec3 colour = mix(mid_color, far_color, far_light);
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
@@ -122,6 +122,7 @@ void fragment() {
 	// toward the viewer. The image wavers a little.
 	float waver = sin(depth * 40.0 + ice_time * 1.1) * 0.002 * (0.4 + depth * 4.0) + sin(depth * 13.0 - ice_time * 0.6) * 0.002;
 	float along = (view_bearing + bearing + waver) * 7.0;
+	along += (noise(vec2(along * 0.37, 4.0)) - 0.5) * 2.4;
 	float shore = trees(along, depth, 0.30, 0.10) * 0.85;
 	shore = max(shore, trees(along * 2.7 + 13.0, depth, 0.22, 0.13) * 0.6);
 	shore = max(shore, trees(along * 6.1 + 31.0, depth, 0.15, 0.2) * 0.4);
@@ -137,7 +138,7 @@ void fragment() {
 	float off_sun = bearing - sun_bearing;
 	float halo = exp(-(off_sun * off_sun * 3.2 + depth * depth * 16.0));
 	float core = exp(-(off_sun * off_sun * 34.0 + depth * depth * 48.0));
-	colour += sun_color * (halo * 0.26 + core * 1.1) * (1.0 - shore * 0.55);
+	colour += sun_color * (halo * 0.16 + core * 0.7) * (1.0 - shore * 0.55);
 	colour = mix(colour, shore_color, shore * (0.86 - core * 0.5));
 
 	// Its glitter path: short bright dashes that lie on the ice, down the
@@ -163,7 +164,7 @@ void fragment() {
 	float broken = 0.72 + 0.28 * noise(vec2(dot(plain, view_right) * 1.3, dot(plain, view_forward) * 8.0));
 	float held = mirror * (1.0 - snow * 0.85) * broken;
 	colour = colour * (1.0 - cover * held) + image * held;
-	colour += sun_color * glitter * 0.6 * (1.0 - snow) * (1.0 - cover * 0.6);
+	colour += sun_color * glitter * 0.45 * (1.0 - snow) * (1.0 - cover * 0.6);
 
 	// The snow that lies on the ice hides what the ice holds.
 	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));
@@ -178,7 +179,7 @@ void fragment() {
 		float reach = 2.0 + lift * 0.4;
 		float distance_to = length(plain - pools[index].xz) / reach;
 		float warm = pools[index].w * breath * 1.45 * exp(-lift * lift * 0.6);
-		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.6) * 1.0 + exp(-distance_to * distance_to * 0.8) * 0.2) * (0.85 + snow * 0.5) * (1.0 - cover * 0.55);
+		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.2) * 1.2 + exp(-distance_to * distance_to * 0.8) * 0.24) * (0.85 + snow * 0.5) * (1.0 - cover * 0.55);
 	}
 
 	// The corners fall away, so the eye stays on the place.

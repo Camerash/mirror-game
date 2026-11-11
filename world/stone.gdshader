@@ -138,9 +138,9 @@ void fragment() {
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
 			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 1.5);
 			// Small flowers, white and a few yellow.
-			vec2 cell = floor(place.xz * 6.0);
+			vec2 cell = floor(place.xz * 4.0);
 			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;
-			vec2 within = fract(place.xz * 6.0) - 0.5 - jitter;
+			vec2 within = fract(place.xz * 4.0) - 0.5 - jitter;
 			float pick = hash(vec3(cell, 3.0));
 			// Each has five petals.
 			float petals = 0.75 + 0.25 * cos(atan(within.y, within.x) * 5.0 + pick * 6.0);
@@ -253,7 +253,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.18 : mix(vec3(1.0, 0.60, 0.24) * 1.25, vec3(0.86, 0.40, 0.18) * 0.45, rim) * (base / max(summer_stone, vec3(0.01)));
+		glow = top_face && !cut_face ? base * 0.18 : mix(vec3(1.0, 0.60, 0.24) * 1.45, vec3(0.86, 0.40, 0.18) * 0.5, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
 	if (!FRONT_FACING) {
