@@ -18,14 +18,14 @@ const SCRIPTS := {
 		"sun": Color("ffe2bd"), "sun_energy": 1.9, "fill": Color("e8d2b8"), "fill_energy": 0.30,
 		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.22,
 		"ice_far": Color("efc79c"), "ice_mid": Color("2f5a78"), "ice_near": Color("08192a"),
-		"glow": Color("ffb665"), "sun_from": Vector3(-0.17, 0.5, -0.98),
+		"glow": Color("ffb665"), "sun_from": Vector3(-0.17, 0.8, -0.98),
 		"haze": Color("4a6478"),
 	},
 	"dusk": {
 		"sun": Color("ffdfca"), "sun_energy": 2.5, "fill": Color("dccab6"), "fill_energy": 0.38,
 		"sky": Color("a08cb8"), "ground": Color("a8807e"), "ambient": 0.24,
 		"ice_far": Color("e89a8c"), "ice_mid": Color("2c2a5e"), "ice_near": Color("0b0c26"),
-		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.44, -0.98),
+		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.8, -0.98),
 		"haze": Color("372c58"),
 	},
 }

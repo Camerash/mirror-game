@@ -247,6 +247,12 @@ styles and words.
   each place one painting with its own colour and weather, simple shapes,
   reflections, one small warm light. The puzzle view cannot show a sky, so
   the places stand over the pond's ice, which mirrors them.
+- DECIDED (2026-11-11): no fixed reference picture; chasing a target frame
+  damaged earlier rounds. The agent proposes a style with a proof frame from
+  the engine, the owner agrees, then the agent builds. The owner agreed to
+  "still water" on this basis: a film of thaw water lies on the pond's ice
+  and mirrors the place (the five rules in `docs/art/STYLE.md`). This
+  replaces the painterly reference of 2026-11-10 as the thing to match.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

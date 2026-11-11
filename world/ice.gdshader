@@ -80,8 +80,9 @@ vec3 ring(vec2 p, vec2 centre, float age, float reach, float fine) {
 	return vec3(away / distance_to * cos(wave) * envelope, max(sin(wave), 0.0) * envelope);
 }
 
-// Rings where the last drops fall. The water is a grid of cells; a drop
-// falls in some of them, each time at a new spot and of a new size.
+// Small rings where a flake of snow or a last drop meets the water. The
+// water is a grid of cells; one falls in some of them, each time at a new
+// spot and of a new size.
 vec3 drops(vec2 p, float t, float cell_size, float seed) {
 	vec2 cell = floor(p / cell_size);
 	if (hash(cell + seed + 1.3) < 0.45) {
@@ -96,7 +97,7 @@ vec3 drops(vec2 p, float t, float cell_size, float seed) {
 	}
 	float size = 0.35 + 0.65 * hash(cell + seed + turn * 1.7);
 	vec2 centre = (cell + 0.5 + (vec2(hash(cell + seed + turn), hash(cell + seed + turn + 3.1)) - 0.5) * 0.4) * cell_size;
-	return ring(p, centre, age, cell_size * 0.26 * size, 22.0 / (0.4 + 0.6 * size)) * (0.45 + 0.55 * size);
+	return ring(p, centre, age, cell_size * 0.20 * size, 26.0 / (0.4 + 0.6 * size)) * (0.3 + 0.4 * size);
 }
 
 void fragment() {
@@ -151,7 +152,7 @@ void fragment() {
 	vec4 image = texture(reflection, at) * 0.4
 		+ (texture(reflection, at + vec2(soft.x, 0.0)) + texture(reflection, at - vec2(soft.x, 0.0))
 		+ texture(reflection, at + vec2(0.0, soft.y)) + texture(reflection, at - vec2(0.0, soft.y))) * 0.15;
-	float streak = 0.45 + 0.55 * smoothstep(0.25, 0.60, noise(vec2(across * 0.9, depth * 75.0 - ice_time * 0.5)));
+	float streak = 0.72 + 0.28 * smoothstep(0.15, 0.75, noise(vec2(across * 0.9, depth * 38.0 - ice_time * 0.3)));
 	float cover = image.a * smoothstep(0.0, 0.07, max(image.r, max(image.g, image.b))) * mirror * streak;
 	colour = mix(colour, image.rgb * mix(vec3(1.0), colour * 1.6, 0.5) * 0.55, cover);
 	colour += sun_color * glitter * 0.42 * (1.0 - cover * 0.7);

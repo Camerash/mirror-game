@@ -1,6 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: the still-water look — 2026-11-11
+
+- Why: the owner will give no reference picture, and asked for a style proposed by the agent and agreed before the build. A one-hour sketch in the engine and a blind review (painted ice against sketch) came first; the owner agreed; then the build.
+- Change: the pond's surface is water (`world/ice.gdshader`, rewritten; `world/ice.gd`). New `world/water_image.gdshaderinc` (the rule for an image in the water), used by `stone.gdshader`, `scenery.gdshader` and `trial_glass.gdshader`. `world/pond_scenery.gd` is rebuilt as reed mace; `world/scenery_image.gdshader` is removed. `game.gd` makes a ring when the mirror is raised or lowered and when she lands. Also: the sun at 39 degrees, darker stone sides and a wet foot, a pale pane frame, a clearer pane, the girl darker (`TONE_DEEPEN` 0.64), sparser snow, fainter guide lines. `tests/capture_stage.gd` has a new option `--rise`.
+- Final state, run once, headless, no failures: `run_tests` **687/0**, `gameplay_art_tests` **58/0**, `app_flow_tests` **88/0**, `readability_tests` **11/0**, `level_solvability_tests` **68/0**, `direct_controls_tests` **123/0**, `edit_mode_tests` **22/0**, `extent_tests` **68/0**, `constellation_tuning_tests` **25/0**, `display_geometry_tests` **4153/0**, `small_fix_tests` **58/0**, `prompt_tests` **84/0**. After the last shader-only change (softer streaks in the image), `gameplay_art_tests` and `app_flow_tests` ran again with no failures.
+- Frame time on the Mac (M2 Pro, Mobile renderer, unpresented draws): 2.0 ms at 1152x800 and 4.4 ms at 2532x1170, measured after round 2. Before the change: 2.1 and 4.4.
+- Reviews, each by a new independent reviewer against the five rules in `docs/art/STYLE.md`, as beauty / desktop reading / phone reading out of 10. Blind pair first: painted ice 6/6/4, sketch 6/5/4. Then the build: 6/7/5, 6/7/4, 6/6/4, 6/7/5, 6/7/5. **Beauty did not move from 6.** Faults that every review names: a small place in an empty frame, stones that read as toys, a girl of about 10 pixels on a phone, stones high above the water with no tie to it.
+- Pictures: the four views of `01_route`, the frame with the interface, a true 844x390 frame, a motion strip, "Together" in two views, and one frame 0.8 s after the mirror is raised, where the ring shows.
+- Not checked: the ring from her landing (the code path is the same as the mirror's ring, which was seen); the pond story place and the first scene; the title; moving on; a played session; a phone. The last review ran before the last change to the streaks.
+
 # Latest check: a tighter camera — 2026-11-11
 
 - Why: the reviews kept listing a small place in an empty frame. Measured first (scratch script, the stage camera's own numbers): the camera fitted the eight corners of one box round everything drawn, and that box has corners where nothing stands. It did not fit unseen control points, as an earlier note said; the ring controls gave no points.

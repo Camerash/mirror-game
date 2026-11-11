@@ -3,71 +3,63 @@
 Current state only, kept under about 150 lines. Git history keeps the rest;
 the old traveller is in `docs/art/traveller-handoff.md`.
 
-## Now: art and scene quality (owner, 2026-11-11)
+## Now: the still-water look (owner agreed, 2026-11-11)
 
-The polish loop (`docs/briefs/polish-loop.md`) ran on the owner's Mac on
-2026-11-10 and 2026-11-11: seventeen rounds, each judged by a new
-independent reviewer. The last frame is
-`docs/art/target/polish-loop-2026-11-11.jpg`. **The owner has not approved
-it.** The reviewers moved it from 3/10 to 6/10 against the feel reference
-(5 or 6 in each of the last six reviews; readability 6/10 to 7/10): the
-brief's goal is not reached. Branch `claude/funny-dirac-7dv0hf`; everything
-is pushed.
+The owner gives no reference pictures now: chasing a target damaged the
+earlier rounds. The agent proposes a style with a proof frame from the
+engine, the owner agrees, then the agent builds. The owner agreed to **still
+water** from a sketch, and it is built: five rules in `docs/art/STYLE.md`,
+frame `docs/art/target/still-water-2026-11-11.jpg`. **The owner has not
+approved the built frame.** Branch `claude/funny-dirac-7dv0hf`, all pushed.
 
-`docs/art/STYLE.md` describes the look now in the game, and "The code,
-briefly" names the files. Not in either: the lowest ground of a place
-stands on the ice (`ICE_CLEAR`); a block cut at an angle by the mirror
-keeps the old plain shape; a place with a `story` gets no reeds; the shade
-under the girl comes from the global shader value `walker_at`
-(`project.godot`, `walker.gd`); only `01_route` is dusk. Captures:
-`tests/capture_stage.gd` (`--turns`, `--motion`, `--nudge`).
+Five independent reviews each gave beauty 6/10, readability 6 to 7 on a
+desktop and 4 to 5 on a phone; the painted ice before it had 6, 6 and 4. The
+surface does not limit the picture. Every review names three faults that
+are not the surface's. **The next step is a proposal for them, agreed with
+the owner before code**; more rounds on the water will not move the score.
 
-Changed by the loop, for the owner to confirm or reverse:
+- The place is small in an empty frame, and the stones read as toys.
+- The girl is about 10 pixels tall on a phone, pale on snow, behind the pane.
+- A stone high above the water has no image and no tie to it ("Together").
 
-- **The hidden-ground ghost is drawn clear**: every visible strength read as
-  a glass block to stand on. `HIDDEN_FILL` and `HIDDEN_EDGE` in
-  `world/world_view.gd` bring the cue back.
-- **The girl's colours are taken down by half in the game's light**
-  (`TONE_DEEPEN` in `world/character_visual.gd`). Her model is unchanged.
-- The mirror's guide lines, side bands and seam are much fainter.
-- The pond and the first scene were not edited, but they share the changed
-  light, ice and stone shape. Nobody has looked at them.
+How the look is made, where `STYLE.md` does not say:
 
-Open from the last review, worst first: the lower half of the frame is
-empty; the ice does not read as glass; the reeds toward the sun are a
-lattice of straw; the girl is small; the pane is faint; the copy's moss top
-is flat; "Together" hides its copy from one view. Two need a decision,
-not more shader work (the camera is done: see below):
+- `world/ice.gd` and `ice.gdshader` are the water (names kept), unshaded. A
+  second camera draws `MIRRORED_LAYER`: the stones, the pane's glass, the
+  reeds. Their shaders write the image by `world/water_image.gdshaderinc`
+  (gone 1.1 above the water); the water reads from its brightness how much
+  is left. `ice.ring(at)` makes a ring (`toggle_mirror`, `_track_fall`).
+- The sun stands at 39 degrees, so a top is lighter than a sunlit side.
+- The lowest ground stands in the water (`ICE_CLEAR`); a block cut at an
+  angle keeps the old plain shape; a place with a `story` gets no reeds; the
+  girl's shade comes from the shader global `walker_at`; only `01_route` is
+  dusk. Captures: `tests/capture_stage.gd` (`--turns`, `--motion`,
+  `--nudge`, `--rise`).
 
-- **How long and sharp the stones' images are.** Long or sharp ones read
-  as a second row of stones; short, soft ones as "not a mirror".
-- **How much the girl may differ from her concept colours** on snow.
+Changed without the owner's word, to confirm or reverse: the girl's colours
+are taken down by 0.64 (`TONE_DEEPEN`, `world/character_visual.gd`); the
+pane's frame is pale, not brass; the girl has no image in the water; the
+snow is sparse; the hidden-ground ghost is clear (`HIDDEN_FILL`,
+`world/world_view.gd`) and the mirror's guide lines very faint;
+`docs/VISION.md` calls the ice the first mirror, and now water lies on it.
+The pond and the first scene share the look; nobody has looked at them.
 
-**For the interface polish round** (the owner's decision, 2026-11-11: not
-now): at 844x390 the hint card covers the girl, the mirror and both of its
-stones. Capture with `--size 844x390` and no `--clean`. It did so before
-the camera changed.
+**For the interface polish round** (owner, 2026-11-11: not now): at 844x390
+the hint card covers the girl, the mirror and both of its stones. Capture
+with `--size 844x390` and no `--clean`.
 
-**The camera** (2026-11-11) is fitted to the points that are drawn (each
-solid, the mirror with room for one step each way, the goal, the girl), not
-to the corners of one box round them all: `points` in
-`world/stage_camera.gd`, `_fit_camera` in `game.gd`. A place is 12% larger
-in the first view of `01_route` and `15_together`, and up to twice as large
-in a turned view. The first view stays the smallest: a long diagonal row and
-a pane three units high set its size. An earlier note here said the camera
-fitted the mirror's unseen control points; that was wrong.
+**The camera** fits the points that are drawn (each solid, the mirror with
+room for one step, the goal, the girl): `world/stage_camera.gd`,
+`_fit_camera` in `game.gd`.
 
-Also open: the colour script cuts when moving on; the scenery appears at
-once with a new place; the title screen was not checked. Frame time on the
-Mac (M2 Pro): 2.1 ms at 1152x800 and 4.4 ms at 2532x1170, from 1.0 and 1.9
-before the loop; the ice shader is most of it. **No phone has run this.**
-The shadow map is now 4096 wide.
+Also open: the colour script cuts when moving on; the reeds appear at once
+with a new place; the title screen was not checked. Frame time on the Mac
+(M2 Pro): 2.0 ms at 1152x800, 4.4 ms at 2532x1170. **No phone has run this.**
 
-Open with the owner: approval of the frame; the three decisions above;
-the colour script per stage; whether her image in the ice becomes where
-her sister shows; vistas between puzzles; level names (proposed
-2026-11-09: Fresh Snow, Borrowed Ground, Still There, Just Enough, The
-Other Way, Side by Side).
+Open with the owner: approval of the frame; the three faults; the colour
+script per stage; where her sister shows; vistas between puzzles; level
+names (proposed 2026-11-09: Fresh Snow, Borrowed Ground, Still There, Just
+Enough, The Other Way, Side by Side).
 
 **On hold: the first scene.** The pond story place (`levels/00_pond.json`,
 `world/prologue.gd`, `docs/briefs/the-pond.md`) gives away too much story.
@@ -113,9 +105,8 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
 - `world/world_view.gd` draws one mesh per solid; `world/block_set.gd` sets
   the kind on `world/stone.gdshader`; `world/stone_mesh.gd` is a whole
   stone's shape; `world/trial_lighting.gd` is the light and the colour
-  scripts; `world/ice.gd` is the ice and its mirror image;
-  `world/pond_scenery.gd` is the reeds and shrubs round a place, and
-  `world/scenery_image.gdshader` their image in the ice.
+  scripts; `world/ice.gd` is the water and its mirror image;
+  `world/pond_scenery.gd` is the reeds round a place.
 - `world/character_visual.gd` plays the girl (`assets/character/girl.glb`,
   0.8 u, Idle/Walk/Wake/Lift/Raise/Lower/Wave). Sources in
   `art_sources/girl/`. `assets/character/traveller.glb` is the old character,
@@ -163,8 +154,11 @@ the one that covers a change. `VALIDATION.md` records what was checked.
 - **Vertex colours reach a shader as written**, not converted like a
   `source_color`. `scenery.gdshader` converts them itself.
 - **The first capture after a script change can miss the mirror's raise.**
-- **The low sun gives a small thing almost no shadow.** A transparent quad
-  under the girl did not draw (cause unknown); her shade is painted instead.
+- **A transparent quad under the girl did not draw** (cause unknown); her
+  shade is painted in the stone shader instead.
+- **A shader the mirror camera draws must use `water_image.gdshaderinc`**,
+  or its image shows at full strength at any height. A `StandardMaterial3D`
+  cannot, so keep such a thing off `MIRRORED_LAYER`.
 - **Headless frames run uncapped.** A test that waits for walking must count
   `physics_frame`, not `process_frame`.
 - **Godot's glTF import drops the first mesh part's vertex colours.** Put a
