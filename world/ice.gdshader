@@ -160,7 +160,7 @@ void fragment() {
 	// the sun; away from it the ice is dark. A little of the dusk stays in
 	// the far ice on every side. So the light has a source, not a horizon.
 	vec2 from_sun = vec2((bearing - sun_bearing) / SPAN, (depth + 0.06) * 1.25);
-	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7);
+	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.86;
 	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, depth)) * 0.34);
 	vec3 colour = mix(mid_color, far_color, far_light);
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
@@ -190,7 +190,7 @@ void fragment() {
 	float off_sun = bearing - sun_bearing;
 	float halo = exp(-(off_sun * off_sun * 3.2 + depth * depth * 16.0));
 	float core = exp(-(off_sun * off_sun * 34.0 + depth * depth * 48.0));
-	colour += sun_color * (halo * 0.42 + core * 1.5) * (1.0 - shore * 0.55);
+	colour += sun_color * (halo * 0.26 + core * 1.1) * (1.0 - shore * 0.55);
 	colour = mix(colour, shore_color, shore * (0.86 - core * 0.5));
 
 	// Its glitter path: short bright dashes that lie on the ice, down the
@@ -199,7 +199,7 @@ void fragment() {
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.08, 0.72, depth));
 	vec2 dash_at = vec2(dot(plain, view_right) * 4.2, dot(plain, view_forward) * 8.5);
 	float spark = noise(dash_at + vec2(ice_time * 0.22, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.38));
-	float glitter = smoothstep(0.44, 0.64, spark) * path * (1.0 - shore * 0.7);
+	float glitter = smoothstep(0.48, 0.66, spark) * path * (1.0 - shore * 0.7);
 
 	// The stones, mirrored: dark, stretched down the ice and wavering, and
 	// thinning with height. The image arrives already darkened by height; its

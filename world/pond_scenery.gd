@@ -14,7 +14,8 @@ const CLEAR := 2.0
 ## The band of scenery round the place is this wide.
 const REACH := 9.0
 const SPACING := 2.4
-## No scenery stands within this cosine of the line from the place to the sun.
+## Scenery within this cosine of the line from the place to the sun is lit
+## from behind.
 const SUN_GAP := 0.62
 
 const REED := Color(0.50, 0.43, 0.36, 0.0)
@@ -25,12 +26,15 @@ const TWIG := Color(0.17, 0.12, 0.16, 0.7)
 var _tool := SurfaceTool.new()
 var _random := RandomNumberGenerator.new()
 var _toward_sun := Vector2.ZERO
+## How far the piece now being built stands in the light of the sun, 0 to 1.
+## It goes to the shader in UV.x.
+var _lit := 0.0
 
 ## Builds the scenery round `limits` (a level's mirror limits) on the ice at
 ## `ice_height`. `place` names the place and seeds the layout; `haze` is the
-## colour of the air there, which the scenery takes on. Nothing stands
-## between the place and the sun (`sun_from` points to it): there the ice
-## holds the light, and a reed against it would be the darkest mark in view.
+## colour of the air there, which the scenery takes on. Between the place and
+## the sun (`sun_from` points to it) the ice holds the light; the scenery
+## there is pale and lit from behind, so it is never a dark mark on the light.
 static func build(limits: Dictionary, ice_height: float, place: String, haze: Color, sun_from: Vector3) -> PondScenery:
 	var scenery := PondScenery.new()
 	scenery._toward_sun = Vector2(sun_from.x, sun_from.z).normalized()
@@ -53,8 +57,9 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 			var pick := _random.randf()
 			# The scenery stands in loose groups, with open ice between them.
 			var group := sin(spot.x * 0.23 + float(_random.seed % 7)) * cos(spot.y * 0.21 + 1.3)
-			var into_sun := (spot - keep_clear.get_center()).normalized().dot(_toward_sun) > SUN_GAP
-			if keep_clear.has_point(spot) or into_sun or group < -0.2 or pick > 0.9:
+			# Toward the sun the scenery is lit from behind (see `_lit`).
+			_lit = smoothstep(SUN_GAP - 0.25, SUN_GAP, (spot - keep_clear.get_center()).normalized().dot(_toward_sun))
+			if keep_clear.has_point(spot) or group < -0.2 or pick > 0.9:
 				continue
 			var at := Vector3(spot.x, ice_height, spot.y)
 			if pick < 0.6:
@@ -112,7 +117,7 @@ func _blade(from: Vector3, to: Vector3, width_from: float, width_to: float, colo
 			var low := index < 2
 			_tool.set_normal(normal)
 			_tool.set_color(color_from if low else color_to)
-			_tool.set_uv(Vector2(0.0, sway_from if low else sway_to))
+			_tool.set_uv(Vector2(_lit, sway_from if low else sway_to))
 			_tool.add_vertex(corners[index])
 		side = along.cross(side)
 
@@ -131,5 +136,5 @@ func _prism(from: Vector3, to: Vector3, radius_from: float, radius_to: float, si
 		for corner: int in [0, 1, 2, 0, 2, 3]:
 			_tool.set_normal(quad[corner][1])
 			_tool.set_color(color)
-			_tool.set_uv(Vector2(0.0, quad[corner][2]))
+			_tool.set_uv(Vector2(_lit, quad[corner][2]))
 			_tool.add_vertex(quad[corner][0])

@@ -21,14 +21,14 @@ const SCRIPTS := {
 		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.22,
 		"ice_far": Color("efc79c"), "ice_mid": Color("2f5a78"), "ice_near": Color("08192a"),
 		"glow": Color("ffb665"), "sun_from": Vector3(-0.17, 0.5, -0.98),
-		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.22, "haze": Color("33485a"), "bars": 0.5,
+		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.15, "haze": Color("4a6478"), "bars": 0.5,
 	},
 	"dusk": {
 		"sun": Color("ffdfca"), "sun_energy": 2.5, "fill": Color("dccab6"), "fill_energy": 0.38,
 		"sky": Color("a08cb8"), "ground": Color("a8807e"), "ambient": 0.24,
 		"ice_far": Color("f0a48e"), "ice_mid": Color("26276a"), "ice_near": Color("0a0c2a"),
 		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.44, -0.98),
-		"shore": Color("1c1838"), "ice_snow": Color("a9a0d0"), "shade": 0.22, "haze": Color("372c58"), "bars": 1.0,
+		"shore": Color("1c1838"), "ice_snow": Color("a9a0d0"), "shade": 0.16, "haze": Color("372c58"), "bars": 1.0,
 	},
 }
 const DEFAULT_SCRIPT := "morning"

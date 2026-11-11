@@ -2,11 +2,11 @@ extends GPUParticles3D
 ## Snow falling slowly over a place. It follows the view, so it falls
 ## wherever the stage camera looks. Presentation only.
 
-const FLAKES := 260
+const FLAKES := 200
 ## Far flakes are small and dim.
-const FAR_FLAKES := 320
+const FAR_FLAKES := 280
 ## Some flakes fall nearer the eye: a little larger and softer.
-const NEAR_FLAKES := 70
+const NEAR_FLAKES := 36
 const SPAN := 30.0
 const LIFE := 16.0
 
@@ -16,12 +16,12 @@ var camera: Camera3D
 var lift := 9.0
 
 func _ready() -> void:
-	_fall(self, FLAKES, 0.08, 0.8, 1.0)
+	_fall(self, FLAKES, 0.062, 0.7, 1.0)
 	var far := GPUParticles3D.new()
-	_fall(far, FAR_FLAKES, 0.045, 0.38, 0.7)
+	_fall(far, FAR_FLAKES, 0.04, 0.34, 0.7)
 	add_child(far)
 	var near := GPUParticles3D.new()
-	_fall(near, NEAR_FLAKES, 0.115, 0.6, 1.5)
+	_fall(near, NEAR_FLAKES, 0.085, 0.5, 1.5)
 	add_child(near)
 
 ## Sets `layer` up as falling snow: `count` flakes of `size`, at `alpha`.
@@ -53,7 +53,7 @@ static func _fall(layer: GPUParticles3D, count: int, size: float, alpha: float, 
 	var flake := QuadMesh.new()
 	# Each flake is drawn out a little along its fall, so that in a still
 	# frame the snow reads as falling, not as stars.
-	flake.size = Vector2(size * 0.8, size * 1.9)
+	flake.size = Vector2(size, size * 1.45)
 	layer.transform_align = GPUParticles3D.TRANSFORM_ALIGN_Z_BILLBOARD_Y_TO_VELOCITY
 	var soft := GradientTexture2D.new()
 	soft.fill = GradientTexture2D.FILL_RADIAL

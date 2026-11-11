@@ -2,12 +2,14 @@ shader_type spatial;
 render_mode diffuse_lambert, cull_disabled;
 // One surface for the pond's scenery: reeds and twigs.
 // COLOR.rgb is the bare colour, COLOR.a how readily snow lies on it, and
-// UV.y how far the wind moves it.
+// UV.y how far the wind moves it. UV.x says how far it stands in the light
+// of the low sun, lit from behind.
 
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
 // Far things take on the colour of the air: the scenery stays behind the
 // stones in value.
 uniform vec3 haze : source_color = vec3(0.30, 0.28, 0.48);
+uniform vec3 backlight : source_color = vec3(1.0, 0.80, 0.70);
 
 varying vec3 world_normal;
 varying vec3 world_position;
@@ -32,7 +34,8 @@ void fragment() {
 	float lies = smoothstep(0.30, 0.62, world_normal.y + (grain - 0.5) * 0.25) * COLOR.a;
 	// Vertex colours arrive as written; bring them into the light's space.
 	ALBEDO = mix(pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.24 * grain), snow * 0.86, lies);
-	ALBEDO = mix(ALBEDO, haze, 0.68);
+	ALBEDO = mix(mix(ALBEDO, haze, 0.72), backlight * 0.8, UV.x * 0.8);
+	EMISSION = backlight * UV.x * 0.42;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.2;
 }

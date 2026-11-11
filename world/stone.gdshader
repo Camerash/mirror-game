@@ -20,7 +20,7 @@ uniform vec4 clip_plane = vec4(0.0);
 // The height of the ice below the place, and how far above it a stone still
 // shows in the ice.
 uniform float ice_height = -100.0;
-uniform float image_reach = 1.3;
+uniform float image_reach = 0.95;
 // Where the girl stands. The ground under her carries a soft shade, drawn
 // out the way the sun's shadows fall: her own shadow is too fine for the
 // sun's shadow map, and she must not be lost on the snow.
@@ -144,7 +144,7 @@ void fragment() {
 			float pick = hash(vec3(cell, 3.0));
 			// Each has five petals.
 			float petals = 0.75 + 0.25 * cos(atan(within.y, within.x) * 5.0 + pick * 6.0);
-			float flower = step(0.66, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
+			float flower = step(0.84, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
 			// They are warm, so none is taken for a flake of snow.
 			base = mix(base, pick > 0.86 ? vec3(1.0, 0.66, 0.70) : vec3(1.0, 0.84, 0.40), flower);
 		} else {
@@ -253,7 +253,7 @@ void fragment() {
 		// Its sides glow like paper round a flame: most at the heart of each face.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
 		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.30 : mix(vec3(1.0, 0.60, 0.24) * 1.25, vec3(0.86, 0.40, 0.18) * 0.45, rim) * (base / max(summer_stone, vec3(0.01)));
+		glow = top_face && !cut_face ? base * 0.18 : mix(vec3(1.0, 0.60, 0.24) * 1.25, vec3(0.86, 0.40, 0.18) * 0.45, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
 	if (!FRONT_FACING) {

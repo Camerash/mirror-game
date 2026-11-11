@@ -13,5 +13,5 @@ void fragment() {
 	float halo_variation = 0.96 + 0.04 * sin(UV.y * 2.7 + TIME * 0.10);
 	ALBEDO = mix(vec3(0.42, 0.82, 0.88), vec3(0.97, 0.98, 0.94), core);
 	float dash = removal ? step(0.46, fract(UV.y * 9.0)) : 1.0;
-	ALPHA = max(halo * halo_variation * 0.55, core * 0.95) * dash * (removal ? 0.35 : 1.0);
+	ALPHA = max(halo * halo_variation * 0.22, core * 0.6) * dash * (removal ? 0.35 : 1.0);
 }
