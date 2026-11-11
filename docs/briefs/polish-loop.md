@@ -1,6 +1,6 @@
 # Brief: the polish loop on "A place to stand"
 
-Status: run on the owner's Mac on 2026-11-10, eleven rounds. The result and
+Status: run on the owner's Mac on 2026-11-10 and 2026-11-11, seventeen rounds. The result and
 what is still open are in `HANDOFF.md` and `VALIDATION.md`. The owner's
 answers to the three questions: run it now; stones may be reshaped while
 walkable edges stay on the grid and the tests pass; stay on the Mobile

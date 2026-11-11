@@ -19,8 +19,8 @@ camera, and are not built yet.
 the block's materials (stone, snow, patina band, summer copy). Its sky and
 pillars are replaced by the ice. `look-port-2026-11-09.jpg` is the first
 in-game pass; `ice-dusk-2026-11-10.jpg` is the first frame with the ice;
-`polish-loop-2026-11-10.jpg` is the frame after the polish loop, not yet
-approved by the owner.
+`polish-loop-2026-11-11.jpg` is the frame after seventeen rounds of the
+polish loop, not yet approved by the owner.
 
 ## The bar
 
@@ -44,14 +44,17 @@ approved by the owner.
 ## The place
 
 A garden pond in deep winter, seen from its far side, at an hour when the
-low sun comes through the far trees. Gameplay blocks are old garden stones
-that stand on the ice, each on a plinth, edges worn round, snow on every
-top that rolls over the edge. Reeds and bare shrubs stand in the ice
-outside the ground the puzzle can use. Absolutes (the ground that stays) carry a dark
+low sun comes through the far trees. The light on the ice spreads from
+where the ice holds the sun; it has a source, not a horizon. Gameplay
+blocks are old garden stones that stand on the ice: each a pedestal (a
+plinth, a rounder shaft, a cap slab) with snow on top that rolls over the
+edge. Reeds and bare shrubs stand in the ice outside the ground the puzzle
+can use, each over its own image; toward the sun they are pale and lit from
+behind. Absolutes (the ground that stays) carry a dark
 bronze-green band. A mirror copy is the same shape in summer: warm stone,
 moss, small flowers, a soft glow. The mirror is a thin frosted pane in a
-slim brass frame. The owner wants the block itself redesigned to fit the
-story; it need not stay a cube.
+slim brass frame, frosted at the top and clear below. The owner wants the
+block itself redesigned to fit the story; it need not stay a cube.
 
 ## Colours shared by every script
 

@@ -3,52 +3,71 @@
 Current state only, kept under about 150 lines. Git history keeps the rest;
 the old traveller is in `docs/art/traveller-handoff.md`.
 
-## Now: art and scene quality (owner, 2026-11-10)
+## Now: art and scene quality (owner, 2026-11-11)
 
 The polish loop (`docs/briefs/polish-loop.md`) ran on the owner's Mac on
-2026-11-10: eleven rounds, each judged by an independent reviewer. The last
-frame is `docs/art/target/polish-loop-2026-11-10.jpg`. **The owner has not
-approved it.** The reviewers moved it from 3/10 to 5/10 against the feel
-reference (readability 6/10 to 7/10): the brief's goal is not reached.
-Branch `claude/funny-dirac-7dv0hf`; everything is pushed.
+2026-11-10 and 2026-11-11: seventeen rounds, each judged by a new
+independent reviewer. The last frame is
+`docs/art/target/polish-loop-2026-11-11.jpg`. **The owner has not approved
+it.** The reviewers moved it from 3/10 to 6/10 against the feel reference
+(5 or 6 in each of the last six reviews; readability 6/10 to 7/10): the
+brief's goal is not reached. Branch `claude/funny-dirac-7dv0hf`; everything
+is pushed.
 
 In the game now (`docs/art/STYLE.md` has the look; file names are in "The
 code, briefly"): the sun stands ahead of the first view; the ice is the
-whole backdrop, painted in `ice.gdshader`, and the lowest ground of a place
-stands on it (`ICE_CLEAR`); a whole block is a worn stone on a plinth under
-a cover that rolls over the edge, top flat and on the grid (a block cut at
-an angle keeps the old plain shape); reeds and bare shrubs stand outside the
-mirror's limits (none in a place with a `story`); snow falls in three
-depths; the stone shader paints a shade under the girl from the global
-shader value `walker_at` (`project.godot`, `walker.gd`). Each colour script
-in `SCRIPTS` names its sun, sky, ice, haze and shade; only `01_route` is
-dusk. Captures: `tests/capture_stage.gd` (`--turns`, `--motion`, `--nudge`).
+whole backdrop, painted in `ice.gdshader` (far light that spreads from the
+sun's place, tall trees held in it, bars of sunlight), and the lowest ground
+of a place stands on it (`ICE_CLEAR`); a whole block is a pedestal (plinth,
+rounder shaft, cap slab) under a cover that rolls over the edge, top flat
+and on the grid, and an absolute's bronze band stands proud of the shaft (a
+block cut at an angle keeps the old plain shape); reeds and bare shrubs
+stand outside the mirror's limits, each over its image
+(`scenery_image.gdshader`), pale toward the sun (none in a place with a
+`story`); the ring lights the snow round it; snow falls in three depths;
+the stone shader paints a shade under the girl from the global shader value
+`walker_at` (`project.godot`, `walker.gd`). Each colour script in `SCRIPTS`
+names its sun, sky, ice, haze, shade and bars; only `01_route` is dusk.
+Captures: `tests/capture_stage.gd` (`--turns`, `--motion`, `--nudge`).
 
 Changed by the loop, for the owner to confirm or reverse:
 
 - **The hidden-ground ghost is drawn clear.** Every visible strength of it
   read as a glass block to stand on. `HIDDEN_FILL` and `HIDDEN_EDGE` in
   `world/world_view.gd` bring the cue back.
-- The mirror's guide lines and side bands are much fainter.
+- **The girl's colours are taken down by half in the game's light**
+  (`TONE_DEEPEN` in `world/character_visual.gd`), so she shows on the snow.
+  Her model is not changed.
+- The mirror's guide lines, side bands and seam are much fainter.
 - The pond and the first scene were not edited, but they share the light,
   the ice and the stone shape, so they look different. Nobody has looked.
 
-Open from the last review, worst first: the stones read as parcels (flat
-sides, the band like tape); the frame is empty between the copy and the
-ring; the reeds are the sharpest marks; the far band reads as a sky; the
-girl is small and pale on snow; "Together" hides its copy from one view.
+Open from the last review, worst first: the lower half of the frame is
+empty; the ice does not read as glass, and the stones' images are short and
+pale; the reeds toward the sun are a lattice of straw; the girl is small;
+the pane is faint; the copy's moss top is flat; "Together" hides its copy
+from one view. Three of these need a decision, not more shader work:
+
+- **The camera frames wider than the stones need** (it also fits the
+  mirror's unseen control points), so the place is small in the frame and
+  the girl is about ten pixels on a phone. The loop did not touch the camera.
+- **How long and how sharp the stones' images are.** Long or sharp images
+  were read as a second row of stones; short, soft ones as "not a mirror".
+  The reviews went back and forth five times.
+- **How much the girl may differ from her concept colours** on snow.
+
 Other gaps: the colour script cuts when moving on; the scenery appears at
 once with a new place; the title screen was not checked.
 
-Frame time on the Mac (M2 Pro, unpresented draws): 2.2 ms at 1152x800 and
-5.2 ms at 2532x1170, from 1.0 and 1.9 before the loop; the ice shader is
+Frame time on the Mac (M2 Pro, unpresented draws): 2.1 ms at 1152x800 and
+4.4 ms at 2532x1170, from 1.0 and 1.9 before the loop; the ice shader is
 most of it. **No phone has run this.** The shadow map is now 4096 wide.
 
-Open with the owner: approval of the frame; the ghost cue; the colour
-script per stage; whether her image in the ice becomes where her sister
-shows; vistas between puzzles; level names (proposed 2026-11-09: Fresh
-Snow, Borrowed Ground, Still There, Just Enough, The Other Way, Side by
-Side).
+Open with the owner: approval of the frame; the three decisions above; the
+ghost cue; the colour script per stage; whether her image in the ice
+becomes where her sister shows; vistas between puzzles; level names
+(proposed 2026-11-09: Fresh Snow, Borrowed Ground, Still There, Just
+Enough, The Other Way, Side by Side).
 
 **On hold: the first scene.** The pond story place (`levels/00_pond.json`,
 `world/prologue.gd`, `docs/briefs/the-pond.md`) gives away too much story.

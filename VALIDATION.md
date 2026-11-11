@@ -1,7 +1,17 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the polish loop on the Mac — 2026-11-10
+# Latest check: six more rounds of the polish loop — 2026-11-11
+
+- Machine and method as in the entry below. The owner asked for more rounds after the first eleven. Rounds 12 to 17, each with a new independent reviewer; from round 14 the reviewer also got a difference image of two frames two seconds apart.
+- What changed: the stone is a pedestal (plinth, rounder shaft, cap slab, a raised bronze band on an absolute); the far light on the ice spreads from the sun's place, not from a level band; tall trees are held far down the ice; the cracks, the fish, the rocks and the posts are gone; reeds and shrubs stand over their own image (a second shader pass, no camera) and are pale toward the sun; the goal ring lights its snow; the girl's colours are taken down by half; snow is drawn out along its fall.
+- Reviews of the main frame against the feel reference, rounds 12 to 17: beauty 6, 5, 6, 6, 5 and 6/10; readability at phone size 6, 7, 7, 7, 7 and 7/10. The first eleven rounds ended at 5/10 and 7/10. The stone's shape moved from the "hurts" list to the "keep" list from round 12. The last reviewer compared with the frame of round 11: "calmer, more unified and more readable", but with fewer dark accents.
+- Final state, commit `5a0285e`, run once, headless: `run_tests` **692/0**, `gameplay_art_tests` **58/0**, `app_flow_tests` **88/0**, `readability_tests` **11/0**, `level_solvability_tests` **68/0**, `direct_controls_tests` **123/0**. (`run_tests` reported 692 to 694 checks across this session's runs, with no failure in any.)
+- Frame time, unpresented draws: 2.1 ms with the ice's second camera and 1.6 ms without at 1152x800; 4.4 ms and 4.0 ms at 2532x1170; 1.3 ms and 1.0 ms at 844x390; "Together" 5.2 ms at 2532x1170.
+- Open from the last review, worst first: the lower half of the frame is empty; the ice does not read as glass and the stones' images are short and pale; the reeds toward the sun are a lattice of straw; the girl is small and low in contrast; the pane is faint; the copy's moss top is flat; dark reeds are cut by the frame edge in two views; the value range is narrow.
+- Not checked: the same list as below (a phone, the title screen, the pond and the first scene, the other stages, moving on between colour scripts, a block cut at an angle, a played session).
+
+# Earlier check: the polish loop on the Mac — 2026-11-10
 
 - Machine: the owner's Mac, Apple M2 Pro, Godot 4.7.2, Metal, Mobile renderer.
 - First checks from `docs/briefs/polish-loop.md`. The sun is present on Metal with a default `StandardMaterial3D`: top-face brightness 0.839 default, 0.831 Lambert, 0.610 with the sun off; the missing sun was the cloud's software renderer only. The first Mac frame of "A place to stand" agreed with `docs/art/target/ice-dusk-2026-11-10.jpg`. Frame time before the loop, timed with unpresented draws (Metal gave no GPU timer, and the window is capped at 120 fps): 1.0 ms with the ice's second camera and 0.76 ms without at 1152x800; 1.9 ms and 1.8 ms at 2532x1170.
