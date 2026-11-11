@@ -329,6 +329,7 @@ func load_level(index: int) -> bool:
 	trial_lighting.set_floor(float(level.get("kill_y", -5.0)), Geometry.total_bounds(world.drawn_solids).position.y)
 	world.glow_color = trial_lighting.palette()["glow"]
 	ice.height = trial_lighting.floor_height
+	sheet.sheet_material.set_shader_parameter("water_level", trial_lighting.floor_height)
 	world.ice_height = trial_lighting.floor_height
 	ice.set_palette(trial_lighting.palette())
 	for child: Node in goal_root.get_children():
@@ -342,7 +343,7 @@ func load_level(index: int) -> bool:
 	props.build(level.get("props", []))
 	if not level.has("story"):
 		# The pond round the place leaves with it, like its props.
-		props.add_child(PondScenery.build(level["limits"], trial_lighting.floor_height, str(level.get("title", "")), trial_lighting.palette()["haze"], trial_lighting.palette()["sun_from"]))
+		props.add_child(PondScenery.build(level["limits"], trial_lighting.floor_height, str(level.get("title", "")), trial_lighting.palette()["haze"]))
 	prologue.clear()
 	if story and level.has("story") and not _prompt_done(PrologueScene.DONE_ID):
 		var wake := not _loading_via_sweep
@@ -409,6 +410,8 @@ func _track_fall(delta: float) -> void:
 	if walker.grounded:
 		if not _was_grounded and _air_time >= 0.3:
 			tutorial_event.emit("fall")
+			# Her landing shakes the stone: the water round it shows it.
+			ice.ring(walker.global_position)
 		_air_time = 0.0
 	else:
 		_air_time += delta
@@ -613,6 +616,8 @@ func toggle_mirror() -> void:
 	if _open_direct_preview(proposal):
 		_direct_apply = true
 		_direct_event = event
+		# The pane disturbs the water where it rises or sinks.
+		ice.ring(proposal["pivot"])
 		if proposal["enabled"]:
 			sheet.rise()
 			_hold_up_hand_mirror()

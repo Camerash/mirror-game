@@ -5,6 +5,7 @@ signal transition_finished
 signal pose_changed
 
 const TrialGlass := preload("res://world/trial_glass.gdshader")
+const Ice := preload("res://world/ice.gd")
 const Frame := preload("res://world/mirror_frame.gd")
 const Rules := preload("res://core/mirror_state.gd")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
@@ -45,6 +46,8 @@ func _ready() -> void:
 	sheet_material.render_priority = 64
 	sheet.material_override = sheet_material
 	sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# The water mirrors the pane, not its frame: two frames read as one tall pane.
+	sheet.layers = 1 | Ice.MIRRORED_LAYER
 	edges.material_override = edge_material
 	edges.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ribbons.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

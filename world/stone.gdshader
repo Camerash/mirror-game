@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode diffuse_lambert, cull_disabled;
+#include "res://world/water_image.gdshaderinc"
 // The surface of every gameplay block: garden limestone under snow. The look
 // follows the kind of solid and the direction of each face, and is drawn in
 // the source's own space, so a copy shows its source exactly, mirrored.
@@ -17,10 +18,8 @@ uniform vec3 source_size = vec3(1.0);
 uniform vec3 seed = vec3(0.0);
 uniform mat4 world_to_material;
 uniform vec4 clip_plane = vec4(0.0);
-// The height of the ice below the place, and how far above it a stone still
-// shows in the ice.
+// The height of the water below the place.
 uniform float ice_height = -100.0;
-uniform float image_reach = 0.95;
 // Where the girl stands. The ground under her carries a soft shade, drawn
 // out the way the sun's shadows fall: her own shadow is too fine for the
 // sun's shadow map, and she must not be lost on the snow.
@@ -267,19 +266,15 @@ void fragment() {
 	ROUGHNESS = roughness;
 	EMISSION = glow;
 	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
-		// Drawn for the image in the ice. The image darkens to nothing with
-		// height above the ice, so it is strongest under the stone and never
-		// looks solid. It carries its own plain light; the ice reads how
-		// much of it is left from its brightness.
-		float keep = 1.0 - smoothstep(0.0, image_reach, world_position.y - ice_height);
+		// Drawn for the image in the water, which is gone with height
+		// (`water_image.gdshaderinc`). It carries its own plain light.
 		float lit = 0.55 + 0.45 * max(dot(normalize(source_to_world * relief), vec3(0.25, 0.51, 0.82)), 0.0);
-		// A stone that floats shows its underside in the ice; it must not
-		// read as a hole.
-		lit = source_normal.y < -0.5 ? 0.8 : lit;
+		// A face that looks down at the water is in shade.
+		lit *= mix(1.0, 0.45, smoothstep(0.0, -0.6, world_normal.y));
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		METALLIC = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = (base * lit + glow) * keep * keep;
+		EMISSION = image_colour(base * lit + glow, world_position.y - ice_height);
 	}
 }

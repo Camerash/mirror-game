@@ -1,19 +1,14 @@
 shader_type spatial;
 render_mode diffuse_lambert, cull_disabled;
-// One surface for the pond's scenery: reeds and twigs.
-// COLOR.rgb is the bare colour, COLOR.a how readily snow lies on it, and
-// UV.y how far the wind moves it. UV.x says how far it stands in the light
-// of the low sun, lit from behind.
+#include "res://world/water_image.gdshaderinc"
+// One surface for the pond's scenery: the reeds. COLOR.rgb is the bare
+// colour and UV.y how far the wind moves a point.
 
-uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
 // Far things take on the colour of the air: the scenery stays behind the
 // stones in value.
 uniform vec3 haze : source_color = vec3(0.30, 0.28, 0.48);
-uniform vec3 backlight : source_color = vec3(1.0, 0.80, 0.70);
-// The direction on the ice (x, z) from the place toward the sun.
-uniform vec2 toward_sun = vec2(0.0, -1.0);
+uniform float water_level = -100.0;
 
-varying vec3 world_normal;
 varying vec3 world_position;
 
 float hash(vec3 p) {
@@ -28,20 +23,19 @@ void vertex() {
 	float gust = sin(TIME * 0.9 + at.x * 0.7 + at.z * 1.1) + 0.45 * sin(TIME * 2.1 + at.x * 1.9 - at.z * 0.6);
 	VERTEX.xz += vec2(0.93, 0.36) * gust * 0.05 * UV.y * UV.y;
 	world_position = at;
-	world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 void fragment() {
 	float grain = hash(floor(world_position * 60.0)) * 0.4 + 0.3;
-	float lies = smoothstep(0.30, 0.62, world_normal.y + (grain - 0.5) * 0.25) * COLOR.a;
 	// Vertex colours arrive as written; bring them into the light's space.
-	ALBEDO = mix(pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.24 * grain), snow * 0.86, lies);
-	// A piece is lit from behind only for a view that looks toward the sun;
-	// from the other side it stands on dark ice, and is dark.
-	vec3 ahead = -INV_VIEW_MATRIX[2].xyz;
-	float lit = UV.x * smoothstep(0.25, 0.75, dot(normalize(ahead.xz), toward_sun));
-	ALBEDO = mix(mix(ALBEDO, haze, 0.72), backlight * 0.6, lit * 0.5);
-	EMISSION = backlight * lit * 0.12;
+	ALBEDO = mix(pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.24 * grain), haze, 0.6);
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.2;
+	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
+		// Drawn for the image in the water, which is gone with height.
+		EMISSION = image_colour(ALBEDO, world_position.y - water_level);
+		ALBEDO = vec3(0.0);
+		SPECULAR = 0.0;
+		ROUGHNESS = 1.0;
+	}
 }

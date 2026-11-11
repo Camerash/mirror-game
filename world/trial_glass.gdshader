@@ -1,5 +1,6 @@
 shader_type spatial;
 render_mode blend_mix, cull_disabled, depth_draw_never;
+#include "res://world/water_image.gdshaderinc"
 uniform float sheet_time = 0.0;
 uniform float sheet_alpha = 0.11;
 uniform bool removal = false;
@@ -7,9 +8,13 @@ uniform vec2 panel_size = vec2(3.0);
 // Multiplies the opacity. The stage sweep panel has no ribbons or motes, so it
 // needs more glass to read.
 uniform float presence = 1.0;
+// The height of the water below the place.
+uniform float water_level = -100.0;
 varying vec3 local_position;
+varying vec3 world_position;
 void vertex() {
 	local_position = VERTEX;
+	world_position = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec2 distance_to_edge = panel_size * 0.5 - abs(local_position.xy);
@@ -30,4 +35,8 @@ void fragment() {
 	METALLIC = 0.0;
 	EMISSION = ALBEDO * (0.22 * frost + 0.16 * sheen);
 	ALPHA = (0.025 + frost * crystals * 0.42 + sheen * 0.05) * (removal ? 0.3 : 1.0) * presence;
+	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
+		// Drawn for the image in the water: a pale sheet, gone with height.
+		ALPHA = 0.5 * image_keep(world_position.y - water_level) * (removal ? 0.3 : 1.0) * presence;
+	}
 }

@@ -4,38 +4,37 @@ extends Node3D
 ## colour of snow shadows. The sun is fixed in the world, so turning the view
 ## walks round the light: one view looks into the sun, the opposite one has it
 ## behind. Each place names one
-## colour script (`"light"` in its level file); the ice below takes its
+## colour script (`"light"` in its level file); the water below takes its
 ## colours from the same script. See `docs/art/STYLE.md`.
 
 const BackdropShader := preload("res://assets/environment/backdrop.gdshader")
 ## One entry per time of day. `sun` and `fill` are the two lights, `sky` and
 ## `ground` the ambient light from above and below, and the three `ice`
-## colours run from the far ice (top of the screen) to the near. `sun_from`
-## points from the place to the sun. `shore` is the dark of the far trees the
-## ice holds, `ice_snow` the blown snow that lies on the ice, `haze` the colour
-## of the air, which the pond's scenery takes on, and `bars` the strength of
-## the bars of sunlight on the ice.
+## colours are the water's, from the far water (top of the screen) to the
+## near. `sun_from` points from the place to the sun. `shade` is how much the
+## sun's shadow darkens the water, and `haze` the colour of the air, which the
+## pond's scenery takes on.
 const SCRIPTS := {
 	"morning": {
 		"sun": Color("ffe2bd"), "sun_energy": 1.9, "fill": Color("e8d2b8"), "fill_energy": 0.30,
 		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.22,
 		"ice_far": Color("efc79c"), "ice_mid": Color("2f5a78"), "ice_near": Color("08192a"),
 		"glow": Color("ffb665"), "sun_from": Vector3(-0.17, 0.5, -0.98),
-		"shore": Color("1d3345"), "ice_snow": Color("b4c6dc"), "shade": 0.15, "haze": Color("4a6478"), "bars": 0.35,
+		"shade": 0.15, "haze": Color("4a6478"),
 	},
 	"dusk": {
 		"sun": Color("ffdfca"), "sun_energy": 2.5, "fill": Color("dccab6"), "fill_energy": 0.38,
 		"sky": Color("a08cb8"), "ground": Color("a8807e"), "ambient": 0.24,
 		"ice_far": Color("e89a8c"), "ice_mid": Color("2c2a5e"), "ice_near": Color("0b0c26"),
 		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.44, -0.98),
-		"shore": Color("1c1838"), "ice_snow": Color("a9a0d0"), "shade": 0.16, "haze": Color("372c58"), "bars": 1.0,
+		"shade": 0.16, "haze": Color("372c58"),
 	},
 }
 const DEFAULT_SCRIPT := "morning"
-## The lowest ground of a place stands on the ice, so each stone joins its
+## The lowest ground of a place stands in the water, so each stone joins its
 ## own image at the foot and the image cannot be taken for a second stone.
 const ICE_CLEAR := 0.01
-## The ice is alone on this render layer, so a light can leave it out.
+## The water is alone on this render layer, so a light can leave it out.
 const ICE_LAYER := 1 << 11
 
 var environment := WorldEnvironment.new()
@@ -43,7 +42,7 @@ var key := DirectionalLight3D.new()
 var fill := DirectionalLight3D.new()
 var backdrop := ShaderMaterial.new()
 var script_name := DEFAULT_SCRIPT
-## The height of the ice under the current place.
+## The height of the water under the current place.
 var floor_height := -2.8
 
 func _ready() -> void:
@@ -73,7 +72,7 @@ func _ready() -> void:
 	key.shadow_normal_bias = 0.9
 	add_child(key)
 	# A weak cool light from behind the first view keeps the shaded faces in
-	# shape. It does not light the ice, which takes only the sun's shadow.
+	# shape. It does not light the water, which takes only the sun's shadow.
 	fill.basis = Basis.looking_at(Vector3(-0.85, -0.4, -0.4))
 	fill.light_cull_mask &= ~ICE_LAYER
 	add_child(fill)
@@ -98,7 +97,7 @@ func set_place(name: String) -> void:
 	backdrop.set_shader_parameter("light_top", colors["sky"])
 	backdrop.set_shader_parameter("light_bottom", colors["ground"])
 
-## Sets the ice for a place whose lowest ground has its underside at
-## `lowest`. Falls end at `kill_y`, somewhere under the ice.
+## Sets the water for a place whose lowest ground has its underside at
+## `lowest`. Falls end at `kill_y`, somewhere under the water.
 func set_floor(kill_y: float, lowest: float) -> void:
 	floor_height = maxf(kill_y, lowest - ICE_CLEAR)

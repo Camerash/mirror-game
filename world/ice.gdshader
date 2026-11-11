@@ -1,15 +1,17 @@
 shader_type spatial;
 render_mode specular_disabled, ambient_light_disabled, fog_disabled;
-// The still ice of the pond, far below a place. From the game's view every
-// line of sight ends on it, so it is the whole backdrop, painted in three
-// layers:
-//   what the ice holds: the dusk sky, the dark of the far trees, a low sun
-//     and its glitter path. These slide over the ice as the view turns.
-//   what lies on the ice: blown snow, frost, bars of sunlight. These stay in
-//     the world.
-//   the place itself: the stones mirrored, their shadow, and warm light
-//     pooled under each summer copy.
-// It takes no light but the sun's shadow (see `light`).
+// The still water that lies on the pond's ice, below a place. From the
+// game's view every line of sight ends on it, so it is the whole backdrop.
+// It shows:
+//   the sky it holds: light where it holds the low sun, deep toward the
+//     viewer, with a few long clouds;
+//   the place, mirrored (`reflection`): darker than the place, broken by the
+//     ripples, and gone with height (the image arrives darkened by height);
+//   its own motion: a slow swell, rings where a drop falls or where
+//     something disturbs the water (`rings_made`), and the sun's path;
+//   warm light from each summer copy.
+// All of it lies in the world, so it turns with the view; only the sun
+// keeps its bearing. It takes no light but the sun's shadow (see `light`).
 
 uniform sampler2D reflection : source_color, filter_linear, repeat_disable;
 uniform vec3 near_color : source_color = vec3(0.15, 0.16, 0.31);
@@ -17,27 +19,28 @@ uniform vec3 mid_color : source_color = vec3(0.50, 0.50, 0.74);
 uniform vec3 far_color : source_color = vec3(0.95, 0.71, 0.66);
 uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
-uniform vec3 shore_color : source_color = vec3(0.16, 0.14, 0.28);
-uniform vec3 snow_color : source_color = vec3(0.81, 0.76, 0.90);
-uniform float mirror = 0.62;
-// How much the sun's shadow darkens the ice.
+// How much of the water the image of the place covers.
+uniform float mirror = 0.85;
+// How much the sun's shadow darkens the water.
 uniform float shade = 0.4;
 // Each pool: the light's place in the world (xyz) and its strength (w).
 uniform vec4 pools[6];
 uniform int pool_count = 0;
+// Each ring something made: its place (x, z), when it began (`ice_time`) and
+// its strength.
+uniform vec4 rings_made[4];
 uniform float ice_time = 0.0;
-// The view's directions on the ice (x, z), and its bearing; the sun's
-// bearing is measured from the view's, positive to the right.
+// The view's directions on the water (x, z). The sun's bearing is measured
+// from the view's, positive to the right.
 uniform vec2 view_forward = vec2(0.0, -1.0);
 uniform vec2 view_right = vec2(1.0, 0.0);
-uniform float view_bearing = 0.0;
 uniform float sun_bearing = 0.6;
-// The direction on the ice (x, z) from the place toward the sun.
-uniform vec2 sun_along = vec2(0.0, -1.0);
-uniform float bars_strength = 1.0;
 
-// The screen spans this much of the panorama the ice holds, in radians.
+// The screen spans this much of the sky the water holds, in radians.
 const float SPAN = 1.5;
+// A ring something made lives this long, in seconds, and spreads this far.
+const float RING_LIFE = 2.8;
+const float RING_REACH = 3.4;
 
 varying vec3 world_position;
 
@@ -67,119 +70,118 @@ float fbm(vec2 p) {
 	return value;
 }
 
-// One row of far trees held in the ice: soft dark streaks of uneven length
-// that hang from the far edge. `along` runs across the panorama.
-float trees(float along, float depth, float reach, float thin) {
-	float cell = floor(along);
-	float pick = hash(vec2(cell, 7.0));
-	float centre = 0.3 + 0.4 * hash(vec2(cell, 3.0));
-	float half_width = thin * (0.3 + 1.5 * pick * pick);
-	float length_here = reach * (0.35 + 0.65 * pick * pick);
-	float across = smoothstep(half_width, half_width * 0.25, abs(fract(along) - centre));
-	return across * (1.0 - smoothstep(length_here * 0.35, length_here, depth)) * step(0.42, pick);
+// The slope of the water at a place: a slow swell.
+vec2 swell(vec2 p, float t) {
+	p += (vec2(noise(p * 0.31 + t * 0.04), noise(p * 0.31 + 7.0 - t * 0.03)) - 0.5) * 2.2;
+	vec2 d1 = vec2(0.93, 0.36);
+	vec2 d2 = vec2(-0.42, 0.91);
+	vec2 d3 = vec2(0.66, -0.75);
+	return d1 * cos(dot(p, d1) * 2.3 + t * 0.9) * 0.5
+		+ d2 * cos(dot(p, d2) * 4.1 - t * 1.3) * 0.3
+		+ d3 * cos(dot(p, d3) * 7.7 + t * 1.9) * 0.2;
+}
+
+// One ring that spreads from `centre`: its slope (xy) and its crest (z).
+// `age` runs from 0 to 1 over its life, `reach` is its last radius, and
+// `fine` says how close its crests lie.
+vec3 ring(vec2 p, vec2 centre, float age, float reach, float fine) {
+	vec2 away = p - centre;
+	float distance_to = max(length(away), 0.001);
+	float wave = (distance_to - age * reach) * fine;
+	float envelope = exp(-wave * wave * 0.12) * (1.0 - age) * (1.0 - age) * smoothstep(0.0, 0.08, age);
+	return vec3(away / distance_to * cos(wave) * envelope, max(sin(wave), 0.0) * envelope);
+}
+
+// Rings where the last drops fall. The water is a grid of cells; a drop
+// falls in some of them, each time at a new spot and of a new size.
+vec3 drops(vec2 p, float t, float cell_size, float seed) {
+	vec2 cell = floor(p / cell_size);
+	if (hash(cell + seed + 1.3) < 0.45) {
+		return vec3(0.0);
+	}
+	float period = 4.0 + 9.0 * hash(cell + seed + 9.0);
+	float clock = t / period + hash(cell + seed + 5.0);
+	float turn = floor(clock);
+	float age = fract(clock) / 0.42;
+	if (age > 1.0) {
+		return vec3(0.0);
+	}
+	float size = 0.35 + 0.65 * hash(cell + seed + turn * 1.7);
+	vec2 centre = (cell + 0.5 + (vec2(hash(cell + seed + turn), hash(cell + seed + turn + 3.1)) - 0.5) * 0.4) * cell_size;
+	return ring(p, centre, age, cell_size * 0.26 * size, 22.0 / (0.4 + 0.6 * size)) * (0.45 + 0.55 * size);
 }
 
 void fragment() {
 	float depth = SCREEN_UV.y;
 	vec2 plain = world_position.xz;
+	float across = dot(plain, view_right);
 	float bearing = (SCREEN_UV.x - 0.5) * SPAN;
 
-	// What lies on the ice. Blown snow lies in a few long, soft drifts down
-	// the wind.
-	vec2 wind = normalize(vec2(1.0, 0.38));
-	vec2 drift_at = vec2(dot(plain, wind) * 0.085, dot(plain, vec2(-wind.y, wind.x)) * 0.30);
-	float drift = fbm(drift_at + vec2(noise(drift_at * 1.6 + 11.0)) * 0.7);
-	float streak = noise(vec2(drift_at.x * 5.0, drift_at.y * 16.0));
-	float snow = smoothstep(0.54, 0.80, drift + (streak - 0.5) * 0.05);
-	// Loose snow moves over the ice in thin veils.
-	vec2 veil_at = vec2(drift_at.x * 3.0 - ice_time * 0.22, drift_at.y * 1.8);
-	float gust = 0.5 + 0.5 * sin(dot(plain, wind) * 0.35 - ice_time * 0.9);
-	float veil = smoothstep(0.55, 0.88, fbm(veil_at)) * (0.05 + 0.20 * gust * gust);
-	// Frost: the ice is clear and dark in places, pale in others.
-	float frost = noise(plain * 0.17 + 3.0) * 0.65 + noise(plain * 0.45 + 8.0) * 0.35;
+	// The water moves: a slow swell, rings where the last drops fall, and
+	// rings from what disturbs it.
+	vec3 rings = drops(plain, ice_time, 3.1, 0.0) + drops(plain + 1.7, ice_time, 5.3, 13.0);
+	for (int index = 0; index < 4; index++) {
+		float age = (ice_time - rings_made[index].z) / RING_LIFE;
+		if (rings_made[index].w > 0.0 && age > 0.0 && age < 1.0) {
+			rings += ring(plain, rings_made[index].xy, age, RING_REACH, 8.0) * rings_made[index].w * 1.5;
+		}
+	}
+	vec2 slope = swell(plain, ice_time) * 0.5 + rings.xy * 1.3;
+	// The slope moves what the water shows, across and down the view.
+	vec2 moved = vec2(dot(slope, view_right), -dot(slope, view_forward) * 0.5) * 0.0042;
 
-	// The sky the ice holds, from the far ice to the near.
-	// The light of the low sun spreads over the ice from where the ice holds
-	// the sun; away from it the ice is dark. A little of the dusk stays in
-	// the far ice on every side. So the light has a source, not a horizon.
-	vec2 from_sun = vec2((bearing - sun_bearing) / SPAN, (depth + 0.06) * 1.25);
-	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.62;
-	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, depth)) * 0.34);
+	// The sky the water holds: light where it holds the low sun, deep toward
+	// the viewer.
+	float sky_depth = depth + moved.y * 3.0;
+	vec2 from_sun = vec2((bearing + moved.x * 2.0 - sun_bearing) / SPAN, (sky_depth + 0.06) * 1.25);
+	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.66;
+	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, sky_depth)) * 0.34);
 	vec3 colour = mix(mid_color, far_color, far_light);
-	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
-	colour *= 0.86 + 0.26 * frost;
-	// The low sun comes through the far trees: long bars of light lie over
-	// the ice between their shadows, all the way to the viewer.
-	float across_sun = dot(plain, vec2(-sun_along.y, sun_along.x));
-	float along_sun = dot(plain, sun_along);
-	float bars = noise(vec2(across_sun * 0.9, along_sun * 0.03 + 3.0)) * 0.6 + noise(vec2(across_sun * 2.3 + 7.0, along_sun * 0.05)) * 0.4;
-	// The bars are soft and broken along their length, so none reads as a path.
-	float sunlit = smoothstep(0.40, 0.82, bars) * (0.45 + 0.55 * noise(vec2(across_sun * 0.3 + 11.0, along_sun * 0.22)));
-	// The light lifts the ice in its own colour, so the dark stays deep.
-	colour = colour * (1.0 + sunlit * bars_strength * mix(0.15, 1.1, smoothstep(0.15, 0.9, depth))) + sun_color * sunlit * bars_strength * 0.014;
+	colour = mix(colour, near_color, smoothstep(0.30, 0.95, sky_depth) * (1.0 - sun_spread * 0.5));
+	// A few long clouds lie in the water and drift slowly. They are lit
+	// toward the sun.
+	vec2 cloud_at = (plain + slope * 0.25) * vec2(0.045, 0.10) + vec2(ice_time * 0.004, 0.0);
+	float cloud = smoothstep(0.46, 0.74, fbm(cloud_at + vec2(0.0, fbm(cloud_at * 0.6 + 4.0) * 0.9)));
+	colour = mix(colour, mix(mid_color * 1.7, far_color, clamp(0.25 + sun_spread * 1.2, 0.0, 1.0)), cloud * 0.22);
 
-	// The far trees, mirrored: bare trunks that reach from the far edge
-	// toward the viewer. The image wavers a little.
-	float waver = sin(depth * 40.0 + ice_time * 1.1) * 0.002 * (0.4 + depth * 4.0) + sin(depth * 13.0 - ice_time * 0.6) * 0.002;
-	float along = (view_bearing + bearing + waver) * 7.0;
-	along += (noise(vec2(along * 0.37, 4.0)) - 0.5) * 2.4;
-	float shore = trees(along, depth, 0.30, 0.10) * 0.85;
-	shore = max(shore, trees(along * 2.7 + 13.0, depth, 0.22, 0.13) * 0.6);
-	shore = max(shore, trees(along * 6.1 + 31.0, depth, 0.15, 0.2) * 0.4);
-	// A few tall trees reach far down the ice, faint, so the near ice holds
-	// something too.
-	float tall_trees = trees(along * 0.8 + 5.0, depth, 1.15, 0.13) * 0.36 + trees(along * 1.7 + 19.0, depth, 0.9, 0.10) * 0.24;
-	shore *= 1.0 - smoothstep(0.04, 0.34, depth) * 0.55;
-	// No bank: the trees hang from beyond the view, so the ice has no horizon.
-	shore *= 0.55 + 0.45 * smoothstep(0.0, 0.05, depth);
-	shore = max(shore, tall_trees);
-
-	// The low sun, held in the far ice, behind the trees.
+	// The low sun, and its path of light down the water: the swell breaks
+	// it into short bright lines of many sizes.
 	float off_sun = bearing - sun_bearing;
 	float halo = exp(-(off_sun * off_sun * 3.2 + depth * depth * 16.0));
 	float core = exp(-(off_sun * off_sun * 34.0 + depth * depth * 48.0));
-	colour += sun_color * (halo * 0.16 + core * 0.7) * (1.0 - shore * 0.55);
-	colour = mix(colour, shore_color, shore * (0.86 - core * 0.5));
+	colour += sun_color * (halo * 0.16 + core * 0.7);
+	float spread = 0.045 + depth * 0.10;
+	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.10, 0.80, depth));
+	vec2 lines_at = vec2(across, dot(plain, view_forward) * 2.6);
+	float glitter = smoothstep(0.34, 0.50, swell(lines_at * 3.2, ice_time).y);
+	glitter += smoothstep(0.38, 0.52, swell(lines_at * 6.7 + 9.0, ice_time * 1.3).y) * 0.6;
+	glitter *= path * (0.25 + 0.75 * noise(lines_at * 0.6 + vec2(0.0, ice_time * 0.1)));
 
-	// Its glitter path: short bright dashes that lie on the ice, down the
-	// line from the sun to the viewer. Each one comes and goes.
-	float spread = 0.05 + depth * 0.13;
-	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.08, 0.72, depth));
-	vec2 dash_at = vec2(dot(plain, view_right) * 6.5, dot(plain, view_forward) * 13.0);
-	float spark = noise(dash_at + vec2(ice_time * 0.22, 0.0)) * noise(dash_at * 2.3 + vec2(5.0, ice_time * 0.38));
-	float glitter = smoothstep(0.48, 0.66, spark) * path * (1.0 - shore * 0.7);
+	// The place, mirrored: soft, darker than the place, in the water's
+	// colour. The ripples pull it into streaks across the view and open gaps
+	// in it. Its brightness says how much of it is left at that height.
+	vec2 at = vec2(SCREEN_UV.x, 1.0 - SCREEN_UV.y) + moved;
+	at.x += (noise(vec2(depth * 95.0 - ice_time * 0.35, across * 0.7)) - 0.5) * 0.0034
+		+ (noise(vec2(depth * 31.0 + ice_time * 0.2, across * 0.3)) - 0.5) * 0.0050;
+	vec2 soft = vec2(0.0022, 0.0030);
+	vec4 image = texture(reflection, at) * 0.4
+		+ (texture(reflection, at + vec2(soft.x, 0.0)) + texture(reflection, at - vec2(soft.x, 0.0))
+		+ texture(reflection, at + vec2(0.0, soft.y)) + texture(reflection, at - vec2(0.0, soft.y))) * 0.15;
+	float streak = 0.62 + 0.38 * smoothstep(0.25, 0.60, noise(vec2(across * 0.9, depth * 75.0 - ice_time * 0.5)));
+	float cover = image.a * smoothstep(0.0, 0.07, max(image.r, max(image.g, image.b))) * mirror * streak;
+	colour = mix(colour, image.rgb * mix(vec3(1.0), colour * 1.6, 0.5) * 0.55, cover);
+	colour += sun_color * glitter * 0.5 * (1.0 - cover * 0.7);
+	// A thin light line lies on the crest of each ring.
+	colour += colour * rings.z * 0.55;
 
-	// The stones, mirrored: dark, stretched down the ice and wavering, and
-	// thinning with height. The image arrives already darkened by height; its
-	// brightness says how much of the ice it covers.
-	vec2 at = vec2(SCREEN_UV.x, 1.0 - SCREEN_UV.y);
-	at.x += sin(depth * 170.0 + ice_time * 1.3) * 0.0007 + sin(depth * 63.0 - ice_time * 0.7) * 0.0012;
-	vec2 step_y = vec2(0.0, 0.0030);
-	vec3 image = texture(reflection, at).rgb * 0.5
-		+ (texture(reflection, at + step_y).rgb + texture(reflection, at - step_y).rgb) * 0.25;
-	float cover = clamp(max(image.r, max(image.g, image.b)) / 0.7, 0.0, 1.0);
-	// The ice takes the image into its own colour and depth.
-	image *= mix(vec3(1.0), colour * 1.7, 0.6) * 0.62;
-	// Rough ice breaks the image into streaks across the view.
-	float broken = 0.72 + 0.28 * noise(vec2(dot(plain, view_right) * 1.3, dot(plain, view_forward) * 8.0));
-	float held = mirror * (1.0 - snow * 0.85) * broken;
-	colour = colour * (1.0 - cover * held) + image * held;
-	colour += sun_color * glitter * 0.45 * (1.0 - snow) * (1.0 - cover * 0.6);
-
-	// The snow that lies on the ice hides what the ice holds.
-	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));
-	lying += sun_color * halo * 0.25;
-	colour = mix(colour, lying, (snow * 0.08 + veil * (1.0 - snow) * 0.20) * mix(1.0, 0.6, depth));
-
-	// Warm light from each summer copy, pooled on the ice below it. The light
-	// of a copy high above the ice does not reach it. The light breathes.
+	// Warm light from each summer copy lies on the water below it. The light
+	// of a copy high above the water does not reach it. The light breathes.
 	float breath = 0.82 + 0.18 * sin(ice_time * 2.6) * (0.55 + 0.45 * sin(ice_time * 0.9 + 1.0));
 	for (int index = 0; index < pool_count; index++) {
 		float lift = max(pools[index].y - world_position.y, 0.0);
-		float reach = 2.0 + lift * 0.4;
-		float distance_to = length(plain - pools[index].xz) / reach;
-		float warm = pools[index].w * breath * 1.45 * exp(-lift * lift * 0.6);
-		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.2) * 1.2 + exp(-distance_to * distance_to * 0.8) * 0.24) * (0.85 + snow * 0.5) * (1.0 - cover * 0.55);
+		float distance_to = length(plain + slope * 0.08 - pools[index].xz) / (2.0 + lift * 0.4);
+		float warm = pools[index].w * breath * 1.1 * exp(-lift * lift * 0.6);
+		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.2) * 1.2 + exp(-distance_to * distance_to * 0.8) * 0.24) * (1.0 - cover * 0.55);
 	}
 
 	// The corners fall away, so the eye stays on the place.
@@ -192,7 +194,7 @@ void fragment() {
 }
 
 void light() {
-	// Only the sun reaches the ice, and only to say where its shadow falls.
+	// Only the sun reaches the water, and only to say where its shadow falls.
 	if (LIGHT_IS_DIRECTIONAL) {
 		DIFFUSE_LIGHT += vec3(ATTENUATION);
 	}
