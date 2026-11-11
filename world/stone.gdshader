@@ -132,11 +132,11 @@ void fragment() {
 		if (summer) {
 			// Moss grows in cushions: darker between them, bright on top.
 			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
-			base *= 0.55 + 0.62 * smoothstep(0.25, 0.75, cushion);
+			base *= 0.45 + 0.75 * smoothstep(0.25, 0.75, cushion);
 			float e = 0.05;
 			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
 			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
-			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 1.1);
+			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 2.4);
 			// Small flowers, white and a few yellow.
 			vec2 cell = floor(place.xz * 6.0);
 			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;
@@ -144,7 +144,7 @@ void fragment() {
 			float pick = hash(vec3(cell, 3.0));
 			// Each has five petals.
 			float petals = 0.75 + 0.25 * cos(atan(within.y, within.x) * 5.0 + pick * 6.0);
-			float flower = step(0.84, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
+			float flower = step(0.76, pick) * smoothstep(0.24, 0.12, length(within) / petals * (0.6 + pick * 0.5));
 			// They are warm, so none is taken for a flake of snow.
 			base = mix(base, pick > 0.86 ? vec3(1.0, 0.66, 0.70) : vec3(1.0, 0.84, 0.40), flower);
 		} else {
@@ -156,7 +156,7 @@ void fragment() {
 		}
 		vec2 from_her = world_position.xz - walker_at.xz;
 		vec2 drawn_out = from_her - vec2(0.03, 0.15);
-		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 16.0 + drawn_out.y * drawn_out.y * 6.0)), exp(-dot(from_her, from_her) * 26.0)) * step(abs(world_position.y - walker_at.y), 0.2);
+		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 16.0 + drawn_out.y * drawn_out.y * 6.0)), exp(-dot(from_her, from_her) * 11.0)) * step(abs(world_position.y - walker_at.y), 0.2);
 		base = mix(base, base * vec3(0.30, 0.29, 0.52), her_shade * 0.92);
 	} else if (side_face) {
 		// The cover hangs over the edge in an uneven lip.

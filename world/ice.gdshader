@@ -5,7 +5,8 @@ render_mode specular_disabled, ambient_light_disabled, fog_disabled;
 // layers:
 //   what the ice holds: the dusk sky, the dark of the far trees, a low sun
 //     and its glitter path. These slide over the ice as the view turns.
-//   what lies on the ice: blown snow, cracks, frost. These stay in the world.
+//   what lies on the ice: blown snow, frost, bars of sunlight. These stay in
+//     the world.
 //   the place itself: the stones mirrored, their shadow, and warm light
 //     pooled under each summer copy.
 // It takes no light but the sun's shadow (see `light`).
@@ -48,10 +49,6 @@ float hash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
 
-vec2 hash2(vec2 p) {
-	return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
-}
-
 float noise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
@@ -70,36 +67,6 @@ float fbm(vec2 p) {
 	return value;
 }
 
-// The distance from `p` to the nearest border between scattered cells: the
-// lines along which ice cracks.
-float crack_distance(vec2 p) {
-	vec2 cell = floor(p);
-	vec2 within = fract(p);
-	vec2 nearest = vec2(0.0);
-	float least = 8.0;
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			vec2 to = vec2(float(x), float(y)) + hash2(cell + vec2(float(x), float(y))) - within;
-			float d = dot(to, to);
-			if (d < least) {
-				least = d;
-				nearest = to;
-			}
-		}
-	}
-	least = 8.0;
-	for (int y = -1; y <= 1; y++) {
-		for (int x = -1; x <= 1; x++) {
-			vec2 to = vec2(float(x), float(y)) + hash2(cell + vec2(float(x), float(y))) - within;
-			vec2 between = to - nearest;
-			if (dot(between, between) > 0.0001) {
-				least = min(least, dot(0.5 * (nearest + to), normalize(between)));
-			}
-		}
-	}
-	return least;
-}
-
 // One row of far trees held in the ice: soft dark streaks of uneven length
 // that hang from the far edge. `along` runs across the panorama.
 float trees(float along, float depth, float reach, float thin) {
@@ -109,31 +76,7 @@ float trees(float along, float depth, float reach, float thin) {
 	float half_width = thin * (0.5 + pick);
 	float length_here = reach * (0.35 + 0.65 * pick * pick);
 	float across = smoothstep(half_width, half_width * 0.25, abs(fract(along) - centre));
-	return across * (1.0 - smoothstep(length_here * 0.35, length_here, depth)) * step(0.22, pick);
-}
-
-// A fish under the ice, one to each wide patch of the pond, on a slow round
-// of its own. Returns its dark shape; `blotch` is the pale pattern on a koi.
-float fish(vec2 plain, float time, out float blotch) {
-	vec2 cell = floor(plain / 9.0);
-	float pick = hash(cell + 3.7);
-	blotch = 0.0;
-	if (pick < 0.3) {
-		return 0.0;
-	}
-	float pace = (0.10 + 0.08 * pick) * (hash(cell + 9.1) > 0.5 ? 1.0 : -1.0);
-	float turn = time * pace + pick * 40.0;
-	vec2 round_size = vec2(2.4 + pick, 1.5 + 1.2 * hash(cell + 5.5));
-	vec2 heading = normalize(vec2(-sin(turn) * round_size.x, cos(turn) * round_size.y) * sign(pace));
-	vec2 from = plain - (cell + 0.5) * 9.0 - vec2(cos(turn), sin(turn)) * round_size;
-	float along = dot(from, heading);
-	float across = dot(from, vec2(-heading.y, heading.x));
-	// It swims: the tail leads the body from side to side.
-	across += sin(along * 13.0 - time * 4.0) * 0.024 * smoothstep(0.05, -0.25, along);
-	float girth = 0.058 * smoothstep(0.21, 0.03, along) * smoothstep(-0.25, -0.02, along) + 0.05 * smoothstep(-0.15, -0.27, along);
-	float body = (1.0 - smoothstep(girth * 0.35, girth + 0.012, abs(across))) * step(-0.27, along) * step(along, 0.21);
-	blotch = body * smoothstep(0.5, 0.66, noise(vec2(along * 9.0 + pick * 20.0, across * 12.0)));
-	return body;
+	return across * (1.0 - smoothstep(length_here * 0.35, length_here, depth)) * step(0.42, pick);
 }
 
 void fragment() {
@@ -151,7 +94,7 @@ void fragment() {
 	// Loose snow moves over the ice in thin veils.
 	vec2 veil_at = vec2(drift_at.x * 3.0 - ice_time * 0.22, drift_at.y * 5.0);
 	float gust = 0.5 + 0.5 * sin(dot(plain, wind) * 0.35 - ice_time * 0.9);
-	float veil = smoothstep(0.55, 0.88, fbm(veil_at)) * (0.10 + 0.34 * gust * gust);
+	float veil = smoothstep(0.55, 0.88, fbm(veil_at)) * (0.05 + 0.20 * gust * gust);
 	// Frost: the ice is clear and dark in places, pale in others.
 	float frost = noise(plain * 0.17 + 3.0) * 0.65 + noise(plain * 0.45 + 8.0) * 0.35;
 
@@ -160,7 +103,7 @@ void fragment() {
 	// the sun; away from it the ice is dark. A little of the dusk stays in
 	// the far ice on every side. So the light has a source, not a horizon.
 	vec2 from_sun = vec2((bearing - sun_bearing) / SPAN, (depth + 0.06) * 1.25);
-	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.86;
+	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.76;
 	float far_light = max(sun_spread, (1.0 - smoothstep(0.0, 0.24, depth)) * 0.34);
 	vec3 colour = mix(mid_color, far_color, far_light);
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
@@ -177,14 +120,18 @@ void fragment() {
 
 	// The far trees, mirrored: bare trunks that reach from the far edge
 	// toward the viewer. The image wavers a little.
-	float waver = sin(depth * 40.0 + ice_time * 1.1) * 0.0035 * (0.4 + depth * 4.0) + sin(depth * 13.0 - ice_time * 0.6) * 0.002;
+	float waver = sin(depth * 40.0 + ice_time * 1.1) * 0.002 * (0.4 + depth * 4.0) + sin(depth * 13.0 - ice_time * 0.6) * 0.002;
 	float along = (view_bearing + bearing + waver) * 7.0;
 	float shore = trees(along, depth, 0.30, 0.10) * 0.85;
 	shore = max(shore, trees(along * 2.7 + 13.0, depth, 0.22, 0.13) * 0.6);
 	shore = max(shore, trees(along * 6.1 + 31.0, depth, 0.15, 0.2) * 0.4);
+	// A few tall trees reach far down the ice, faint, so the near ice holds
+	// something too.
+	float tall_trees = trees(along * 0.8 + 5.0, depth, 1.05, 0.13) * 0.30 + trees(along * 1.7 + 19.0, depth, 0.8, 0.10) * 0.20;
 	shore *= 1.0 - smoothstep(0.04, 0.34, depth) * 0.55;
 	// No bank: the trees hang from beyond the view, so the ice has no horizon.
 	shore *= 0.55 + 0.45 * smoothstep(0.0, 0.05, depth);
+	shore = max(shore, tall_trees);
 
 	// The low sun, held in the far ice, behind the trees.
 	float off_sun = bearing - sun_bearing;
@@ -217,19 +164,6 @@ void fragment() {
 	float held = mirror * (1.0 - snow * 0.85) * broken;
 	colour = colour * (1.0 - cover * held) + image * held;
 	colour += sun_color * glitter * 0.85 * (1.0 - snow) * (1.0 - cover * 0.6);
-
-	// Life in the pond: fish move under the ice.
-	float blotch;
-	float swimmer = fish(plain, ice_time, blotch) * (1.0 - snow * 0.7);
-	colour = mix(colour, colour * 0.42, swimmer * 0.62);
-	colour += vec3(0.55, 0.26, 0.10) * blotch * 0.20 * (1.0 - snow * 0.7);
-
-	// Cracks run through the clear ice, pale where they catch the light.
-	vec2 crack_at = plain * 0.15 + vec2(noise(plain * 0.25), noise(plain * 0.25 + 5.0)) * 0.22;
-	float crack = crack_distance(crack_at);
-	float thin = fwidth(crack) * 1.2 + 0.004;
-	float line = (1.0 - smoothstep(0.0, thin, crack)) * 0.045 + (1.0 - smoothstep(0.0, 0.035, crack)) * 0.012;
-	colour += mix(mid_color, vec3(1.0), 0.5) * line * smoothstep(0.5, 0.85, noise(plain * 0.33 + 9.0)) * (1.0 - depth * 0.35);
 
 	// The snow that lies on the ice hides what the ice holds.
 	vec3 lying = snow_color * (0.80 + 0.20 * streak) * mix(1.0, 0.72, smoothstep(0.2, 1.0, depth));

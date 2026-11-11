@@ -40,6 +40,7 @@ static func build(limits: Dictionary, ice_height: float, place: String, haze: Co
 	scenery._toward_sun = Vector2(sun_from.x, sun_from.z).normalized()
 	scenery._build(limits, ice_height, place)
 	(scenery.material_override as ShaderMaterial).set_shader_parameter("haze", haze)
+	(scenery.material_override as ShaderMaterial).set_shader_parameter("toward_sun", scenery._toward_sun)
 	return scenery
 
 func _build(limits: Dictionary, ice_height: float, place: String) -> void:
@@ -74,14 +75,14 @@ func _build(limits: Dictionary, ice_height: float, place: String) -> void:
 ## A stand of dry reeds.
 func _reeds(at: Vector3) -> void:
 	var spread := _random.randf_range(0.35, 0.8)
-	for index: int in _random.randi_range(9, 18):
+	for index: int in _random.randi_range(7, 13):
 		var foot := at + Vector3(_random.randfn(0.0, spread * 0.45), 0.0, _random.randfn(0.0, spread * 0.45))
 		var height := _random.randf_range(0.45, 1.35)
-		var lean := Vector3(_random.randf_range(-0.22, 0.22), 1.0, _random.randf_range(-0.22, 0.22)).normalized()
+		var lean := Vector3(_random.randf_range(-0.34, 0.34), 1.0, _random.randf_range(-0.34, 0.34)).normalized()
 		var knee := foot + lean * height * 0.55
 		var tip := knee + (lean + Vector3(_random.randf_range(-0.2, 0.2), 0.0, _random.randf_range(-0.2, 0.2))).normalized() * height * 0.45
-		_blade(foot, knee, 0.05, 0.04, REED_FOOT, REED.lerp(REED_FOOT, 0.4), 0.0, 0.45)
-		_blade(knee, tip, 0.04, 0.02, REED.lerp(REED_FOOT, 0.4), REED, 0.45, 1.0)
+		_blade(foot, knee, 0.07, 0.055, REED_FOOT, REED.lerp(REED_FOOT, 0.4), 0.0, 0.45)
+		_blade(knee, tip, 0.055, 0.025, REED.lerp(REED_FOOT, 0.4), REED, 0.45, 1.0)
 		if _random.randf() < 0.5:
 			var droop := (lean + Vector3(_random.randf_range(-0.5, 0.5), 0.0, _random.randf_range(-0.5, 0.5))).normalized()
 			_blade(tip, tip + droop * _random.randf_range(0.12, 0.2), 0.045, 0.01, PLUME, PLUME, 1.0, 1.2)

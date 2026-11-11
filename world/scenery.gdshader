@@ -10,6 +10,8 @@ uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
 // stones in value.
 uniform vec3 haze : source_color = vec3(0.30, 0.28, 0.48);
 uniform vec3 backlight : source_color = vec3(1.0, 0.80, 0.70);
+// The direction on the ice (x, z) from the place toward the sun.
+uniform vec2 toward_sun = vec2(0.0, -1.0);
 
 varying vec3 world_normal;
 varying vec3 world_position;
@@ -34,8 +36,12 @@ void fragment() {
 	float lies = smoothstep(0.30, 0.62, world_normal.y + (grain - 0.5) * 0.25) * COLOR.a;
 	// Vertex colours arrive as written; bring them into the light's space.
 	ALBEDO = mix(pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.24 * grain), snow * 0.86, lies);
-	ALBEDO = mix(mix(ALBEDO, haze, 0.72), backlight * 0.8, UV.x * 0.8);
-	EMISSION = backlight * UV.x * 0.42;
+	// A piece is lit from behind only for a view that looks toward the sun;
+	// from the other side it stands on dark ice, and is dark.
+	vec3 ahead = -INV_VIEW_MATRIX[2].xyz;
+	float lit = UV.x * smoothstep(0.25, 0.75, dot(normalize(ahead.xz), toward_sun));
+	ALBEDO = mix(mix(ALBEDO, haze, 0.72), backlight * 0.7, lit * 0.65);
+	EMISSION = backlight * lit * 0.22;
 	ROUGHNESS = 0.9;
 	SPECULAR = 0.2;
 }
