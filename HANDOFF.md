@@ -22,6 +22,12 @@ the owner before code**; more rounds on the water will not move the score.
 - The girl is about 10 pixels tall on a phone, pale on snow, behind the pane.
 - A stone high above the water has no image and no tie to it ("Together").
 
+**Portrait (owner, 2026-11-12):** the owner expects most play on a phone in
+portrait. All five reviews judged landscape (1152x800, 844x390); none judged
+portrait. First frames at 390x844: the girl is about 30 pixels tall, the hint
+card is clear of the place, the top and bottom thirds are empty water, and
+"Together" touches the right side. Judge portrait first from now on.
+
 How the look is made, where `STYLE.md` does not say:
 
 - `world/ice.gd` and `ice.gdshader` are the water (names kept), unshaded. A
