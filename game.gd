@@ -610,9 +610,14 @@ func toggle_mirror() -> void:
 		proposal = mirror.duplicate(true) if mirror.has("pivot") else _direct_fresh_mirror()
 		proposal["enabled"] = true
 		event = "create"
-	# The change shows as a reveal from the glass: the copy grows out of it,
-	# what it replaces sinks into it, and a new pane rises from the ground.
-	world.reveal_from(Plane(MirrorRules.normal(proposal), proposal["pivot"]))
+	# The change follows the pane (owner, 2026-11-12). A new pane rises from
+	# its lower edge, and the copy appears from the bottom up in step with the
+	# pane's upper edge, while the ground it replaces is cut away from the
+	# bottom up. A pane that sinks takes the copy with it from the top down.
+	var up: Vector3 = MirrorRules.frame(proposal).y.normalized()
+	var middle := up.dot(proposal["pivot"] as Vector3)
+	var reach := clampf(float(proposal.get("height", 3.0)), 1.0, 6.0) * 0.5
+	world.reveal_along(up, middle - reach, middle + reach, proposal["enabled"], Plane(MirrorRules.normal(proposal), proposal["pivot"]))
 	if _open_direct_preview(proposal):
 		_direct_apply = true
 		_direct_event = event
@@ -621,6 +626,8 @@ func toggle_mirror() -> void:
 		if proposal["enabled"]:
 			sheet.rise()
 			_hold_up_hand_mirror()
+		else:
+			sheet.sink()
 	else:
 		world.cancel_reveal()
 

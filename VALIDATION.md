@@ -1,6 +1,14 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: a change follows the pane — 2026-11-12
+
+- Why: the owner asked that the copy appears, and the ground it replaces goes, in the direction in which the pane appears.
+- Change: `world/stone.gdshader` has a new uniform `reveal_plane` (a fragment past the plane is not drawn; the edge carries a line of light). `world/world_view.gd` has `reveal_along`: for the next draw, a copy is there below the pane's moving edge and the ground it replaces is there above it; a fragment that leaves, or changes its shape, stays as a ghost for the time of the change. `world/mirror_sheet.gd` has `sink`. `game.gd` (`toggle_mirror`) uses them. `tests/capture_stage.gd` has a new option `--sink`. Moving on between places still uses `reveal_from`.
+- Run once, headless, no failures: `run_tests` **690/0**, `gameplay_art_tests` **58/0**, `app_flow_tests` **88/0**, `direct_controls_tests` **123/0**, `edit_mode_tests` **22/0**, `small_fix_tests` **58/0**, `prompt_tests` **84/0**, `readability_tests` **11/0**, `level_solvability_tests` **68/0**, `extent_tests` **68/0**.
+- Pictures: `08_reveal` and `11_aperture`, 0.25 s and 0.5 s after the mirror is raised and after it is lowered. On the rise, the copy is a low slab that grows up and the old ground is a top that is cut from below. On the sink, the copy is cut from the top and the ground returns from the top. Two faults found in the first frames and corrected: the old ground went at once when its fragment kept its key, and returned ground lay in the copy's top for a moment.
+- Not checked: the change in motion (stills only); a tilted or a flat pane; a mirror that the classic editor makes; frame time; a phone. Nobody has played it.
+
 # Latest check: the still-water look in portrait — 2026-11-12
 
 - Why: the owner expects most play on a phone in portrait. Every review before this one judged landscape frames (1152x800, 1600x1000, 844x390).

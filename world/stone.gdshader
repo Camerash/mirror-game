@@ -18,6 +18,10 @@ uniform vec3 source_size = vec3(1.0);
 uniform vec3 seed = vec3(0.0);
 uniform mat4 world_to_material;
 uniform vec4 clip_plane = vec4(0.0);
+// While the pane rises or sinks, a stone changes along the pane's own
+// direction, in step with the pane's moving edge: what lies past this plane
+// (normal, distance) is not there. Zero when nothing changes.
+uniform vec4 reveal_plane = vec4(0.0);
 // The height of the water below the place.
 uniform float ice_height = -100.0;
 // Where the girl stands. The ground under her carries a soft shade, drawn
@@ -95,6 +99,15 @@ void vertex() {
 void fragment() {
 	if (clip_plane.xyz != vec3(0.0) && dot(clip_plane.xyz, world_position) > clip_plane.w) {
 		discard;
+	}
+	// How near this point is to the moving edge of a change: 1 at the edge.
+	float reveal_edge = 0.0;
+	if (reveal_plane.xyz != vec3(0.0)) {
+		float inside = reveal_plane.w - dot(reveal_plane.xyz, world_position);
+		if (inside < 0.0) {
+			discard;
+		}
+		reveal_edge = 1.0 - smoothstep(0.0, 0.07, inside);
 	}
 	vec3 source_position = (world_to_material * vec4(world_position, 1.0)).xyz;
 	mat3 world_to_source = mat3(world_to_material);
@@ -265,7 +278,8 @@ void fragment() {
 	METALLIC = metallic;
 	SPECULAR = 0.35;
 	ROUGHNESS = roughness;
-	EMISSION = glow;
+	// The moving edge of a change carries a line of the pane's light.
+	EMISSION = glow + summer_glow * reveal_edge * 0.9;
 	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
 		// Drawn for the image in the water, which is gone with height
 		// (`water_image.gdshaderinc`). It carries its own plain light.

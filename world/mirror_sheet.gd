@@ -36,6 +36,8 @@ var lowered := false
 ## The pointer rests on a standing mirror: its solid outline shows the grab area.
 var hovered := false
 var transitioning := false
+## The glass is on its way down (`sink`).
+var _sinking := false
 var elapsed := 0.0
 var settle_time := 0.0
 var drawn_bounds := AABB()
@@ -101,7 +103,7 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		_draw_motes(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
 	frame.update_frame(panel_size, editing, enabled)
-	sheet.visible = enabled
+	sheet.visible = enabled or _sinking
 	ribbons.visible = enabled
 	guides.visible = enabled or editing
 	motes.visible = enabled
@@ -125,6 +127,23 @@ func rise() -> void:
 		body.position = Vector3(0, -half * (1.0 - height), 0)
 	grow.call(0.0)
 	Motion.blend(self, grow, "reveal").tween_callback(func() -> void:
+		body.scale = Vector3.ONE
+		body.position = Vector3.ZERO)
+
+## The pane sinks back into the ground, from its upper edge down. The glass
+## stays in view until it is down.
+func sink() -> void:
+	var half := panel_size.y * 0.5
+	_sinking = true
+	sheet.visible = true
+	var shrink := func(weight: float) -> void:
+		var height := maxf(1.0 - weight, 0.02)
+		body.scale = Vector3(1, height, 1)
+		body.position = Vector3(0, -half * (1.0 - height), 0)
+	shrink.call(0.0)
+	Motion.blend(self, shrink, "reveal").tween_callback(func() -> void:
+		_sinking = false
+		sheet.visible = bool(state.get("enabled", false))
 		body.scale = Vector3.ONE
 		body.position = Vector3.ZERO)
 

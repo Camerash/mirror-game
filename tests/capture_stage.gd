@@ -5,7 +5,9 @@ extends SceneTree
 ## quarter turns, `--motion 1` adds six frames half a second apart,
 ## `--nudge 0.5` then slides the mirror that far along X and writes cut.png,
 ## `--rise 0.9` writes rise.png that many seconds after the mirror is raised,
-## `--size 1600x1000`. In the cloud container, run it under `xvfb-run -a`.
+## `--sink 0.4` lowers the mirror at the end and writes sink.png that many
+## seconds later, `--size 1600x1000`. In the cloud container, run it under
+## `xvfb-run -a`.
 ## Writes plain.png (mirror down), mirror.png (mirror up), with motion
 ## motion0.png to motion5.png, and with turns turn1.png to turn3.png.
 const Game := preload("res://game.gd")
@@ -58,6 +60,10 @@ func _run() -> void:
 			game.turn_camera(1)
 			await create_timer(1.5).timeout
 			await _save(out, name)
+	if args.has("sink"):
+		game.toggle_mirror()
+		await create_timer(float(args["sink"])).timeout
+		await _save(out, "sink")
 	quit(0)
 
 func _save(out: String, name: String) -> void:

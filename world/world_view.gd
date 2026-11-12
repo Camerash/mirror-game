@@ -31,6 +31,8 @@ var _reveal_plane := Plane()
 var _revealing := false
 ## The reveal grows every fragment, not only copies: a whole new place.
 var _reveal_all := false
+## Set by `reveal_along` for the next draw only; empty when not set.
+var _sweep := {}
 var ghost_root := Node3D.new()
 ## One warm light in each summer copy: the copy is the lantern of a place.
 const GLOW_LIGHTS := 6
@@ -70,15 +72,26 @@ func reveal_from(plane: Plane, everything := false) -> void:
 	_revealing = true
 	_reveal_all = everything
 
+## The next `draw_world` shows its changes in step with the pane, which rises
+## (`rising`) or sinks along `up` between `low` and `high` (distances along
+## `up`). The mirror's effect reaches as high as the pane's moving edge: a
+## copy is there below the edge, and the ground it replaces is there above it.
+## `mirror` is the pane's plane, with its normal toward the copy's side.
+func reveal_along(up: Vector3, low: float, high: float, rising: bool, mirror: Plane) -> void:
+	_sweep = {"up": up.normalized(), "low": low, "high": high, "rising": rising, "mirror": mirror}
+
 func cancel_reveal() -> void:
 	_revealing = false
+	_sweep = {}
 
 func draw_world(solids: Array[Dictionary]) -> void:
 	drawn_solids = solids
 	visual_generation += 1
 	var occurrences := {}
 	var visible_index := 0
-	var revealing := _revealing
+	var sweep := _sweep
+	_sweep = {}
+	var revealing := _revealing or not sweep.is_empty()
 	_revealing = false
 	var shown_before := {}
 	var reveal_all := _reveal_all
@@ -91,7 +104,11 @@ func draw_world(solids: Array[Dictionary]) -> void:
 	for solid: Dictionary in solids:
 		var key := _fragment_key(solid, occurrences)
 		var slot: Dictionary = visual_slots.get(key, {})
+		var copy := str(solid.get("kind", "original")) == "reflected"
 		var grows := revealing and (reveal_all or (not shown_before.has(key) and str(solid.get("kind", "original")) != "original"))
+		# With the pane: a new copy comes with the edge, and so does the ground
+		# that returns when the pane sinks. Ground that only changes its
+		# fragments is there at once.
 		if slot.is_empty():
 			var instance := MeshInstance3D.new()
 			instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -101,12 +118,22 @@ func draw_world(solids: Array[Dictionary]) -> void:
 			visual_slots[key] = slot
 		var instance: MeshInstance3D = slot["instance"]
 		var mesh_signature := _mesh_signature(solid)
+		# With the pane, a fragment that changes its shape is an old shape that
+		# leaves and a new one that comes.
+		var reshaped: bool = not sweep.is_empty() and shown_before.has(key) and slot["mesh_signature"] != mesh_signature
+		if reshaped:
+			_sweep_ghost(instance, sweep, slot.get("copy", false))
+		var swept: bool = not sweep.is_empty() and (reshaped or not shown_before.has(key)) and (copy or not sweep["rising"])
 		if slot["mesh_signature"] != mesh_signature:
 			_apply_mesh(instance, solid)
 			slot["mesh_signature"] = mesh_signature
 		_configure_material(slot, solid)
-		if grows:
+		if not sweep.is_empty():
+			if swept:
+				_sweep_clip(instance, slot["material"], sweep, copy, false)
+		elif grows:
 			grown.append(instance)
+		slot["copy"] = copy
 		instance.visible = true
 		visual_root.move_child(instance, visible_index)
 		visible_index += 1
@@ -115,7 +142,9 @@ func draw_world(solids: Array[Dictionary]) -> void:
 	for key: String in visual_slots:
 		var slot: Dictionary = visual_slots[key]
 		if slot.get("generation", -1) != visual_generation:
-			if revealing and shown_before.has(key):
+			if not sweep.is_empty() and shown_before.has(key):
+				_sweep_ghost(slot["instance"], sweep, slot.get("copy", false))
+			elif revealing and shown_before.has(key):
 				_sink(slot["instance"])
 			slot["instance"].visible = false
 	if revealing:
@@ -215,6 +244,51 @@ func _sink(instance: MeshInstance3D) -> void:
 	var plane := _reveal_plane
 	var motion := Motion.blend(ghost, func(weight: float) -> void: _squash(ghost, rest, plane, 1.0 - weight), "reveal")
 	motion.tween_callback(ghost.queue_free)
+
+## Shows `material` only on one side of the pane's moving edge for the time
+## of the reveal: below it (`below`, a copy) or above it (the ground a copy
+## replaces). `leaving` frees the node at the end.
+func _sweep_clip(node: MeshInstance3D, material: ShaderMaterial, sweep: Dictionary, below: bool, leaving: bool) -> void:
+	if node.has_meta("sweep") and (node.get_meta("sweep") as Tween).is_valid():
+		(node.get_meta("sweep") as Tween).kill()
+	var up: Vector3 = sweep["up"]
+	var step := func(weight: float) -> void:
+		var edge := lerpf(sweep["low"], sweep["high"], weight if sweep["rising"] else 1.0 - weight)
+		var plane := Vector4(up.x, up.y, up.z, edge)
+		material.set_shader_parameter("reveal_plane", plane if below else -plane)
+	step.call(0.0)
+	var motion := Motion.blend(node, step, "reveal")
+	if leaving:
+		motion.tween_callback(node.queue_free)
+	else:
+		motion.tween_callback(func() -> void: material.set_shader_parameter("reveal_plane", Vector4()))
+	node.set_meta("sweep", motion)
+
+## A leaving fragment stays as a ghost while the pane's edge passes it. A copy
+## goes with the edge; so does ground a rising pane replaces. Ground that
+## only changes its fragments stays whole until the change is over.
+func _sweep_ghost(instance: MeshInstance3D, sweep: Dictionary, copy: bool) -> void:
+	if instance.mesh == null or not instance.material_override is ShaderMaterial:
+		return
+	var ghost := MeshInstance3D.new()
+	ghost.mesh = instance.mesh
+	ghost.layers = instance.layers
+	var material := (instance.material_override as ShaderMaterial).duplicate() as ShaderMaterial
+	material.set_shader_parameter("reveal_plane", Vector4())
+	ghost.material_override = material
+	ghost.transform = instance.transform
+	ghost_root.add_child(ghost)
+	if copy or sweep["rising"]:
+		if not copy and material.get_shader_parameter("clip_plane") in [null, Vector4()]:
+			# Only the ground on the copy's side of the pane is replaced. The
+			# rest is already drawn in its new fragments.
+			var mirror: Plane = sweep["mirror"]
+			material.set_shader_parameter("clip_plane", -Vector4(mirror.normal.x, mirror.normal.y, mirror.normal.z, mirror.d))
+		_sweep_clip(ghost, material, sweep, copy, true)
+	else:
+		var wait := ghost.create_tween()
+		wait.tween_interval(Motion.duration("reveal"))
+		wait.tween_callback(ghost.queue_free)
 
 ## Scales `rest` along the plane's normal about the plane, by `amount`.
 func _squash(instance: MeshInstance3D, rest: Transform3D, plane: Plane, amount: float) -> void:

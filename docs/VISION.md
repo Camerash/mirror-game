@@ -124,6 +124,10 @@ summer colour is a difference of look only: the copy keeps the exact
 mirrored shape of what it reflects. Sound: a
 sustained glass tone that opens into a chord of the chapter's theme. Today:
 the frame appears and the ground is deleted at once.
+DECIDED (owner, 2026-11-12): the change follows the pane. The pane rises
+from its lower edge; the copy appears from the bottom up in step with the
+pane's upper edge, and the ground it replaces is cut away from the bottom
+up. This replaces "blooms outward from the glass". Built 2026-11-12.
 
 **Sliding the mirror.** Feeling: tuning, like moving a lamp to see better;
 precise and in control. Motion: the copy follows the hand with no lag; each
@@ -138,6 +142,9 @@ Sound: a rising or falling interval. Today: a 0.22 s turn.
 the summer copy wilts back into frost and snow, and the real ground returns
 and settles; the light dims a little. Sound: the raised chord resolves.
 Today: an instant swap.
+AGENT DECISION (2026-11-12, from the owner's rule for raising): the reverse.
+The glass sinks from its upper edge down, takes the copy with it from the
+top down, and the ground returns from the top down. The owner can reverse it.
 
 **Falling.** Feeling: a drop, then a gentle catch; never punishing. Motion: a
 short, slightly slowed fall; she lands in a small puff of snow and crouches.

@@ -40,6 +40,15 @@ The build must vary the lines (they read as scan lines), give the two views
 away from the sun some light, and cut the cost (3.1 ms to 2.4 at 1170x2532).
 A first sketch with hard streaks lost its blind pair: keep the water calm.
 
+**The owner wants to decide the world first (2026-11-12):** what the
+backdrop is, and whether it is water, before more work on the look. The
+light proposal above waits for that.
+
+**A change follows the pane (owner, 2026-11-12, built):** the mirror's effect
+reaches as high as the pane's moving edge. `world.reveal_along` in
+`toggle_mirror`; `reveal_plane` in `stone.gdshader`; `sheet.sink()`. A slide
+of a raised mirror still changes at once. Moving on still uses `reveal_from`.
+
 How the look is made, where `STYLE.md` does not say:
 
 - `world/ice.gd` and `ice.gdshader` are the water (names kept), unshaded. A
