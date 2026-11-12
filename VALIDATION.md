@@ -1,6 +1,14 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: the still-water look in portrait — 2026-11-12
+
+- Why: the owner expects most play on a phone in portrait. Every review before this one judged landscape frames (1152x800, 1600x1000, 844x390).
+- Change: none in the game. `HANDOFF.md` records the portrait note.
+- Pictures: the six places at 780x1688 without the interface and at a true 390x844 with it; the other three views of `01_route` and of "Together".
+- Review, one new independent reviewer against the five rules: beauty 6/10 for the main frame and 6/10 for the set; readability at true size 6/10 without the interface and 6/10 with it. The reviewer did not open the six single frames with the interface and judged the interface from the row of six. Worst faults, in its order: the sun's light is a large flat cream-to-pink gradient and the largest warm area; the pink and violet of `01_route` has no cause on screen; the lowest 35 to 40% of the frame is flat dark water; the girl is about 10x25 pixels, grey on snow; the reeds repeat and are the lightest values outside the tops; the glow under the summer copy reads as a lit object under the water; winter stone sides are a warm tan near the copy's cream; snow on the wall of stage 1 lies on a grid. Framing: `11_aperture` and `13_first_steps` fill the band; `08_reveal` and "Together" do not, and "Together" is out of balance.
+- Not checked: tests and frame time (no code changed); a second review; a phone.
+
 # Latest check: the still-water look — 2026-11-11
 
 - Why: the owner will give no reference picture, and asked for a style proposed by the agent and agreed before the build. A one-hour sketch in the engine and a blind review (painted ice against sketch) came first; the owner agreed; then the build.

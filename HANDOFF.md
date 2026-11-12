@@ -23,10 +23,13 @@ the owner before code**; more rounds on the water will not move the score.
 - A stone high above the water has no image and no tie to it ("Together").
 
 **Portrait (owner, 2026-11-12):** the owner expects most play on a phone in
-portrait. All five reviews judged landscape (1152x800, 844x390); none judged
-portrait. First frames at 390x844: the girl is about 30 pixels tall, the hint
-card is clear of the place, the top and bottom thirds are empty water, and
-"Together" touches the right side. Judge portrait first from now on.
+portrait. The five reviews above judged landscape. One independent review of
+portrait (390x844, six places): beauty 6, readability 6 without and 6 with
+the interface. Its worst faults: the sun's light reads as a flat warm screen
+gradient, the largest warm area; `01_route`'s pink has no cause; the lowest
+35 to 40% of the frame is empty dark water; the girl is about 25 pixels tall
+and grey on snow; pale reeds in a row along the lower edge. The hint card is
+clear of the place. Judge portrait first from now on.
 
 How the look is made, where `STYLE.md` does not say:
 
