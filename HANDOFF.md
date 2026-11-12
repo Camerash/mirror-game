@@ -31,6 +31,15 @@ gradient, the largest warm area; `01_route`'s pink has no cause; the lowest
 and grey on snow; pale reeds in a row along the lower edge. The hint card is
 clear of the place. Judge portrait first from now on.
 
+**Proposed, waits for the owner (2026-11-12): the light lies on the water.**
+The water's ripples carry the sun's light as soft level lines, with lanes of
+calm water; reeds are dark; a copy's image is darker than the copy. Sketch:
+`test-output/polish/portrait-light-sketch.patch` (not in Git) and
+`VALIDATION.md`. Two blind pairs chose it over the branch (beauty 7 to 6).
+The build must vary the lines (they read as scan lines), give the two views
+away from the sun some light, and cut the cost (3.1 ms to 2.4 at 1170x2532).
+A first sketch with hard streaks lost its blind pair: keep the water calm.
+
 How the look is made, where `STYLE.md` does not say:
 
 - `world/ice.gd` and `ice.gdshader` are the water (names kept), unshaded. A
