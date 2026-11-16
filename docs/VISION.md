@@ -100,6 +100,12 @@ sound, and what changes from today.
   copy may differ in look (season, colour, light), but its shape and its
   behaviour are always those of the mirrored object: the same form, mirrored,
   standing and acting exactly as the reflected original would.
+- **Attention to detail is a rule** (owner, 2026-11-17). Small details
+  matter a lot, and in this game more than in most. Each control and each
+  change gets the small details that make it feel made by hand, and a design
+  is not complete until they are in it. The owner's example: a knob that is
+  held changes its shape a little toward the direction of the drag, with
+  more resistance near its limit.
 
 **Opening the game.** Feeling: stillness, a held breath before a story.
 Motion: the snowed garden from far above, snow drifting, the title in the
@@ -343,6 +349,22 @@ styles and words.
   3D program. Controls on the mirror are acceptable if they are clear, easy
   and look good. Visual: how the reflection shows, and how the girl looks
   in each area. Not decided.
+- DRAFT (owner's proposal for the control, 2026-11-17): a pill bar that
+  floats in the horizontal centre, below the centre of the screen; the stage
+  moves up so that the stage and the bar together are centred. Before the
+  mirror is up, a round mirror button is in the bar's place; a press changes
+  it slowly and quietly into the bar. The bar has three round knobs: move,
+  turn, lift. A knob is held and the finger then uses the full screen; the
+  distance from the press gives the amount. Move: on the ground. Turn: a
+  horizontal slide turns the mirror in steps (left is clockwise) and a
+  vertical slide tilts it in steps. Lift: a vertical slide. Each step gives
+  a haptic. A held knob changes shape toward the drag, with resistance near
+  its limit. The bar is glass, as the liquid glass of iOS; the knobs and
+  the other buttons are opaque white with a highlight, as ceramic. A round
+  button in pastel red, near the bar, removes the mirror. No arrow shows the
+  side of the copy; the look of the reflection does that later. The aims:
+  one way for all controls, no finger on the mirror, nothing that overlaps
+  the stage. Not decided; a sketch is in `VALIDATION.md`.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

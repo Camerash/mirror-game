@@ -58,14 +58,19 @@ the pane), then the look of the reflection judged in motion (a solid copy
 of the same material, with marks that show the flip), then the garden. The
 owner chose control first.
 
-**The free-control sketch (2026-11-17), waits for the owner's play.** Not
-in Git: `git apply test-output/polish/control-proof-sketch.patch` (alone;
-it contains no earlier sketch). A drag on the glass moves the mirror on
-the ground along both axes; three grips on the frame lift (top), turn
-(side) and tilt (bottom) in steps of 45 degrees; key F gives the earlier
-controls. Rules unchanged. With the sketch on, nine checks of the earlier
-control fail in `direct_controls_tests`. See `VALIDATION.md`. The owner's
-working tree can have a sketch applied; do not reset it.
+**The pill bar sketch (2026-11-17), waits for the owner's play.** The
+owner's proposal, in `docs/VISION.md` (DRAFT): a glass bar low in the middle
+with three knobs (move, turn, lift); a held knob uses the full screen; a
+round mirror button opens into the bar; a rose button lowers the mirror.
+Not in Git: `git apply test-output/polish/pill-proof-sketch.patch` (alone;
+`game.gd`, `world/mirror_arrow.gd`, `ui/mirror_hud.gd`). Key F gives the
+earlier controls; key G changes how the move knob reads the finger. Rules
+unchanged. With the sketch on, checks that use the corner button or a drag
+on the glass fail. The first sketch (grips on the frame) is
+`control-proof-sketch.patch`; the owner set it aside. See `VALIDATION.md`.
+The owner's working tree can have a sketch applied; do not reset it.
+Attention to detail is now a rule (`docs/VISION.md`, "Rules for every
+moment").
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
