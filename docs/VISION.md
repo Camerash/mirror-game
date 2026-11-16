@@ -291,6 +291,13 @@ styles and words.
   mark. The image of a block in the water may be mistaken for the mirror's
   copy; the owner's two ideas are a more scattered image, or blocks that
   stand some distance above the water. Not decided.
+- DRAFT (owner's thought, 2026-11-16, after the shaft proof): the trouble
+  comes from the scoped mirror. The first version had a mirror that spanned
+  the whole world, and its image read as a true reflection, but it limited
+  play. A scoped mirror gives the puzzles more freedom, but it shows an
+  image outside the glass, and no person knows that from life. The copy
+  rises from the ground only because the pane does; the pane and its image
+  could appear at an instant. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

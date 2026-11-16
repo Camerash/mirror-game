@@ -61,9 +61,10 @@ moments with the view held: lane 5/10, shaft 4/10 for the rule. Both readers
 now say "mirror" (the held view and the rise frames helped), but neither
 can link the copy to its source: the copy "grows" and no mark says what will
 be copied. The shaft's top and the wire boxes read a little as ground. Four
-readings of stills gave 3 to 5; do not tune marks by stills again. Next
-with the owner: how to show the link from source to copy, and a person who
-plays.
+readings of stills gave 3 to 5; do not tune marks by stills again. The
+owner's diagnosis (`docs/VISION.md`): a scoped mirror shows an image outside
+the glass, which nobody knows from life; the pane and its image could
+appear at an instant. Next with the owner: that, and a person who plays.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
