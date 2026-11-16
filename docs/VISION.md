@@ -312,9 +312,11 @@ styles and words.
   that the copy replaced, so that the player sees where a tap can send her.
   Each world has its tint (the owner's example: blue for the normal world,
   red for the reflected world). If more levels of reflection come later,
-  each deeper level is darker. Open: what decides her world (the ground
-  below her feet, or the side of the pane), whether the glass keeps a clear
-  image, and whether the tint is on the whole view. Not built. Not decided.
+  each deeper level is darker. The owner's answers: her world follows the
+  ground below her feet, and the answer must also hold for a flat pane and
+  for a fall (the sketch uses the space behind the glass, which gives both);
+  the glass keeps a clear image; the tint is on the whole view. A sketch and
+  its frames are in `VALIDATION.md`. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

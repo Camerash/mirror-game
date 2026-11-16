@@ -75,9 +75,18 @@ key V. From the front it reads as a mirror, but only a copy close behind
 the pane is in the glass, the normal view shows replaced ground that she
 cannot walk on, and no one view shows the whole way (`VALIDATION.md`). The
 owner: the look is cleaner and clearer, but the two views by a button are
-not. The owner's proposal, not built and not decided: the view follows the
-girl, the other world shows as a faded form, and each world has its tint
-(`docs/VISION.md`, "Art reference").
+not.
+
+**The view follows the girl (owner's proposal, 2026-11-16).** No button:
+she is in the reflected world while she is in the space behind the glass.
+The other world is a faded form, clear only in the glass; replaced ground
+is not drawn; a cool or a warm tint lies on the whole view. Sketch, not in
+Git, contains the earlier ones: `git apply
+test-output/polish/follow-proof-sketch.patch`. All usable ground is then
+in view, but `08_reveal` loses its long blocks at once, and after a
+crossing the view looks at the opaque face (it opens round her; that is
+not the owner's idea). See `VALIDATION.md`. The owner has the frames and
+has not answered.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
