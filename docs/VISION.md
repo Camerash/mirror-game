@@ -265,6 +265,9 @@ styles and words.
   very large, quiet, empty place; almost no colour; snow and haze; one small
   warm light. It is a reference for feeling and for rules, not a frame to
   match, and no frame of it is kept in the repository.
+- DRAFT (owner's thought, 2026-11-16): the film "The Place Promised in Our
+  Early Days", for the feeling of its story, its emptiness and its open
+  shots. The owner: its art style may not match ours.
 - DECIDED (owner, 2026-11-16): the world is decided before more work on the
   look. The puzzle camera keeps its angle (a test at 24 and 18 degrees showed
   no horizon and thinner tops). The garden stands up round the pond: tall
