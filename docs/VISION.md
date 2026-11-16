@@ -277,6 +277,14 @@ styles and words.
   reflection of the winter original. The owner: the contrast of winter and
   summer "is not a must". A test with the copy in the original's look is in
   `VALIDATION.md`.
+- DECIDED (owner, 2026-11-16): the direction of the world proof is agreed
+  (the garden round the pond, the pale palette, the copy in the original's
+  look). It is only a proof: the background needs more work. See
+  `VALIDATION.md`.
+- OPEN (owner's doubts, 2026-11-16): the player cannot tell what the mirror
+  can copy or hide and what it cannot, nor why. That the mirror replaces
+  what is behind it is not well shown: is the rule sound, is an alternative
+  better, and how is it shown? A ring as the goal is odd.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound
