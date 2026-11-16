@@ -37,9 +37,20 @@ feeling; "The Place Promised in Our Early Days" is a draft reference
 (`docs/VISION.md`). The owner doubts that the mirror reads as a reflection
 and that a summer copy reads as one; summer on the copy "is not a must".
 The owner agreed to the proof's direction ("more work on the background").
-Three more doubts wait for an answer before the build plan: how a fixed
-stone differs from one the mirror can copy or hide; whether "the mirror
-replaces what is behind it" is sound and how to show it; the goal's ring.
+
+**The owner's three doubts and the rules proof (2026-11-16).** The doubts:
+how a fixed stone differs from ground the mirror can copy or hide; whether
+"the mirror replaces what is behind it" is sound and how to show it; the
+goal's ring. The proof is a sketch, not in Git, and contains the world
+proof: `git apply test-output/polish/rules-proof-sketch.patch`. Two blind
+readings by "first-time players" (`VALIDATION.md`): ice against dark stone
+reads at once, and the lantern reads as the goal. The lane does not carry
+the rule: it reads as a glass path, it does not join a pane that stands
+high, and it shows where but not what. The wire boxes of hidden ground read
+as a ghost, not as gone. Neither reader could say the rule from stills
+(3/10 and 4/10). The camera moves when the pane is raised, and that hides
+what is gone. Next: the owner's word on ice, stone and lantern; a test of
+the rule in motion before more design of the lane.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
