@@ -285,6 +285,12 @@ styles and words.
   can copy or hide and what it cannot, nor why. That the mirror replaces
   what is behind it is not well shown: is the rule sound, is an alternative
   better, and how is it shown? A ring as the goal is odd.
+- OPEN (owner, 2026-11-16, after the rules proof): a lane on the water is
+  not enough, because a mirror can lie flat and copy up or down; the space
+  that the mirror changes needs a mark in three dimensions, or a different
+  mark. The image of a block in the water may be mistaken for the mirror's
+  copy; the owner's two ideas are a more scattered image, or blocks that
+  stand some distance above the water. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

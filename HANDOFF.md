@@ -49,8 +49,11 @@ the rule: it reads as a glass path, it does not join a pane that stands
 high, and it shows where but not what. The wire boxes of hidden ground read
 as a ghost, not as gone. Neither reader could say the rule from stills
 (3/10 and 4/10). The camera moves when the pane is raised, and that hides
-what is gone. Next: the owner's word on ice, stone and lantern; a test of
-the rule in motion before more design of the lane.
+what is gone. The owner, the same day: the lane is not enough, because a
+flat mirror copies up or down, so the mark must be in three dimensions; and
+the water's image of a block may be mistaken for the copy (`docs/VISION.md`).
+Next: the owner's word on ice, stone and lantern; a proof of a mark in
+space in place of the lane, with a scattered water image, read in motion.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
