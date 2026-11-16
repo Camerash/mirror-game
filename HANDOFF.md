@@ -74,7 +74,10 @@ the earlier ones: `git apply test-output/polish/glass-proof-sketch.patch`,
 key V. From the front it reads as a mirror, but only a copy close behind
 the pane is in the glass, the normal view shows replaced ground that she
 cannot walk on, and no one view shows the whole way (`VALIDATION.md`). The
-owner has the frames and has not answered.
+owner: the look is cleaner and clearer, but the two views by a button are
+not. The owner's proposal, not built and not decided: the view follows the
+girl, the other world shows as a faded form, and each world has its tint
+(`docs/VISION.md`, "Art reference").
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,

@@ -304,6 +304,17 @@ styles and words.
   original stage shows only in the glass. The rules stay. The owner expects
   that the whole puzzle is then hard to see, and leaves that for later. A
   sketch and its frames are in `VALIDATION.md`. Not decided.
+- DRAFT (owner's proposal, 2026-11-16, after the experiment): the image in
+  the glass is cleaner and clearer, but two views by a button are not. In
+  place of the button, the view follows the girl: when she crosses the
+  mirror, she sees the other world. The other world shows in her world as a
+  faded form (a shadow or a silhouette), also in the place of the ground
+  that the copy replaced, so that the player sees where a tap can send her.
+  Each world has its tint (the owner's example: blue for the normal world,
+  red for the reflected world). If more levels of reflection come later,
+  each deeper level is darker. Open: what decides her world (the ground
+  below her feet, or the side of the pane), whether the glass keeps a clear
+  image, and whether the tint is on the whole view. Not built. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound
