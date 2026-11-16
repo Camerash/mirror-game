@@ -38,57 +38,26 @@ feeling; "The Place Promised in Our Early Days" is a draft reference
 and that a summer copy reads as one; summer on the copy "is not a must".
 The owner agreed to the proof's direction ("more work on the background").
 
-**The owner's three doubts and the rules proof (2026-11-16).** The doubts:
-how a fixed stone differs from ground the mirror can copy or hide; whether
-"the mirror replaces what is behind it" is sound and how to show it; the
-goal's ring. The proof is a sketch, not in Git, and contains the world
-proof: `git apply test-output/polish/rules-proof-sketch.patch`. Two blind
-readings by "first-time players" (`VALIDATION.md`): ice against dark stone
-reads at once, and the lantern reads as the goal. The lane does not carry
-the rule: it reads as a glass path, it does not join a pane that stands
-high, and it shows where but not what. The wire boxes of hidden ground read
-as a ghost, not as gone. Neither reader could say the rule from stills
-(3/10 and 4/10). The camera moves when the pane is raised, and that hides
-what is gone.
-
-**The shaft proof (2026-11-16).** The owner: a lane cannot show a flat
-mirror, so the mark must be in three dimensions; and the water's image of a
-block may be mistaken for the copy (`docs/VISION.md`). The sketch replaces
-the rules proof: `git apply test-output/polish/shaft-proof-sketch.patch`. A
-faint box on the pane, on the copy's side, at any height and tilt; a
-scattered water image; a held view for captures. Two blind readings of four
-moments with the view held: lane 5/10, shaft 4/10 for the rule. Both readers
-now say "mirror" (the held view and the rise frames helped), but neither
-can link the copy to its source: the copy "grows" and no mark says what will
-be copied. The shaft's top and the wire boxes read a little as ground. Four
-readings of stills gave 3 to 5; do not tune marks by stills again. The
-owner's diagnosis (`docs/VISION.md`): a scoped mirror shows an image outside
-the glass, which nobody knows from life; the pane and its image could
-appear at an instant.
-
-**The image only in the glass (owner's experiment, 2026-11-16).** Rules
-unchanged. The copy shows only in the front glass of the pane; the back is
-an opaque plane; a button gives the reflected world (only the copy in the
-world, the original stage only in the glass). Sketch, not in Git, contains
-the earlier ones: `git apply test-output/polish/glass-proof-sketch.patch`,
-key V. From the front it reads as a mirror, but only a copy close behind
-the pane is in the glass, the normal view shows replaced ground that she
-cannot walk on, and no one view shows the whole way (`VALIDATION.md`). The
-owner: the look is cleaner and clearer, but the two views by a button are
-not.
-
-**The view follows the girl (owner's proposal, 2026-11-16).** No button:
-she is in the reflected world while she is in the space behind the glass.
-The other world is a faded form, clear only in the glass; replaced ground
-is not drawn; a cool or a warm tint lies on the whole view. Sketch, not in
-Git, contains the earlier ones: `git apply
-test-output/polish/follow-proof-sketch.patch`. All usable ground is then
-in view, but `08_reveal` loses its long blocks at once, and after a
-crossing the view looks at the opaque face (it opens round her; that is
-not the owner's idea). Second round, on the owner's word: the faded form
-is a phantom with gaps, in its own world's colour (red copy, blue
-original). See `VALIDATION.md`. The owner has the second frames and has
-not answered.
+**Play test with one person (owner, 2026-11-17): the marks are set aside.**
+A player who moves the mirror understands the cut without a mark. The four
+sketches that tried to explain it are not in Git and stay as a record in
+`test-output/polish/`: `rules-proof` (a lane), `shaft-proof` (a box on the
+pane), `glass-proof` (the image only in the glass) and `follow-proof` (the
+view follows the girl, with a tint per world). `VALIDATION.md` has what
+each showed; readings of stills gave 3 to 5 of 10 for the rule each time,
+so do not tune marks by stills. The owner's words are in `docs/VISION.md`:
+the world keeps its colours; only the reflected structures look different,
+and that look must read as a reflection, not as a structure that is not
+confirmed. Two limits come first now: the control (a drag keeps one axis;
+the turn handle is hard to use; no turn about all three axes; 45-degree
+turns come back later) and the look of the reflection and of the girl.
+Later stages will use the properties of a mirror image (opposite rotation,
+mirrored arrows). The agent proposed this order: a control sketch to play
+(a free drag on the ground, a grip for height, a turn in 45-degree steps on
+the pane), then the look of the reflection judged in motion (a solid copy
+of the same material, with marks that show the flip), then the garden. The
+owner has not chosen. The owner's working tree can have a sketch applied;
+do not reset it.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,

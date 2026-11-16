@@ -321,6 +321,28 @@ styles and words.
   thing of the blue world stays visibly blue in the red world, and a thing
   of the red world stays visibly red in the blue world. A sketch and its
   frames are in `VALIDATION.md`. Not decided.
+- DRAFT (owner's play test with a visual designer, 2026-11-17): the proofs
+  that explain the cut (the lane, the shaft, the glass, the view that
+  follows the girl) came from too much attention to one question. A player
+  who moves the mirror understands that it cuts off the things behind it;
+  that is natural enough. A tint on the whole world is correct only if the
+  reflected world has its own things to use, and then the mirror is a
+  portal. For the game as it is, the world keeps its colours and only the
+  reflected structures have a different look. That look must improve: now
+  it reads as a structure that is not confirmed, not as a reflection, so
+  red is possibly not the colour. Planned for later stages: puzzles that
+  use the properties of a mirror image (a mechanism turns the opposite way
+  in the image; a button with a left arrow has an image with a right arrow,
+  which moves an absolute that way). The best thing in the game is to move
+  the mirror and see the reflected structures change at once. Turns of 45
+  degrees looked and played much better in an earlier trial and come back
+  later. Two limits now. Control: a drag keeps one axis until release; the
+  turn handle often lies on a platform and is not easy to use; the mirror
+  cannot turn about all three axes, which is the vision. Earlier trials (a
+  button for move or turn, controls on the mirror) went too far toward a
+  3D program. Controls on the mirror are acceptable if they are clear, easy
+  and look good. Visual: how the reflection shows, and how the girl looks
+  in each area. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound
