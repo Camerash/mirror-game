@@ -3,50 +3,43 @@
 Current state only, kept under about 150 lines. Git history keeps the rest;
 the old traveller is in `docs/art/traveller-handoff.md`.
 
-## Now: the still-water look (owner agreed, 2026-11-11)
+## Now: the world comes first (owner, 2026-11-16)
 
-The owner gives no reference pictures now: chasing a target damaged the
-earlier rounds. The agent proposes a style with a proof frame from the
-engine, the owner agrees, then the agent builds. The owner agreed to **still
-water** from a sketch, and it is built: five rules in `docs/art/STYLE.md`,
-frame `docs/art/target/still-water-2026-11-11.jpg`. **The owner has not
-approved the built frame.** Branch `claude/funny-dirac-7dv0hf`, all pushed.
+The owner gives no target frame. The agent proposes a style with a proof
+frame from the engine, the owner agrees, then the agent builds. Branch
+`claude/funny-dirac-7dv0hf`, all pushed. Judge portrait (390x844) first: the
+owner expects most play on a phone in portrait.
 
-Five independent reviews each gave beauty 6/10, readability 6 to 7 on a
-desktop and 4 to 5 on a phone; the painted ice before it had 6, 6 and 4. The
-surface does not limit the picture. Every review names three faults that
-are not the surface's. **The next step is a proposal for them, agreed with
-the owner before code**; more rounds on the water will not move the score.
+**In the branch: the still-water look.** The owner agreed to it from a
+sketch (2026-11-11) and has not approved the built frame. Five rules in
+`docs/art/STYLE.md`. Each independent review gave beauty 6/10, in landscape
+and in portrait: the surface does not limit the picture. The faults that
+repeat: a small place in an empty frame, stones that read as toys, a small
+pale girl on snow, and no place.
 
-- The place is small in an empty frame, and the stones read as toys.
-- The girl is about 10 pixels tall on a phone, pale on snow, behind the pane.
-- A stone high above the water has no image and no tie to it ("Together").
+**Proposed, waits for the owner (2026-11-16): the world proof.** A sketch,
+not in Git: `git apply test-output/polish/world-proof-sketch.patch`. It has
+the garden in grey box round the pond (a house with one lit window, a wall
+with a gate and old trees, a greenhouse frame and a tank, a tree with a
+swing; a side between the view and the place is not drawn), a pale colour
+script with mist on the far water, the place low in a tall frame, and the
+copy in the original's look with a cool tint. One blind pair, as beauty /
+reading / place and feeling / copy as a reflection: branch 6/7/4/3, proof
+6/7/7/6. The build must separate the values (it is grey on grey), keep the
+window's light from competing with the goal, give the copy a clear mirrored
+look, give the water depth, and make the back views whole. The build adds a
+module, so it needs a plan and the owner's approval.
 
-**Portrait (owner, 2026-11-12):** the owner expects most play on a phone in
-portrait. The five reviews above judged landscape. One independent review of
-portrait (390x844, six places): beauty 6, readability 6 without and 6 with
-the interface. Its worst faults: the sun's light reads as a flat warm screen
-gradient, the largest warm area; `01_route`'s pink has no cause; the lowest
-35 to 40% of the frame is empty dark water; the girl is about 25 pixels tall
-and grey on snow; pale reeds in a row along the lower edge. The hint card is
-clear of the place. Judge portrait first from now on.
+**The owner's words for it (2026-11-16):** water stays the floor; the camera
+keeps its angle (a lower one shows no horizon and thins the tops); the
+garden stands up round the pond. "Girls' Last Tour" is the reference for
+feeling; "The Place Promised in Our Early Days" is a draft reference
+(`docs/VISION.md`). The owner doubts that the mirror reads as a reflection
+and that a summer copy reads as one; summer on the copy "is not a must".
 
-**Proposed, waits for the owner (2026-11-12): the light lies on the water.**
-The water's ripples carry the sun's light as soft level lines, with lanes of
-calm water; reeds are dark; a copy's image is darker than the copy. Sketch:
-`test-output/polish/portrait-light-sketch.patch` (not in Git) and
-`VALIDATION.md`. Two blind pairs chose it over the branch (beauty 7 to 6).
-The build must vary the lines (they read as scan lines), give the two views
-away from the sun some light, and cut the cost (3.1 ms to 2.4 at 1170x2532).
-A first sketch with hard streaks lost its blind pair: keep the water calm.
-
-**The world comes first (owner, 2026-11-16).** Agreed direction, not built:
-water stays the floor; the camera keeps its angle (a lower one shows no
-horizon and thins the tops); the garden stands up round the pond, with mist
-behind it. "Girls' Last Tour" is the owner's reference for feeling (see
-`docs/VISION.md`). The owner doubts two things: the mirror reads as a portal,
-and the summer copy does not read as a reflection. The light proposal above
-waits. Next: agree the answers, then a grey-box proof in portrait.
+**Set aside until the world is agreed:** the proposal "the light lies on
+the water" (`test-output/polish/portrait-light-sketch.patch`,
+`VALIDATION.md`).
 
 **A change follows the pane (owner, 2026-11-12, built):** the mirror's effect
 reaches as high as the pane's moving edge. `world.reveal_along` in

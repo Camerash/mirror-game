@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: two tests for the world discussion — 2026-11-16
+# Latest check: the world proof — 2026-11-16
+
+- Why: the owner agreed to decide the world before more work on the look, and asked for a proof in grey box, in portrait: the garden round the pond, a pale palette, and the copy in the original's look.
+- Change: none in the branch. The proof is a sketch in ignored `test-output/polish/world-proof-sketch.patch` (it applies to the branch). It adds `world/garden_backdrop.gd` and `world/garden.gdshader` (four sides of grey-box garden; a side between the view and the place is not drawn; mist takes each thing at its foot and with distance; no top is light), a colour script "pale" for every place, mist on the far water in `world/ice.gdshader`, the lit window's light on the water, the place 13% lower in a tall frame (`world/stage_camera.gd`), shorter reed bands, and the copy drawn as the original with a cool tint of 13% and no warm light.
+- Pictures: the six places at 780x1688, each in four views. Sheets in ignored `test-output/polish/`: `world-proof.jpg` (branch against proof), `world-proof-views.jpg`, `world-proof-six.jpg`.
+- Review: one blind pair, branch against proof, one new independent reviewer with a neutral brief that named no rules of either look. As beauty of the main frame / readability at 390x844 / place and feeling / the copy as a reflection: branch 6/7/4/3, proof 6/7/7/6. The reviewer chose the proof as the base. Its faults of the proof, worst first: the top 45% is grey box at almost the value of the water (grey on grey); the water is flat, with weak images; the copy's sides are pale and plain and read as unfinished; the two back views show cut wall planes and floating frames; the girl is a dark speck. The eye goes first to the lit window and then to its light on the water, and both compete with the gold ring. The house's plinth and step read a little as ledges. In "Together" the copy is close in value to the house's foot.
+- Found and not corrected: in "Together" a high stone stands on screen close to the house's foot; a wider pond did not change this.
+- Not checked: tests (no change in the branch); motion (a side of the garden appears and goes at once in a turn); landscape; frame time; a phone; a second reviewer.
+
+# Earlier check: two tests for the world discussion — 2026-11-16
 
 - Why: the owner proposed a lower camera to show a background, and doubts that the summer copy reads as a reflection. Both tests are temporary changes for captures; nothing of them is in the branch.
 - Camera angle: `11_aperture` and "Together" at 780x1688 with the camera at 30 (the branch), 24 and 18 degrees above level. No horizon appears at any angle, because the camera is orthographic and each line of sight ends on the water. A top shows at 50%, 41% and 31% of its depth. Sheet: `test-output/polish/camera-pitch.jpg` (ignored).
