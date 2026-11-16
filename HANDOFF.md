@@ -56,8 +56,16 @@ mirrored arrows). The agent proposed this order: a control sketch to play
 (a free drag on the ground, a grip for height, a turn in 45-degree steps on
 the pane), then the look of the reflection judged in motion (a solid copy
 of the same material, with marks that show the flip), then the garden. The
-owner has not chosen. The owner's working tree can have a sketch applied;
-do not reset it.
+owner chose control first.
+
+**The free-control sketch (2026-11-17), waits for the owner's play.** Not
+in Git: `git apply test-output/polish/control-proof-sketch.patch` (alone;
+it contains no earlier sketch). A drag on the glass moves the mirror on
+the ground along both axes; three grips on the frame lift (top), turn
+(side) and tilt (bottom) in steps of 45 degrees; key F gives the earlier
+controls. Rules unchanged. With the sketch on, nine checks of the earlier
+control fail in `direct_controls_tests`. See `VALIDATION.md`. The owner's
+working tree can have a sketch applied; do not reset it.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
