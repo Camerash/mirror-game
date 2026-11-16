@@ -298,6 +298,12 @@ styles and words.
   image outside the glass, and no person knows that from life. The copy
   rises from the ground only because the pane does; the pane and its image
   could appear at an instant. Not decided.
+- DRAFT (owner's experiment, 2026-11-16): the reflection shows only on the
+  face of the pane and the other face is an opaque plane; a button changes
+  to the reflected world, where only the copy stands in the world and the
+  original stage shows only in the glass. The rules stay. The owner expects
+  that the whole puzzle is then hard to see, and leaves that for later. A
+  sketch and its frames are in `VALIDATION.md`. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

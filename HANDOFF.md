@@ -64,7 +64,17 @@ be copied. The shaft's top and the wire boxes read a little as ground. Four
 readings of stills gave 3 to 5; do not tune marks by stills again. The
 owner's diagnosis (`docs/VISION.md`): a scoped mirror shows an image outside
 the glass, which nobody knows from life; the pane and its image could
-appear at an instant. Next with the owner: that, and a person who plays.
+appear at an instant.
+
+**The image only in the glass (owner's experiment, 2026-11-16).** Rules
+unchanged. The copy shows only in the front glass of the pane; the back is
+an opaque plane; a button gives the reflected world (only the copy in the
+world, the original stage only in the glass). Sketch, not in Git, contains
+the earlier ones: `git apply test-output/polish/glass-proof-sketch.patch`,
+key V. From the front it reads as a mirror, but only a copy close behind
+the pane is in the glass, the normal view shows replaced ground that she
+cannot walk on, and no one view shows the whole way (`VALIDATION.md`). The
+owner has the frames and has not answered.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
