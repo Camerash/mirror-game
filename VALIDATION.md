@@ -1,6 +1,13 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
+# Latest check: two tests for the world discussion — 2026-11-16
+
+- Why: the owner proposed a lower camera to show a background, and doubts that the summer copy reads as a reflection. Both tests are temporary changes for captures; nothing of them is in the branch.
+- Camera angle: `11_aperture` and "Together" at 780x1688 with the camera at 30 (the branch), 24 and 18 degrees above level. No horizon appears at any angle, because the camera is orthographic and each line of sight ends on the water. A top shows at 50%, 41% and 31% of its depth. Sheet: `test-output/polish/camera-pitch.jpg` (ignored).
+- Copy in the original's look: `11_aperture`, `08_reveal` and "Together" with the copy drawn as winter stone and snow, with no warm light, and once more with a cool tint of 22% on the copy. With the same look the two sides read as one shape with a line of symmetry at the pane; the frame has no warm thing left but the goal; without the tint nothing says which side is the copy. Sheet: `test-output/polish/copy-same-look.jpg` (ignored).
+- Not checked: tests (no change in the branch); a review by an independent reviewer; motion; a phone.
+
 # Latest check: a change follows the pane — 2026-11-12
 
 - Why: the owner asked that the copy appears, and the ground it replaces goes, in the direction in which the pane appears.

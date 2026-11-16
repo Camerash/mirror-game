@@ -260,6 +260,20 @@ styles and words.
   "still water" on this basis: a film of thaw water lies on the pond's ice
   and mirrors the place (the five rules in `docs/art/STYLE.md`). This
   replaces the painterly reference of 2026-11-10 as the thing to match.
+- DECIDED (owner, 2026-11-16): the anime "Girls' Last Tour" is a reference
+  for the feeling of the story and the world: two small, simple figures in a
+  very large, quiet, empty place; almost no colour; snow and haze; one small
+  warm light. It is a reference for feeling and for rules, not a frame to
+  match, and no frame of it is kept in the repository.
+- DECIDED (owner, 2026-11-16): the world is decided before more work on the
+  look. The puzzle camera keeps its angle (a test at 24 and 18 degrees showed
+  no horizon and thinner tops). The garden stands up round the pond: tall
+  things on its far sides, and mist behind them. Not built.
+- OPEN (owner's doubts, 2026-11-16): the mirror reads as a portal that makes
+  a new thing, not as a reflection; and the summer copy does not look like a
+  reflection of the winter original. The owner: the contrast of winter and
+  summer "is not a must". A test with the copy in the original's look is in
+  `VALIDATION.md`.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

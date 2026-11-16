@@ -40,9 +40,13 @@ The build must vary the lines (they read as scan lines), give the two views
 away from the sun some light, and cut the cost (3.1 ms to 2.4 at 1170x2532).
 A first sketch with hard streaks lost its blind pair: keep the water calm.
 
-**The owner wants to decide the world first (2026-11-12):** what the
-backdrop is, and whether it is water, before more work on the look. The
-light proposal above waits for that.
+**The world comes first (owner, 2026-11-16).** Agreed direction, not built:
+water stays the floor; the camera keeps its angle (a lower one shows no
+horizon and thins the tops); the garden stands up round the pond, with mist
+behind it. "Girls' Last Tour" is the owner's reference for feeling (see
+`docs/VISION.md`). The owner doubts two things: the mirror reads as a portal,
+and the summer copy does not read as a reflection. The light proposal above
+waits. Next: agree the answers, then a grey-box proof in portrait.
 
 **A change follows the pane (owner, 2026-11-12, built):** the mirror's effect
 reaches as high as the pane's moving edge. `world.reveal_along` in
