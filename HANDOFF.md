@@ -49,11 +49,21 @@ the rule: it reads as a glass path, it does not join a pane that stands
 high, and it shows where but not what. The wire boxes of hidden ground read
 as a ghost, not as gone. Neither reader could say the rule from stills
 (3/10 and 4/10). The camera moves when the pane is raised, and that hides
-what is gone. The owner, the same day: the lane is not enough, because a
-flat mirror copies up or down, so the mark must be in three dimensions; and
-the water's image of a block may be mistaken for the copy (`docs/VISION.md`).
-Next: the owner's word on ice, stone and lantern; a proof of a mark in
-space in place of the lane, with a scattered water image, read in motion.
+what is gone.
+
+**The shaft proof (2026-11-16).** The owner: a lane cannot show a flat
+mirror, so the mark must be in three dimensions; and the water's image of a
+block may be mistaken for the copy (`docs/VISION.md`). The sketch replaces
+the rules proof: `git apply test-output/polish/shaft-proof-sketch.patch`. A
+faint box on the pane, on the copy's side, at any height and tilt; a
+scattered water image; a held view for captures. Two blind readings of four
+moments with the view held: lane 5/10, shaft 4/10 for the rule. Both readers
+now say "mirror" (the held view and the rise frames helped), but neither
+can link the copy to its source: the copy "grows" and no mark says what will
+be copied. The shaft's top and the wire boxes read a little as ground. Four
+readings of stills gave 3 to 5; do not tune marks by stills again. Next
+with the owner: how to show the link from source to copy, and a person who
+plays.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
