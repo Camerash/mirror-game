@@ -85,8 +85,10 @@ Git, contains the earlier ones: `git apply
 test-output/polish/follow-proof-sketch.patch`. All usable ground is then
 in view, but `08_reveal` loses its long blocks at once, and after a
 crossing the view looks at the opaque face (it opens round her; that is
-not the owner's idea). See `VALIDATION.md`. The owner has the frames and
-has not answered.
+not the owner's idea). Second round, on the owner's word: the faded form
+is a phantom with gaps, in its own world's colour (red copy, blue
+original). See `VALIDATION.md`. The owner has the second frames and has
+not answered.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,

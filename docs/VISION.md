@@ -315,8 +315,12 @@ styles and words.
   each deeper level is darker. The owner's answers: her world follows the
   ground below her feet, and the answer must also hold for a flat pane and
   for a fall (the sketch uses the space behind the glass, which gives both);
-  the glass keeps a clear image; the tint is on the whole view. A sketch and
-  its frames are in `VALIDATION.md`. Not decided.
+  the glass keeps a clear image; the tint is on the whole view. After the
+  first frames, the owner: the faded form must be more of a phantom and look
+  as it does in the other world; and each world keeps its colour, so a
+  thing of the blue world stays visibly blue in the red world, and a thing
+  of the red world stays visibly red in the blue world. A sketch and its
+  frames are in `VALIDATION.md`. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound
