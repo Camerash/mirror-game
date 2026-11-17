@@ -17,8 +17,13 @@ and in portrait: the surface does not limit the picture. The faults that
 repeat: a small place in an empty frame, stones that read as toys, a small
 pale girl on snow, and no place.
 
-**Proposed, waits for the owner (2026-11-16): the world proof.** A sketch,
-not in Git: `git apply test-output/polish/world-proof-sketch.patch`. It has
+**Proposed, waits for the owner (2026-11-17): the pale winter look as the
+look of the game**, with a dark slate water and a copy in the pane's warm
+light: `test-output/polish/pale-winter-sketch.patch`, `VALIDATION.md`. It
+replaces the sketch below, which no longer applies.
+
+**The world proof (2026-11-16).** A sketch, not in Git:
+`test-output/polish/world-proof-sketch.patch`. It has
 the garden in grey box round the pond (a house with one lit window, a wall
 with a gate and old trees, a greenhouse frame and a tank, a tree with a
 swing; a side between the view and the place is not drawn), a pale colour

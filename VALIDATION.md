@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the cut of the moving edge is closed — 2026-11-17
+# Proposal: the pale winter look, with contrast and a copy in warm light (waits for the owner) — 2026-11-17
+
+- Why: the owner asked which look is better, the blue still-water look of the branch or the pale winter look of the world proof (16 November). The agent recommended the pale look as the base, with two points to gain: contrast, and a copy that the player can tell from the original. The owner: "Plan it, and for the two points that pale look must gain, work towards them."
+- Change: none in the branch. The sketch is `test-output/polish/pale-winter-sketch.patch` (ignored; it applies to commit `af6da6b`). It is the world proof on today's branch, plus the work on the two points.
+- Contrast, in the sketch: the water is dark slate near the view (`ice_mid` 5c6f7b, `ice_near` 2b3944) and goes to pale mist far away; the garden is pale, close to the mist, and paler with distance; the image of the place in the water is stronger; the lit window is weaker. The snow tops are the lightest things and stand on the darkest part of the frame.
+- The copy, in the sketch, two looks. Warm (recommended): the copy is the original, in the warm light of the pane; it has a soft warm light of its own and a warm pool on the water. Cool glass: the copy is the original with a strong cool tint and a sheen. The summer look (moss, flowers) is not used.
+- Checked in the engine: stills at 780x1688 of `11_aperture` and `14_turn` with the mirror up, and frames of the rise and the sink on `11_aperture` at 900x900 with the warm copy. The sheet of the pane's light changes to the copy's warm top with no jump. Sheets in ignored `test-output/polish/`: `pale-winter-a.jpg`, `pale-winter-b.jpg`, `pale-winter-motion.jpg`.
+- Not done in the sketch: the garden is grey box; its back views show cut wall planes; a side of the garden appears at once in a turn; the garden has no image in the water. Not checked: tests; landscape; the other stages and views; the mirror bar with the lower place of the stage; frame time; a phone; no independent review.
+
+# Earlier check: the cut of the moving edge is closed — 2026-11-17
 
 - Why: the owner chose look B of the proposal below ("B makes more sense").
 - Change, in the branch code. (1) `world/stone.gdshader`: a point of the inside of a block is drawn as the point of the cut in front of it. At the moving edge the cut is a sheet of the pane's light, with no sun and no shadow on it. At the mirror's own cut and at the cut of a stage change it is bare stone, lit as a flat face. (2) The line of light stays on the faces that the edge crosses; a face that lies in the edge does not flash. (3) A face in the edge is the ground's, not the copy's (a margin of 0.0005 units), so the two never show in one plane. (4) `world/drop_shadow.gdshader` and `world/world_view.gd`: the drop shadows start hidden at a change and come in with its second half; before, the shadow of a copy lay in the air before the copy was there.
