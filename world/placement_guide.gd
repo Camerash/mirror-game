@@ -6,6 +6,13 @@ const Queries := preload("res://core/solid_queries.gd")
 const Style := preload("res://core/constellation_style.gd")
 const PEARL := Color("d9eff4")
 const AMBER := Color("f1c57b")
+## The sign of a held knob of the bar has the colours of the knob's own mark
+## (`_draw_mark` in `world/mirror_bar.gd`): the mirror is a dark dot, and
+## where it can go is pale. The pale is mid grey, so it shows on snow and on
+## the water.
+const SIGN_INK := Color(0.20, 0.25, 0.27)
+const SIGN_PALE := Color(0.69, 0.70, 0.70)
+const SIGN_WIDTH := 2.0
 
 class MarksCanvas extends Control:
 	var guide: PlacementGuide
@@ -16,6 +23,9 @@ class MarksCanvas extends Control:
 
 	func _draw() -> void:
 		if guide == null:
+			return
+		if guide._data.get("sign", false):
+			_draw_sign()
 			return
 		for mark: Dictionary in guide._visible_marks:
 			var centre: Vector2 = mark["screen"]
@@ -29,10 +39,35 @@ class MarksCanvas extends Control:
 			else:
 				draw_circle(centre,mark["radius"],Color(color,alpha),true,-1.0,true)
 
+	## The sign of a held knob: its pale lines, a small dot at each step, the
+	## mirror as a dark dot with a pale rim, and a pale ring on the step under
+	## the slide.
+	func _draw_sign() -> void:
+		var opacity := guide._opacity
+		for run: Array in guide._visible_traces:
+			var points := PackedVector2Array()
+			var colours := PackedColorArray()
+			for point: Dictionary in run:
+				points.append(point["screen"])
+				colours.append(Color(SIGN_PALE, float(point["alpha"]) * opacity))
+			draw_polyline_colors(points, colours, SIGN_WIDTH, true)
+		for mark: Dictionary in guide._visible_marks:
+			var centre: Vector2 = mark["screen"]
+			match mark["kind"]:
+				"dot":
+					draw_circle(centre, 2.4, Color(SIGN_PALE, float(mark["alpha"]) * opacity), true, -1.0, true)
+				"reference":
+					draw_circle(centre, 5.6, Color(SIGN_PALE, opacity), true, -1.0, true)
+					draw_circle(centre, 4.0, Color(SIGN_INK, opacity), true, -1.0, true)
+				"target":
+					draw_arc(centre, 8.0, 0.0, TAU, 40, Color(SIGN_PALE, opacity), SIGN_WIDTH, true)
+
 var _canvas := MarksCanvas.new()
 var _layer := CanvasLayer.new()
 var _data: Dictionary = {}
 var _visible_marks: Array[Dictionary] = []
+## The seen parts of the sign's lines: each is a run of {screen, alpha}.
+var _visible_traces: Array[Array] = []
 var _opacity := 1.0
 var _fade: Tween
 var _style := Style.DEFAULTS.duplicate()
@@ -64,9 +99,12 @@ func show_guides(data: Dictionary) -> void:
 
 func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
 	_visible_marks.clear()
+	_visible_traces.clear()
 	if camera == null or _data.is_empty():
 		_redraw()
 		return
+	for trace: Dictionary in _data.get("traces", []):
+		_add_trace(trace.get("points", PackedVector3Array()), trace.get("weights", PackedFloat32Array()), camera, solids, safe_rect, excluded)
 	for dot: Dictionary in _data.get("dots", []):
 		if dot.get("position") is Vector3:
 			_add_mark("dot", dot["position"], clampf(float(dot.get("weight", 0.0)), 0.0, 1.0), camera, solids, safe_rect, excluded)
@@ -88,6 +126,7 @@ func clear() -> void:
 	_cancel_fade()
 	_data.clear()
 	_visible_marks.clear()
+	_visible_traces.clear()
 	_opacity = 1.0
 	_redraw()
 
@@ -98,6 +137,30 @@ func set_overlay_visible(value: bool) -> void:
 
 func get_visible_marks() -> Array[Dictionary]:
 	return _visible_marks.duplicate(true)
+
+func get_visible_traces() -> Array[Array]:
+	return _visible_traces.duplicate(true)
+
+## One line of the sign, drawn where it is seen. A point that has no weight,
+## is behind a stone, or is out of the play area or under the controls breaks
+## the line.
+# ponytail: one ray test for each point of a line (about 70 for each sign);
+# draw the lines in 3D with the depth test if this costs too much on a phone.
+func _add_trace(points: PackedVector3Array, weights: PackedFloat32Array, camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
+	var run: Array[Dictionary] = []
+	for index: int in points.size():
+		var point := points[index]
+		var weight := weights[index] if index < weights.size() else 0.0
+		var screen := camera.unproject_position(point) if not camera.is_position_behind(point) else Vector2.INF
+		var footprint := Rect2(screen - Vector2.ONE * SIGN_WIDTH, Vector2.ONE * SIGN_WIDTH * 2.0)
+		if weight > 0.0 and screen.is_finite() and safe_rect.encloses(footprint) and not _excluded(footprint, excluded) and not _solid_occludes(camera, point, solids):
+			run.append({"screen": screen, "alpha": weight})
+			continue
+		if run.size() > 1:
+			_visible_traces.append(run)
+		run = []
+	if run.size() > 1:
+		_visible_traces.append(run)
 
 func _add_mark(kind: String, world_position: Vector3, weight: float, camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
 	if weight <= 0.0 or camera.is_position_behind(world_position):

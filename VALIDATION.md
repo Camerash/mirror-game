@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the marks of the mirror bar — 2026-11-18
+# Latest check: the undo arc, and a trial of the freedom sign — 2026-11-18
+
+- Why: the owner said the hooked undo arrow is "too traditional and not zen enough", and asked for the first arc with a rounder head. The owner also asked for a trial of the freedom sign as the agent proposed: the pale part of the held knob's mark, made large at the mirror.
+- Change, undo (`_draw_mark` in `world/mirror_bar.gd`): one open arc over the top, from the right to the left, with a short, wide chevron head (about 100 degrees open), round ends and a round point, in the same stroke as the arc.
+- Change, sign (`_sign_traces` and `_aim_point` in `game.gd`; `_add_trace`, `_draw_sign` in `world/placement_guide.gd`). With the direct controls, the guide of a held knob carries `sign` and `traces`. Move: a line along each ground way through the mirror's foot, to 2 units each side inside the limits, which fades as the step dots do. Lift: the same upright. Turn: the turn knob now starts a guide (kind `aim`): a ring round the foot (half the mirror's width plus 0.25), with a dot at each step of 45 degrees and a pale ring on the step under the slide. The mirror is a dark dot with a pale rim. The colours are the bar's ink and its pale grey, so the sign shows on snow and on the water. A line breaks where a stone hides it, out of the play area, or under the controls. The old guide (without the direct controls) is not changed.
+- Tests, no failure: `direct_controls_tests` 77 (new: holding each knob shows its sign; letting go takes it away), `constellation_tests` 88, `constellation_tuning_tests` 25, `constellation_view_tests` exit 0, `mirror_bar_tests` 59, `prompt_tests` 94, `level_solvability_tests` 68, `app_flow_tests` 88, `gameplay_art_tests` 94.
+- Checked in the engine: `test-output/polish/sign-trial.jpg` (the six marks, drawn by the bar's own code; each knob held and slid in `14_turn` at 780x1688).
+- Not done, not checked: a phone and the frame time (each line point has one ray test against the stones, about 70 for each sign); the tilt of the turn knob has no ring of its own; the sign was looked at in one stage and one view only.
+
+# Earlier check: the marks of the mirror bar — 2026-11-18
 
 - Why: the owner said the first icon proposal must be "more simplified, almost zen, and be more designed". On the second proposal the owner said the three knob marks are good, the marks to raise and to lower the mirror can be rectangles (one empty, one with lines in it), and Undo must be a proper arrow with a rounder head.
 - Change (`_draw_mark` in `world/mirror_bar.gd`; the bar no longer uses `UiIcons` for its marks, and `_draw_arrows` is removed). One rule: the dark part is the mirror, the pale part is where it can go or the light on its glass. Move: a dot on two pale lines along the ground, which follow the view. Turn: a dot in a pale open ring. Lift: a dot on a pale upright line. Raise: an empty upright frame. Lower: the frame with two pale lines. Undo: the usual hook to the left with a filled round head. The agent chose which rectangle is empty: the mirror that does not stand yet is the empty frame, as in the older `UiIcons` pair.

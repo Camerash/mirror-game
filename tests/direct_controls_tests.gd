@@ -207,6 +207,7 @@ func run() -> void:
 	await check_glass_does_not_move()
 	await check_tap_through_glass()
 	await check_turn_knob()
+	await check_freedom_sign()
 	await check_blocked_goes_back()
 	await check_first_raise_follows_her_look()
 	await check_hover_ghost()
@@ -391,6 +392,25 @@ func check_turn_knob() -> void:
 	check(pivot().is_equal_approx(before), "Turn: a quarter turn keeps the mirror's centre")
 	await point(Vector3.FORWARD)
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Turn: asking for the opposite way is the half turn")
+
+
+func check_freedom_sign() -> void:
+	## While a knob is held, the guide shows that knob's sign: its pale lines at
+	## the mirror. It goes when the knob is let go.
+	await load_stage("01_route")
+	await press_mirror_button()
+	for index: int in 3:
+		var kind: String = game.bar.KNOBS[index]
+		mouse_button(knob(index), true)
+		await frames(6)
+		check(game.placement_guide._data.get("sign", false) and not game.placement_guide.get_visible_traces().is_empty(), "Sign: holding the %s knob shows its lines at the mirror" % kind)
+		mouse_button(knob(index), false)
+		await direct_settled()
+		for wait: int in 120:
+			if game.placement_guide._data.is_empty():
+				break
+			await process_frame
+		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty(), "Sign: letting go of the %s knob takes its sign away" % kind)
 
 
 func check_first_raise_follows_her_look() -> void:

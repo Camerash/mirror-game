@@ -325,11 +325,21 @@ styles and words.
   on a pale trace: two lines along the ground (move), an open ring (turn),
   an upright line (lift). The mirror to raise is an empty upright frame.
   The mirror to lower is the frame with two pale lines of light in it. Undo
-  is the usual arrow back, with a soft round head. No mark has an outline of
-  the pane in the view, and only Undo has an arrow.
-- OPEN (owner, 2026-11-18, to discuss): a sign of the mirror's freedom that
-  is tied to the held knob; a direct drag on the mirror in place of the move
-  knob.
+  is one open arc that turns back over the top, with a short, wide chevron
+  head with round ends: the owner found the usual hooked arrow "too
+  traditional and not zen enough". No mark has an outline of the pane in
+  the view, and only Undo has an arrow.
+- TRIAL (owner, 2026-11-18: "let's do a trial according to your
+  suggestion"), built: the sign of the mirror's freedom is the pale part of
+  the held knob's mark, made large at the mirror (`_sign_traces` in
+  `game.gd`, `_draw_sign` in `world/placement_guide.gd`). Move: a grey line
+  along each way of the ground, and a small dot at each step. Lift: an
+  upright line. Turn: a ring round the foot, with a dot at each step of 45
+  degrees. The mirror is a dark dot with a pale rim, and the step under the
+  slide has a pale ring. The lines fade with distance from the mirror. The
+  owner judges the trial in play.
+- OPEN (owner, 2026-11-18, to discuss): a direct drag on the mirror in place
+  of the move knob.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The

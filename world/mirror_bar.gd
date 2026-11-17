@@ -544,13 +544,13 @@ func _draw_mark(canvas: Control, kind: String, radius: float, ink: Color) -> voi
 		"lift":
 			UiIcons._stroke(canvas, [Vector2(0.0, -10.0) * unit, Vector2(0.0, 10.0) * unit], pale, width)
 		"undo":
-			# The usual hook back to the left, with a soft, round head.
-			var hook := PackedVector2Array([Vector2(-5.0, -3.0) * unit, Vector2(2.5, -3.0) * unit])
-			hook.append_array(UiIcons._arc(Vector2(2.5, 1.5) * unit, 4.5 * unit, Vector2.ONE, -90.0, 90.0))
-			hook.append(Vector2(-3.0, 6.0) * unit)
-			UiIcons._stroke(canvas, hook, ink, width)
-			var head := PackedVector2Array([Vector2(-8.6, -3.0) * unit, Vector2(-4.8, -6.2) * unit, Vector2(-4.8, 0.2) * unit])
-			canvas.draw_colored_polygon(head, ink)
-			UiIcons._stroke(canvas, [head[0], head[1], head[2], head[0]], ink, width)
+			# One open arc that turns back over the top (owner, 2026-11-18). Its
+			# head is a short, wide chevron with round ends and a round point,
+			# in the same stroke as the arc.
+			var arc := UiIcons._arc(Vector2(0.5, 2.0) * unit, 7.2 * unit, Vector2.ONE, 15.0, -196.0)
+			UiIcons._stroke(canvas, arc, ink, width)
+			var tip: Vector2 = arc[arc.size() - 1]
+			var way: Vector2 = (tip - arc[arc.size() - 2]).normalized()
+			UiIcons._stroke(canvas, [tip + way.rotated(PI - 0.9) * 3.6 * unit, tip, tip + way.rotated(PI + 0.9) * 3.6 * unit], ink, width)
 	if kind in KNOBS:
 		canvas.draw_circle(Vector2.ZERO, 2.7 * unit, ink, true, -1.0, true)

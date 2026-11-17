@@ -53,6 +53,11 @@ const MIN_HALF_STEP := 40.0
 ## the stage, and it is this part of the way from there down to its lowest row.
 const KNOB_GAIN := 0.8
 const KNOB_FOLLOW_SECONDS := 0.18
+## The sign of a held knob (`_sign_traces`): a straight line has a point each
+## this many units, the ring has this many points, all of this weight.
+const SIGN_STEP := 0.125
+const SIGN_RING_STEPS := 72
+const SIGN_RING_WEIGHT := 0.75
 ## How far past its glass, in world units, a press still takes the mirror.
 const GRAB_MARGIN := 0.25
 ## Keys of the classic editor that mean nothing to the direct controls.
@@ -823,6 +828,7 @@ func begin_grip(kind: String, point: Vector2) -> void:
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
+	_begin_constellation("aim", preview)
 	_refresh()
 
 ## The held move knob or lift knob: the finger is at `point`.
@@ -1984,6 +1990,13 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	var destination: Vector3 = target["pivot"]
 	if kind in ["ground","height"]:
 		dots = Targets.position_dots(displayed["pivot"],origin["pivot"],level["limits"],kind == "height")
+	elif kind == "aim":
+		# The turn knob: a dot at each step of the turn on the ring round the
+		# foot. The step under the slide is the target.
+		var yaw := float(MirrorRules.normalized(displayed)["yaw"])
+		for candidate: Dictionary in Targets.rotation_angles(yaw, Bar.AIM_STEP):
+			dots.append({"position": _aim_point(displayed, candidate["angle"]), "weight": candidate["weight"]})
+		destination = _aim_point(displayed, float(MirrorRules.normalized(target)["yaw"]))
 	elif kind.begins_with("size_"):
 		var key := kind.trim_prefix("size_")
 		dots = Targets.resize_dots(origin,displayed,key,level["limits"])
@@ -1996,7 +2009,49 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 			dots.append({"position":Rings.world_point(ring,candidate["angle"]),"weight":candidate["weight"]})
 		references = PackedVector3Array([Rings.world_point(ring,angle)])
 		destination = Rings.world_point(ring,float(target[key]))
-	return {"dots":dots,"references":references,"target":destination}
+	var data := {"dots":dots,"references":references,"target":destination}
+	if direct_controls and kind in ["ground","height","aim"]:
+		data["sign"] = true
+		data["traces"] = _sign_traces(displayed,kind)
+	return data
+
+## A point on the ring of the turn knob's sign: round the mirror's foot, past
+## the ends of its pane, on the side that faces `yaw`.
+func _aim_point(state: Dictionary, yaw: float) -> Vector3:
+	var reach := float(state.get("width", 3.0)) * 0.5 + 0.25
+	return (state["pivot"] as Vector3) + Basis(Vector3.UP, yaw).z * reach
+
+## The pale lines of a held knob's sign: the pale part of the knob's mark
+## (`_draw_mark` in `world/mirror_bar.gd`), made large at the mirror. Move: a
+## line along each way of the ground. Lift: an upright line. Turn: a ring round
+## the foot. A straight line fades with its distance from the mirror, as the
+## dots do.
+func _sign_traces(displayed: Dictionary, kind: String) -> Array[Dictionary]:
+	var traces: Array[Dictionary] = []
+	if kind == "aim":
+		var ring := PackedVector3Array()
+		var even := PackedFloat32Array()
+		for step: int in SIGN_RING_STEPS + 1:
+			ring.append(_aim_point(displayed, TAU * step / SIGN_RING_STEPS))
+			even.append(SIGN_RING_WEIGHT)
+		traces.append({"points": ring, "weights": even})
+		return traces
+	var pivot: Vector3 = displayed["pivot"]
+	for axis: int in ([1] if kind == "height" else [0, 2]):
+		var low := maxf(float(level["limits"]["min"][axis]), pivot[axis] - Targets.GUIDE_RADIUS)
+		var high := minf(float(level["limits"]["max"][axis]), pivot[axis] + Targets.GUIDE_RADIUS)
+		if high <= low:
+			continue
+		var line := PackedVector3Array()
+		var weights := PackedFloat32Array()
+		var count := ceili((high - low) / SIGN_STEP)
+		for step: int in count + 1:
+			var point := pivot
+			point[axis] = lerpf(low, high, float(step) / count)
+			line.append(point)
+			weights.append(Targets.spatial_weight(absf(point[axis] - pivot[axis])))
+		traces.append({"points": line, "weights": weights})
+	return traces
 
 func _guide_preview_available() -> bool:
 	return phase == "preview" and bool(preview.get("enabled",false))
