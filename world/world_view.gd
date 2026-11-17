@@ -151,6 +151,14 @@ func draw_world(solids: Array[Dictionary]) -> void:
 		for instance: MeshInstance3D in grown:
 			_grow(instance)
 	_draw_drop_shadows(solids)
+	if not sweep.is_empty():
+		# The shadows are of the new place. They come in with its second
+		# half, when the blocks that carry them are there.
+		var shade := shadow_root.material_override as ShaderMaterial
+		if shadow_root.has_meta("sweep") and (shadow_root.get_meta("sweep") as Tween).is_valid():
+			(shadow_root.get_meta("sweep") as Tween).kill()
+		shade.set_shader_parameter("shown", 0.0)
+		shadow_root.set_meta("sweep", Motion.blend(shadow_root, func(weight: float) -> void: shade.set_shader_parameter("shown", smoothstep(0.5, 1.0, weight)), "reveal"))
 	_light_copies(solids)
 	update_debug()
 

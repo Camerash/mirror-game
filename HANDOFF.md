@@ -97,10 +97,13 @@ the water" (`test-output/polish/portrait-light-sketch.patch`,
 reaches as high as the pane's moving edge. `world.reveal_along` in
 `toggle_mirror`; `reveal_plane` in `stone.gdshader`; `sheet.sink()`. A slide
 of a raised mirror still changes at once. Moving on still uses `reveal_from`.
-**Open with the owner (2026-11-17):** the moving edge shows the inside of a
-block. The proposal "a closed cut" (look A or B) is in `VALIDATION.md`, with
-`test-output/polish/reflection-cut-proof-sketch.patch`. Do not build it
-before the owner agrees.
+**The cut is closed (owner, 2026-11-17, built):** a block is a shell, so
+`stone.gdshader` draws each point of its inside as the point of the cut in
+front of it: a sheet of the pane's light at the moving edge, bare stone at
+the mirror's own cut. The cut keeps the depth of the far side of the block
+(a depth write also closed the cut in front of the near sides), so a thing
+inside a block can show on it. The drop shadows come in with the
+second half of a change (`shown` in `drop_shadow.gdshader`).
 
 How the look is made, where `STYLE.md` does not say:
 

@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: a copy that leaves keeps its look — 2026-11-17
+# Latest check: the cut of the moving edge is closed — 2026-11-17
+
+- Why: the owner chose look B of the proposal below ("B makes more sense").
+- Change, in the branch code. (1) `world/stone.gdshader`: a point of the inside of a block is drawn as the point of the cut in front of it. At the moving edge the cut is a sheet of the pane's light, with no sun and no shadow on it. At the mirror's own cut and at the cut of a stage change it is bare stone, lit as a flat face. (2) The line of light stays on the faces that the edge crosses; a face that lies in the edge does not flash. (3) A face in the edge is the ground's, not the copy's (a margin of 0.0005 units), so the two never show in one plane. (4) `world/drop_shadow.gdshader` and `world/world_view.gd`: the drop shadows start hidden at a change and come in with its second half; before, the shadow of a copy lay in the air before the copy was there.
+- Tests, no failure: `gameplay_art_tests` 60 (new: the drop shadows start hidden when the pane changes the place), `run_tests` 672 (the run before gave 673; the cause of the difference was not examined), `direct_controls_tests` 71, `mirror_bar_tests` 40, `small_fix_tests` 34, `prompt_tests` 94, `reflected_join_tests` 10, `display_geometry_tests` 4153, `continuous_controls_tests` 27, `app_flow_tests` 88, `level_solvability_tests` 68. The other test files were not run. No test asserts the look.
+- Checked in the engine at 900x900, frames each 4 frames of the rise, the sink and a second rise: `11_aperture` with an upright pane, with a pane tilted 45 degrees, and with a pane turned 45 degrees; `01_route` with a pane turned 45 degrees. No frame shows the inside of a block. Frames in ignored `test-output/polish/reflection-cut-built.jpg`.
+- Not done: the cut has the depth of the far side of the block. A first try to write the depth of the cut also closed the cut in front of the near sides of the block. The only thing found inside a leaving copy is one large mesh of the scene (not identified; possibly the falling snow), so a small mark can show on the sheet. The shadow of a copy goes at once when the pane starts to sink.
+- Not checked: the cut of a stage change (the scratch capture did not start the move); the image in the water from near; cost on a phone; play by a person; no independent review.
+
+# Earlier check: a copy that leaves keeps its look — 2026-11-17
 
 - Why: the owner said that a reflected structure changed to another look before it faded when the mirror was lowered, and that the inside of structures shows while the mirror forms and leaves.
 - Cause of the look change: `world/world_view.gd` gave `world_to_material` (a `mat4` uniform) a `Transform3D`. The engine erases a value of the wrong type when it lists the properties of a material, and `duplicate()` lists them. Thus the ghost of a leaving fragment had no mapping to its source, and was painted as another block.
@@ -10,7 +19,7 @@ keeps them; this log is not rewritten to match.
 - Checked in the engine: frames of the pane as it sinks on `11_aperture` at 900x900; the copy keeps its moss and its panels until it is gone.
 - Not checked: other stages; a tilted pane; play by a person; no independent review.
 
-## Proposal: a closed cut for the moving edge (waits for the owner)
+## Proposal: a closed cut for the moving edge (the owner chose look B; built, see the entry above)
 
 - Fault, confirmed in frames: a block is a shell. While the pane's edge cuts a copy, the eye sees the inside of the shell as a bright tray. A top face that lies in the edge flashes, and for one frame a copy and the ground it replaces show in the same plane.
 - Rules proposed. (1) A cut never shows the inside of a block; the cut is closed and flat. (2) Look A: the closed cut of a copy shows the copy's own cover, lit as its top, so the copy grows and sinks as a solid block. Look B: the closed cut is a sheet of the pane's light. (3) The line of light stays on the faces that the edge crosses; a face that lies in the edge does not flash. (4) A face in the edge is the ground's, not the copy's.

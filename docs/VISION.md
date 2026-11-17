@@ -136,6 +136,10 @@ DECIDED (owner, 2026-11-12): the change follows the pane. The pane rises
 from its lower edge; the copy appears from the bottom up in step with the
 pane's upper edge, and the ground it replaces is cut away from the bottom
 up. This replaces "blooms outward from the glass". Built 2026-11-12.
+DECIDED (owner, 2026-11-17): the moving edge never shows the inside of a
+structure. Where the edge cuts a copy, the cut is closed with a flat sheet
+of the pane's light. A face that lies in the edge does not flash, and a
+shadow comes with the block that casts it. Built 2026-11-17.
 
 **Sliding the mirror.** Feeling: tuning, like moving a lamp to see better;
 precise and in control. Motion: the copy follows the hand with no lag; each

@@ -104,17 +104,53 @@ void fragment() {
 	float reveal_edge = 0.0;
 	if (reveal_plane.xyz != vec3(0.0)) {
 		float inside = reveal_plane.w - dot(reveal_plane.xyz, world_position);
-		if (inside < 0.0) {
+		// A face that lies in the edge is the ground's, not the copy's: a copy
+		// and the ground it replaces never show in the same plane.
+		if (inside < (kind == 1 ? 0.0005 : -0.0005)) {
 			discard;
 		}
 		reveal_edge = 1.0 - smoothstep(0.0, 0.07, inside);
 	}
-	vec3 source_position = (world_to_material * vec4(world_position, 1.0)).xyz;
+	// A block is a shell. Where a cut opens it, the eye sees the inside of
+	// the shell. Each such point is drawn as the point of the cut in front of
+	// it, so the block shows a closed, flat cut and never its inside.
+	// ponytail: the cut keeps the depth of the far side, so a thing inside
+	// the block can show on it. To write the cut's depth, first test that
+	// the point of the cut is inside the block.
+	vec3 at = world_position;
+	vec3 flat_normal = world_normal;
+	bool capped = false;
+	bool cover_cap = false;
+	if (!FRONT_FACING) {
+		vec3 ray = PROJECTION_MATRIX[3][3] > 0.5 ? -INV_VIEW_MATRIX[2].xyz : normalize(world_position - CAMERA_POSITION_WORLD);
+		for (int index = 0; index < 2 && !capped; index++) {
+			vec4 cut = index == 0 ? reveal_plane : clip_plane;
+			vec4 other = index == 0 ? clip_plane : reveal_plane;
+			float toward = dot(cut.xyz, ray);
+			if (cut.xyz != vec3(0.0) && toward < -0.001) {
+				vec3 hit = world_position + ray * ((cut.w - dot(cut.xyz, world_position)) / toward);
+				if (other.xyz == vec3(0.0) || dot(other.xyz, hit) <= other.w + 0.001) {
+					at = hit;
+					flat_normal = cut.xyz;
+					capped = true;
+					cover_cap = index == 0;
+				}
+			}
+		}
+	}
+	// The line of light stays on the faces the edge crosses. A face that lies
+	// in the edge does not flash.
+	reveal_edge *= 1.0 - smoothstep(0.5, 0.9, abs(dot(flat_normal, reveal_plane.xyz)));
+	vec3 source_position = (world_to_material * vec4(at, 1.0)).xyz;
 	mat3 world_to_source = mat3(world_to_material);
 	// A shaped stone is painted by the box face it stands for, and lit by
 	// its own rounded surface.
-	bool shaped = dot(box_face, box_face) > 0.25;
-	vec3 true_normal = normalize(world_to_source * world_normal);
+	bool shaped = dot(box_face, box_face) > 0.25 && !capped;
+	vec3 true_normal = normalize(world_to_source * flat_normal);
+	if (capped) {
+		// The cut is lit as a face at its own place.
+		LIGHT_VERTEX = (VIEW_MATRIX * vec4(at, 1.0)).xyz;
+	}
 	vec3 source_normal = shaped ? normalize(world_to_source * box_face) : true_normal;
 	vec3 half_source = max(source_size * 0.5, vec3(0.0001));
 	vec3 face = abs(source_normal);
@@ -269,14 +305,22 @@ void fragment() {
 		glow = top_face && !cut_face ? base * 0.18 : mix(vec3(1.0, 0.60, 0.24) * 1.45, vec3(0.86, 0.40, 0.18) * 0.5, rim) * (base / max(summer_stone, vec3(0.01)));
 	}
 	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
-	if (!FRONT_FACING) {
+	if (cover_cap) {
+		// The closed cut of the moving edge is a sheet of the pane's light
+		// (owner, 2026-11-17).
+		// It is light only: no sun, no shadow falls on it.
+		base = vec3(0.0);
+		glow = summer_glow * 2.2;
+		roughness = 1.0;
+	}
+	if (!FRONT_FACING && !capped) {
 		relief = -relief;
 	}
 	mat3 source_to_world = inverse(world_to_source);
 	NORMAL = normalize((VIEW_MATRIX * vec4(normalize(source_to_world * relief), 0.0)).xyz);
 	ALBEDO = base;
 	METALLIC = metallic;
-	SPECULAR = 0.35;
+	SPECULAR = cover_cap ? 0.0 : 0.35;
 	ROUGHNESS = roughness;
 	// The moving edge of a change carries a line of the pane's light.
 	EMISSION = glow + summer_glow * reveal_edge * 0.9;
@@ -285,11 +329,11 @@ void fragment() {
 		// (`water_image.gdshaderinc`). It carries its own plain light.
 		float lit = 0.55 + 0.45 * max(dot(normalize(source_to_world * relief), vec3(0.25, 0.51, 0.82)), 0.0);
 		// A face that looks down at the water is in shade.
-		lit *= mix(1.0, 0.45, smoothstep(0.0, -0.6, world_normal.y));
+		lit *= mix(1.0, 0.45, smoothstep(0.0, -0.6, flat_normal.y));
 		ALBEDO = vec3(0.0);
 		SPECULAR = 0.0;
 		METALLIC = 0.0;
 		ROUGHNESS = 1.0;
-		EMISSION = image_colour(base * lit + glow, world_position.y - ice_height);
+		EMISSION = image_colour(base * lit + glow, at.y - ice_height);
 	}
 }

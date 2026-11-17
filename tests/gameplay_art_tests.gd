@@ -77,6 +77,8 @@ func _run() -> void:
 	var leaving := clip_view.ghost_root.get_child(0) as MeshInstance3D if clip_view.ghost_root.get_child_count() > 0 else null
 	check(leaving != null and Transform3D((leaving.material_override as ShaderMaterial).get_shader_parameter("world_to_material") as Projection).is_equal_approx(expected_mapping),
 		"A fragment that leaves with the pane keeps the mapping to its source")
+	check(is_zero_approx(float((clip_view.shadow_root.material_override as ShaderMaterial).get_shader_parameter("shown"))),
+		"The drop shadows start hidden when the pane changes the place")
 	clip_view.queue_free()
 	var frame := Frame.new()
 	root.add_child(frame)
