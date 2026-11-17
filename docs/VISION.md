@@ -318,7 +318,12 @@ styles and words.
   a very small overshoot, and the other controls fade while a knob is held.
 - OPEN (owner, 2026-11-18, to discuss): new icons of simple lines that show
   each action; a sign of the mirror's freedom that is tied to the held knob;
-  a direct drag on the mirror in place of the move knob.
+  a direct drag on the mirror in place of the move knob. On the first icon
+  proposal (the pane with arrows) the owner said: "Icon should be more
+  simplified, almost zen, and be more designed". The second proposal waits
+  for the owner: the dark part of a mark is the mirror, and the pale part is
+  where it can go or its image in the water
+  (`test-output/polish/icons-proposal-2.jpg`, `icons-zen.patch`; ignored).
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The
