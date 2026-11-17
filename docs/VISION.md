@@ -369,7 +369,9 @@ styles and words.
   corrections: the movement and the rotation a little slower, because they
   were abrupt; the knobs more rigid, with less change of shape; the bar a
   little below the stage for each window size; more ease in the change
-  between the mirror button and the bar.
+  between the mirror button and the bar. After the second play: the bar
+  nearer the bottom of the screen, between the stage and the bottom, and the
+  control (mirror button, bar, knobs) larger.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

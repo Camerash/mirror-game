@@ -63,7 +63,8 @@ play.** The owner's proposal, in `docs/VISION.md` (DRAFT): a glass bar below
 the stage with three knobs (move, turn, lift); a held knob uses the full
 screen; a round mirror button opens into the bar; a rose button lowers the
 mirror. The owner played round one: "works great", with three corrections
-(slower, more rigid knobs, the bar a little below the stage); they are in.
+(slower, more rigid knobs, the bar below the stage), then two more (the bar
+nearer the bottom, the control larger); they are in.
 Not in Git: `git apply test-output/polish/pill-proof-sketch.patch` (alone;
 `game.gd`, `world/mirror_arrow.gd`, `ui/mirror_hud.gd`). Key F gives the
 earlier controls; key G changes how the move knob reads the finger. Rules

@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the pill bar sketch, second round — 2026-11-17
+# Latest check: the pill bar sketch, third round — 2026-11-17
+
+- Why: the owner played the second round on a tall window (884x1472 units) and gave two small corrections with a marked screenshot: the bar must be nearer the bottom, and the control (the mirror button, the glass bar, the knobs) must be larger.
+- Change: none in the branch code. The sketch patch is new (`test-output/polish/pill-proof-sketch.patch`, same three files). Larger: each size of the bar is 1.25 times its earlier value (knob 58 units across and not 46, mirror button 66, bar 78 high, remove button 46; `PILL_*` in `world/mirror_arrow.gd`, `PILL_ROW` 94 in the HUD). Lower: the bar is 0.7 of the way from "16 units below the stage" down to its lowest row (`PILL_DROP` in `game.gd`); where the stage fills the height, the two places are the same. The stage's name goes above the bar where there is no room below it.
+- Checked in the engine with real mouse events (the scratch script; `01_route` at 1152x800, `14_turn` at 390x844, 884x1472 and 2200x900; 17 checks each, no failure). At 884x1472 the bar is at 1259 to 1337 units from the top; the owner's mark is at about 1230 to 1345. At 390x844 the remove button is inside the play area. The stage's name is clear of the bar at 884x1472, 820x800, 390x844 and 1152x800. `run_tests` (687) and `step_tests` (20) have no failure with the sketch on.
+- What the frame shows (`pill-round3-place.jpg` in ignored `test-output/polish/`): the three window sizes with the larger bar in its new place.
+- Found: the project has no stretch setting, so one unit is one physical pixel. On the owner's high-density screen each HUD control is drawn at half its planned size. Not changed; it is a decision for all of the HUD.
+- Not checked: play by a person; motion; the three test files that fail with the sketch on; no independent review.
+
+# Earlier check: the pill bar sketch, second round — 2026-11-17
 
 - Why: the owner played the pill bar sketch. The owner's report: "The control works great." Three corrections: the movement and the rotation are a little abrupt and must be slower; the knobs change shape too much and must be more rigid; the bar must be a little below the stage for each window size, and the change between the mirror button and the bar must have more ease.
 - Change: none in the branch code. The sketch patch is new (`test-output/polish/pill-proof-sketch.patch`, 731 lines, same three files). Slower: the mirror goes 0.8 of the finger's travel for move and lift (`FREE_GAIN`), a turn or tilt step takes 96 units and not 72 (`TURN_PIXELS`), and the mirror takes 0.18 s and not 0.10 s to go to a new step while a knob is held (`FREE_FOLLOW_SECONDS`). More rigid: a held knob moves 6 units at most and not 13, becomes 6% longer and not 16%, and its return has almost no bounce. Place: the bar is 16 units below the lowest point that the view was fitted to (`game._pill_centre`), and not lower than its earlier row; the camera area keeps the same room for the bar, so the stage and the bar together stay near the centre. Morph: 0.85 s and not 0.55 s, with a curve that is slow at each end. The stage's name goes below the bar where the two would be on the same place (`hud.clear_pill`).
