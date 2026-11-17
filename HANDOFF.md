@@ -97,6 +97,10 @@ the water" (`test-output/polish/portrait-light-sketch.patch`,
 reaches as high as the pane's moving edge. `world.reveal_along` in
 `toggle_mirror`; `reveal_plane` in `stone.gdshader`; `sheet.sink()`. A slide
 of a raised mirror still changes at once. Moving on still uses `reveal_from`.
+**Open with the owner (2026-11-17):** the moving edge shows the inside of a
+block. The proposal "a closed cut" (look A or B) is in `VALIDATION.md`, with
+`test-output/polish/reflection-cut-proof-sketch.patch`. Do not build it
+before the owner agrees.
 
 How the look is made, where `STYLE.md` does not say:
 
@@ -256,6 +260,9 @@ the one that covers a change. `VALIDATION.md` records what was checked.
   guards in `undo`, `_pointer` and `turn_camera`.
 - **A moved block view needs its own transform in the material mapping**
   (`(transform * material_to_world).affine_inverse()`).
+- **A `mat4` uniform takes a `Projection`.** The engine erases a
+  `Transform3D` there when it lists a material's properties; `duplicate()`
+  does that.
 - **A resize is dropped while the camera blends**; scripted solves wait.
 - **Exports leave out `art_trial/` and `assets/reference/`.** Never load from
   them in game code.

@@ -1,7 +1,23 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the prompt line and the Undo button of the bar — 2026-11-17
+# Latest check: a copy that leaves keeps its look — 2026-11-17
+
+- Why: the owner said that a reflected structure changed to another look before it faded when the mirror was lowered, and that the inside of structures shows while the mirror forms and leaves.
+- Cause of the look change: `world/world_view.gd` gave `world_to_material` (a `mat4` uniform) a `Transform3D`. The engine erases a value of the wrong type when it lists the properties of a material, and `duplicate()` lists them. Thus the ghost of a leaving fragment had no mapping to its source, and was painted as another block.
+- Change, in the branch code: `_apply_source_mapping` gives the uniform a `Projection`. One line; no other change.
+- Tests, no failure: `gameplay_art_tests` 59 (new: a fragment that leaves with the pane keeps the mapping to its source), `run_tests` 673, `direct_controls_tests` 71, `mirror_bar_tests` 40, `small_fix_tests` 34, `prompt_tests` 94. Also `reflected_join_tests` 10, `display_geometry_tests` 4153, `continuous_controls_tests` 27, `app_flow_tests` 88, `level_solvability_tests` 68. The other test files were not run for this change.
+- Checked in the engine: frames of the pane as it sinks on `11_aperture` at 900x900; the copy keeps its moss and its panels until it is gone.
+- Not checked: other stages; a tilted pane; play by a person; no independent review.
+
+## Proposal: a closed cut for the moving edge (waits for the owner)
+
+- Fault, confirmed in frames: a block is a shell. While the pane's edge cuts a copy, the eye sees the inside of the shell as a bright tray. A top face that lies in the edge flashes, and for one frame a copy and the ground it replaces show in the same plane.
+- Rules proposed. (1) A cut never shows the inside of a block; the cut is closed and flat. (2) Look A: the closed cut of a copy shows the copy's own cover, lit as its top, so the copy grows and sinks as a solid block. Look B: the closed cut is a sheet of the pane's light. (3) The line of light stays on the faces that the edge crosses; a face that lies in the edge does not flash. (4) A face in the edge is the ground's, not the copy's.
+- Sketch, not in Git: `git apply test-output/polish/reflection-cut-proof-sketch.patch` (`world/stone.gdshader` only; `cap_look` 0 is look A, 1 is look B). Frames: `test-output/polish/reflection-cut-proof.jpg`.
+- Not done in the sketch: the cut has the depth of the far side of the block, so a line that lies inside a block can show through the cut; a first try to write the depth of the cut failed, because it also closed the cut in front of the near sides. Not checked: a tilted pane; a block cut by the mirror's own plane; the image in the water; cost on a phone.
+
+# Earlier check: the prompt line and the Undo button of the bar — 2026-11-17
 
 - Why: the owner agreed to the prompt rules of the proposal below, and asked for the Undo button to the left of the bar.
 - Change, in the branch code. (1) Prompt: `ui/mirror_hud.gd` shows the prompt as one line above the bar, with no card, in snow white with a soft dark edge; the hints of the game use the same line (18 units of type, the prompt 22). A prompt waits while the stage's name shows. A prompt in a level file can have `"control"` (`mirror`, `move`, `turn`, `lift`, `remove`; `core/level_loader.gd` refuses other values); `world/mirror_bar.gd` then draws ripples that leave that control and, for a knob, a finger mark that slides the way of the gesture. Texts: "Raise your mirror", "Hold, then slide", "Lower the mirror", "Hold, then slide down", "Hold, then slide sideways", "Drag sideways to turn the view". The prompt of the last stage only explained the safe fall and is removed. The pond's prompt text is not changed (on hold). (2) Undo: a white round button of the bar, to its left, drawn by `world/mirror_bar.gd`; it shows when there is a change to take back. The corner Undo of the HUD stays for the classic editor only. (3) Because no button is in a bottom corner now, the bar's lowest row is the bottom band for each window width; before, a narrow window kept one row free below the bar. The rule of the place is the same (0.7 of the way from below the stage to that row), so on a phone the bar is a little lower.

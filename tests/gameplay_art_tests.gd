@@ -67,11 +67,16 @@ func _run() -> void:
 	clip_view.draw_world([clip_solid])
 	var clip_material: ShaderMaterial = (clip_view.visual_slots.values()[0] as Dictionary)["material"]
 	var expected_mapping: Transform3D = (clip_view.transform * clip_mapping).affine_inverse()
-	check((clip_material.get_shader_parameter("world_to_material") as Transform3D).is_equal_approx(expected_mapping),
+	check(Transform3D(clip_material.get_shader_parameter("world_to_material") as Projection).is_equal_approx(expected_mapping),
 		"A moved MirrorWorldView maps world_to_material through its own transform")
 	check((clip_material.get_shader_parameter("clip_plane") as Vector4).is_equal_approx(Vector4.ZERO), "Default clip is zero")
 	clip_view.set_clip(Plane(Vector3(1, 0, 0), 2.0))
 	check((clip_material.get_shader_parameter("clip_plane") as Vector4).is_equal_approx(Vector4(1, 0, 0, 2.0)), "set_clip reaches the slot material")
+	clip_view.reveal_along(Vector3.UP, -1.0, 1.0, false, Plane(Vector3.RIGHT, 0.0))
+	clip_view.draw_world([])
+	var leaving := clip_view.ghost_root.get_child(0) as MeshInstance3D if clip_view.ghost_root.get_child_count() > 0 else null
+	check(leaving != null and Transform3D((leaving.material_override as ShaderMaterial).get_shader_parameter("world_to_material") as Projection).is_equal_approx(expected_mapping),
+		"A fragment that leaves with the pane keeps the mapping to its source")
 	clip_view.queue_free()
 	var frame := Frame.new()
 	root.add_child(frame)

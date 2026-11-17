@@ -407,7 +407,10 @@ func _apply_source_mapping(material: ShaderMaterial, solid: Dictionary, bounds: 
 	var material_to_world := Transform3D(Basis.IDENTITY, bounds.get_center())
 	if solid.has("material_to_world") and solid["material_to_world"] is Transform3D:
 		material_to_world = solid["material_to_world"]
-	material.set_shader_parameter("world_to_material", (transform * material_to_world).affine_inverse())
+	# A Projection, the type of a mat4 uniform. The engine erases a Transform3D
+	# here when it lists the material's properties, so a duplicate (the ghost of
+	# a leaving fragment) lost its mapping and was painted as another block.
+	material.set_shader_parameter("world_to_material", Projection((transform * material_to_world).affine_inverse()))
 
 ## Hides every drawn fragment on the positive side of `plane`. The plane is in
 ## world space, also for a moved view. `Plane()` (all zero) clears the clip.
