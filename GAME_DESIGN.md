@@ -100,6 +100,7 @@ Later level:
 
 ## Visual and sound direction
 
+- **The look in the branch is the pale winter look (owner, 2026-11-17, built):** a garden pond in mist, dark slate water, snow tops, the garden round the pond with one lit window, and a mirror copy of cool mirror glass. `docs/art/STYLE.md` is the source for it. Where a line below says another thing about colour, light, the background or the look of a copy, the style guide stands.
 - **Overgrown garden is the art direction to try** (chosen 2026-10-29 after the [look pilot](docs/look-pilot.md)): weathered limestone brickwork with moss, grass and ivy, a low warm sun, a hazy green sky, the mirror's copy as the same path in full bloom, and absolutes as old bronze under green patina. It is a trial on a real stage before it replaces anything. Until then the ceramic, porcelain and jade look below stays in the game.
 - Use clear 3D forms, soft colour and lighting differences between original and reflected space, and a consistent absolute material that does not rely on colour alone.
 - The mirror boundary may be portal-like or translucent. Keep affected regions and plane orientation readable.

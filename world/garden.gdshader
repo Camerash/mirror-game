@@ -1,6 +1,5 @@
 shader_type spatial;
 render_mode unshaded;
-#include "res://world/water_image.gdshaderinc"
 // The surface of the garden that stands round the pond
 // (`world/garden_backdrop.gd`). COLOR.rgb is the bare value of a thing.
 // COLOR.a marks the one lit window (0) and the ground of the garden (0.5).
@@ -8,7 +7,8 @@ render_mode unshaded;
 // The garden is far, in the mist: a thing is paler the further it stands
 // behind the place, by the same rule as the far water (`world/ice.gdshader`).
 // It carries its own soft light, which is the same from each view, and no
-// top is light: only ground she can stand on is.
+// top is light: only ground she can stand on is. The water shows no image
+// of it: a pale image along the foot of a wall reads as a ledge.
 
 uniform vec3 mist : source_color = vec3(0.80, 0.82, 0.82);
 uniform vec3 lamp : source_color = vec3(1.0, 0.71, 0.40);
@@ -46,18 +46,14 @@ void fragment() {
 	// stands in the water.
 	float top = smoothstep(0.6, 0.9, world_normal.y);
 	bare *= 1.0 - top * 0.42;
-	bare *= 1.0 - 0.30 * (1.0 - smoothstep(0.0, 0.7, lift));
+	bare *= 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.35, lift));
 	vec3 colour = mix(bare, mist, veil * (1.0 - top * 0.25));
 	if (COLOR.a < 0.25) {
 		// The lit window: warm, and soft through the mist.
-		colour = mix(lamp, mist, veil * 0.45);
+		colour = mix(lamp, mist, 0.3 + veil * 0.45);
 	} else if (COLOR.a < 0.75) {
 		// The ground behind the walls is lost in the mist.
 		colour = mix(mist * 0.8, mist, veil);
 	}
 	ALBEDO = colour;
-	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
-		// Drawn for the image in the water, which is gone with height.
-		ALBEDO = image_colour(colour, lift);
-	}
 }

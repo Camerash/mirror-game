@@ -10,31 +10,27 @@ frame from the engine, the owner agrees, then the agent builds. Branch
 `claude/funny-dirac-7dv0hf`, all pushed. Judge portrait (390x844) first: the
 owner expects most play on a phone in portrait.
 
-**In the branch: the still-water look.** The owner agreed to it from a
-sketch (2026-11-11) and has not approved the built frame. Five rules in
-`docs/art/STYLE.md`. Each independent review gave beauty 6/10, in landscape
-and in portrait: the surface does not limit the picture. The faults that
-repeat: a small place in an empty frame, stones that read as toys, a small
-pale girl on snow, and no place.
+**In the branch: the pale winter look (owner, 2026-11-17, built).** The
+owner chose it over the blue still-water look, and chose mirror glass for
+the copy ("Yes, build it"). The rules are in `docs/art/STYLE.md`; the proof
+is in `VALIDATION.md`. The still-water rules for the surface still stand.
 
-**Proposed, waits for the owner (2026-11-17): the pale winter look as the
-look of the game**, with a dark slate water and a copy of mirror glass (the
-owner's choice, for the story; other copies are also in the sketch):
-`test-output/polish/pale-winter-sketch.patch`, `VALIDATION.md`. It
-replaces the sketch below, which no longer applies.
-
-**The world proof (2026-11-16).** A sketch, not in Git:
-`test-output/polish/world-proof-sketch.patch`. It has
-the garden in grey box round the pond (a house with one lit window, a wall
-with a gate and old trees, a greenhouse frame and a tank, a tree with a
-swing; a side between the view and the place is not drawn), a pale colour
-script with mist on the far water, the place low in a tall frame, and the
-copy in the original's look with a cool tint. One blind pair, as beauty /
-reading / place and feeling / copy as a reflection: branch 6/7/4/3, proof
-6/7/7/6. The build must separate the values (it is grey on grey), keep the
-window's light from competing with the goal, give the copy a clear mirrored
-look, give the water depth, and make the back views whole. The build adds a
-module, so it needs a plan and the owner's approval.
+- One colour script, `pale` (`world/trial_lighting.gd`): dark slate water
+  that goes into mist. `"light"` in a level file can name another script
+  when one exists; none does now.
+- The copy is mirror glass (`kind == 1` in `world/stone.gdshader`). The
+  summer look and the copies' warm lights are gone. `pane_light` is the
+  cool light of the sheet that closes a cut and of the moving edge.
+- The garden is `world/garden_backdrop.gd` with `world/garden.gdshader`
+  (unshaded, its own light). Four sides, each one mesh; `_face()` shows a
+  side by the direction of the view (`SHOWN`, `GONE`) through a screen in
+  the shader (`shown`, an instance uniform). The ground past a far corner,
+  and the wall that runs on past a near corner, are parts of their own
+  (`_past_corners`). The lit window gives `ice.lamp`. A place with a
+  `story` has no garden. The garden is not on `MIRRORED_LAYER`: its image
+  in the water read as a ledge along each wall.
+- In a tall frame the place sits lower (`LOW_IN_TALL_FRAME`,
+  `world/stage_camera.gd`), only into free room of the play area.
 
 **The owner's words for it (2026-11-16):** water stays the floor; the camera
 keeps its angle (a lower one shows no horizon and thins the tops); the
@@ -121,8 +117,7 @@ How the look is made, where `STYLE.md` does not say:
 - The sun stands at 39 degrees, so a top is lighter than a sunlit side.
 - The lowest ground stands in the water (`ICE_CLEAR`); a block cut at an
   angle keeps the old plain shape; a place with a `story` gets no reeds; the
-  girl's shade comes from the shader global `walker_at`; only `01_route` is
-  dusk. Captures: `tests/capture_stage.gd` (`--turns`, `--motion`,
+  girl's shade comes from the shader global `walker_at`. Captures: `tests/capture_stage.gd` (`--turns`, `--motion`,
   `--nudge`, `--rise`).
 
 Changed without the owner's word, to confirm or reverse: the girl's colours

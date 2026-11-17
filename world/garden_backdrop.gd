@@ -2,8 +2,8 @@ class_name GardenBackdrop
 extends Node3D
 ## The garden that stands round the pond, far behind a place. Each of its
 ## four sides has its own things: the house with one lit window; a wall with
-## a gate and old bare trees; a greenhouse against a high wall, and a water
-## tank; a low wall with a large tree, a swing and a shed. Built by rule from
+## a gate and old bare trees; a wall with the roof of a glasshouse and a
+## water tank behind it; a low wall with a large tree, a swing and a shed. Built by rule from
 ## the size of the place.
 ##
 ## Things to look at, not to stand on: all of it is pale with the mist, no
@@ -40,9 +40,6 @@ const GROUND := Color(1.0, 1.0, 1.0, 0.5)
 ## the wall, and goes on this far: past the edge of every view.
 const GROUND_FROM := 0.6
 const GROUND_TO := 90.0
-## The kitchen garden lies between these depths behind the water's edge.
-const KITCHEN_FRONT := 0.6
-const KITCHEN_BACK := 4.5
 
 ## Half the width of the pond.
 var reach := MIN_REACH
@@ -78,7 +75,7 @@ static func build(limits: Dictionary, stones: AABB, water_height: float, colors:
 	material.set_shader_parameter("water_level", water_height)
 	var high_wall := func(from: float, to: float) -> void: garden._wall(from, to, 3.2)
 	var low_wall := func(from: float, to: float) -> void: garden._wall(from, to, 2.4)
-	var runs: Array[Callable] = [high_wall, high_wall, garden._kitchen_wall, low_wall]
+	var runs: Array[Callable] = [high_wall, high_wall, high_wall, low_wall]
 	garden._side(Vector3.FORWARD, garden._house, material)
 	garden._side(Vector3.LEFT, garden._wall_and_trees, material)
 	garden._side(Vector3.RIGHT, garden._greenhouse, material)
@@ -138,7 +135,6 @@ func _side(out: Vector3, make: Callable, material: ShaderMaterial) -> void:
 		_box(Vector3(corner, 2.2, 0.3), Vector3(1.1, 4.4, 1.1), PALE)
 		_roof(corner - 0.7, corner + 0.7, 4.4, 0.45, -0.4, 1.0)
 	var side := _part(material)
-	side.layers = 1 | Ice.MIRRORED_LAYER
 	side.basis = Basis(Vector3.UP.cross(out), Vector3.UP, out)
 	side.position = out * reach
 	_sides.append(side)
@@ -222,22 +218,22 @@ func _wall_and_trees() -> void:
 	for tree: Array in [[-7.6, 3.2, 1.0], [-2.2, 4.6, 0.8], [2.6, 2.8, 1.1], [8.6, 4.0, 0.9]]:
 		_tree(Vector3(tree[0], 0.0, tree[1]), tree[2], int(tree[0] * 7.0))
 
-## A kitchen garden behind a low wall: dark beds, a greenhouse that leans
-## on the high wall at the back, and a water tank on legs.
+## A kitchen garden behind a wall: the roof of a glasshouse, and a water
+## tank on legs. The wall hides its beds: a wide flat thing reads as ground.
 func _greenhouse() -> void:
 	var from := -9.0
 	var to := 0.5
-	var front := KITCHEN_FRONT
-	var back := KITCHEN_BACK
-	_kitchen_wall(-reach - 0.8, reach + 0.8)
-	for end: float in [-reach - 0.55, reach + 0.55]:
-		_box(Vector3(end, 1.9, back * 0.5 + 0.3), Vector3(0.5, 3.8, back - 0.6), WALL)
-	# Its frame: a post and a rafter at each rib, and three rails.
+	var front := 1.0
+	var back := 4.6
+	var ridge := (front + back) * 0.5
+	_wall(-reach, reach, 3.2)
+	# Its frame: two posts and two rafters at each rib, and five rails.
 	for rib: int in 10:
 		var along := from + (to - from) * rib / 9.0
-		_box(Vector3(along, 1.75, front), Vector3(0.1, 1.7, 0.1), DARK)
-		_bar(Vector3(along, 2.6, front), Vector3(along, 3.7, back), 0.1, DARK)
-	for rail: Array in [[2.6, front], [3.15, (front + back) * 0.5], [1.75, front]]:
+		for depth: float in [front, back]:
+			_box(Vector3(along, 2.1, depth), Vector3(0.1, 4.2, 0.1), DARK)
+			_bar(Vector3(along, 4.2, depth), Vector3(along, 5.6, ridge), 0.1, DARK)
+	for rail: Array in [[4.2, front], [4.2, back], [5.6, ridge], [4.9, (front + ridge) * 0.5], [4.9, (back + ridge) * 0.5]]:
 		_box(Vector3((from + to) * 0.5, rail[0], rail[1]), Vector3(to - from, 0.08, 0.08), DARK)
 	# The tank.
 	for leg: Array in [[5.2, 1.2], [7.4, 1.2], [5.2, 3.4], [7.4, 3.4]]:
@@ -246,15 +242,6 @@ func _greenhouse() -> void:
 	_bar(Vector3(7.4, 0.6, 1.2), Vector3(5.2, 4.6, 1.2), 0.12, DARK)
 	_box(Vector3(6.3, 6.4, 2.3), Vector3(3.0, 2.4, 3.0), ROOF)
 	_roof(4.7, 7.9, 7.6, 0.7, 0.7, 3.9)
-
-## The kitchen garden from `from` to `to` along its side: a low wall at the
-## water, dark beds, and the high wall at the back.
-func _kitchen_wall(from: float, to: float) -> void:
-	var middle := (from + to) * 0.5
-	_wall(from, to, 0.9)
-	_box(Vector3(middle, 0.3, (KITCHEN_FRONT + KITCHEN_BACK) * 0.5), Vector3(to - from, 0.1, KITCHEN_BACK - KITCHEN_FRONT), DARK)
-	_box(Vector3(middle, 1.9, KITCHEN_BACK + 0.25), Vector3(to - from, 3.8, 0.5), WALL)
-	_roof(from, to, 3.8, 0.3, KITCHEN_BACK - 0.1, KITCHEN_BACK + 0.6)
 
 ## A low wall, one large old tree with a swing, and a shed.
 func _tree_and_swing() -> void:

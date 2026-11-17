@@ -129,7 +129,8 @@ with an ache. Motion: the glass rises out of the ground like ice forming,
 about 0.8 s. The copy blooms outward from the glass in summer colour; the
 ground it replaces frosts over and fades, never vanishing at once. The
 summer colour is a difference of look only: the copy keeps the exact
-mirrored shape of what it reflects. Sound: a
+mirrored shape of what it reflects. (Since 2026-11-17 the copy is mirror
+glass, not summer; see the art decisions below.) Sound: a
 sustained glass tone that opens into a chord of the chapter's theme. Today:
 the frame appears and the ground is deleted at once.
 DECIDED (owner, 2026-11-12): the change follows the pane. The pane rises
@@ -151,8 +152,8 @@ swings about its centre with a little weight, settling at each direction.
 Sound: a rising or falling interval. Today: a 0.22 s turn.
 
 **Lowering the mirror.** Feeling: letting go; an exhale, bittersweet. Motion:
-the summer copy wilts back into frost and snow, and the real ground returns
-and settles; the light dims a little. Sound: the raised chord resolves.
+the copy (mirror glass since 2026-11-17) goes back into the pane, and the
+real ground returns and settles; the light dims a little. Sound: the raised chord resolves.
 Today: an instant swap.
 AGENT DECISION (2026-11-12, from the owner's rule for raising): the reverse.
 The glass sinks from its upper edge down, takes the copy with it from the
@@ -310,6 +311,14 @@ styles and words.
   (the garden round the pond, the pale palette, the copy in the original's
   look). It is only a proof: the background needs more work. See
   `VALIDATION.md`.
+- DECIDED (owner, 2026-11-17): the pale winter look is the look of the
+  game, and the copy is mirror glass, not summer: "Copy as cool glass seems
+  to fit the story more", then "C, mirror glass", then "Yes, build it". The
+  pond's ice is the first mirror and the sister shows behind a frost pane,
+  so the copy is the thing seen in glass. The lit window of the garden's
+  house is the one warm light. Built 2026-11-17 (`docs/art/STYLE.md`). This
+  answers the doubt above that the summer copy does not look like a
+  reflection. The doubt that the mirror reads as a portal stays open.
 - OPEN (owner's doubts, 2026-11-16): the player cannot tell what the mirror
   can copy or hide and what it cannot, nor why. That the mirror replaces
   what is behind it is not well shown: is the rule sound, is an alternative
@@ -488,8 +497,8 @@ DECIDED (2026-10-30): the owner approved this order of work.
    slice reuses the fall.
 5. **Sound and music early.** A Lyria trial of the main theme against light
    after rain, and the interaction sounds, while the slice is still grey.
-6. **Art on the slice.** The garden look in winter, the copy side in summer
-   bloom, the pond, her and the mittens.
+6. **Art on the slice.** The garden look in winter, the copy in mirror
+   glass, the pond, her and the mittens.
 7. **Feel reviews** at each step: a Movie Maker clip, and the owner playing
    on a Mac.
 

@@ -167,7 +167,7 @@ void fragment() {
 	// The light of the garden's window lies on the water in front of it.
 	vec2 from_lamp = plain + slope * 0.08 - lamp.xz;
 	float lamp_reach = dot(from_lamp, from_lamp);
-	colour += lamp_color * lamp.w * (exp(-lamp_reach * 1.76) * 0.46 + exp(-lamp_reach * 0.44) * 0.10) * (1.0 - cover * 0.55);
+	colour += lamp_color * lamp.w * (exp(-lamp_reach * 1.2) * 0.22 + exp(-lamp_reach * 0.3) * 0.08) * (1.0 - cover * 0.55);
 
 	// The corners fall away, so the eye stays on the place.
 	vec2 from_centre = (SCREEN_UV - vec2(0.5, 0.46)) * vec2(1.0, 0.86);
