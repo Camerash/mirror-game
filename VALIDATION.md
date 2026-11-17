@@ -1,7 +1,15 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: seven points from the owner's play — 2026-11-18
+# Latest check: the marks of the mirror bar — 2026-11-18
+
+- Why: the owner said the first icon proposal must be "more simplified, almost zen, and be more designed". On the second proposal the owner said the three knob marks are good, the marks to raise and to lower the mirror can be rectangles (one empty, one with lines in it), and Undo must be a proper arrow with a rounder head.
+- Change (`_draw_mark` in `world/mirror_bar.gd`; the bar no longer uses `UiIcons` for its marks, and `_draw_arrows` is removed). One rule: the dark part is the mirror, the pale part is where it can go or the light on its glass. Move: a dot on two pale lines along the ground, which follow the view. Turn: a dot in a pale open ring. Lift: a dot on a pale upright line. Raise: an empty upright frame. Lower: the frame with two pale lines. Undo: the usual hook to the left with a filled round head. The agent chose which rectangle is empty: the mirror that does not stand yet is the empty frame, as in the older `UiIcons` pair.
+- Tests, no failure, on the final state: `mirror_bar_tests` 59, `app_flow_tests` 88, `gameplay_art_tests` 94, `prompt_tests` 94, `direct_controls_tests` 71. The other test files were not run again: the change is in the drawing of the marks only.
+- Checked in the engine: `test-output/polish/icons-built.jpg` (each mark large, drawn by the bar's own code, and the real bar closed and open in `14_turn` at 780x1688).
+- Not done, not checked: a phone; the marks at other view angles than the first; the empty frame can read as a phone, which the owner must judge.
+
+# Earlier check: seven points from the owner's play — 2026-11-18
 
 - Why: the owner played the pale winter build and gave seven points with two recordings: the place and the bar higher; smooth motion of the bar; better icons; other controls fade while a knob is held; a sign of the mirror's freedom; the view turn is abrupt and the bar goes up then down; a stone changes its look when the mirror cuts it, and its image in the water is wrong. The owner also said yes to soft snow on the garden.
 - The turn of the view (`world/stage_camera.gd`, commit `20463a9`). Cause: the turn made a new fit of the place at each angle, so the place and the size of the view went up and then down. Now the turn keeps one world pivot, and the pivot's spot on the screen and the size of the view go evenly from the start to the end. Measured in `14_turn` at 390x844 through a full turn: the pivot stays at (195.0, 405.5), the view size stays 18.787, the bar stays at 651.6.

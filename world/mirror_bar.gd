@@ -521,40 +521,36 @@ func _ground_axes() -> Array[Vector2]:
 func _draw_mark(canvas: Control, kind: String, radius: float, ink: Color) -> void:
 	if ink.a <= 0.01:
 		return
+	# Each mark has one dark part, the mirror, and one pale part: where the
+	# mirror can go, or the light on its glass (owner, 2026-11-18).
 	var unit := radius / 23.0
-	var width := 1.9 * unit
+	var width := 1.8 * unit
+	var pale := Color(Color(ink, 1.0).lerp(ROSE if kind == "remove" else CERAMIC, 0.62), ink.a)
 	match kind:
-		"mirror", "undo":
-			UiIcons.draw(canvas, kind, Rect2(-Vector2.ONE * radius * 0.5, Vector2.ONE * radius), ink)
+		"mirror", "remove":
+			# The mirror to raise is an empty frame. The mirror that stands has
+			# glass in it: two lines of light.
+			var frame := Rect2(Vector2(-4.5, -7.5) * unit, Vector2(9.0, 15.0) * unit)
+			if kind == "remove":
+				for lift: float in [-2.6, 2.6]:
+					UiIcons._stroke(canvas, [Vector2(-1.7, lift + 2.0) * unit, Vector2(1.7, lift - 2.0) * unit], pale, width)
+			UiIcons._stroke(canvas, UiIcons._rounded(frame, 2.0 * unit), ink, width)
 		"move":
-			# A ground tile as this view shows it, with a head to each side:
-			# the mirror moves on the ground.
-			var axes := _ground_axes()
-			var along := axes[0] * 5.6 * unit
-			var across := axes[1] * 5.6 * unit
-			UiIcons._stroke(canvas, [along + across, along - across, -along - across, -along + across, along + across], ink, width)
-			for side: float in [-1.0, 1.0]:
-				var tip := Vector2(13.0 * unit * side, 0.0)
-				var back := Vector2(-3.4 * unit * side, 0.0)
-				UiIcons._stroke(canvas, [tip + back + back.orthogonal(), tip, tip + back - back.orthogonal()], ink, width)
-		"lift":
-			_draw_arrows(canvas, Vector2.UP, 9.5 * unit, ink, width)
+			# The two ways of the ground as this view shows them.
+			for axis: Vector2 in _ground_axes():
+				UiIcons._stroke(canvas, [-axis * 10.0 * unit, axis * 10.0 * unit], pale, width)
 		"turn":
-			var arc := UiIcons._arc(Vector2.ZERO, 8.0 * unit, Vector2.ONE, -215.0, 35.0)
-			UiIcons._stroke(canvas, arc, ink, width)
-			var end: Vector2 = arc[arc.size() - 1]
-			var back := Vector2.from_angle(deg_to_rad(35.0)).orthogonal()
-			UiIcons._stroke(canvas, [end + back.rotated(0.75) * 4.6 * unit, end, end + back.rotated(-0.75) * 4.6 * unit], ink, width)
-		"remove":
-			# The pane goes down into the ground.
-			UiIcons._stroke(canvas, [Vector2(-4.5, 7.0) * unit, Vector2(-4.5, 1.5) * unit, Vector2(4.5, 1.5) * unit, Vector2(4.5, 7.0) * unit], ink, width)
-			UiIcons._stroke(canvas, [Vector2(-9.0, 7.0) * unit, Vector2(9.0, 7.0) * unit], ink, width)
-			UiIcons._stroke(canvas, [Vector2(-3.6, -8.5) * unit, Vector2(0.0, -4.9) * unit, Vector2(3.6, -8.5) * unit], ink, width)
-
-## A line with a head at each end.
-func _draw_arrows(canvas: Control, direction: Vector2, reach: float, ink: Color, width: float) -> void:
-	UiIcons._stroke(canvas, [-direction * reach, direction * reach], ink, width)
-	for end: float in [-1.0, 1.0]:
-		var tip := direction * reach * end
-		var back := -direction * end * reach * 0.42
-		UiIcons._stroke(canvas, [tip + back.rotated(0.65), tip, tip + back.rotated(-0.65)], ink, width)
+			UiIcons._stroke(canvas, UiIcons._arc(Vector2.ZERO, 8.6 * unit, Vector2.ONE, -60.0, 240.0), pale, width)
+		"lift":
+			UiIcons._stroke(canvas, [Vector2(0.0, -10.0) * unit, Vector2(0.0, 10.0) * unit], pale, width)
+		"undo":
+			# The usual hook back to the left, with a soft, round head.
+			var hook := PackedVector2Array([Vector2(-5.0, -3.0) * unit, Vector2(2.5, -3.0) * unit])
+			hook.append_array(UiIcons._arc(Vector2(2.5, 1.5) * unit, 4.5 * unit, Vector2.ONE, -90.0, 90.0))
+			hook.append(Vector2(-3.0, 6.0) * unit)
+			UiIcons._stroke(canvas, hook, ink, width)
+			var head := PackedVector2Array([Vector2(-8.6, -3.0) * unit, Vector2(-4.8, -6.2) * unit, Vector2(-4.8, 0.2) * unit])
+			canvas.draw_colored_polygon(head, ink)
+			UiIcons._stroke(canvas, [head[0], head[1], head[2], head[0]], ink, width)
+	if kind in KNOBS:
+		canvas.draw_circle(Vector2.ZERO, 2.7 * unit, ink, true, -1.0, true)
