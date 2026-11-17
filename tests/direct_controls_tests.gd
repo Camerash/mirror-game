@@ -160,6 +160,7 @@ func run() -> void:
 	await check_tap_through_glass()
 	await check_arrow()
 	await check_blocked_goes_back()
+	await check_first_raise_follows_her_look()
 	await check_hover_ghost()
 	await check_camera_stays()
 	await check_keyboard()
@@ -343,6 +344,28 @@ func check_arrow() -> void:
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Arrow: the tutorial keeps the mirror upright")
 
 
+func check_first_raise_follows_her_look() -> void:
+	## The first raise of a stage stands the mirror half a unit in front of
+	## her, with its copy side the way she looks. With no walk, she looks the
+	## stage's starting way.
+	await load_stage("01_route")
+	await press_mirror_button()
+	check(bool(game.mirror.get("enabled", false)) and MirrorRules.normal(game.mirror).is_equal_approx(Vector3.RIGHT),
+		"First raise: with no walk, the mirror is across the stage's starting way")
+	await load_stage("01_route")
+	var walked: bool = game.request_walk(game.walker.position + Vector3.BACK * 0.25)
+	for index: int in 900:
+		if game.walker.route.is_empty():
+			break
+		await process_frame
+	await frames(20)
+	var feet: Vector3 = game.walker.position
+	await press_mirror_button()
+	var ahead: float = (game.mirror["pivot"] as Vector3).z - feet.z if game.mirror.has("pivot") else -1.0
+	check(walked and bool(game.mirror.get("enabled", false)) and MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK) and ahead > 0.0 and ahead <= 0.75,
+		"First raise: after a walk, the mirror is in front of her, across the way she looks")
+
+
 func check_blocked_goes_back() -> void:
 	## Standing beside the wall in "First steps", turning the mirror to copy
 	## the wall onto the traveller is blocked, so the mirror stays as it was.
@@ -354,6 +377,9 @@ func check_blocked_goes_back() -> void:
 		await process_frame
 	await frames(3)
 	check(walked and game.walker.position.distance_to(Vector3(4, 0, -1)) < 0.25, "Blocked: the traveller stands beside the wall")
+	# The first raise stands the mirror across the way she looks. This check
+	# needs it across the stage's starting way, so she looks that way.
+	game.walker.character_visual.rotation.y = PI * 0.5
 	# The stage itself leaves the mirror out; this rule check puts it back.
 	game.level["mirror_available"] = true
 	game._refresh()

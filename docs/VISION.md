@@ -371,7 +371,11 @@ styles and words.
   little below the stage for each window size; more ease in the change
   between the mirror button and the bar. After the second play: the bar
   nearer the bottom of the screen, between the stage and the bottom, and the
-  control (mirror button, bar, knobs) larger.
+  control (mirror button, bar, knobs) larger. After the third play: the size
+  and the place are "correct now".
+- DECIDED (owner, 2026-11-17), built: the mirror, when it is raised for the
+  first time on a stage, stands in front of the girl, in the direction she
+  looks.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

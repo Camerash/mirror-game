@@ -324,6 +324,7 @@ func load_level(index: int) -> bool:
 	phase = "play"
 	dragging = false
 	walker.restore(Geometry.vector(level["start"]), Vector3.ZERO)
+	_face_stage()
 	_commit_world()
 	trial_lighting.set_place(str(level.get("light", "")))
 	trial_lighting.set_floor(float(level.get("kill_y", -5.0)), Geometry.total_bounds(world.drawn_solids).position.y)
@@ -455,6 +456,20 @@ func _lean_camera(afar: float) -> void:
 	Motion.blend(self, func(weight: float) -> void:
 		camera.afar = lerpf(start, afar, weight)
 		camera.refresh(), "transition")
+
+## At the start of a stage she looks the stage's starting way, so a mirror
+## that is raised before she walks stands across that way. She turns to it
+## when she arrives from the stage before.
+func _face_stage() -> void:
+	var visual := walker.character_visual
+	var way := MirrorRules.normal(level["mirror"])
+	if visual == null or Vector2(way.x, way.z).length() < 0.5:
+		return
+	var turn := visual.rotation.y + angle_difference(visual.rotation.y, atan2(way.x, way.z))
+	if _loading_via_sweep:
+		create_tween().tween_property(visual, "rotation:y", turn, 0.3)
+	else:
+		visual.rotation.y = turn
 
 func _start_advance_pause() -> void:
 	walker.stop()
@@ -597,7 +612,7 @@ func _mirror_available() -> bool:
 
 ## The mirror button. Lowering keeps the mirror's place, so raising it again
 ## puts it back. The first raise of a stage stands it just in front of the
-## traveller, facing the stage's starting direction.
+## traveller, across the way she looks (owner, 2026-11-17).
 func toggle_mirror() -> void:
 	if not can_toggle_mirror():
 		return
@@ -645,6 +660,11 @@ func _hold_up_hand_mirror() -> void:
 
 func _direct_fresh_mirror() -> Dictionary:
 	var fresh := MirrorRules.normalized(level["mirror"])
+	var visual := walker.character_visual
+	if visual != null:
+		# Her look goes to the nearest ground axis: the copy side faces it.
+		var look := Vector3(sin(visual.rotation.y), 0.0, cos(visual.rotation.y))
+		fresh = MirrorRules.faced(fresh, Vector3(signf(look.x), 0.0, 0.0) if absf(look.x) >= absf(look.z) else Vector3(0.0, 0.0, signf(look.z)))
 	var normal := MirrorRules.normal(fresh)
 	var axis := normal.abs().max_axis_index()
 	var feet := walker.position
@@ -1593,12 +1613,13 @@ func _floor_point(point: Vector2) -> Variant:
 	return target
 
 ## A walk that ends on the goal's tile ends on the goal, so a tap anywhere on
-## that tile finishes the stage, not only one near the ring's centre.
+## that tile finishes the stage, not only one near the ring's centre. A tap
+## too near an edge for her feet goes to the nearest place she can stand on.
 func _walk_target(target: Vector3) -> Vector3:
 	var goal := Geometry.vector(level["goal"])
 	if absf(target.x - goal.x) < 0.5 and absf(target.z - goal.z) < 0.5 and absf(target.y - goal.y) < 0.3:
 		return goal
-	return target
+	return navigation.nearest_walkable(target)
 
 ## On desktop, the way to the pointer shows faintly before a click. A place
 ## with no way to it shows nothing.

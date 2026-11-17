@@ -9,6 +9,18 @@ static func run(check: Callable) -> void:
 	_test_gap(check)
 	_test_diagonal_corner(check)
 	_test_narrow_corridor(check)
+	_test_nearest_walkable(check)
+
+static func _test_nearest_walkable(check: Callable) -> void:
+	var world := _world([AABB(Vector3(-1, -1, -1), Vector3(2, 1, 2))])
+	var graph := WalkGraph.new()
+	graph.rebuild(world)
+	for tap: Vector3 in [Vector3(0.98, 0, 0), Vector3(0, 0, -0.9), Vector3(-0.98, 0, 0.98)]:
+		var place := graph.nearest_walkable(tap)
+		check.call(not Geometry.walkable(tap, world) and Geometry.walkable(place, world) and place.distance_to(tap) < 0.3,
+			"A target too near an edge goes to the nearest place to stand: %s" % tap)
+	check.call(graph.nearest_walkable(Vector3(0.3, 0, 0.2)).is_equal_approx(Vector3(0.3, 0, 0.2)), "A target with room for her feet stays where it is")
+	check.call(graph.nearest_walkable(Vector3(1.6, 0, 0)).is_equal_approx(Vector3(1.6, 0, 0)), "A target off the floor stays where it is, and has no route")
 
 static func _test_clear_diagonal(check: Callable) -> void:
 	var world := _world([AABB(Vector3(-3, -1, -3), Vector3(6, 1, 6))])

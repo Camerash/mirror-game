@@ -56,6 +56,27 @@ func route(start: Vector3, target: Vector3) -> PackedVector3Array:
 	path.append(target)
 	return _surface_route(_simplify(path))
 
+## The walkable point nearest to `target`, no further than her own width from
+## it. A tap near an edge or a wall is not a place she can stand on, because
+## her feet need room; it means the nearest place that is.
+func nearest_walkable(target: Vector3) -> Vector3:
+	if Geometry.walkable(target, solids):
+		return target
+	var reach := Geometry.RADIUS * 1.6
+	for ring: int in range(1, 7):
+		var best := target
+		var best_distance := INF
+		for step: int in 16:
+			var offset := Vector2.from_angle(TAU * step / 16.0) * reach * ring / 6.0
+			for point: Vector3 in Queries.floor_points(target.x + offset.x, target.z + offset.y, solids):
+				var distance := point.distance_to(target)
+				if distance < best_distance and absf(point.y - target.y) <= reach and Geometry.walkable(point, solids):
+					best = point
+					best_distance = distance
+		if best_distance < INF:
+			return best
+	return target
+
 func _closest_visible(point: Vector3) -> int:
 	var closest := -1
 	var closest_distance := INF

@@ -80,7 +80,7 @@ func advance_motion(delta: float) -> void:
 	move_and_slide()
 	grounded = is_on_floor()
 	if character_visual != null:
-		character_visual.update_motion(delta, velocity, grounded, false)
+		character_visual.update_motion(delta, velocity, grounded, false, _remaining())
 	if was_walking and route.is_empty():
 		route_finished.emit()
 

@@ -65,6 +65,7 @@ screen; a round mirror button opens into the bar; a rose button lowers the
 mirror. The owner played round one: "works great", with three corrections
 (slower, more rigid knobs, the bar below the stage), then two more (the bar
 nearer the bottom, the control larger); they are in.
+The owner then said that the size and the place are correct.
 Not in Git: `git apply test-output/polish/pill-proof-sketch.patch` (alone;
 `game.gd`, `world/mirror_arrow.gd`, `ui/mirror_hud.gd`). Key F gives the
 earlier controls; key G changes how the move knob reads the finger. Rules
@@ -74,6 +75,11 @@ on the glass fail. The first sketch (grips on the frame) is
 The owner's working tree can have a sketch applied; do not reset it.
 Attention to detail is now a rule (`docs/VISION.md`, "Rules for every
 moment").
+
+**Three refinements (2026-11-17), in the branch code:** the first raise of
+the mirror is in front of her, across the way she looks; a tap too near an
+edge walks to the nearest place she can stand on; the Walk starts and stops
+on a passing pose, so her legs do not snap. See `VALIDATION.md`.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,

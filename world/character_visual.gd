@@ -28,6 +28,21 @@ const WALK_SCALE_MIN := 0.2
 const MOVING_SPEED := 0.05
 ## Seconds to cross-fade between motions.
 const BLEND_TIME := 0.18
+## The Walk's two passing poses, as parts of its length: her feet are side by
+## side, so these are its poses nearest to standing. The Walk starts on one,
+## and she arrives on one, so no leg slides to or from a full stride.
+const PASSING := 0.25
+const PASSING_EVERY := 0.5
+## Over this last distance of a route the Walk plays a little faster or
+## slower, within these limits, so that she arrives on a passing pose. The
+## limits are wide for a walk of less than one step; a longer walk uses a
+## small part of them.
+const ARRIVE_DISTANCE := 0.5
+const ARRIVE_RATE_MIN := 0.35
+const ARRIVE_RATE_MAX := 2.0
+## While she settles from the Walk into Idle, the player runs this slowly: a
+## fading Walk at full speed takes half a stride on the spot.
+const SETTLE_SCALE := 0.05
 ## The longest step the animation is advanced by. A long frame gap is cut
 ## rather than paid back as one lurch.
 const MAX_STEP := 0.1
@@ -55,6 +70,8 @@ var holding := false
 var frozen := false
 ## A figure no walker drives (her sister in the glass) runs its own clock.
 var self_driven := false
+## Seconds left of the settle from the Walk into Idle.
+var _settle := 0.0
 ## Her meshes and materials, tuned once for the game's light and shared by
 ## every figure of her.
 static var _lit_meshes := {}
@@ -86,7 +103,8 @@ func _process(delta: float) -> void:
 		update_motion(delta, Vector3.ZERO, true, false)
 
 
-func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused: bool) -> void:
+## `remaining` is the ground distance left on her route, when she has one.
+func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused: bool, remaining := INF) -> void:
 	if is_paused:
 		# The game holds her still while it edits or tells a story beat, but
 		# an action she was given (waking, lifting, raising) plays on.
@@ -113,9 +131,36 @@ func update_motion(delta: float, movement: Vector3, is_grounded: bool, is_paused
 	if action == "":
 		var wanted := WALK if moving else IDLE
 		if player.current_animation != wanted and player.has_animation(wanted):
-			player.play(wanted, BLEND_TIME)
-		player.speed_scale = clampf(planar_speed / WALK_SPEED, WALK_SCALE_MIN, 2.0) if moving else 1.0
+			# A cross-fade runs at the player's speed, so its time is given in
+			# the player's seconds to take BLEND_TIME on the clock.
+			if moving:
+				player.speed_scale = clampf(planar_speed / WALK_SPEED, WALK_SCALE_MIN, 2.0)
+				player.play(WALK, BLEND_TIME * player.speed_scale)
+				player.seek(PASSING * player.current_animation_length, false)
+				_settle = 0.0
+			else:
+				player.speed_scale = SETTLE_SCALE
+				player.play(IDLE, BLEND_TIME * SETTLE_SCALE)
+				_settle = BLEND_TIME
+		if moving:
+			player.speed_scale = clampf(planar_speed / WALK_SPEED, WALK_SCALE_MIN, 2.0) * _arrival_rate(remaining)
+		elif _settle > 0.0:
+			_settle -= step
+		else:
+			player.speed_scale = 1.0
 	player.advance(step)
+
+
+## How much faster or slower the Walk plays so that she arrives on a passing
+## pose. The correction is spread over the distance left.
+func _arrival_rate(remaining: float) -> float:
+	if remaining <= 0.001 or remaining > ARRIVE_DISTANCE or player.current_animation != WALK:
+		return 1.0
+	var length := player.current_animation_length
+	var cycles := remaining / (WALK_SPEED * length)
+	var arrival := player.current_animation_position / length + cycles
+	var miss := PASSING - fposmod(arrival, PASSING_EVERY)
+	return clampf(1.0 + miss / cycles, ARRIVE_RATE_MIN, ARRIVE_RATE_MAX)
 
 
 func reset_motion() -> void:
@@ -124,6 +169,7 @@ func reset_motion() -> void:
 	action = ""
 	holding = false
 	frozen = false
+	_settle = 0.0
 	_stand()
 
 
@@ -137,6 +183,7 @@ func play_action(name: String) -> void:
 	frozen = false
 	holding = false
 	action = name
+	_settle = 0.0
 	player.speed_scale = 1.0
 	player.play(name, BLEND_TIME)
 
