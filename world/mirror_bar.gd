@@ -39,7 +39,23 @@ const KNOB := 29.0
 const SPACING := 70.0
 const BUTTON := 33.0
 const REMOVE := 23.0
-const OPEN_SECONDS := 0.85
+## A damped spring moves the open amount and the Undo button. Damping ratio
+## 0.7 and natural frequency 12 rad/s give an overshoot of about 4.6 percent.
+const SPRING_STIFFNESS := 144.0
+const SPRING_DAMPING := 16.8
+const SPRING_STEP := 1.0 / 120.0
+## The spring is at rest when the distance and the speed are below these.
+const SPRING_REST_DISTANCE := 0.003
+const SPRING_REST_SPEED := 0.03
+## The seconds for a press to grow and to go back, and for the hold amount to
+## rise and to fall.
+const PRESS_IN_SECONDS := 0.12
+const PRESS_OUT_SECONDS := 0.2
+const HOLD_IN_SECONDS := 0.18
+const HOLD_OUT_SECONDS := 0.25
+## The opacity that the other controls and the glass keep while a knob is held.
+const HOLD_OTHERS_ALPHA := 0.2
+const HOLD_GLASS_ALPHA := 0.3
 ## How far a held knob moves toward the drag, and the drag that takes it to
 ## about two thirds of that: the resistance grows near the limit.
 const PULL_LIMIT := 6.0
@@ -54,6 +70,7 @@ shader_type canvas_item;
 uniform sampler2D screen : hint_screen_texture, repeat_disable, filter_linear_mipmap;
 uniform vec2 size = vec2(200.0, 100.0);
 uniform vec2 half_size = vec2(80.0, 30.0);
+uniform float fade = 1.0;
 
 float capsule(vec2 p, out vec2 normal) {
 	float r = half_size.y;
@@ -81,7 +98,7 @@ void fragment() {
 	vec2 unused;
 	float below = capsule(p - vec2(0.0, 6.0), unused);
 	float shadow = (1.0 - smoothstep(-8.0, 18.0, below)) * 0.20 * (1.0 - inside);
-	COLOR = vec4(mix(vec3(0.10, 0.13, 0.16), colour, inside), max(inside, shadow));
+	COLOR = vec4(mix(vec3(0.10, 0.13, 0.16), colour, inside), max(inside, shadow) * fade);
 }
 """
 ## Set by the game each frame: whether the bar shows, where its centre is,
@@ -95,6 +112,7 @@ var _hint_time := 0.0
 ## Whether there is a change to take back. The game sets it each frame.
 var can_undo := false
 var _undo_shown := 0.0
+var _undo_velocity := 0.0
 var centre := Vector2.ZERO
 var can_toggle := false
 var _grip := ""
@@ -107,6 +125,11 @@ var _grip_pitch := 0.0
 var _tilt_sign := 1.0
 ## 0 is the mirror button, 1 is the open bar.
 var _open := 0.0
+var _open_velocity := 0.0
+## 0 is rest, 1 is a knob held and started. It fades the other controls.
+var _hold := 0.0
+## The press growth of each button, from 0 to 1.
+var _presses := {"mirror": 0.0, "move": 0.0, "turn": 0.0, "lift": 0.0, "undo": 0.0, "remove": 0.0}
 var _pull := Vector2.ZERO
 var _pull_velocity := Vector2.ZERO
 var _pull_knob := ""
@@ -202,9 +225,20 @@ func _yaw() -> float:
 func _pitch() -> float:
 	return float(Rules.normalized(_state)["pitch"])
 
+## The open amount that the drawing uses. It can pass 1 or 0 a little.
 func _eased() -> float:
-	# Slow at each end, so the button opens and closes quietly.
-	return _open * _open * _open * (_open * (_open * 6.0 - 15.0) + 10.0)
+	return _open
+
+## One step of a damped spring. Returns the new value and speed. It snaps to
+## the target when both are very small.
+func _spring(value: float, velocity: float, target: float, delta: float) -> Vector2:
+	var steps := ceili(minf(delta, 0.1) / SPRING_STEP)
+	for step: int in steps:
+		velocity += (SPRING_STIFFNESS * (target - value) - SPRING_DAMPING * velocity) * delta / steps
+		value += velocity * delta / steps
+	if absf(target - value) < SPRING_REST_DISTANCE and absf(velocity) < SPRING_REST_SPEED:
+		return Vector2(target, 0.0)
+	return Vector2(value, velocity)
 
 func _half_width(open: float) -> float:
 	return lerpf(BUTTON + 6.0, SPACING + KNOB + 10.0, open)
@@ -321,12 +355,14 @@ func _process(delta: float) -> void:
 	if not drawn:
 		return
 	var before := _open
-	_open = move_toward(_open, 1.0 if _available else 0.0, delta / OPEN_SECONDS)
+	var spring := _spring(_open, _open_velocity, 1.0 if _available else 0.0, delta)
+	_open = spring.x
+	_open_velocity = spring.y
 	if not _queued.is_empty():
 		_run_queued()
 	elif _grip in KNOBS and not _started:
 		_start_knob()
-	var moving := not is_equal_approx(before, _open) or _tick > 0.0
+	var moving := not is_equal_approx(before, _open) or _open_velocity != 0.0 or _tick > 0.0
 	if _grip in KNOBS:
 		var drag := _grip_point - _grip_press
 		var target := Vector2.ZERO
@@ -344,17 +380,32 @@ func _process(delta: float) -> void:
 		_pull = Vector2.ZERO
 	_tick = move_toward(_tick, 0.0, delta / 0.2)
 	var undo_before := _undo_shown
-	_undo_shown = move_toward(_undo_shown, 1.0 if can_undo else 0.0, delta / 0.3)
-	if not is_equal_approx(undo_before, _undo_shown):
+	spring = _spring(_undo_shown, _undo_velocity, 1.0 if can_undo else 0.0, delta)
+	_undo_shown = spring.x
+	_undo_velocity = spring.y
+	if not is_equal_approx(undo_before, _undo_shown) or _undo_velocity != 0.0:
 		moving = true
+	var hold_before := _hold
+	var holding := _grip in KNOBS and _started
+	_hold = move_toward(_hold, 1.0 if holding else 0.0, delta / (HOLD_IN_SECONDS if holding else HOLD_OUT_SECONDS))
+	if _hold != hold_before:
+		moving = true
+	for kind: String in _presses:
+		var pressed := _grip == kind
+		var press_before: float = _presses[kind]
+		_presses[kind] = move_toward(press_before, 1.0 if pressed else 0.0, delta / (PRESS_IN_SECONDS if pressed else PRESS_OUT_SECONDS))
+		if _presses[kind] != press_before:
+			moving = true
 	if not hint.is_empty():
 		_hint_time += delta
 		moving = true
-	var half := Vector2(_half_width(_eased()), HALF_HEIGHT)
+	# The pill may pass its two ends a little, but never gets narrower than round.
+	var half := Vector2(maxf(_half_width(_eased()), HALF_HEIGHT), HALF_HEIGHT)
 	_glass.size = (half + Vector2(30.0, 30.0)) * 2.0
 	_glass.position = centre + _pull * 0.15 - _glass.size * 0.5
 	_glass_material.set_shader_parameter("size", _glass.size)
 	_glass_material.set_shader_parameter("half_size", half)
+	_glass_material.set_shader_parameter("fade", lerpf(1.0, HOLD_GLASS_ALPHA, smoothstep(0.0, 1.0, _hold)))
 	if moving:
 		_overlay.queue_redraw()
 
@@ -363,30 +414,37 @@ func _draw_bar(canvas: Control) -> void:
 		return
 	var open := _eased()
 	var middle := centre + _pull * 0.15
-	var holding := _grip in KNOBS
+	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold))
 	for index: int in [0, 2, 1]:
 		var kind := KNOBS[index]
 		var alpha := 1.0 if index == 1 else smoothstep(0.1, 0.7, open)
 		if alpha <= 0.01:
 			continue
-		if holding and _grip != kind:
-			alpha *= 0.78
+		if _grip != kind:
+			alpha *= dim
 		var held := _grip == kind or (index == 1 and _grip == "mirror")
+		var press: float = maxf(_presses[kind], _presses["mirror"]) if index == 1 else _presses[kind]
 		var radius := lerpf(BUTTON, KNOB, open) if index == 1 else KNOB
 		_set_ceramic(canvas, middle + Vector2((index - 1) * SPACING * open, 0.0), radius, CERAMIC, alpha,
-			_pull if _pull_knob == kind else Vector2.ZERO, held, _tick if held else 0.0)
+			_pull if _pull_knob == kind else Vector2.ZERO, press, _tick if held else 0.0)
 		if index == 1 and open < 0.5:
-			_draw_mark(canvas, "mirror", radius, Color(INK, 1.0 - smoothstep(0.0, 0.45, open)))
+			_draw_mark(canvas, "mirror", radius, Color(INK, (1.0 - smoothstep(0.0, 0.45, open)) * alpha))
 		else:
 			_draw_mark(canvas, kind, radius, Color(INK, alpha * (smoothstep(0.55, 1.0, open) if index == 1 else 1.0)))
-	var out := smoothstep(0.55, 1.0, open)
+	# The remove button comes out of the bar's right end with the spring. It is
+	# clear while it starts, so it does not pop.
+	var out := clampf(smoothstep(0.4, 0.9, open), 0.0, 1.0) * dim
 	if out > 0.01:
 		var from := centre + Vector2(_half_width(open) - REMOVE, 0.0)
-		_set_ceramic(canvas, from.lerp(_remove_point(), out), REMOVE, ROSE, out * (0.78 if holding else 1.0), Vector2.ZERO, _grip == "remove", 0.0)
+		var slide := maxf((open - 0.4) / 0.6, 0.0)
+		_set_ceramic(canvas, from.lerp(_remove_point(), slide), REMOVE, ROSE, out, Vector2.ZERO, _presses["remove"], 0.0)
 		_draw_mark(canvas, "remove", REMOVE, Color(ROSE_INK, out))
-	if _undo_shown > 0.01:
-		_set_ceramic(canvas, _undo_point(), REMOVE, CERAMIC, _undo_shown * (0.78 if holding else 1.0), Vector2.ZERO, _grip == "undo", 0.0)
-		_draw_mark(canvas, "undo", REMOVE, Color(INK, _undo_shown))
+	var undo_alpha := clampf(_undo_shown, 0.0, 1.0) * dim
+	if undo_alpha > 0.01:
+		# The Undo button grows in with the spring and may pass its size a little.
+		var undo_radius := REMOVE * maxf(lerpf(0.7, 1.0, _undo_shown), 0.0)
+		_set_ceramic(canvas, _undo_point(), undo_radius, CERAMIC, undo_alpha, Vector2.ZERO, _presses["undo"], 0.0)
+		_draw_mark(canvas, "undo", undo_radius, Color(INK, undo_alpha))
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_hint(canvas, open)
 
@@ -439,16 +497,17 @@ func _draw_hint(canvas: Control, open: float) -> void:
 ## Draws one opaque round button, as glazed ceramic, and leaves the canvas
 ## in the button's frame for its mark. `pull` moves the button toward a drag
 ## and makes it longer that way.
-func _set_ceramic(canvas: Control, at: Vector2, radius: float, colour: Color, alpha: float, pull: Vector2, pressed: bool, pulse: float) -> void:
+func _set_ceramic(canvas: Control, at: Vector2, radius: float, colour: Color, alpha: float, pull: Vector2, press: float, pulse: float) -> void:
 	var amount := clampf(pull.length() / PULL_LIMIT, 0.0, 1.0)
 	var angle := pull.angle() if amount > 0.001 else 0.0
-	var grow := 1.0 + (0.03 if pressed else 0.0) + 0.04 * pulse
+	var grow := 1.0 + 0.03 * smoothstep(0.0, 1.0, press) + 0.04 * pulse
 	var matrix := Transform2D(angle, Vector2.ZERO) * Transform2D.IDENTITY.scaled(Vector2(1.0 + 0.06 * amount, 1.0 - 0.025 * amount) * grow) * Transform2D(-angle, Vector2.ZERO)
 	matrix.origin = at + pull
 	canvas.draw_set_transform_matrix(matrix)
 	for layer: int in 4:
 		canvas.draw_circle(Vector2(0.0, 2.0 + layer * 1.2), radius + layer * 1.3, Color(0.10, 0.13, 0.16, 0.055 * alpha), true, -1.0, true)
-	var body := Color(1.0, 1.0, 1.0) if pressed and colour == CERAMIC else (colour.lightened(0.08) if pressed else colour)
+	var lift := smoothstep(0.0, 1.0, press)
+	var body := colour.lerp(Color(1.0, 1.0, 1.0), lift) if colour == CERAMIC else colour.lightened(0.08 * lift)
 	canvas.draw_circle(Vector2.ZERO, radius, Color(body.darkened(0.08), alpha), true, -1.0, true)
 	canvas.draw_circle(Vector2(0.0, -radius * 0.07), radius * 0.94, Color(body, alpha), true, -1.0, true)
 	canvas.draw_circle(Vector2(-radius * 0.28, -radius * 0.44), radius * 0.2, Color(1.0, 1.0, 1.0, 0.5 * alpha), true, -1.0, true)

@@ -15,6 +15,11 @@ owner chose it over the blue still-water look, and chose mirror glass for
 the copy ("Yes, build it"). The rules are in `docs/art/STYLE.md`; the proof
 is in `VALIDATION.md`. The still-water rules for the surface still stand.
 
+- Since 2026-11-18: a stone is always its whole source stone, cut by planes
+  in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
+  one world pivot (`StageCamera.turn`); the bar has a fixed row
+  (`MirrorHud.get_bar_centre`) and moves on a spring (`world/mirror_bar.gd`);
+  the garden carries snow (`world/garden.gdshader`).
 - One colour script, `pale` (`world/trial_lighting.gd`): dark slate water
   that goes into mist. `"light"` in a level file can name another script
   when one exists; none does now.

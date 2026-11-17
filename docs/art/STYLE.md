@@ -59,6 +59,15 @@ wet, dark foot. Stands of dry reed mace stand in the water near the place.
 Absolutes (the ground that stays) carry a dark bronze-green band. The owner
 wants the block itself redesigned to fit the story; it need not stay a cube.
 
+**A stone keeps its shape when the mirror cuts it** (owner's report,
+2026-11-18). Each part of a cut stone, and each copy, is the whole stone of
+its source, cut flat where the mirror or a side of its pane cuts it
+(`world/world_view.gd`, `cuts` in `world/stone.gdshader`). A part never gets
+a plinth, a cap or a corner of its own, so nothing changes its look while
+the mirror moves. A stone is drawn 0.1% smaller than its box (`SHRINK`), so
+two stones that touch have no wall in one plane and a closed cut does not
+flicker.
+
 **The copy is mirror glass.** A mirror copy is the same shape as its
 source, seen in glass: a grey-blue body in the colours of the water and the
 sky. It keeps the light and dark of the stone, so each panel, crack and lip
@@ -76,9 +85,12 @@ Behind the walls its ground is lost in the mist. Its rules:
 
 - It is far and in the mist: pale, and paler the further it stands behind
   the place. It has its own soft light, the same from each view.
-- No top in it is light, and no thing in it shows a wide flat top that
-  could be ground: a wall hides the beds of the kitchen garden. At least 6
-  units of open water lie between it and the stones.
+- Soft snow lies on what faces the sky: the roofs, the tops of the walls,
+  the sills and the branches (owner, 2026-11-18). It is in the mist and
+  less bright than the snow of the place.
+- No thing in it shows a wide flat top that could be ground: a wall hides
+  the beds of the kitchen garden. At least 6 units of open water lie
+  between it and the stones.
 - The water shows no image of it. A pale image along the foot of a wall
   reads as a ledge to walk on (independent review, 2026-11-17).
 - A side that would stand between the view and the place is away. It
@@ -88,9 +100,10 @@ Behind the walls its ground is lost in the mist. Its rules:
 - The lit window is the one warm light of a place. It is soft through the
   mist and lies on the water in front of the house. It must not be
   stronger than the goal.
-- In a tall frame the place sits below the middle of the play area, where
-  there is free room, and the garden stands in the room above it. In a wide
-  frame the garden shows only at the top edge.
+- In a tall frame the mirror bar is high (its centre at 78% of the play
+  area's height), so a slide from a knob has room below it, and the place
+  sits toward the middle of the frame (owner, 2026-11-18). The garden then
+  shows only at the top of the frame, as it does in a wide frame.
 
 ## Colours shared by every script
 

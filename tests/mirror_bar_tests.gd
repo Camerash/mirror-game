@@ -43,6 +43,14 @@ func bar_at(open: float) -> void:
 		await process_frame
 
 
+## Waits until a value from `read` equals `target` exactly, for up to 4 s.
+func until_exact(read: Callable, target: float) -> bool:
+	var deadline := Time.get_ticks_msec() + 4000
+	while read.call() != target and Time.get_ticks_msec() < deadline:
+		await process_frame
+	return read.call() == target
+
+
 func button(point: Vector2, pressed: bool) -> void:
 	var event := InputEventMouseButton.new()
 	event.position = point
@@ -131,11 +139,23 @@ func check_bar(size: Vector2i) -> void:
 	check(game.bar._remove_point().x + game.bar.REMOVE <= game.play_rect.end.x, "%s: the remove button is inside the play area" % label)
 
 	# The mirror button opens into the bar.
+	# A press grows the button smoothly: not full on the first frame.
 	button(centre, true)
-	await frames(2)
+	await process_frame
+	var first: float = game.bar._presses["mirror"]
+	check(first < 1.0, "%s: a press does not give the full growth on the first frame" % label)
+	check(await until_exact(func() -> float: return game.bar._presses["mirror"], 1.0), "%s: a held press comes to the full growth" % label)
 	button(centre, false)
+	# The spring passes 1 a little while the bar opens, then rests at 1.
+	var peak := 0.0
+	var deadline := Time.get_ticks_msec() + 4000
+	while (game.bar._open != 1.0 or peak == 0.0) and Time.get_ticks_msec() < deadline:
+		await process_frame
+		peak = maxf(peak, game.bar._open)
+	check(peak > 1.0 and peak <= 1.08, "%s: the opening passes 1 a little (peak %.4f)" % [label, peak])
+	check(game.bar._open == 1.0, "%s: the opening rests at exactly 1" % label)
+	check(await until_exact(func() -> float: return game.bar._presses["mirror"], 0.0), "%s: the press growth goes back after the release" % label)
 	await settled()
-	await bar_at(1.0)
 	await frames(2)
 	check(bool(game.mirror.get("enabled", false)), "%s: the mirror button raises the mirror" % label)
 	check(is_equal_approx(game.bar._open, 1.0), "%s: the bar is open" % label)
@@ -148,6 +168,15 @@ func check_bar(size: Vector2i) -> void:
 	button(game.camera.unproject_position(pivot), false)
 	await settled()
 	await frames(30)
+	game.walker.route.clear()
+
+	# A held knob fades the others and the glass, and they recover.
+	button(knob(0), true)
+	check(await until_exact(func() -> float: return game.bar._hold, 1.0), "%s: the hold amount comes to 1 while a knob is held" % label)
+	button(knob(0), false)
+	check(await until_exact(func() -> float: return game.bar._hold, 0.0), "%s: the hold amount goes back to 0 after the release" % label)
+	await settled()
+	await frames(20)
 	game.walker.route.clear()
 
 	# The move knob: one drag that changes both ground axes.
@@ -226,6 +255,10 @@ func check_bar(size: Vector2i) -> void:
 	await frames(20)
 	check(is_equal_approx(degrees("yaw"), yaw) and is_equal_approx(degrees("pitch"), pitch), "%s: Undo takes the turns back" % label)
 
+	# The Undo button rests at exactly 0 or 1.
+	var undo_rest := await until_exact(func() -> float: return game.bar._undo_shown, 1.0 if game.bar.can_undo else 0.0)
+	check(undo_rest, "%s: the Undo button amount rests at exactly 0 or 1" % label)
+
 	# The remove button lowers the mirror, and the bar closes.
 	var remove: Vector2 = game.bar._remove_point()
 	button(remove, true)
@@ -235,5 +268,7 @@ func check_bar(size: Vector2i) -> void:
 	await bar_at(0.0)
 	check(not bool(game.mirror.get("enabled", false)), "%s: the remove button lowers the mirror" % label)
 	check(is_zero_approx(game.bar._open), "%s: the bar is the mirror button again" % label)
+	# `bar_at` can stop on the frame in which the spring goes through 0.
+	check(await until_exact(func() -> float: return game.bar._open, 0.0), "%s: the closing rests at exactly 0" % label)
 	game.queue_free()
 	await frames(2)

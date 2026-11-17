@@ -375,7 +375,25 @@ func _test_fixtures_and_layout() -> void:
 			var mesh_node: MeshInstance3D = game.world.visual_root.get_child(solid_index)
 			var body: StaticBody3D = game.world.collision_root.get_child(solid_index)
 			var shape: CollisionShape3D = body.get_child(0)
-			_check(mesh_node.mesh.size.is_equal_approx(shape.shape.size) and mesh_node.position.is_equal_approx(body.position), "Visible and collision box agree")
+			# A stone is drawn as its whole source, cut by planes to the fragment.
+			var solid: Dictionary = game.solids[solid_index]
+			# A copy's source is in its mirrored place.
+			var source: AABB = solid.get("source_bounds", solid["bounds"])
+			var place: Transform3D = solid.get("material_to_world", Transform3D(Basis.IDENTITY, source.get_center()))
+			var drawn := place * AABB(-source.size * 0.5, source.size)
+			_check(mesh_node.mesh.size.is_equal_approx(source.size) and mesh_node.position.is_equal_approx(drawn.get_center()), "A stone is drawn as its whole source, in the source's place")
+			var material := mesh_node.material_override as ShaderMaterial
+			var cuts: PackedVector4Array = material.get_shader_parameter("cuts")
+			for cut_index: int in int(material.get_shader_parameter("cut_count")):
+				var cut := cuts[cut_index]
+				var axis := Vector3(cut.x, cut.y, cut.z).abs().max_axis_index()
+				if cut[axis] > 0.0:
+					drawn.size[axis] = minf(drawn.end[axis], cut.w) - drawn.position[axis]
+				else:
+					var low := maxf(drawn.position[axis], -cut.w)
+					drawn.size[axis] = drawn.end[axis] - low
+					drawn.position[axis] = low
+			_check(drawn.is_equal_approx(AABB(body.position - shape.shape.size * 0.5, shape.shape.size)), "Visible and collision box agree")
 	# A stage with prompts, so the "?" control is visible for the touch-size
 	# and in-window checks below; the last fixture loaded above has none.
 	_check(game.load_level(Game.PUZZLE_PATHS.find("res://levels/13_first_steps.json")), "A tutorial stage with prompts loads for the layout checks")

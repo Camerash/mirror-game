@@ -10,9 +10,11 @@ render_mode diffuse_lambert, cull_disabled;
 //   kind 2, an absolute: stone bound by a band of bronze under green patina.
 
 uniform int kind = 0;
-uniform bool polygon_surface = false;
-uniform vec3 box_centre;
-uniform vec3 box_size = vec3(1.0);
+// The planes (normal, distance) that cut this fragment out of its whole
+// source stone: what lies past one of them is not there. The mirror's plane
+// and the sides of its pane make them (`world/world_view.gd`).
+uniform vec4 cuts[12];
+uniform int cut_count = 0;
 uniform vec3 source_size = vec3(1.0);
 // The source box's centre in the world: the pattern runs on through
 // neighbouring blocks, and a copy keeps its source's pattern.
@@ -39,7 +41,7 @@ uniform vec3 pane_light : source_color = vec3(0.80, 0.91, 1.0);
 varying vec3 world_position;
 varying vec3 world_normal;
 // The box face a vertex of a shaped stone belongs to (`world/stone_mesh.gd`);
-// zero on a plain box and on a cut fragment.
+// zero on a plain box.
 varying vec3 box_face;
 
 float hash(vec3 p) {
@@ -100,6 +102,11 @@ void fragment() {
 	if (clip_plane.xyz != vec3(0.0) && dot(clip_plane.xyz, world_position) > clip_plane.w) {
 		discard;
 	}
+	for (int index = 0; index < cut_count; index++) {
+		if (dot(cuts[index].xyz, world_position) > cuts[index].w) {
+			discard;
+		}
+	}
 	// How near this point is to the moving edge of a change: 1 at the edge.
 	float reveal_edge = 0.0;
 	if (reveal_plane.xyz != vec3(0.0)) {
@@ -111,29 +118,35 @@ void fragment() {
 		}
 		reveal_edge = 1.0 - smoothstep(0.0, 0.07, inside);
 	}
-	// A block is a shell. Where a cut opens it, the eye sees the inside of
+	// A stone is a shell. Where a cut opens it, the eye sees the inside of
 	// the shell. Each such point is drawn as the point of the cut in front of
-	// it, so the block shows a closed, flat cut and never its inside.
-	// ponytail: the cut keeps the depth of the far side, so a thing inside
-	// the block can show on it. To write the cut's depth, first test that
-	// the point of the cut is inside the block.
+	// it: the place where the line of sight goes into what is left of the
+	// stone. So the stone shows a closed, flat cut with the outline of its
+	// own shape, and never its inside.
+	// The cut keeps the depth of the far side of the shell, so a near face of
+	// the same stone still hides it. A stone is drawn a hair smaller than its
+	// box (`world/world_view.gd`), so the wall of the stone beside it is behind
+	// that far side and does not show on the cut.
 	vec3 at = world_position;
 	vec3 flat_normal = world_normal;
 	bool capped = false;
 	bool cover_cap = false;
 	if (!FRONT_FACING) {
 		vec3 ray = PROJECTION_MATRIX[3][3] > 0.5 ? -INV_VIEW_MATRIX[2].xyz : normalize(world_position - CAMERA_POSITION_WORLD);
-		for (int index = 0; index < 2 && !capped; index++) {
-			vec4 cut = index == 0 ? reveal_plane : clip_plane;
-			vec4 other = index == 0 ? clip_plane : reveal_plane;
+		float nearest = -1.0e9;
+		for (int index = -2; index < cut_count; index++) {
+			vec4 cut = index == -2 ? reveal_plane : (index == -1 ? clip_plane : cuts[index]);
 			float toward = dot(cut.xyz, ray);
 			if (cut.xyz != vec3(0.0) && toward < -0.001) {
-				vec3 hit = world_position + ray * ((cut.w - dot(cut.xyz, world_position)) / toward);
-				if (other.xyz == vec3(0.0) || dot(other.xyz, hit) <= other.w + 0.001) {
-					at = hit;
+				// How far back along the line of sight this plane is. The
+				// sight goes in through the plane that is the least far back.
+				float back = (cut.w - dot(cut.xyz, world_position)) / toward;
+				if (back > nearest) {
+					nearest = back;
+					at = world_position + ray * back;
 					flat_normal = cut.xyz;
 					capped = true;
-					cover_cap = index == 0;
+					cover_cap = index == -2;
 				}
 			}
 		}
@@ -157,7 +170,7 @@ void fragment() {
 	vec3 source_plane_distance = abs(abs(source_position) - half_source);
 	float source_boundary = dot(source_plane_distance, face);
 	// A face the mirror cut, or the inside of a clipped block, shows bare stone.
-	bool cut_face = (polygon_surface && COLOR.g > 0.5) || (!shaped && source_boundary > 0.003) || !FRONT_FACING;
+	bool cut_face = (!shaped && source_boundary > 0.003) || !FRONT_FACING;
 	bool top_face = source_normal.y > 0.72;
 	bool side_face = face.y < 0.72;
 	vec3 place = source_position + seed;

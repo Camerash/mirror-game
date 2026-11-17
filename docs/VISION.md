@@ -311,6 +311,14 @@ styles and words.
   (the garden round the pond, the pale palette, the copy in the original's
   look). It is only a proof: the background needs more work. See
   `VALIDATION.md`.
+- DECIDED (owner, 2026-11-18, built): soft snow lies on the garden's roofs,
+  walls and trees. The mirror bar and the place are higher in a tall frame,
+  so the place is nearer the middle and a slide has room below the bar. The
+  bar does not move while the view turns. The bar's changes are smooth, with
+  a very small overshoot, and the other controls fade while a knob is held.
+- OPEN (owner, 2026-11-18, to discuss): new icons of simple lines that show
+  each action; a sign of the mirror's freedom that is tied to the held knob;
+  a direct drag on the mirror in place of the move knob.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The

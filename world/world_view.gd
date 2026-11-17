@@ -2,6 +2,12 @@ class_name MirrorWorldView
 extends Node3D
 
 const Queries := preload("res://core/solid_queries.gd")
+const Polygons := preload("res://core/display_geometry.gd")
+## The most planes that can cut one fragment out of its source: the five of
+## the mirror's column, and the six of one absolute, with one to spare. It is
+## the size of `cuts` in `stone.gdshader`.
+const MAX_CUTS := 12
+const SHRINK := 0.999
 const BlockSet := preload("res://world/block_set.gd")
 const DropShadowShader := preload("res://world/drop_shadow.gdshader")
 ## Gaps under a block smaller than this count as resting on the surface.
@@ -117,9 +123,8 @@ func draw_world(solids: Array[Dictionary]) -> void:
 		if reshaped:
 			_sweep_ghost(instance, sweep, slot.get("copy", false))
 		var swept: bool = not sweep.is_empty() and (reshaped or not shown_before.has(key)) and (copy or not sweep["rising"])
-		if slot["mesh_signature"] != mesh_signature:
-			_apply_mesh(instance, solid)
-			slot["mesh_signature"] = mesh_signature
+		_apply_mesh(instance, solid)
+		slot["mesh_signature"] = mesh_signature
 		_configure_material(slot, solid)
 		if not sweep.is_empty():
 			if swept:
@@ -281,44 +286,50 @@ func _fragment_key(solid: Dictionary, occurrences: Dictionary) -> String:
 func _mesh_signature(solid: Dictionary) -> String:
 	return str(solid.get("faces", [])) if solid.has("faces") else str(solid["bounds"])
 
+## Each fragment is its whole source stone, drawn in the source's place (a
+## copy: mirrored) and cut by the shader to the fragment (`_cuts`). So a stone
+## keeps its shape and its look when the mirror cuts it, and when it is whole
+## again.
 func _apply_mesh(instance: MeshInstance3D, solid: Dictionary) -> void:
-	if solid.has("faces") and not solid["faces"].is_empty():
-		instance.mesh = _polygon_mesh(solid["faces"], solid)
-		instance.position = Vector3.ZERO
-		return
 	var bounds: AABB = solid["bounds"]
-	if StoneMesh.fits(bounds.size):
-		instance.mesh = StoneMesh.of(bounds.size)
+	var source: AABB = solid.get("source_bounds", bounds)
+	if StoneMesh.fits(source.size):
+		instance.mesh = StoneMesh.of(source.size)
 	else:
 		var mesh := BoxMesh.new()
-		mesh.size = bounds.size
+		mesh.size = source.size
 		instance.mesh = mesh
-	instance.position = bounds.get_center()
+	var place: Transform3D = solid.get("material_to_world", Transform3D(Basis.IDENTITY, source.get_center()))
+	# A copy's place is a mirror image. A stone is the same on each side of
+	# its middle, so the copy is drawn turned and not mirrored: the renderer
+	# gives a mirrored instance its faces the wrong way round.
+	if place.basis.determinant() < 0.0:
+		place.basis *= Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
+	# A hair smaller than the box. Two stones that touch then have no wall in
+	# one plane, so the closed cut of one (`stone.gdshader`) does not flicker
+	# with the wall of the other. The gap is far below one pixel.
+	place.basis = place.basis.scaled_local(Vector3.ONE * SHRINK)
+	instance.transform = place
 
-func _polygon_mesh(faces: Array, solid: Dictionary = {}) -> ArrayMesh:
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+## The planes (normal, distance) that cut `solid` out of its whole source:
+## one for each face of the fragment that is not a face of the source.
+func _cuts(solid: Dictionary) -> PackedVector4Array:
+	var cuts := PackedVector4Array()
+	var faces: Array = solid["faces"] if solid.has("faces") and not solid["faces"].is_empty() else Polygons.box_faces(solid["bounds"])
+	var inside: Vector3 = (solid["bounds"] as AABB).get_center()
 	for polygon: PackedVector3Array in faces:
-		if polygon.size() < 3:
+		if polygon.size() < 3 or not _is_cut_face(polygon, solid):
 			continue
-		var normal := (polygon[1] - polygon[0]).cross(polygon[2] - polygon[0]).normalized()
-		var centre := Vector3.ZERO
-		for point: Vector3 in polygon:
-			centre += point
-		centre /= polygon.size()
-		var cut := 1.0 if _is_cut_face(polygon, solid) else 0.0
-		var boundary_distance := _polygon_boundary_distance(centre, polygon)
-		for index: int in polygon.size():
-			tool.set_normal(normal)
-			tool.set_color(Color(boundary_distance, cut, 0.0))
-			tool.add_vertex(centre)
-			tool.set_normal(normal)
-			tool.set_color(Color(0.0, cut, 0.0))
-			tool.add_vertex(polygon[(index + 1) % polygon.size()])
-			tool.set_normal(normal)
-			tool.set_color(Color(0.0, cut, 0.0))
-			tool.add_vertex(polygon[index])
-	return tool.commit()
+		var plane := Plane(polygon[0], polygon[1], polygon[2])
+		if plane.distance_to(inside) > 0.0:
+			plane = -plane
+		var cut := Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.d)
+		if not cuts.has(cut):
+			cuts.append(cut)
+	if cuts.size() > MAX_CUTS:
+		push_warning("A fragment of %s has %d cuts; only %d are drawn." % [solid.get("id", "a solid"), cuts.size(), MAX_CUTS])
+	cuts.resize(MAX_CUTS)
+	return cuts
 
 func _is_cut_face(polygon: PackedVector3Array, solid: Dictionary) -> bool:
 	if not solid.has("source_bounds"):
@@ -337,16 +348,6 @@ func _is_cut_face(polygon: PackedVector3Array, solid: Dictionary) -> bool:
 				return false
 	return true
 
-func _polygon_boundary_distance(point: Vector3, polygon: PackedVector3Array) -> float:
-	var distance := INF
-	for index: int in polygon.size():
-		var start := polygon[index]
-		var finish := polygon[(index + 1) % polygon.size()]
-		var edge := finish - start
-		var fraction := clampf((point - start).dot(edge) / edge.length_squared(), 0.0, 1.0)
-		distance = minf(distance, point.distance_to(start.lerp(finish, fraction)))
-	return distance
-
 func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	var bounds: AABB = solid["bounds"]
 	var style: String = str(solid["kind"])
@@ -354,9 +355,9 @@ func _configure_material(slot: Dictionary, solid: Dictionary) -> void:
 	if slot["style"] != style:
 		BlockSet.configure(material, style)
 		slot["style"] = style
-	material.set_shader_parameter("polygon_surface", solid.has("faces") and not solid["faces"].is_empty())
-	material.set_shader_parameter("box_centre", bounds.get_center())
-	material.set_shader_parameter("box_size", bounds.size)
+	var cuts := _cuts(solid)
+	material.set_shader_parameter("cuts", cuts)
+	material.set_shader_parameter("cut_count", MAX_CUTS - cuts.count(Vector4()))
 	var source: AABB = solid.get("source_bounds", bounds)
 	material.set_shader_parameter("source_size", source.size)
 	material.set_shader_parameter("seed", source.get_center())

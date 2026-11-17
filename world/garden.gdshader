@@ -6,9 +6,12 @@ render_mode unshaded;
 //
 // The garden is far, in the mist: a thing is paler the further it stands
 // behind the place, by the same rule as the far water (`world/ice.gdshader`).
-// It carries its own soft light, which is the same from each view, and no
-// top is light: only ground she can stand on is. The water shows no image
-// of it: a pale image along the foot of a wall reads as a ledge.
+// It carries its own soft light, which is the same from each view. Soft snow
+// lies on each thing that faces the sky: the roofs, the tops of the walls and
+// the branches (owner, 2026-11-18). The garden has no flat top, and its snow
+// is in the mist and less bright than the snow of the place, so it is not
+// taken for ground. The water shows no image of the garden: a pale image
+// along the foot of a wall reads as a ledge.
 
 uniform vec3 mist : source_color = vec3(0.80, 0.82, 0.82);
 uniform vec3 lamp : source_color = vec3(1.0, 0.71, 0.40);
@@ -17,6 +20,9 @@ uniform float water_level = -100.0;
 // stand between the view and the place. Between the two, the side shows
 // through a fine screen.
 instance uniform float shown = 1.0;
+
+// The snow of the garden, a little below the snow of the place.
+const vec3 SNOW = vec3(0.80, 0.83, 0.87);
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -42,12 +48,14 @@ void fragment() {
 	// A soft light from the upper left of the view keeps each face in shape.
 	vec3 seen = normalize((VIEW_MATRIX * vec4(world_normal, 0.0)).xyz);
 	bare *= 0.84 + 0.16 * dot(seen, vec3(-0.48, 0.52, 0.71));
-	// A top is darker than a side, and the foot is wet and dark where it
-	// stands in the water.
-	float top = smoothstep(0.6, 0.9, world_normal.y);
-	bare *= 1.0 - top * 0.42;
+	// The foot is wet and dark where it stands in the water.
 	bare *= 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.35, lift));
-	vec3 colour = mix(bare, mist, veil * (1.0 - top * 0.25));
+	// Snow on what faces the sky, in soft drifts. It is thin on a steep face.
+	float drift = sin(world_position.x * 1.3 + world_position.z * 1.9) * sin(world_position.x * 0.8 - world_position.z * 2.3 + world_position.y);
+	float snow = smoothstep(0.12, 0.5, world_normal.y + drift * 0.06);
+	bare = mix(bare, SNOW * (0.94 + 0.06 * drift) * (0.9 + 0.1 * dot(seen, vec3(-0.48, 0.52, 0.71))), snow);
+	// The snow keeps a little more of itself in the mist than the walls do.
+	vec3 colour = mix(bare, mist, veil * (1.0 - snow * 0.18));
 	if (COLOR.a < 0.25) {
 		// The lit window: warm, and soft through the mist.
 		colour = mix(lamp, mist, 0.3 + veil * 0.45);
