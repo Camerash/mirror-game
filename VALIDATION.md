@@ -1,7 +1,15 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: three refinements from the owner's play — 2026-11-17
+# Latest check: the walk has no ease — 2026-11-17
+
+- Why: the owner said that there must be no ease to and from a stop, because people start and stop a walk abruptly.
+- Change, in the branch code: `world/walker.gd` has no `EASE_IN`, `EASE_OUT`, `MIN_PACE` or `pace`; she is at 1.1 units each second from her first step to her last. The Walk still starts and ends on a passing pose (the entry below).
+- Checked in the engine (the scratch script of the entry below, 49 checks, no failure, with the sketch on): ten walks from 0.07 to 1.5 units start with the feet side by side and arrive with a stride below 0.03 units (it was below 0.06 with the ease, because the slow last stretch is gone); no foot moves more than 0.007 units in a frame after the stop.
+- Tests on a clean copy with the fixes and without the sketch, no failure: `run_tests` 693, `direct_controls_tests` 125, `level_solvability_tests` 68, `small_fix_tests` 58, `step_tests` 20, `app_flow_tests` 88, `goal_tests` 9, `prompt_tests` 84, `sound_tests` 38.
+- Not checked: play by a person; the other test files were not run again.
+
+# Earlier check: three refinements from the owner's play — 2026-11-17
 
 - Why: the owner said the size and the place of the pill bar are correct, and gave three refinements. (1) The mirror, when it is raised for the first time, must be in front of the girl, in the direction she looks. (2) A tap to walk near the edge of a platform gives the cross; the owner's guess was that the target has no room for her size. (3) The change between walking and standing is strange; it seems to snap back to standing.
 - Causes. (1) The first raise used the stage's starting direction, not her look. (2) The guess is correct: a walk target needs room for her feet (a square of 0.18 units each way), and a tap nearer to an edge than that was refused. (3) Measured frame by frame (a scratch probe that reads her foot bones): at the stop, the Walk that fades out went on at full speed for 0.18 s, so her feet changed places on the spot (0.029 units in one frame); and the Walk started on its pose with the legs fully apart, so her legs opened before she moved.

@@ -21,8 +21,8 @@ const HOLDS: Array[String] = ["Raise", "Lift"]
 ## The ground speed the Walk is authored for: `MirrorWalker.SPEED`. At this
 ## speed her planted foot moves with the ground, so it does not slide.
 const WALK_SPEED := 1.1
-## The slowest the Walk plays. Below `MirrorWalker.MIN_PACE` / `WALK_SPEED`
-## (0.23) so easing in and out never clamps it and her feet do not slide.
+## The slowest the Walk plays: her last frame before a route point can be
+## shorter than a full step of her pace.
 const WALK_SCALE_MIN := 0.2
 ## Below this the character is standing, not walking.
 const MOVING_SPEED := 0.05

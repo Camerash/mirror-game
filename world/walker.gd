@@ -3,15 +3,11 @@ extends CharacterBody3D
 
 const Geometry := preload("res://core/world_geometry.gd")
 const CharacterVisual := preload("res://world/character_visual.gd")
-## Her top pace: a child's careful walk in snow. Her Walk animation is
-## authored for this speed (`CharacterVisual.WALK_SPEED`), so her feet hold.
+## Her pace: a child's careful walk in snow. Her Walk animation is authored
+## for this speed (`CharacterVisual.WALK_SPEED`), so her feet hold. She is at
+## this pace from her first step to her last, with no ease to or from a stop
+## (owner, 2026-11-17: that is how people walk).
 const SPEED := 1.1
-## Seconds from standing to full pace.
-const EASE_IN := 0.35
-## Over this last stretch of a route she slows into her final step.
-const EASE_OUT := 0.4
-## The slowest she goes before she stops, so the last step always arrives.
-const MIN_PACE := 0.25
 const GRAVITY := 9.8
 signal route_finished
 
@@ -19,8 +15,6 @@ var build_visuals := true
 var grounded := false
 var paused := false
 var route := PackedVector3Array()
-## Her current walking speed; eased toward the pace the route allows.
-var pace := 0.0
 var character_visual: CharacterVisual
 
 func _ready() -> void:
@@ -66,15 +60,10 @@ func advance_motion(delta: float) -> void:
 		velocity.z = 0.0
 	while not route.is_empty() and Vector2(position.x, position.z).distance_to(Vector2(route[0].x, route[0].z)) < 0.025:
 		route.remove_at(0)
-	if route.is_empty():
-		pace = 0.0
-	else:
+	if not route.is_empty():
 		var offset := route[0] - position
 		offset.y = 0.0
-		# Ease in from a stand, and slow over the last stretch of the route.
-		var wanted := SPEED * clampf(_remaining() / EASE_OUT, 0.0, 1.0)
-		pace = move_toward(pace, maxf(wanted, MIN_PACE), SPEED / EASE_IN * delta)
-		var movement := offset.normalized() * minf(pace, offset.length() / delta)
+		var movement := offset.normalized() * minf(SPEED, offset.length() / delta)
 		velocity.x = movement.x
 		velocity.z = movement.z
 	move_and_slide()
@@ -95,7 +84,6 @@ func _remaining() -> float:
 	return total
 
 func stop() -> void:
-	pace = 0.0
 	route.clear()
 	velocity.x = 0.0
 	velocity.z = 0.0
@@ -104,7 +92,6 @@ func restore(feet: Vector3, saved_velocity: Vector3) -> void:
 	grounded = false
 	position = feet
 	velocity = saved_velocity
-	pace = 0.0
 	route.clear()
 	visible = true
 	scale = Vector3.ONE

@@ -113,8 +113,10 @@ sky; a tap anywhere and the camera sinks down into the first place, with no
 cut and no menu. Sound: wind, one piano note on the tap. Today: a pale veil
 with a button.
 
-**Walking.** Feeling: careful and small, a child in snow. Motion: she eases
-in and out; short steps; footprints in the snow that slowly fill. The way she
+**Walking.** Feeling: careful and small, a child in snow. Motion: she
+starts and stops at once, with no ease, because that is how people walk
+(owner, 2026-11-17, built; this replaces "she eases in and out"); short
+steps; footprints in the snow that slowly fill. The way she
 would walk shows as soft light on the ground, not a line. Sound: soft steps
 that change with the ground. Today: a ring, a capsule glide and a thin line.
 
@@ -250,9 +252,16 @@ styles and words.
   things: her urge to find her sister, who is drowning, and that she picks
   up a mirror, which she thinks her sister possibly left. Not built; the
   owner starts this work.
-- OPEN (from the entry above): the owner's word is "drowning". The spine in
-  "Story and telling" says that she believes her sister has died. How the
-  two fit is for the owner to decide when the start stage is made again.
+- DECIDED (owner, 2026-11-17), the meaning of "drowning" in the entry
+  above: when she wakes up, she thinks that her sister is lost to the lake
+  and is drowning at this moment (the owner put a question mark on the
+  word). She thus starts a journey to find her missing sister, on the
+  assumption that her sister possibly survived. This agrees with the spine
+  in "Story and telling": she goes through the puzzles in the hope to save
+  her sister.
+- DECIDED (owner, 2026-11-17, built): when she arrives at a new stage, she
+  turns to the stage's starting direction. The owner had no concern either
+  way and asked the agent, who recommended to keep the turn.
 - OPEN: what the player has learned and wants by minute five.
 
 ## Art reference

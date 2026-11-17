@@ -79,7 +79,8 @@ moment").
 **Three refinements (2026-11-17), in the branch code:** the first raise of
 the mirror is in front of her, across the way she looks; a tap too near an
 edge walks to the nearest place she can stand on; the Walk starts and stops
-on a passing pose, so her legs do not snap. See `VALIDATION.md`.
+on a passing pose, so her legs do not snap; she walks with no ease to or
+from a stop (owner). See `VALIDATION.md`.
 
 **Set aside until the world is agreed:** the proposal "the light lies on
 the water" (`test-output/polish/portrait-light-sketch.patch`,
