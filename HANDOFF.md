@@ -131,8 +131,11 @@ Enough, The Other Way, Side by Side).
 
 **On hold: the first scene.** The pond story place (`levels/00_pond.json`,
 `world/prologue.gd`, `docs/briefs/the-pond.md`) gives away too much story.
-Agreed direction: an empty, slow opening that explains nothing. Do not build
-on the pond until the owner resumes it.
+The owner (2026-11-17): it is also poorly choreographed and will be made
+again, later. Direction: she only wakes up; nothing is explained; she shows
+her urge to find her drowning sister and picks up a mirror that her sister
+possibly left (`docs/VISION.md`, "First five minutes"). Do not build on the
+pond until the owner resumes it.
 
 ## What the game is
 

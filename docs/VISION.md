@@ -243,6 +243,16 @@ styles and words.
   place seen from afar, and a tap begins.
 - DECIDED (2026-10-30): by minute five, one glimpse of the sister in the
   mirror, then she is gone.
+- DECIDED (owner, 2026-11-17): the start stage as it is now is too explicit
+  and its choreography is poor. It will be made again, later. The direction:
+  the girl only wakes up, and the scene explains nothing. The story is
+  uncovered while the player plays. In the start stage she shows only two
+  things: her urge to find her sister, who is drowning, and that she picks
+  up a mirror, which she thinks her sister possibly left. Not built; the
+  owner starts this work.
+- OPEN (from the entry above): the owner's word is "drowning". The spine in
+  "Story and telling" says that she believes her sister has died. How the
+  two fit is for the owner to decide when the start stage is made again.
 - OPEN: what the player has learned and wants by minute five.
 
 ## Art reference
