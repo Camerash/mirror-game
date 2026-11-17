@@ -12,7 +12,6 @@ const IceShader := preload("res://world/ice.gdshader")
 ## something to stand on; she walks too high above the water to show in it.
 const MIRRORED_LAYER := 1 << 10
 const IMAGE_SCALE := 0.5
-const MAX_POOLS := 6
 const MAX_RINGS := 4
 ## A thing this far above the water does not disturb it.
 const RING_HEIGHT := 2.5
@@ -20,8 +19,12 @@ const EXTENT := 600.0
 
 ## The stage camera to mirror.
 var camera: Camera3D
-## Returns the copies' lights as an array of Vector4 (place, strength).
-var glows := Callable()
+## The one warm light that lies on the water, from the garden's lit window:
+## its place and, in w, its strength.
+var lamp := Vector4():
+	set(value):
+		lamp = value
+		material.set_shader_parameter("lamp", value)
 var height := -2.8
 var plane := MeshInstance3D.new()
 var material := ShaderMaterial.new()
@@ -60,8 +63,8 @@ func set_palette(colors: Dictionary) -> void:
 	material.set_shader_parameter("near_color", colors["ice_near"])
 	material.set_shader_parameter("mid_color", colors["ice_mid"])
 	material.set_shader_parameter("far_color", colors["ice_far"])
-	material.set_shader_parameter("pool_color", colors["glow"])
 	material.set_shader_parameter("sun_color", colors["sun"])
+	material.set_shader_parameter("lamp_color", colors["lamp"])
 	_sun_from = colors["sun_from"]
 
 ## Something at `at` disturbs the water: a ring spreads from the point below
@@ -79,14 +82,6 @@ func _process(delta: float) -> void:
 	_time += delta
 	material.set_shader_parameter("ice_time", _time)
 	follow()
-	var pools := PackedVector4Array()
-	if glows.is_valid():
-		for glow: Vector4 in glows.call():
-			if pools.size() < MAX_POOLS:
-				pools.append(glow)
-	material.set_shader_parameter("pool_count", pools.size())
-	pools.resize(MAX_POOLS)
-	material.set_shader_parameter("pools", pools)
 
 ## Puts the mirror camera where the stage camera's image in the ice is.
 func follow() -> void:

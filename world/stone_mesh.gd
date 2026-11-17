@@ -1,14 +1,14 @@
 class_name StoneMesh
 extends ArrayMesh
 ## The shape of a whole garden stone: a pedestal (a plinth, a rounder shaft
-## and a cap slab) under a cover (snow, or moss on a copy) that rolls out over its edge.
+## and a cap slab) under a cover (snow) that rolls out over its edge.
 ## The top stays flat, at the box's height and inside its outline, so the
 ## walkable edge is where the grid says. The roll overhangs by `OVERHANG`.
 ##
 ## `CUSTOM0` carries the direction of the box face each vertex belongs to, so
 ## `stone.gdshader` paints a rounded stone by the same rules as a plain box.
 
-## The corner radius of the snow or moss cover, and how far it rolls out past
+## The corner radius of the snow cover, and how far it rolls out past
 ## the box and hangs down.
 const COVER_WORN := 0.07
 const OVERHANG := 0.06

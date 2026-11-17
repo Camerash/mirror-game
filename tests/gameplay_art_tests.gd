@@ -3,6 +3,7 @@ extends SceneTree
 const Game := preload("res://game.gd")
 const Display := preload("res://core/display_geometry.gd")
 const Queries := preload("res://core/solid_queries.gd")
+const Geometry := preload("res://core/world_geometry.gd")
 const Frame := preload("res://world/mirror_frame.gd")
 const WorldView := preload("res://world/world_view.gd")
 var checks := 0
@@ -16,6 +17,12 @@ func _find_solid(solids: Array[Dictionary], kind: String, id: String) -> Diction
 		if solid.get("kind") == kind and solid.get("id") == id:
 			return solid
 	return {}
+
+func _garden(game: Node) -> GardenBackdrop:
+	for child: Node in game.props.get_children():
+		if child is GardenBackdrop:
+			return child
+	return null
 
 func check(value: bool, message: String) -> void:
 	checks += 1
@@ -93,6 +100,16 @@ func _run() -> void:
 		var path: String = Game.LEVEL_PATHS[index]
 		check(game.load_level(index), "Level loads: %s" % path)
 		check(game.walker.character_visual != null, "She shows on every stage: %s" % path)
+		var garden := _garden(game)
+		check((garden != null) != game.level.has("story"), "The garden stands round every place but the story's: %s" % path)
+		if garden != null:
+			# The swing is the nearest thing: it hangs 1.8 units over the water.
+			var low: Array = game.level["limits"]["min"]
+			var high: Array = game.level["limits"]["max"]
+			var pond := AABB(Vector3(low[0], -100.0, low[2]), Vector3(float(high[0]) - float(low[0]), 200.0, float(high[2]) - float(low[2])))
+			pond = pond.merge(Geometry.total_bounds(game.world.drawn_solids)).grow(GardenBackdrop.CLEAR - 2.5)
+			check(not garden._sides.any(func(side: MeshInstance3D) -> bool: return pond.intersects(side.global_transform * side.mesh.get_aabb())),
+				"Open water lies between the place and the garden: %s" % path)
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/12_block_gallery.json"))
 	var whole_original := _find_solid(game.solids, "original", "whole")
 	check(whole_original.has("bounds") and (whole_original["bounds"] as AABB).size.is_equal_approx((whole_original["source_bounds"] as AABB).size),
@@ -108,6 +125,31 @@ func _run() -> void:
 		"Block gallery: a reflected block is cut smaller than its source size at the aperture edge")
 	var absolute_solid := _find_solid(game.solids, "absolute", "goal")
 	check(absolute_solid.has("bounds"), "Block gallery: the jade goal platform is present")
+	# In a tall frame the place sits low, and stays inside the play area.
+	root.size = Vector2i(390, 844)
+	for tick: int in 4:
+		await process_frame
+	game.camera.refresh()
+	var area: Rect2 = game.camera.play_rect
+	var lowest := -INF
+	var highest := INF
+	for point: Vector3 in game.camera._shown(game.camera.bounds, game.camera.points):
+		var seen: Vector2 = game.camera.unproject_position(point)
+		lowest = maxf(lowest, seen.y)
+		highest = minf(highest, seen.y)
+	check(lowest <= area.end.y + 0.5 and (lowest + highest) * 0.5 > area.get_center().y + 20.0,
+		"In a tall frame the place sits below the middle of the play area and inside it")
+	# The first view looks from +x and +z: the house (-z) and the gate wall
+	# (-x) stand behind the place, and the other two sides would cover it.
+	var garden := _garden(game)
+	var shown := garden._sides.map(func(side: MeshInstance3D) -> bool: return side.visible)
+	check(shown == [true, true, false, false] and is_equal_approx(game.ice.lamp.w, 1.0), "Only the sides of the garden behind the place show, and the window lights the water")
+	game.camera.yaw += PI
+	game.camera.refresh()
+	shown = garden._sides.map(func(side: MeshInstance3D) -> bool: return side.visible)
+	check(shown == [false, false, true, true] and is_zero_approx(game.ice.lamp.w), "The garden follows the view, and a hidden window gives no light")
+	game.camera.yaw -= PI
+	game.camera.refresh()
 	frame.queue_free()
 	game.queue_free()
 	await process_frame

@@ -9,7 +9,7 @@ render_mode unshaded, fog_disabled;
 //     ripples, and gone with height (the image arrives darkened by height);
 //   its own motion: a slow swell, rings where a drop falls or where
 //     something disturbs the water (`rings_made`), and the sun's path;
-//   warm light from each summer copy.
+//   the warm light of the garden's lit window.
 // All of it lies in the world, so it turns with the view; only the sun
 // keeps its bearing. It takes no light and no shadow: a shadow on the water
 // reads as a stone under it.
@@ -18,13 +18,13 @@ uniform sampler2D reflection : source_color, filter_linear, repeat_disable;
 uniform vec3 near_color : source_color = vec3(0.15, 0.16, 0.31);
 uniform vec3 mid_color : source_color = vec3(0.50, 0.50, 0.74);
 uniform vec3 far_color : source_color = vec3(0.95, 0.71, 0.66);
-uniform vec3 pool_color : source_color = vec3(1.0, 0.79, 0.50);
 uniform vec3 sun_color : source_color = vec3(1.0, 0.77, 0.64);
+// The one warm light that lies on the water, from the garden's lit window:
+// its place in the world (xyz) and its strength (w).
+uniform vec4 lamp = vec4(0.0);
+uniform vec3 lamp_color : source_color = vec3(1.0, 0.71, 0.40);
 // How much of the water the image of the place covers.
 uniform float mirror = 0.6;
-// Each pool: the light's place in the world (xyz) and its strength (w).
-uniform vec4 pools[6];
-uniform int pool_count = 0;
 // Each ring something made: its place (x, z), when it began (`ice_time`) and
 // its strength.
 uniform vec4 rings_made[4];
@@ -127,13 +127,18 @@ void fragment() {
 	float sun_spread = pow(1.0 - smoothstep(0.0, 1.15, length(from_sun)), 1.7) * 0.66;
 	vec3 colour = mix(mid_color, far_color, sun_spread);
 	colour = mix(colour, near_color, smoothstep(0.30, 0.95, depth) * (1.0 - sun_spread * 0.5));
+	// Mist lies on the far water, so the water ends in air and the far side
+	// of the pond rises out of it.
+	float along_view = dot(plain - NODE_POSITION_WORLD.xz, view_forward);
+	colour = mix(colour, far_color, smoothstep(7.0, 20.0, along_view) * 0.94);
 
 	// The low sun, and its path of light down the water: the swell breaks
 	// it into short bright lines of many sizes.
 	float off_sun = bearing - sun_bearing;
 	float halo = exp(-(off_sun * off_sun * 3.2 + depth * depth * 16.0));
 	float core = exp(-(off_sun * off_sun * 34.0 + depth * depth * 48.0));
-	colour += sun_color * (halo * 0.16 + core * 0.7);
+	// The sun is behind the mist: its place on the water is faint.
+	colour += sun_color * (halo * 0.05 + core * 0.2);
 	float spread = 0.045 + depth * 0.10;
 	float path = exp(-(off_sun * off_sun) / (spread * spread)) * (1.0 - smoothstep(0.10, 0.80, depth));
 	vec2 lines_at = vec2(across, dot(plain, view_forward) * 2.6);
@@ -154,24 +159,19 @@ void fragment() {
 		+ texture(reflection, at + vec2(0.0, soft.y)) + texture(reflection, at - vec2(0.0, soft.y))) * 0.15;
 	float streak = 0.72 + 0.28 * smoothstep(0.15, 0.75, noise(vec2(across * 0.9, depth * 38.0 - ice_time * 0.3)));
 	float cover = image.a * smoothstep(0.0, 0.07, max(image.r, max(image.g, image.b))) * mirror * streak;
-	colour = mix(colour, image.rgb * mix(vec3(1.0), colour * 1.6, 0.5) * 0.55, cover);
+	colour = mix(colour, image.rgb * mix(vec3(1.0), colour * 1.6, 0.5) * 0.8, cover);
 	colour += sun_color * glitter * 0.42 * (1.0 - cover * 0.7);
 	// A thin light line lies on the crest of each ring.
 	colour += (colour * 0.5 + mix(mid_color, far_color, 0.4) * 0.07) * rings.z;
 
-	// Warm light from each summer copy lies on the water below it. The light
-	// of a copy high above the water does not reach it. The light breathes.
-	float breath = 0.92 + 0.08 * sin(ice_time * 2.6) * (0.55 + 0.45 * sin(ice_time * 0.9 + 1.0));
-	for (int index = 0; index < pool_count; index++) {
-		float lift = max(pools[index].y - world_position.y, 0.0);
-		float distance_to = length(plain + slope * 0.08 - pools[index].xz) / (1.35 + lift * 0.4);
-		float warm = pools[index].w * breath * 0.55 * exp(-lift * lift * 0.6);
-		colour += pool_color * warm * (exp(-distance_to * distance_to * 3.2) * 1.2 + exp(-distance_to * distance_to * 0.8) * 0.24) * (1.0 - cover * 0.55);
-	}
+	// The light of the garden's window lies on the water in front of it.
+	vec2 from_lamp = plain + slope * 0.08 - lamp.xz;
+	float lamp_reach = dot(from_lamp, from_lamp);
+	colour += lamp_color * lamp.w * (exp(-lamp_reach * 1.76) * 0.46 + exp(-lamp_reach * 0.44) * 0.10) * (1.0 - cover * 0.55);
 
 	// The corners fall away, so the eye stays on the place.
 	vec2 from_centre = (SCREEN_UV - vec2(0.5, 0.46)) * vec2(1.0, 0.86);
-	colour *= 1.0 - smoothstep(0.30, 0.86, length(from_centre)) * 0.42;
+	colour *= 1.0 - smoothstep(0.30, 0.86, length(from_centre)) * 0.20;
 
 	// A little grain keeps the dark water from showing steps of colour.
 	colour += (hash(FRAGCOORD.xy) - 0.5) * 0.006;

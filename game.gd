@@ -273,7 +273,6 @@ func _setup_scene() -> void:
 	camera.far = 100.0
 	add_child(trial_lighting)
 	ice.camera = camera
-	ice.glows = world.copy_glows
 	add_child(ice)
 	snowfall.camera = camera
 	add_child(snowfall)
@@ -331,7 +330,6 @@ func load_level(index: int) -> bool:
 	_commit_world()
 	trial_lighting.set_place(str(level.get("light", "")))
 	trial_lighting.set_floor(float(level.get("kill_y", -5.0)), Geometry.total_bounds(world.drawn_solids).position.y)
-	world.glow_color = trial_lighting.palette()["glow"]
 	ice.height = trial_lighting.floor_height
 	sheet.sheet_material.set_shader_parameter("water_level", trial_lighting.floor_height)
 	world.ice_height = trial_lighting.floor_height
@@ -346,8 +344,10 @@ func load_level(index: int) -> bool:
 	add_child(props)
 	props.build(level.get("props", []))
 	if not level.has("story"):
-		# The pond round the place leaves with it, like its props.
+		# The pond round the place, and the garden round the pond, leave with
+		# it, like its props.
 		props.add_child(PondScenery.build(level["limits"], trial_lighting.floor_height, str(level.get("title", "")), trial_lighting.palette()["haze"]))
+		props.add_child(GardenBackdrop.build(level["limits"], Geometry.total_bounds(world.drawn_solids), trial_lighting.floor_height, trial_lighting.palette(), camera, ice))
 	prologue.clear()
 	if story and level.has("story") and not _prompt_done(PrologueScene.DONE_ID):
 		var wake := not _loading_via_sweep

@@ -5,7 +5,8 @@ render_mode diffuse_lambert, cull_disabled;
 // follows the kind of solid and the direction of each face, and is drawn in
 // the source's own space, so a copy shows its source exactly, mirrored.
 //   kind 0, an original: stone, snow on top that hangs over the edge.
-//   kind 1, a copy: the same stone in summer, moss where the snow lay.
+//   kind 1, a copy: the same stone, seen in mirror glass. It keeps the
+//     light and dark of its source, in the cool colour of the pane.
 //   kind 2, an absolute: stone bound by a band of bronze under green patina.
 
 uniform int kind = 0;
@@ -32,9 +33,8 @@ global uniform vec3 walker_at;
 uniform vec3 stone : source_color = vec3(0.74, 0.69, 0.60);
 uniform vec3 snow : source_color = vec3(0.93, 0.93, 0.95);
 uniform vec3 patina : source_color = vec3(0.22, 0.32, 0.28);
-uniform vec3 summer_stone : source_color = vec3(0.80, 0.70, 0.55);
-uniform vec3 moss : source_color = vec3(0.30, 0.38, 0.17);
-uniform vec3 summer_glow : source_color = vec3(0.95, 0.85, 0.63);
+// The light of the pane: the cool white of ice.
+uniform vec3 pane_light : source_color = vec3(0.80, 0.91, 1.0);
 
 varying vec3 world_position;
 varying vec3 world_normal;
@@ -160,54 +160,33 @@ void fragment() {
 	bool cut_face = (polygon_surface && COLOR.g > 0.5) || (!shaped && source_boundary > 0.003) || !FRONT_FACING;
 	bool top_face = source_normal.y > 0.72;
 	bool side_face = face.y < 0.72;
-	bool summer = kind == 1;
 	vec3 place = source_position + seed;
 	float below_top = half_source.y - source_position.y;
 
 	float blotch = value_noise(place * 1.7) * 0.6 + value_noise(place * 5.3) * 0.4;
-	vec3 base = (summer ? summer_stone : stone) * (0.93 + blotch * 0.12);
+	vec3 base = stone * (0.93 + blotch * 0.12);
 	float roughness = 0.82;
 	float metallic = 0.0;
 	vec3 relief = true_normal;
 	vec3 glow = vec3(0.0);
-	vec3 cover = summer ? moss * (0.82 + value_noise(place * 9.0) * 0.36) : snow;
 
 	if (cut_face) {
-		base = mix(base, summer ? summer_stone : stone, 0.6) * 1.05;
+		base = mix(base, stone, 0.6) * 1.05;
 	} else if (top_face) {
-		base = cover;
-		roughness = summer ? 0.9 : 0.72;
-		if (summer) {
-			// Moss grows in cushions: darker between them, bright on top.
-			float cushion = value_noise(place * vec3(4.2, 0.0, 4.2) + 3.0);
-			base *= 0.68 + 0.42 * smoothstep(0.25, 0.75, cushion);
-			float e = 0.05;
-			float rise_x = value_noise(vec3(place.x + e, 0.0, place.z) * 4.2 + 3.0) - value_noise(vec3(place.x - e, 0.0, place.z) * 4.2 + 3.0);
-			float rise_z = value_noise(vec3(place.x, 0.0, place.z + e) * 4.2 + 3.0) - value_noise(vec3(place.x, 0.0, place.z - e) * 4.2 + 3.0);
-			relief = normalize(relief - vec3(rise_x, 0.0, rise_z) * 1.5);
-			// Small flowers grow in a few loose patches, each a warm dot of
-			// its own size, so none is taken for a flake of snow.
-			vec2 cell = floor(place.xz * 7.0);
-			vec2 jitter = vec2(hash(vec3(cell, 5.0)), hash(vec3(cell, 9.0))) * 0.6 - 0.3;
-			vec2 within = fract(place.xz * 7.0) - 0.5 - jitter;
-			float pick = hash(vec3(cell, 3.0));
-			float patch_here = smoothstep(0.52, 0.62, value_noise(place * vec3(1.9, 0.0, 1.9) + 11.0));
-			float flower = step(0.45, pick) * patch_here * smoothstep(0.22, 0.10, length(within) / (0.5 + pick * 0.6));
-			base = mix(base, pick > 0.8 ? vec3(1.0, 0.70, 0.62) : vec3(1.0, 0.86, 0.45), flower);
-		} else {
-			// Snow lies in soft drifts, not flat.
-			float e = 0.06;
-			float drift_x = value_noise(vec3(place.x + e, 0.0, place.z) * 2.6) - value_noise(vec3(place.x - e, 0.0, place.z) * 2.6);
-			float drift_z = value_noise(vec3(place.x, 0.0, place.z + e) * 2.6) - value_noise(vec3(place.x, 0.0, place.z - e) * 2.6);
-			relief = normalize(relief - vec3(drift_x, 0.0, drift_z) * 0.7);
-		}
+		base = snow;
+		roughness = 0.72;
+		// Snow lies in soft drifts, not flat.
+		float e = 0.06;
+		float drift_x = value_noise(vec3(place.x + e, 0.0, place.z) * 2.6) - value_noise(vec3(place.x - e, 0.0, place.z) * 2.6);
+		float drift_z = value_noise(vec3(place.x, 0.0, place.z + e) * 2.6) - value_noise(vec3(place.x, 0.0, place.z - e) * 2.6);
+		relief = normalize(relief - vec3(drift_x, 0.0, drift_z) * 0.7);
 		vec2 from_her = world_position.xz - walker_at.xz;
 		vec2 drawn_out = from_her - vec2(0.03, 0.15);
 		float her_shade = max(exp(-(drawn_out.x * drawn_out.x * 16.0 + drawn_out.y * drawn_out.y * 6.0)), exp(-dot(from_her, from_her) * 11.0)) * step(abs(world_position.y - walker_at.y), 0.2);
 		base = mix(base, base * vec3(0.30, 0.29, 0.52), her_shade * 0.92);
 	} else if (side_face) {
 		// The sides are the mid value of a place: only a top is light.
-		base *= summer ? vec3(1.0) : vec3(0.62, 0.63, 0.70);
+		base *= vec3(0.62, 0.63, 0.70);
 		// The cover hangs over the edge in an uneven lip.
 		float along = face.x > face.z ? place.z : place.x;
 		float lip = 0.07 + 0.11 * value_noise(vec3(along * 2.3, 1.7, seed.y)) + 0.04 * value_noise(vec3(along * 7.0, 4.1, seed.y));
@@ -216,12 +195,6 @@ void fragment() {
 			lip = 0.10 + 0.09 * value_noise(vec3(along * 3.1, 1.7, seed.y)) * value_noise(vec3(along * 9.0, 4.1, seed.y));
 		}
 		float covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
-		if (summer) {
-			// Moss hangs lower, and trails down the stone here and there.
-			float trail = value_noise(vec3(along * 12.0, 2.2, seed.y));
-			lip += 0.03 + 0.16 * smoothstep(0.5, 0.9, trail) * value_noise(vec3(along * 2.6, 8.0, seed.y));
-			covered = 1.0 - smoothstep(lip - 0.012, lip, below_top);
-		}
 		// Its shadow on the stone just under it.
 		float under = (1.0 - smoothstep(lip, lip + 0.22, below_top)) * (1.0 - covered);
 		// Old stone is darker and damp toward its foot.
@@ -236,7 +209,7 @@ void fragment() {
 		base *= 1.0 - smoothstep(0.50, 0.95, run) * 0.30 * (1.0 - foot * 0.5);
 		base *= 0.90 + 0.20 * value_noise(place * 21.0);
 		float lichen = smoothstep(0.58, 0.80, value_noise(place * 3.1 + 17.0));
-		base = mix(base, vec3(0.62, 0.64, 0.52) * 0.9, lichen * (summer ? 0.0 : 0.4));
+		base = mix(base, vec3(0.62, 0.64, 0.52) * 0.9, lichen * 0.4);
 		// A crack or two, where frost has split it.
 		float split = abs(fract(along * 0.83 + 0.11 * value_noise(vec3(below_top * 5.0, along * 0.7, seed.y + 21.0)) + 0.05 * value_noise(vec3(below_top * 17.0, 3.0, seed.y))) - 0.5);
 		float fissure = (1.0 - smoothstep(0.0, 0.007, split)) * smoothstep(0.45, 0.62, value_noise(vec3(along * 0.5, below_top * 1.6, seed.y + 40.0)));
@@ -279,9 +252,9 @@ void fragment() {
 			// The stone under the band is in its shadow.
 			base *= 1.0 - (1.0 - smoothstep(0.51, 0.58, below_top)) * step(0.51, below_top) * 0.22;
 		}
-		base *= 1.0 - under * (summer ? 0.26 : 0.40);
-		base = mix(base, cover, covered);
-		roughness = mix(roughness, summer ? 0.9 : 0.72, covered);
+		base *= 1.0 - under * 0.40;
+		base = mix(base, snow, covered);
+		roughness = mix(roughness, 0.72, covered);
 		metallic *= 1.0 - covered;
 		// The lip is round: it turns up toward the sky.
 		if (!shaped) {
@@ -297,20 +270,29 @@ void fragment() {
 		edge.y = 0.0;
 		relief = normalize(relief + sign(source_position) * edge * 9.0);
 	}
-	if (summer) {
-		// The copy is the lantern of a place: it holds its own colour in any light.
-		// Its sides glow like paper round a flame: most at the heart of each face.
+	if (kind == 1) {
+		// A copy is its source seen in mirror glass (owner, 2026-11-17). The
+		// light and dark of the stone stay, so each panel, crack and lip is
+		// still there; the colour is the pane's. It is solid, with a sheen.
+		float marks = smoothstep(0.12, 0.62, dot(base, vec3(0.30, 0.59, 0.11)));
+		base = mix(vec3(0.17, 0.25, 0.35), vec3(0.58, 0.70, 0.82), marks);
+		base = mix(base, vec3(0.78, 0.86, 0.94), top_face && !cut_face ? 0.18 : 0.0);
+		// Two soft bands of light cross each face, as on a pane.
+		float streak = (place.x + place.y * 1.3 + place.z) * 1.7;
+		base += vec3(0.13) * smoothstep(0.80, 1.0, sin(streak) * 0.5 + 0.5) + vec3(0.07) * smoothstep(0.86, 1.0, sin(streak + 2.2) * 0.5 + 0.5);
+		// Each edge of a face is bright, as the edge of cut glass.
 		vec3 across_face = abs(source_position) / half_source * (vec3(1.0) - face);
-		float rim = smoothstep(0.25, 1.0, max(across_face.x, max(across_face.y, across_face.z)));
-		glow = top_face && !cut_face ? base * 0.18 : mix(vec3(1.0, 0.60, 0.24) * 1.45, vec3(0.86, 0.40, 0.18) * 0.5, rim) * (base / max(summer_stone, vec3(0.01)));
+		base += vec3(0.42) * smoothstep(0.90, 0.99, max(across_face.x, max(across_face.y, across_face.z)));
+		// It holds a little light of its own, which breathes.
+		glow = base * 0.10 * (0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0)));
+		roughness = 0.12;
 	}
-	glow *= 0.86 + 0.14 * sin(TIME * 2.6) * (0.55 + 0.45 * sin(TIME * 0.9 + 1.0));
 	if (cover_cap) {
 		// The closed cut of the moving edge is a sheet of the pane's light
 		// (owner, 2026-11-17).
 		// It is light only: no sun, no shadow falls on it.
 		base = vec3(0.0);
-		glow = summer_glow * 2.2;
+		glow = pane_light * 1.9;
 		roughness = 1.0;
 	}
 	if (!FRONT_FACING && !capped) {
@@ -323,7 +305,7 @@ void fragment() {
 	SPECULAR = cover_cap ? 0.0 : 0.35;
 	ROUGHNESS = roughness;
 	// The moving edge of a change carries a line of the pane's light.
-	EMISSION = glow + summer_glow * reveal_edge * 0.9;
+	EMISSION = glow + pane_light * reveal_edge * 0.9;
 	if ((CAMERA_VISIBLE_LAYERS & 1u) == 0u) {
 		// Drawn for the image in the water, which is gone with height
 		// (`water_image.gdshaderinc`). It carries its own plain light.

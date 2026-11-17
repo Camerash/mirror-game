@@ -13,7 +13,7 @@ const SceneryShader := preload("res://world/scenery.gdshader")
 ## Nothing stands closer than this to where a mirror, and so a copy, can be.
 const CLEAR := 2.0
 ## The band of scenery round the place is this wide.
-const REACH := 9.0
+const REACH := 2.5
 const SPACING := 2.4
 
 const STEM := Color(0.50, 0.43, 0.36)

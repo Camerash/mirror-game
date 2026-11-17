@@ -3,33 +3,29 @@ extends Node3D
 ## so the place stands against the light, and cool light from the sky for the
 ## colour of snow shadows. The sun is fixed in the world, so turning the view
 ## walks round the light: one view looks into the sun, the opposite one has it
-## behind. Each place names one
-## colour script (`"light"` in its level file); the water below takes its
-## colours from the same script. See `docs/art/STYLE.md`.
+## behind. A place can name a colour script (`"light"` in its level file);
+## without a name it has the default. The water below takes its colours
+## from the same script. See `docs/art/STYLE.md`.
 
 const BackdropShader := preload("res://assets/environment/backdrop.gdshader")
-## One entry per time of day. `sun` and `fill` are the two lights, `sky` and
+## One entry per colour script. `sun` and `fill` are the two lights, `sky` and
 ## `ground` the ambient light from above and below, and the three `ice`
 ## colours are the water's, from the far water (top of the screen) to the
-## near. `sun_from` points from the place to the sun, and `haze` is the
-## colour of the air, which the pond's scenery takes on.
+## near. `sun_from` points from the place to the sun, `haze` is the colour
+## of the air, which the pond's scenery takes on, and `lamp` is the one warm
+## light: the lit window of the garden.
 const SCRIPTS := {
-	"morning": {
-		"sun": Color("ffe2bd"), "sun_energy": 1.9, "fill": Color("e8d2b8"), "fill_energy": 0.30,
-		"sky": Color("8fb0dc"), "ground": Color("a89c94"), "ambient": 0.22,
-		"ice_far": Color("efc79c"), "ice_mid": Color("2f5a78"), "ice_near": Color("08192a"),
-		"glow": Color("ffb665"), "sun_from": Vector3(-0.17, 0.8, -0.98),
-		"haze": Color("4a6478"),
-	},
-	"dusk": {
-		"sun": Color("ffdfca"), "sun_energy": 2.5, "fill": Color("dccab6"), "fill_energy": 0.38,
-		"sky": Color("a08cb8"), "ground": Color("a8807e"), "ambient": 0.24,
-		"ice_far": Color("e89a8c"), "ice_mid": Color("2c2a5e"), "ice_near": Color("0b0c26"),
-		"glow": Color("ffad5c"), "sun_from": Vector3(-0.17, 0.8, -0.98),
-		"haze": Color("372c58"),
+	# Winter with almost no colour (owner, 2026-11-17): dark slate water that
+	# goes into pale mist far away, and a soft high light.
+	"pale": {
+		"sun": Color("f3efe8"), "sun_energy": 1.5, "fill": Color("d3dade"), "fill_energy": 0.42,
+		"sky": Color("b6c2c8"), "ground": Color("a6a8a4"), "ambient": 0.34,
+		"ice_far": Color("ced3d2"), "ice_mid": Color("5c6f7b"), "ice_near": Color("2b3944"),
+		"sun_from": Vector3(-0.17, 0.8, -0.98),
+		"haze": Color("8d999e"), "lamp": Color("ffb665"),
 	},
 }
-const DEFAULT_SCRIPT := "morning"
+const DEFAULT_SCRIPT := "pale"
 ## The lowest ground of a place stands in the water, so each stone joins its
 ## own image at the foot and the image cannot be taken for a second stone.
 const ICE_CLEAR := 0.01
@@ -78,7 +74,7 @@ func _ready() -> void:
 func palette() -> Dictionary:
 	return SCRIPTS[script_name]
 
-## Lights the place by the colour script `name`; an unknown name is morning.
+## Lights the place by the colour script `name`; an unknown name is the default.
 func set_place(name: String) -> void:
 	script_name = name if SCRIPTS.has(name) else DEFAULT_SCRIPT
 	var colors: Dictionary = palette()

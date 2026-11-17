@@ -4,6 +4,10 @@ extends Camera3D
 signal view_changed
 signal motion_finished
 
+## In a tall frame the place sits this far below the middle of the play
+## area, as a part of the frame's height, where there is free room for it.
+const LOW_IN_TALL_FRAME := 0.13
+
 var yaw := PI * 0.25
 var target_yaw := PI * 0.25
 var bounds := AABB()
@@ -117,13 +121,19 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 		low = low.min(Vector2(seen.x, seen.y))
 		high = high.max(Vector2(seen.x, seen.y))
 	centre += view_basis.x * (low.x + high.x) * 0.5 + view_basis.y * (low.y + high.y) * 0.5
+	# A small screen keeps a smaller margin, so a phone shows more stage.
+	var margin := minf(48.0, 0.08 * minf(fit_rect.size.x, fit_rect.size.y))
 	if fixed_size <= 0.0:
 		var extent := (high - low).max(Vector2.ONE)
-		# A small screen keeps a smaller margin, so a phone shows more stage.
-		var margin := minf(48.0, 0.08 * minf(fit_rect.size.x, fit_rect.size.y))
 		pixels = minf(maxf(10, fit_rect.size.x - margin) / extent.x, maxf(10, fit_rect.size.y - margin) / extent.y)
 		pixels /= lerpf(1.0, 2.2, afar)
 	var offset := fit_rect.get_center() - viewport_size * 0.5
+	if viewport_size.y > viewport_size.x:
+		# In a tall frame the place sits low, near the thumbs, and the garden
+		# stands in the room above it. It goes down only into free room, so
+		# it stays above the bar.
+		var room := (fit_rect.size.y - margin - (high.y - low.y) * pixels) * 0.5
+		offset.y += clampf(room, 0.0, viewport_size.y * LOW_IN_TALL_FRAME)
 	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}
 
