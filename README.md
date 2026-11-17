@@ -19,10 +19,11 @@ The game plays with the **direct controls** (trial 03 in `GAME_DESIGN.md`):
 | Action | Touch or mouse | Keyboard |
 | --- | --- | --- |
 | Walk | Short tap on a platform top, through the mirror's glass too | — |
-| Raise / lower the mirror | Mirror button, bottom right. A lowered mirror keeps its place | M |
-| Slide the mirror | Drag the mirror. The drag follows one grid direction: either of the two along the ground, or straight up and down | — |
-| Turn the mirror | Drag the knob on the mirror's arrow; the copy appears where it points | — |
-| Turn camera | Mobile swipe on empty space; desktop curved arrows | Q / E |
+| Raise / lower the mirror | Mirror button, low in the middle. It opens into the bar; the red button beside the bar lowers the mirror. A lowered mirror keeps its place | M |
+| Move the mirror | Hold the move knob of the bar and slide. The mirror goes parallel to the finger on the ground, in half-unit steps | Arrow keys |
+| Lift the mirror | Hold the lift knob and slide up or down | Page Up / Page Down |
+| Turn the mirror | Hold the turn knob and slide sideways to turn it in steps of 45°, or up and down to tilt it | — |
+| Turn camera | Swipe or drag sideways on empty space | Q / E |
 | Undo a change | Undo button. A drag that ends where it started changes nothing | Z |
 | Cancel a drag | — | Escape |
 | Debug controls | Top-right gear, including **Classic editor** | — |
@@ -42,7 +43,7 @@ Each change applies when the finger lifts. While it is down, the world shows the
 | Move | Drag the sheet across X/Z at captured height; drag the height control for Y | [ / ] and Page Up / Page Down |
 | Rotate | Drag the horizontal Turn ring or the Tilt ring | Arrow keys |
 | Resize mirror | Drag a local top or side pill | Debug width / height |
-| Turn camera | Mobile swipe on empty space; desktop curved arrows | Q / E |
+| Turn camera | Mobile swipe on empty space | Q / E |
 | Remove / keep in preview | Contextual bottom action | D |
 | Confirm / cancel | Short tap on the sheet / Cancel | Enter / Escape |
 | Recover | Contextual Undo; Reset after failure or in gear panel | Z / R |

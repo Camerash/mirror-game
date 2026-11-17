@@ -112,7 +112,7 @@
   "prompts": [
     {
       "id": "turn_mirror",
-      "text": "Drag the mirror's arrow to turn it. The copy appears where the arrow points.",
+      "text": "Hold the turn knob and slide sideways to turn the mirror. The copy appears on its other side.",
       "until": "turn"
     }
   ]

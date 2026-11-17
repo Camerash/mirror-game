@@ -1,7 +1,7 @@
 extends "res://tests/level_solvability_tests.gd"
 ## Plays the whole tutorial through the App, from the title to the end card,
-## with the player's own commands (the direct controls: the mirror button, a
-## drag on the mirror, the arrow) and the automatic mirror sweep between
+## with the player's own commands (the direct controls: the mirror button, the
+## move, lift and turn knobs) and the automatic mirror sweep between
 ## stages. Run it natively (without --headless): it saves one frame at the
 ## start of each stage, one during each sweep, and one of the end card, to
 ## test-output/playthrough-*.png.
@@ -105,21 +105,21 @@ func run() -> void:
 	check(await walk_to(goal_point()), "Playthrough: The path beneath is solved")
 	await next_stage("11_aperture")
 
-	# Only the ground: slide to the ledge's end, then drag the mirror down.
+	# Only the ground: slide to the ledge's end, then lower it with the lift knob.
 	await press_mirror_button()
 	await slide(0, 1.5)
 	await slide(1, -1.0)
 	check(await walk_to(goal_point()), "Playthrough: Only the ground is solved")
 	await next_stage("14_turn")
 
-	# Another way round: point the arrow at the ring, slide half a unit.
+	# Another way round: turn the mirror toward the ring, slide half a unit.
 	await press_mirror_button()
 	await point(Vector3.BACK)
 	await slide(2, 0.5)
 	check(await walk_to(goal_point()), "Playthrough: Another way round is solved")
 	await next_stage("15_together")
 
-	# Together: point, slide, drag down, walk out, lower the mirror, fall, walk.
+	# Together: turn, slide, lift down, walk out, lower the mirror, fall, walk.
 	await press_mirror_button()
 	await point(Vector3.BACK)
 	await slide(2, 0.5)

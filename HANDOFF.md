@@ -58,21 +58,27 @@ the pane), then the look of the reflection judged in motion (a solid copy
 of the same material, with marks that show the flip), then the garden. The
 owner chose control first.
 
-**The pill bar sketch (2026-11-17), second round, waits for the owner's
-play.** The owner's proposal, in `docs/VISION.md` (DRAFT): a glass bar below
+**The pill bar is built (2026-11-17), the owner's design, DECIDED in
+`docs/VISION.md`.** It is the one control of the mirror: a glass bar below
 the stage with three knobs (move, turn, lift); a held knob uses the full
-screen; a round mirror button opens into the bar; a rose button lowers the
-mirror. The owner played round one: "works great", with three corrections
-(slower, more rigid knobs, the bar below the stage), then two more (the bar
-nearer the bottom, the control larger); they are in.
-The owner then said that the size and the place are correct.
-Not in Git: `git apply test-output/polish/pill-proof-sketch.patch` (alone;
-`game.gd`, `world/mirror_arrow.gd`, `ui/mirror_hud.gd`). Key F gives the
-earlier controls; key G changes how the move knob reads the finger. Rules
-unchanged. With the sketch on, checks that use the corner button or a drag
-on the glass fail. The first sketch (grips on the frame) is
-`control-proof-sketch.patch`; the owner set it aside. See `VALIDATION.md`.
-The owner's working tree can have a sketch applied; do not reset it.
+screen; a round mirror button opens into the bar; a red button lowers the
+mirror. Code: `world/mirror_bar.gd` draws it and reads the finger;
+`game.begin_grip`, `grip_to`, `aim_to`, `end_grip` change the mirror. The
+drag on the glass, the arrow (`world/mirror_arrow.gd`) and the corner
+mirror button are removed. Tilt and 45-degree turns are permitted on each
+stage. `tests/mirror_bar_tests.gd` presses the bar with real mouse events.
+The two view buttons at the bottom left are removed too (owner): the
+sideways swipe turns the view, and keys Q and E stay.
+The earlier sketches (`pill-proof-sketch.patch`, `control-proof-sketch.patch`
+in ignored `test-output/polish/`) are a record only. The owner's working
+tree can have a sketch applied; do not reset it.
+**Proposed, waits for the owner (2026-11-17): a clearer prompt.** The
+owner said the card in the top left with long text takes the player's focus
+away. A sketch, not in Git:
+`git apply test-output/polish/prompt-proof-sketch.patch`. One short line
+above the bar, no card; the control that the line names gives a ripple and
+a finger mark shows the slide (`"control"` in a level's prompt). Frames:
+`prompt-proof-*.jpg` there. Do not build it before the owner agrees.
 Attention to detail is now a rule (`docs/VISION.md`, "Rules for every
 moment").
 
@@ -171,9 +177,9 @@ Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
   at stage 1 with the debug UI and no story.
 - `game.gd`: levels, the mirror, phases (`play`, `preview`, `transition`),
   prompts, moving on (`_begin_sweep`, `ADVANCE_PAUSE` 1.2 s).
-- Direct mirror controls (`game.direct_controls`, on in the app): the mirror
-  button raises and lowers; a drag on the mirror slides it; a drag on its
-  arrow points it; Undo takes it back. `GAME_DESIGN.md` has the rules.
+- Direct mirror controls (`game.direct_controls`, on in the app): the bar
+  (`world/mirror_bar.gd`) raises and lowers the mirror, and its knobs move,
+  turn and lift it; Undo takes it back. `GAME_DESIGN.md` has the rules.
 - `world/world_view.gd` draws one mesh per solid; `world/block_set.gd` sets
   the kind on `world/stone.gdshader`; `world/stone_mesh.gd` is a whole
   stone's shape; `world/trial_lighting.gd` is the light and the colour

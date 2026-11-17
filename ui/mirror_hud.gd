@@ -6,7 +6,6 @@ signal play_rect_changed(rect: Rect2)
 
 const TOUCH := UiStyle.TOUCH
 ## The mirror button is the game's main action, so it is a size up.
-const PRIMARY := UiStyle.PRIMARY
 const GAP := UiStyle.GAP
 ## Below this play height, a wide screen frames the stage between side columns.
 const SHORT_LANDSCAPE := 560.0
@@ -29,13 +28,16 @@ var _last_play_rect := Rect2()
 var _last_camera_rect := Rect2()
 var _last_emitted_play_rect := Rect2()
 var _bottom_reserved := TOUCH + GAP
+## The mirror bar (`world/mirror_bar.gd`) is low in the middle: in the bottom
+## band on a wide screen, in its own row above the corner buttons on a narrow
+## one.
+const BAR_ROW := 94.0
+const BAR_WIDE := 640.0
 ## On a short landscape screen, the width kept clear on each side of the stage.
 var _side_reserved := 0.0
 var _touch_controls := {}
 var _outline_accessible := true
 var _gear: Button
-var _camera_left: Button
-var _camera_right: Button
 var _undo: Button
 var _reset: Button
 var _cancel: Button
@@ -45,7 +47,6 @@ var _apply: Button
 var _mode_cycle: Button
 ## Direct controls only: raises and lowers the mirror. It takes the corner the
 ## classic mode button uses; the two never show together.
-var _mirror_button: Button
 var _classic_check: CheckButton
 var _debug_panel: PanelContainer
 var _settings_panel: PanelContainer
@@ -110,15 +111,10 @@ func display_state(state: Dictionary) -> void:
 	var phase := str(_state.get("phase", "play"))
 	var mirror_busy := bool(_state.get("mirror_busy", false))
 	var mode_busy := bool(_state.get("mode_busy", false))
-	var camera_busy := bool(_state.get("camera_busy", false))
 	var enabled := bool(_state.get("enabled", false))
 	var direct := bool(_state.get("direct", false))
 	var classic_editing := editing and not direct
 	Motion.fade(_help, bool(_state.get("has_prompts", false)))
-	_camera_left.visible = _desktop()
-	_camera_right.visible = _desktop()
-	_camera_left.disabled = camera_busy or mirror_busy
-	_camera_right.disabled = camera_busy or mirror_busy
 	# A direct drag is a short preview: Undo stays in place through it, so the
 	# corner does not flicker on every drag.
 	Motion.fade(_undo, (direct or not editing) and bool(_state.get("can_undo", false)))
@@ -135,14 +131,6 @@ func display_state(state: Dictionary) -> void:
 	_mode_cycle.visible = classic_editing
 	_mode_cycle.disabled = mode_busy
 	_update_mode_cycle()
-	# The mirror button waits out the sweep between stages.
-	Motion.fade(_mirror_button, direct and bool(_state.get("mirror_available", true)) and phase != "transition")
-	_mirror_button.disabled = not bool(_state.get("can_toggle_mirror", false))
-	var raised := bool(_state.get("mirror_raised", false))
-	_mirror_button.set_meta("icon", "mirror_raised" if raised else "mirror")
-	_mirror_button.tooltip_text = "Lower the mirror (M)" if raised else "Raise the mirror (M)"
-	_mirror_button.accessibility_name = "Lower the mirror" if raised else "Raise the mirror"
-	_mirror_button.queue_redraw()
 	_edit_border.visible = classic_editing
 	if not release_mode:
 		_update_debug(editing, mirror_busy)
@@ -217,6 +205,24 @@ func hide_prompt() -> void:
 	_prompt_tween.tween_callback(func() -> void: _prompt.visible = false)
 
 func get_play_rect() -> Rect2: return _last_play_rect
+func _bar_shown() -> bool:
+	return bool(_state.get("direct", false)) and bool(_state.get("mirror_available", true))
+## The lowest place for the centre of the mirror bar.
+func get_bar_centre() -> Vector2:
+	var above := 0.0 if _last_play_rect.size.x >= BAR_WIDE else TOUCH + GAP
+	return Vector2(_last_play_rect.get_center().x, _last_play_rect.end.y - above - BAR_ROW * 0.5)
+## The stage's name goes below the mirror bar where the two would be on the
+## same place, or above the bar where there is no room below.
+func clear_bar(bar: Rect2) -> void:
+	if not _stage_title.visible:
+		return
+	var rect := get_camera_rect()
+	var top := rect.end.y - _stage_title.size.y - rect.size.y * 0.04
+	if bar.grow(8.0).intersects(Rect2(_stage_title.position.x, top, _stage_title.size.x, _stage_title.size.y)):
+		top = bar.end.y + 8.0
+		if top + _stage_title.size.y > _last_play_rect.end.y:
+			top = bar.position.y - 8.0 - _stage_title.size.y
+	_stage_title.position.y = top
 func is_debug_visible() -> bool: return _debug
 func get_camera_rect() -> Rect2:
 	if _side_reserved > 0.0:
@@ -260,11 +266,6 @@ func _build() -> void:
 	_gear = _icon_button("settings", "Settings" if release_mode else "Debug controls", "debug"); _gear.pressed.connect(_toggle_debug); _rest_faint(_gear)
 	_help = _icon_button("help", "Show this stage's prompts again", "help"); _help.visible = false
 	_help.pressed.connect(func() -> void: _emit("help", null))
-	_camera_left = _icon_button("turn_left", "Turn left (Q)", "camera_left"); _camera_left.pressed.connect(func() -> void: _emit("camera_turn", -1))
-	_camera_right = _icon_button("turn_right", "Turn right (E)", "camera_right"); _camera_right.pressed.connect(func() -> void: _emit("camera_turn", 1))
-	for camera_button: Button in [_camera_left, _camera_right]:
-		camera_button.accessibility_name = camera_button.tooltip_text.get_slice(" (", 0)
-		_rest_faint(camera_button)
 	_undo = _icon_button("undo", "Undo (Z)", "undo"); _undo.visible = false; _undo.accessibility_name = "Undo"
 	_undo.pressed.connect(func() -> void: _emit("undo", null))
 	_reset = _add_action("Reset", "reset", null, "reset")
@@ -279,12 +280,6 @@ func _build() -> void:
 	_mode_cycle.pressed.connect(func() -> void: _emit("mode_cycle", null))
 	add_child(_mode_cycle)
 	_register("mode_cycle", _mode_cycle)
-	_mirror_button = _icon_button("mirror", "Raise the mirror (M)", "mirror", true)
-	_mirror_button.visible = false
-	# It is briefly disabled during every drag; it must not flicker then.
-	_mirror_button.set_meta("steady", true)
-	_mirror_button.add_theme_stylebox_override("disabled", UiStyle.theme().get_stylebox("normal", "PrimaryButton"))
-	_mirror_button.pressed.connect(func() -> void: _emit("mirror_toggle", null))
 	if release_mode:
 		_build_settings()
 	else:
@@ -490,17 +485,10 @@ func _responsive_layout() -> void:
 	var safe := _safe_rect(); _last_play_rect = safe.grow(-GAP)
 	_edit_border.queue_redraw()
 	_gear.size = Vector2(TOUCH, TOUCH)
-	_camera_left.size = Vector2(TOUCH, TOUCH)
-	_camera_right.size = Vector2(TOUCH, TOUCH)
 	_gear.position = Vector2(safe.end.x - TOUCH - GAP, safe.position.y + GAP)
 	_help.size = Vector2(TOUCH, TOUCH)
 	_help.position = Vector2(_gear.position.x - TOUCH - 6, _gear.position.y)
-	_camera_left.position = safe.position + Vector2(GAP, safe.size.y - TOUCH - GAP); _camera_right.position = _camera_left.position + Vector2(TOUCH + 6, 0)
 	var right := Vector2(safe.end.x - GAP, safe.end.y - TOUCH - GAP)
-	_mirror_button.size = Vector2(PRIMARY, PRIMARY)
-	_mirror_button.position = Vector2(safe.end.x - PRIMARY - GAP, safe.end.y - PRIMARY - GAP)
-	if _mirror_button.visible:
-		right.x -= PRIMARY + 6.0
 	for control: Control in [_undo, _reset]:
 		control.size = control.get_combined_minimum_size()
 		if control.visible:
@@ -513,16 +501,17 @@ func _responsive_layout() -> void:
 	var columns: int = 2 if _last_play_rect.size.x < 420.0 and count > 2 else maxi(1, count)
 	var rows: int = ceili(float(count) / float(columns))
 	var slot: float = maxf(TOUCH, minf(140.0, (_last_play_rect.size.x - row_gap * (columns - 1)) / maxf(1.0, float(columns))))
-	_bottom_reserved = (PRIMARY if _mirror_button.visible else TOUCH) + GAP + (TOUCH * rows + row_gap * maxf(0.0, rows - 1) + GAP if count > 0 else 0.0)
+	_bottom_reserved = TOUCH + GAP + (TOUCH * rows + row_gap * maxf(0.0, rows - 1) + GAP if count > 0 else 0.0)
 	# A phone on its side keeps every control in a corner, so the stage takes
 	# the full height between two equal side columns. Undo counts while it is
 	# hidden, so its first appearance does not move the view.
 	_side_reserved = 0.0
-	if count == 0 and _last_play_rect.size.y < SHORT_LANDSCAPE and _last_play_rect.size.x > _last_play_rect.size.y * 1.3:
-		var left := TOUCH * 2.0 + 6.0 + GAP if _camera_left.visible else 0.0
-		var right_bottom := (PRIMARY + 6.0 if _mirror_button.visible else 0.0) + _shown_width(_undo) + GAP
+	if _bar_shown():
+		_bottom_reserved = BAR_ROW if _last_play_rect.size.x >= BAR_WIDE else TOUCH + GAP + BAR_ROW
+	elif count == 0 and _last_play_rect.size.y < SHORT_LANDSCAPE and _last_play_rect.size.x > _last_play_rect.size.y * 1.3:
+		var right_bottom := _shown_width(_undo) + GAP
 		var right_top := TOUCH * 2.0 + 6.0 + GAP
-		_side_reserved = maxf(left, maxf(right_bottom, right_top)) + GAP
+		_side_reserved = maxf(right_bottom, right_top) + GAP
 	var start: float = _last_play_rect.get_center().x - (slot * columns + row_gap * (columns - 1)) * .5; var index := 0
 	for control: Control in row:
 		if control.visible:

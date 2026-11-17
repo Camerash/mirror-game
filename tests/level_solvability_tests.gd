@@ -117,14 +117,14 @@ func turn_to(degrees: float) -> void:
 
 
 func raise(steps: int) -> void:
-	## The height arrow / PgUp path, one half-unit step at a time.
+	## The PgUp path, one half-unit step at a time.
 	for index: int in steps:
 		game._step_height(0.5)
 		await camera_idle()
 
 
 func lower(steps: int) -> void:
-	## The height arrow / PgDown path, one half-unit step at a time.
+	## The PgDown path, one half-unit step at a time.
 	for index: int in steps:
 		game._step_height(-0.5)
 		await camera_idle()
@@ -201,7 +201,7 @@ func remove() -> String:
 
 ## --- Direct controls ----------------------------------------------------
 ## The same stages through the direct controls the game plays with: the
-## mirror button, a drag on the mirror along one axis, and the arrow. Each
+## mirror button, the move and lift knobs, and the turn knob. Each
 ## action applies on release, so every helper waits for that.
 
 
@@ -215,31 +215,36 @@ func direct_settled() -> void:
 
 
 func press_mirror_button() -> void:
-	game.toggle_mirror()
+	game.bar.action_requested.emit("mirror_toggle", null)
 	await direct_settled()
 
 
 func slide(axis: int, units: float) -> void:
-	## A finger on the mirror's centre drags along one axis's screen direction
-	## (0 x, 1 y, 2 z) by `units`, then lifts.
+	## The move knob (x or z) or the lift knob (y) is held, dragged until the
+	## mirror goes `units` along one axis, and let go.
 	var pivot: Vector3 = game.mirror["pivot"]
-	var start: Vector2 = game.camera.unproject_position(pivot)
-	var finish: Vector2 = start + game._screen_axes(pivot)[axis] * units
-	game.begin_slide(start)
+	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
+	var origin: Vector2 = game.camera.unproject_position(pivot)
+	var unit: Vector2 = game.camera.unproject_position(pivot + [Vector3.RIGHT, Vector3.UP, Vector3.RIGHT][axis]) - origin
+	var gain: float = unit.length() / game._screen_axes(pivot)[mini(axis, 1)].length()
+	var start: Vector2 = game.bar.centre
+	var finish: Vector2 = start + (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
+	game.begin_grip("lift" if axis == 1 else "move", start)
 	for step: int in range(1, 13):
-		game.slide_to(start.lerp(finish, step / 12.0))
+		game.grip_to(start.lerp(finish, step / 12.0))
 		await process_frame
 	await frames(8)
-	game.end_slide()
+	game.end_grip("lift" if axis == 1 else "move")
 	await direct_settled()
 
 
 func point(direction: Vector3) -> void:
-	## The arrow is held, pointed along a grid direction, and let go.
-	game.begin_point()
-	game.point_toward(direction)
+	## The turn knob is held, asks for a grid direction, and is let go.
+	var faced: Dictionary = MirrorRules.faced(game.mirror, direction)
+	game.begin_grip("turn", game.bar.centre)
+	game.aim_to(faced["yaw"], faced["pitch"])
 	await frames(8)
-	game.end_point()
+	game.end_grip("turn")
 	await direct_settled()
 
 
@@ -351,11 +356,11 @@ func check_direct_aperture() -> void:
 
 
 func check_direct_turn() -> void:
-	## "Another way round": point the arrow at the ring, then slide half a unit.
+	## "Another way round": turn the mirror toward the ring, then slide half a unit.
 	await load_level("14_turn")
 	await press_mirror_button()
 	await point(Vector3.BACK)
-	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK), "Direct turn: the arrow points the mirror toward the ring")
+	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK), "Direct turn: the turn knob points the mirror toward the ring")
 	check(not reaches_goal(), "Direct turn: turned in place, the copy leaves a gap")
 	await slide(2, 0.5)
 	check(reaches_goal(), "Direct turn: turned and slid half a unit, the copy is a bridge to the ring")

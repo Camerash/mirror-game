@@ -29,7 +29,7 @@ const Predictor := preload("res://world/fall_predictor.gd")
 const PreviewView := preload("res://world/preview_view.gd")
 const Resize := preload("res://ui/mirror_resize.gd")
 const Rings := preload("res://world/mirror_rings.gd")
-const Arrow := preload("res://world/mirror_arrow.gd")
+const Bar := preload("res://world/mirror_bar.gd")
 const Sheet := preload("res://world/mirror_sheet.gd")
 const MirrorRules := preload("res://core/mirror_state.gd")
 const WorldGesture := preload("res://ui/world_gesture.gd")
@@ -44,12 +44,17 @@ const ADVANCE_PAUSE := 1.2
 const REFUSE_HOLD := 1.2
 ## How long a fall stays on screen before the direct controls rewind it.
 const FAIL_REWIND := 1.0
-## Screen distance a mirror drag travels before its direction picks an axis.
-const SLIDE_PICK_DISTANCE := 16.0
 ## The least drag, in screen units, that moves the mirror half a unit. Where
 ## the stage is drawn small (phones), a half step would otherwise be a few
 ## pixels; the mirror then moves slower than the finger.
 const MIN_HALF_STEP := 40.0
+## The bar's knobs: the mirror goes this part of the finger's travel, it
+## takes this long to go to a new step, the bar is at least this far below
+## the stage, and it is this part of the way from there down to its lowest row.
+const KNOB_GAIN := 0.8
+const KNOB_FOLLOW_SECONDS := 0.18
+const BAR_GAP := 16.0
+const BAR_DROP := 0.7
 ## How far past its glass, in world units, a press still takes the mirror.
 const GRAB_MARGIN := 0.25
 ## Keys of the classic editor that mean nothing to the direct controls.
@@ -71,22 +76,20 @@ var preview: Dictionary = {}
 var preview_origin: Dictionary = {}
 var sheet := Sheet.new()
 var rings := Rings.new()
-## Direct controls: there is no editor. The mirror button raises and lowers
-## the mirror, a drag on the mirror slides it along the one grid axis the
-## finger follows, and its arrow points it. Each change applies when the
-## finger lifts; Undo takes it back. `App` turns this on. `Game.new()` alone
+## Direct controls: there is no editor. The bar below the stage
+## (`world/mirror_bar.gd`) raises and lowers the mirror, and its three knobs
+## move, turn and lift it. Each change applies when the finger lifts; Undo
+## takes it back. `App` turns this on. `Game.new()` alone
 ## keeps the classic editor the older tests drive. Set it before `add_child`,
 ## or call `set_direct_controls`.
 var direct_controls := false
-## Whether the arrow may point the mirror up or down. The tutorial keeps the
-## panel upright.
-var direct_tilt := false
-var arrow := Arrow.new()
-## True while the arrow is held; `point_origin` is the mirror it started from.
+## The turn and the tilt that the held turn knob has selected.
+var aim_selected := {"yaw": 0.0, "pitch": 0.0}
+var bar := Bar.new()
+## True while the turn knob is held; `point_origin` is the mirror it started
+## from.
 var pointing := false
 var point_origin: Dictionary = {}
-## The axis a direct mirror drag follows, or -1 until its direction counts.
-var slide_axis := -1
 ## Set when a direct action has finished: the next physics frames apply the
 ## preview once its prediction is in, or put the mirror back if it is blocked.
 var _direct_apply := false
@@ -245,8 +248,8 @@ func _setup_scene() -> void:
 	add_child(contact)
 	add_child(rings)
 	rings.action_requested.connect(_action)
-	add_child(arrow)
-	arrow.action_requested.connect(_action)
+	add_child(bar)
+	bar.action_requested.connect(_action)
 	sheet.transition_finished.connect(_rotation_finished)
 	sheet.pose_changed.connect(func() -> void: rings.set_pose(sheet.global_transform))
 	camera.view_changed.connect(_camera_changed)
@@ -292,7 +295,7 @@ func _setup_scene() -> void:
 func set_overlay_visible(value: bool) -> void:
 	overlay_canvas.visible = value
 	rings.set_overlay_visible(value)
-	arrow.set_overlay_visible(value)
+	bar.set_overlay_visible(value)
 	placement_guide.set_overlay_visible(value)
 
 func load_level(index: int) -> bool:
@@ -776,84 +779,86 @@ func nudge_mirror(axis: int, amount: float) -> void:
 		if amount < 0.0 and axis == 1:
 			tutorial_event.emit("lower")
 
-## A drag that starts on the mirror. `point` is where the finger went down.
-func begin_slide(point: Vector2) -> void:
+## The move knob or the lift knob is held. `point` is where the finger went
+## down; the mirror goes by the finger's travel from there.
+func _begin_slide(point: Vector2, lift: bool) -> void:
 	if not direct_controls or dragging or not mirror.get("enabled", false):
 		return
 	if not _open_direct_preview(mirror):
 		return
 	dragging = true
-	height_drag = false
+	height_drag = lift
 	limit_hint_shown = false
-	slide_axis = -1
 	drag_touch = gesture.pointer
 	drag_origin = point
 	drag_pivot = preview["pivot"]
+	drag_ground_origin = _ground_point(point, drag_pivot.y)
+	if lift:
+		drag_axis = camera.unproject_position(drag_pivot + Vector3.UP) - camera.unproject_position(drag_pivot)
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
-	_begin_constellation("rails", preview)
+	_begin_constellation("height" if lift else "ground", preview)
 	_refresh()
 
-## The mirror follows the finger along one axis: the one whose screen
-## direction the drag matches once it has travelled far enough to tell.
-func slide_to(point: Vector2) -> void:
-	if not direct_controls or not dragging:
-		return
-	var drag := point - drag_origin
-	var axes := _screen_axes(drag_pivot)
-	if slide_axis < 0:
-		if drag.length() < SLIDE_PICK_DISTANCE:
-			return
-		slide_axis = Targets.pick_axis(drag, axes)
-		if slide_axis < 0:
-			return
-		_begin_constellation("rail_%d" % slide_axis, preview)
-	var wanted := drag_pivot[slide_axis] + Targets.along(drag, axes[slide_axis])
-	var limited := clampf(wanted, float(level["limits"]["min"][slide_axis]), float(level["limits"]["max"][slide_axis]))
-	if not is_equal_approx(limited, wanted) and not limit_hint_shown:
-		hud.show_hint("Edge of the placement area.")
-		limit_hint_shown = true
-	var selected: Vector3 = display_target["pivot"]
-	selected[slide_axis] = Targets.step(limited, selected[slide_axis], 0.5)
-	var target := preview.duplicate(true)
-	target["pivot"] = MirrorRules.snapped_pivot(selected, level["limits"])
-	_follow_target(MirrorRules.sync(target))
+## Where the finger counts as being for a held knob. The drag is slowed where
+## the stage is drawn small, so that a half step takes at least MIN_HALF_STEP
+## of travel.
+func _knob_point(point: Vector2) -> Vector2:
+	var origin := camera.unproject_position(drag_pivot)
+	var axis := 1 if height_drag else 0
+	var unit := camera.unproject_position(drag_pivot + [Vector3.RIGHT, Vector3.UP][axis]) - origin
+	return drag_origin + (point - drag_origin) * (KNOB_GAIN * unit.length() / maxf(_screen_axes(drag_pivot)[axis].length(), 0.001))
 
-func end_slide() -> void:
-	if not direct_controls or not dragging or cancelling_gesture:
+## A knob of the bar is held. `point` is where the finger went down.
+func begin_grip(kind: String, point: Vector2) -> void:
+	if kind != "turn":
+		_begin_slide(point, kind == "lift")
 		return
-	_finish_drag()
-	_direct_apply = true
-	_direct_event = ""
-
-## The arrow is held: the mirror turns about its pivot to face where it points.
-func begin_point() -> void:
 	if not direct_controls or pointing or not mirror.get("enabled", false):
 		return
 	if not _open_direct_preview(mirror):
 		return
 	pointing = true
 	point_origin = preview.duplicate(true)
+	aim_selected = {"yaw": float(point_origin["yaw"]), "pitch": float(point_origin["pitch"])}
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
 	_refresh()
 
-func point_toward(direction: Vector3) -> void:
-	if not direct_controls or not pointing or direction.length_squared() < 0.5:
-		return
-	if not direct_tilt and absf(direction.y) > 0.5:
-		return
-	_follow_target(MirrorRules.faced(point_origin, direction))
+## The held move knob or lift knob: the finger is at `point`.
+func grip_to(point: Vector2) -> void:
+	if direct_controls and dragging:
+		_drag(_knob_point(point))
 
-func end_point() -> void:
-	if not direct_controls or not pointing or cancelling_gesture:
+## The held turn knob asks for a turn and a tilt. Each goes to its nearest
+## step of 45 degrees.
+func aim_to(yaw: float, pitch: float) -> void:
+	if not direct_controls or not pointing or not is_finite(yaw) or not is_finite(pitch):
 		return
-	pointing = false
-	translating_settle = true
-	_finish_kind = "point"
-	_animate_display(display_target, 0.10, _translation_finished)
+	aim_selected["yaw"] = Targets.step(yaw, aim_selected["yaw"], Bar.AIM_STEP)
+	aim_selected["pitch"] = Targets.step(clampf(pitch, -PI * 0.5, PI * 0.5), aim_selected["pitch"], Bar.AIM_STEP)
+	var target := point_origin.duplicate(true)
+	target["yaw"] = aim_selected["yaw"]
+	target["pitch"] = aim_selected["pitch"]
+	_follow_target(MirrorRules.sync(target))
+
+## The held knob is let go: the change applies once its prediction is in.
+func end_grip(kind: String) -> void:
+	if not direct_controls or cancelling_gesture:
+		return
+	if kind == "turn":
+		if not pointing:
+			return
+		pointing = false
+		translating_settle = true
+		_finish_kind = "point"
+		_animate_display(display_target, 0.10, _translation_finished)
+	elif dragging:
+		_finish_drag()
+	else:
+		return
 	_direct_apply = true
 	_direct_event = ""
 
@@ -864,11 +869,29 @@ func _direct_hover_predict() -> void:
 		return
 	prediction_revision = predictor.predict(Geometry.generate(level, _display_state()), preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
 
-func _update_arrow() -> void:
+## The bar is between the lowest point that the view was fitted to and its
+## row in the HUD, nearer the row, where a thumb gets to it.
+func _bar_centre() -> Vector2:
+	var row := hud.get_bar_centre()
+	if camera.points.is_empty():
+		return row
+	var bottom := -INF
+	for point: Vector3 in camera.points:
+		bottom = maxf(bottom, camera.unproject_position(point).y)
+	var near := bottom + BAR_GAP + Bar.HALF_HEIGHT
+	return Vector2(row.x, row.y if near >= row.y else lerpf(near, row.y, BAR_DROP))
+
+func _update_bar() -> void:
 	if level.is_empty():
 		return
-	arrow.set_state(_display_state(), direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy, direct_tilt)
-	arrow.update_view(camera, hud.get_play_rect(), hud.get_blocking_rects())
+	bar.shown = direct_controls and _mirror_available() and phase not in ["failure", "transition"]
+	bar.centre = _bar_centre()
+	if bar.shown:
+		var half := Vector2(Bar.BUTTON + 6.0, Bar.HALF_HEIGHT)
+		hud.clear_bar(Rect2(bar.centre - half, half * 2.0))
+	bar.can_toggle = can_toggle_mirror()
+	bar.set_state(_display_state(), direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy)
+	bar.update_view(camera)
 
 func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():
@@ -933,7 +956,10 @@ func _mode_busy() -> bool:
 func _follow_target(target: Dictionary) -> void:
 	if target == display_target:
 		return
-	_animate_display(target, 0.10, _direct_hover_predict if direct_controls else Callable())
+	var held := bar.is_active()
+	if held:
+		bar.tick()
+	_animate_display(target, KNOB_FOLLOW_SECONDS if held else 0.10, _direct_hover_predict if direct_controls else Callable())
 
 func _animate_display(target: Dictionary, seconds: float, finished := Callable()) -> void:
 	if display_motion and display_motion.is_valid():
@@ -1039,7 +1065,9 @@ func _rotation_finished() -> void:
 	if turned:
 		tutorial_event.emit("turn")
 
-func _cancel_manipulation() -> void:
+## `keep_waiting` leaves a knob of the bar that is held but has not
+## started its change: the end of the last change must not drop it.
+func _cancel_manipulation(keep_waiting := false) -> void:
 	guide_preview_enabled = false
 	_clear_constellation()
 	cancelling_gesture = true
@@ -1049,11 +1077,10 @@ func _cancel_manipulation() -> void:
 	gesture.cancel()
 	if rings.is_inside_tree():
 		rings.cancel()
-	if arrow.is_inside_tree():
-		arrow.cancel()
+	if bar.is_inside_tree():
+		bar.cancel(keep_waiting)
 	pointing = false
 	point_origin.clear()
-	slide_axis = -1
 	if resize_controls.is_inside_tree():
 		resize_controls.cancel()
 	resizing = false
@@ -1087,7 +1114,7 @@ func cancel_preview() -> void:
 	if phase != "preview" or not pending.is_empty():
 		return
 	_direct_apply = false
-	_cancel_manipulation()
+	_cancel_manipulation(true)
 	preview.clear()
 	predictor.cancel()
 	prediction = {"status": "idle"}
@@ -1116,7 +1143,7 @@ func _snapshot() -> Dictionary:
 		"velocity": walker.velocity, "route": walker.route.duplicate(), "complete": phase == "complete"}
 
 func _execute_pending() -> void:
-	_cancel_manipulation()
+	_cancel_manipulation(true)
 	var command := pending
 	pending = {}
 	_direct_apply = false
@@ -1331,7 +1358,7 @@ func _refresh() -> void:
 		"can_apply": phase == "preview" and pending.is_empty() and not _manipulating() and not sheet.is_transitioning() and not camera.busy and prediction["status"] in ["supported", "landing", "failure"],
 		"is_test": level.get("is_test", false), "collision": world.debug_collision,
 		"has_prompts": not level.get("prompts", []).is_empty(),
-		"direct": direct_controls, "mirror_raised": bool(mirror.get("enabled", false)), "can_toggle_mirror": can_toggle_mirror(),
+		"direct": direct_controls,
 		"mirror_available": _mirror_available()})
 	rings.set_layout(hud.get_camera_rect(), hud.get_blocking_rects())
 	rings.update_view(camera)
@@ -1342,7 +1369,7 @@ func _refresh() -> void:
 	contact.set_contacts(world.drawn_solids, contact_state, MirrorRules.frame(contact_state) if contact_state.has("pivot") else Basis.IDENTITY, phase == "preview" and not selected["enabled"])
 	_update_constellation()
 	_position_controls()
-	_update_arrow()
+	_update_bar()
 
 func _action(action: String, value: Variant) -> void:
 	match action:
@@ -1362,12 +1389,10 @@ func _action(action: String, value: Variant) -> void:
 		"help": _toggle_prompt_replay()
 		"mirror_toggle": toggle_mirror()
 		"classic_controls": set_direct_controls(not bool(value))
-		"point_begin": begin_point()
-		"point_direction":
-			if value is Vector3: point_toward(value)
-		"point_end":
-			if not cancelling_gesture:
-				end_point()
+		"grip_begin": begin_grip(str(value["kind"]), value["point"])
+		"grip_drag": grip_to(value)
+		"grip_aim": aim_to(float(value["yaw"]), float(value["pitch"]))
+		"grip_end": end_grip(str(value))
 		"angle_snap":
 			if not _manipulating() and is_finite(float(value)):
 				angle_snap = clampf(snappedf(float(value), 5.0), 0.0, 90.0)
@@ -1474,7 +1499,7 @@ func _process(delta: float) -> void:
 	if sheet.has_geometry:
 		rings.set_pose(sheet.global_transform)
 		_position_resize_controls()
-	_update_arrow()
+	_update_bar()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
@@ -1491,16 +1516,16 @@ func _exit_tree() -> void:
 func _input(event: InputEvent) -> void:
 	if not input_enabled:
 		return
-	if rings.is_active() or resize_controls.is_active() or arrow.is_active():
+	if rings.is_active() or resize_controls.is_active() or bar.is_active():
 		var pointer_index := -2
 		if event is InputEventScreenTouch or event is InputEventScreenDrag:
 			pointer_index = event.index
 		elif event is InputEventMouse:
 			pointer_index = -1
-		if pointer_index != -2 and not rings.owns_pointer(pointer_index) and not resize_controls.owns_pointer(pointer_index) and not arrow.owns_pointer(pointer_index):
+		if pointer_index != -2 and not rings.owns_pointer(pointer_index) and not resize_controls.owns_pointer(pointer_index) and not bar.owns_pointer(pointer_index):
 			get_viewport().set_input_as_handled()
 			return
-	var owned := gesture.active or rings.is_active() or resize_controls.is_active() or arrow.is_active()
+	var owned := gesture.active or rings.is_active() or resize_controls.is_active() or bar.is_active()
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.device != InputEvent.DEVICE_ID_EMULATION:
 			_pointer(event.position, event.pressed, -1)
@@ -1510,19 +1535,19 @@ func _input(event: InputEvent) -> void:
 				resize_controls.cancel()
 			if rings.owns_pointer(event.index):
 				rings.cancel()
-			if arrow.owns_pointer(event.index):
-				arrow.cancel()
+			if bar.owns_pointer(event.index):
+				bar.cancel()
 			if gesture.active and gesture.pointer == event.index:
 				gesture.cancel()
 		else:
 			_pointer(event.position, event.pressed, event.index)
 	elif event is InputEventMouseMotion:
-		if not resize_controls.motion(event.position, -1) and not rings.motion(event.position, -1) and not arrow.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
+		if not resize_controls.motion(event.position, -1) and not rings.motion(event.position, -1) and not bar.motion(event.position, -1) and gesture.active and gesture.pointer == -1:
 			gesture.move(event.position, -1)
 		if direct_controls and not owned and event.button_mask == 0 and event.device != InputEvent.DEVICE_ID_EMULATION:
 			_hover_at(event.position)
 	elif event is InputEventScreenDrag:
-		if not resize_controls.motion(event.position, event.index) and not rings.motion(event.position, event.index) and not arrow.motion(event.position, event.index):
+		if not resize_controls.motion(event.position, event.index) and not rings.motion(event.position, event.index) and not bar.motion(event.position, event.index):
 			gesture.move(event.position, event.index)
 	if owned and (event is InputEventMouseButton or event is InputEventMouseMotion or event is InputEventScreenTouch or event is InputEventScreenDrag):
 		get_viewport().set_input_as_handled()
@@ -1536,24 +1561,22 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 	if not gesture.active and not resize_controls.is_active() and rings.pointer(point, pressed, touch):
 		get_viewport().set_input_as_handled()
 		return
-	var arrow_press := pressed and play_rect.has_point(point) and not hud.blocks_world_input(point)
-	if direct_controls and not gesture.active and (arrow.is_active() or arrow_press) and arrow.pointer(point, pressed, touch):
+	var bar_press := pressed and play_rect.has_point(point) and not hud.blocks_world_input(point)
+	if direct_controls and not gesture.active and (bar.is_active() or bar_press) and bar.pointer(point, pressed, touch):
 		get_viewport().set_input_as_handled()
 		return
 	if not pressed:
 		gesture.release(point, touch)
 		if phase == "preview": _refresh()
 		return
-	if gesture.active or rings.is_active() or resize_controls.is_active() or arrow.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
+	if gesture.active or rings.is_active() or resize_controls.is_active() or bar.is_active() or not play_rect.has_point(point) or hud.blocks_world_input(point):
 		return
 	if camera.busy or _manipulating() or sheet.is_transitioning() or not pending.is_empty() or phase in ["failure", "transition"]:
 		return
 	var target := "surface" if _solid_hit(point) else "empty"
 	if direct_controls:
-		# No holds: a drag on the mirror slides it, a tap walks, and a swipe on
-		# empty space turns the view.
-		if mirror.get("enabled", false) and sheet_hit(point):
-			target = "sheet"
+		# No holds: a tap walks, and a swipe on empty space turns the view.
+		# The mirror is moved by the bar's knobs, not by a drag on it.
 		gesture.begin(point, touch, target, false, true)
 		return
 	if phase == "preview":
@@ -1576,15 +1599,12 @@ func _gesture_action(action: String, value: Variant) -> void:
 		"edit": edit_mirror()
 		"walk": _walk_at(value)
 		"drag_begin":
-			if direct_controls: begin_slide(value)
-			elif edit_mode == "move": _start_drag(value)
+			if not direct_controls and edit_mode == "move": _start_drag(value)
 		"drag_move":
-			if direct_controls: slide_to(value)
-			elif dragging:
+			if not direct_controls and dragging:
 				_drag(value)
 		"drag_end":
-			if direct_controls: end_slide()
-			elif not cancelling_gesture:
+			if not direct_controls and not cancelling_gesture:
 				_finish_drag()
 		"apply":
 			if not apply_preview():
@@ -1628,9 +1648,9 @@ func _hover_at(point: Vector2) -> void:
 	var cursor := Input.CURSOR_ARROW
 	var on_sheet := false
 	if phase == "play" and not camera.busy and play_rect.has_point(point) and not hud.blocks_world_input(point):
-		if arrow.blocks_point(point):
+		if bar.blocks_point(point):
 			cursor = Input.CURSOR_POINTING_HAND
-		elif mirror.get("enabled", false) and not sheet.is_transitioning() and sheet_hit(point):
+		elif not direct_controls and mirror.get("enabled", false) and not sheet.is_transitioning() and sheet_hit(point):
 			cursor = Input.CURSOR_MOVE
 			on_sheet = true
 		if walker.route.is_empty() and pending.is_empty() and settle_frames == 0:
@@ -1822,7 +1842,7 @@ func _resize_obstructed(point: Vector2, location: Vector3) -> bool:
 func sheet_hit(point: Vector2, selected: Dictionary = {}) -> bool:
 	if selected.is_empty():
 		selected = _display_state()
-	if not selected.has("axis") or hud.blocks_world_input(point) or resize_controls.blocks_point(point) or rings.blocks_point(point) or arrow.blocks_point(point):
+	if not selected.has("axis") or hud.blocks_world_input(point) or resize_controls.blocks_point(point) or rings.blocks_point(point) or bar.blocks_point(point):
 		return false
 	var origin := camera.project_ray_origin(point)
 	var direction := camera.project_ray_normal(point)
@@ -1975,12 +1995,6 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	var destination: Vector3 = target["pivot"]
 	if kind in ["ground","height"]:
 		dots = Targets.position_dots(displayed["pivot"],origin["pivot"],level["limits"],kind == "height")
-	elif kind == "rails":
-		# A direct drag before its direction counts: the three lines it can take.
-		for axis: int in 3:
-			dots.append_array(Targets.rail_dots(displayed["pivot"],origin["pivot"],level["limits"],axis,0.55))
-	elif kind.begins_with("rail_"):
-		dots = Targets.rail_dots(displayed["pivot"],origin["pivot"],level["limits"],int(kind.trim_prefix("rail_")))
 	elif kind.begins_with("size_"):
 		var key := kind.trim_prefix("size_")
 		dots = Targets.resize_dots(origin,displayed,key,level["limits"])

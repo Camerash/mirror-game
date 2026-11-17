@@ -5,13 +5,14 @@ extends SceneTree
 ##
 ## The stages' prompts teach the direct controls the game plays with, so the
 ## game here runs them too. Where driving the real command is cheap, these
-## checks use it (request_walk, turn_camera, the mirror button, a drag on the
-## mirror along one axis, the arrow, a real safe fall). A non-matching event
+## checks use it (request_walk, turn_camera, the mirror button, the move,
+## lift and turn knobs, a real safe fall). A non-matching event
 ## is instead emitted directly on `tutorial_event`: it exercises the same
 ## `_on_tutorial_event` guard without needing a second, unrelated real action
 ## for every stage.
 
 const Game := preload("res://game.gd")
+const MirrorRules := preload("res://core/mirror_state.gd")
 const Levels := preload("res://core/level_loader.gd")
 const Geometry := preload("res://core/world_geometry.gd")
 
@@ -85,29 +86,37 @@ func direct_settled() -> void:
 
 
 func press_mirror_button() -> void:
-	game.toggle_mirror()
+	game.bar.action_requested.emit("mirror_toggle", null)
 	await direct_settled()
 
 
 ## A finger on the mirror's centre drags along one axis (0 x, 1 y, 2 z).
 func slide(axis: int, units: float) -> void:
+	## The move knob (x or z) or the lift knob (y) is held, dragged until the
+	## mirror goes `units` along one axis, and let go.
 	var pivot: Vector3 = game.mirror["pivot"]
-	var start: Vector2 = game.camera.unproject_position(pivot)
-	var finish: Vector2 = start + game._screen_axes(pivot)[axis] * units
-	game.begin_slide(start)
+	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
+	var origin: Vector2 = game.camera.unproject_position(pivot)
+	var unit: Vector2 = game.camera.unproject_position(pivot + [Vector3.RIGHT, Vector3.UP, Vector3.RIGHT][axis]) - origin
+	var gain: float = unit.length() / game._screen_axes(pivot)[mini(axis, 1)].length()
+	var start: Vector2 = game.bar.centre
+	var finish: Vector2 = start + (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
+	game.begin_grip("lift" if axis == 1 else "move", start)
 	for step: int in range(1, 13):
-		game.slide_to(start.lerp(finish, step / 12.0))
+		game.grip_to(start.lerp(finish, step / 12.0))
 		await process_frame
 	await frames(8)
-	game.end_slide()
+	game.end_grip("lift" if axis == 1 else "move")
 	await direct_settled()
 
 
 func point(direction: Vector3) -> void:
-	game.begin_point()
-	game.point_toward(direction)
+	## The turn knob is held, asks for a grid direction, and is let go.
+	var faced: Dictionary = MirrorRules.faced(game.mirror, direction)
+	game.begin_grip("turn", game.bar.centre)
+	game.aim_to(faced["yaw"], faced["pitch"])
 	await frames(8)
-	game.end_point()
+	game.end_grip("turn")
 	await direct_settled()
 
 
@@ -277,7 +286,7 @@ func check_turn() -> void:
 	check(active_prompt_id() == "turn_mirror", "Turn: a non-matching event does not advance turn_mirror")
 	await press_mirror_button()
 	await point(Vector3.BACK)
-	check(queue_and_active_empty(), "Turn: pointing the arrow closes turn_mirror")
+	check(queue_and_active_empty(), "Turn: the turn knob closes turn_mirror")
 	check_no_empty_cards("Turn")
 
 

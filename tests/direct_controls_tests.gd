@@ -1,6 +1,7 @@
 extends SceneTree
-## The direct mirror controls: the mirror button, a drag on the mirror along
-## one grid axis, the arrow, apply on release with Undo, and no editor.
+## The direct mirror controls: the mirror bar (the mirror button, the move,
+## turn and lift knobs, the remove button), apply on release with Undo, and
+## no editor.
 ## Pointer checks push real mouse events through the game's own input path.
 ##
 ## Run: godot --headless --path . --script tests/direct_controls_tests.gd
@@ -89,21 +90,67 @@ func press_key(key: Key) -> void:
 	await direct_settled()
 
 
+## Waits until the bar is open (1.0) or closed (0.0). It moves by real time.
+func bar_at(open: float) -> void:
+	var deadline := Time.get_ticks_msec() + 4000
+	while not is_equal_approx(game.bar._open, open) and Time.get_ticks_msec() < deadline:
+		await process_frame
+
+
+## A real press and release on the mirror button, then the bar opens. A bar
+## that is still open from the last stage first closes.
 func press_mirror_button() -> void:
-	game.hud._mirror_button.pressed.emit()
+	await bar_at(0.0)
+	await tap(game.bar.centre)
+	await direct_settled()
+	await bar_at(1.0)
+
+
+## A real press and release on the remove button, then the bar closes.
+func press_remove_button() -> void:
+	await tap(game.bar._remove_point())
+	await direct_settled()
+	await bar_at(0.0)
+
+
+func knob(index: int) -> Vector2:
+	return game.bar.centre + Vector2((index - 1) * game.bar.SPACING, 0.0)
+
+
+## The finger travel that moves the mirror by `world`.
+func travel(world: Vector3) -> Vector2:
+	var origin: Vector2 = game.camera.unproject_position(pivot())
+	var unit: Vector2 = game.camera.unproject_position(pivot() + Vector3.RIGHT) - origin
+	var gain: float = unit.length() / game._screen_axes(pivot())[0].length()
+	if absf(world.y) > 0.0:
+		unit = game.camera.unproject_position(pivot() + Vector3.UP) - origin
+		gain = unit.length() / game._screen_axes(pivot())[1].length()
+	return (game.camera.unproject_position(pivot() + world) - origin) / (gain * game.KNOB_GAIN)
+
+
+## The command path of the move knob (x or z) or the lift knob (y): the knob
+## is held and dragged until the mirror goes `units` along `axis`.
+func slide(axis: int, units: float) -> void:
+	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
+	var start: Vector2 = game.bar.centre
+	var finish: Vector2 = start + travel(world)
+	var kind := "lift" if axis == 1 else "move"
+	game.begin_grip(kind, start)
+	for step: int in range(1, 13):
+		game.grip_to(start.lerp(finish, step / 12.0))
+		await process_frame
+	await frames(8)
+	game.end_grip(kind)
 	await direct_settled()
 
 
-## The command path a drag on the mirror takes, without hunting for glass.
-func slide(axis: int, units: float) -> void:
-	var start: Vector2 = game.camera.unproject_position(pivot())
-	var finish: Vector2 = start + game._screen_axes(pivot())[axis] * units
-	game.begin_slide(start)
-	for step: int in range(1, 13):
-		game.slide_to(start.lerp(finish, step / 12.0))
-		await process_frame
+## The command path of the turn knob: it asks for a grid direction.
+func point(direction: Vector3) -> void:
+	var faced: Dictionary = MirrorRules.faced(game.mirror, direction)
+	game.begin_grip("turn", game.bar.centre)
+	game.aim_to(faced["yaw"], faced["pitch"])
 	await frames(8)
-	game.end_slide()
+	game.end_grip("turn")
 	await direct_settled()
 
 
@@ -111,7 +158,7 @@ func pivot() -> Vector3:
 	return game.mirror["pivot"]
 
 
-## A point on the mirror's glass, clear of the arrow's knob.
+## A point on the mirror's glass.
 func glass_point() -> Vector2:
 	var rect: Rect2 = game.hud.get_play_rect()
 	var centre: Vector2 = game.camera.unproject_position(pivot())
@@ -155,10 +202,11 @@ func run() -> void:
 	await check_axes_in_every_view()
 	await check_no_editor()
 	await check_mirror_button()
-	await check_slide_one_axis()
-	await check_slide_up_lifts()
+	await check_move_knob()
+	await check_lift_knob()
+	await check_glass_does_not_move()
 	await check_tap_through_glass()
-	await check_arrow()
+	await check_turn_knob()
 	await check_blocked_goes_back()
 	await check_first_raise_follows_her_look()
 	await check_hover_ghost()
@@ -191,20 +239,6 @@ func check_axes_in_every_view() -> void:
 	var point := Vector3(2.5, 0, 0)
 	for view: int in 4:
 		var axes: Array[Vector2] = game._screen_axes(point)
-		var directions: Array[Vector2] = []
-		for axis: int in 3:
-			directions.append(axes[axis].normalized())
-			directions.append(-axes[axis].normalized())
-			for sign: float in [1.0, -1.0]:
-				check(Targets.pick_axis(axes[axis] * sign * 30.0, axes) == axis, "View %d: a drag along axis %d's screen direction picks it" % [view, axis])
-				var off := axes[axis].normalized().rotated(deg_to_rad(20.0)) * sign * 30.0
-				check(Targets.pick_axis(off, axes) == axis, "View %d: a drag 20 degrees off axis %d still picks it" % [view, axis])
-		check(Targets.pick_axis(Vector2(0, -40), axes) == 1, "View %d: a drag straight up the screen lifts" % view)
-		var closest := 180.0
-		for a: int in directions.size():
-			for b: int in range(a + 1, directions.size()):
-				closest = minf(closest, absf(rad_to_deg(directions[a].angle_to(directions[b]))))
-		check(closest > 50.0, "View %d: the six grid directions are at least 50 degrees apart on screen (%.1f)" % [view, closest])
 		var lengths: Array[float] = [axes[0].length(), axes[1].length(), axes[2].length()]
 		check(lengths.max() / lengths.min() < 1.2, "View %d: a step costs about the same finger travel on every axis" % view)
 		game.turn_camera(1)
@@ -217,7 +251,7 @@ func check_axes_in_every_view() -> void:
 func check_no_editor() -> void:
 	await load_stage("01_route")
 	var hud = game.hud
-	check(hud._mirror_button.visible and not hud._mirror_button.disabled, "No editor: the mirror button shows and is ready")
+	check(game.bar.shown and game.bar.can_toggle, "No editor: the mirror button shows and is ready")
 	check(not hud._mode_cycle.visible and not hud._cancel.visible and not hud._apply.visible and not hud._flip.visible and not hud._enabled.visible,
 		"No editor: no mode button and no edit row")
 	var empty := Vector2(-1, -1)
@@ -242,57 +276,91 @@ func check_mirror_button() -> void:
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.RIGHT), "Button: it faces the stage's starting direction")
 	check(game.phase == "play" and game.history.size() == 1, "Button: the raise applies at once, as one Undo step")
 	check("create" in events, "Button: raising reports create")
-	await press_mirror_button()
-	check(not bool(game.mirror.get("enabled", true)) and pivot().is_equal_approx(Vector3(0.5, 0, 0)), "Button: lowering keeps the mirror's place")
+	check(is_equal_approx(game.bar._open, 1.0), "Button: the bar opens into its knobs")
+	await press_remove_button()
+	check(not bool(game.mirror.get("enabled", true)) and pivot().is_equal_approx(Vector3(0.5, 0, 0)), "Button: the remove button lowers the mirror and keeps its place")
 	check(game.sheet.lowered and game.sheet.visible, "Button: a lowered mirror shows a faint outline where it stood")
 	check("remove" in events, "Button: lowering reports remove")
+	check(is_zero_approx(game.bar._open), "Button: the bar closes to the mirror button")
 	await press_mirror_button()
 	check(bool(game.mirror.get("enabled", false)) and pivot().is_equal_approx(Vector3(0.5, 0, 0)), "Button: raising again puts it back")
 
 
-func check_slide_one_axis() -> void:
+func check_move_knob() -> void:
 	await load_stage("01_route")
 	await press_mirror_button()
-	var start := glass_point()
-	var axes: Array[Vector2] = game._screen_axes(pivot())
+	var start := knob(0)
 	var before := pivot()
 	var history: int = game.history.size()
 	events.clear()
+	var finish := start + travel(Vector3(2, 0, 0))
+	mouse_button(start, true)
+	await process_frame
+	for step: int in range(1, 13):
+		mouse_move(start.lerp(finish, step / 12.0))
+		await process_frame
+	await frames(8)
+	check(game.dragging and game.phase == "preview", "Move: holding the move knob and sliding moves the mirror")
+	check(not game.hud._cancel.visible and not game.hud._apply.visible and not game.hud._mode_cycle.visible and not game.hud._edit_border.visible,
+		"Move: no edit buttons appear while dragging")
+	check(game.rings.get_control_rects().is_empty() and game.resize_controls.get_control_rects().is_empty(), "Move: no rings or resize handles appear")
+	check(game.guide_kind == "ground", "Move: the guide shows the ground")
+	mouse_button(finish, false)
+	await direct_settled()
+	check(pivot().is_equal_approx(before + Vector3(2, 0, 0)), "Move: the release applies the mirror two units along X, and nothing else")
+	check(game.phase == "play" and game.history.size() == history + 1, "Move: one release is one Undo step")
+	check("move" in events, "Move: a slide reports move")
+	# One drag changes both ground axes.
+	before = pivot()
+	await drag(start, start + travel(Vector3(1.0, 0, 0.5)))
+	check(pivot().is_equal_approx(before + Vector3(1, 0, 0.5)), "Move: one drag moves along X and Z and keeps the height")
+	game.undo()
+	await direct_settled()
+	game.undo()
+	await direct_settled()
+	check(pivot().is_equal_approx(before - Vector3(2, 0, 0)), "Move: Undo puts the mirror back")
+
+
+func check_lift_knob() -> void:
+	await load_stage("01_route")
+	await press_mirror_button()
+	var start := knob(2)
+	var before := pivot()
+	events.clear()
+	var finish := start + travel(Vector3.UP)
+	mouse_button(start, true)
+	await process_frame
+	for step: int in range(1, 13):
+		mouse_move(start.lerp(finish, step / 12.0))
+		await process_frame
+	await frames(8)
+	check(game.dragging and game.guide_kind == "height", "Lift: the guide shows the height")
+	mouse_button(finish, false)
+	await direct_settled()
+	check(pivot().is_equal_approx(before + Vector3(0, 1, 0)), "Lift: the lift knob raises the mirror one unit, and nothing else")
+	var risen := pivot()
+	await drag(start, start - travel(Vector3.UP))
+	check(pivot().is_equal_approx(risen - Vector3(0, 1, 0)), "Lift: a slide the other way lowers it again")
+	check("lower" in events, "Lift: lowering the mirror reports lower")
+
+
+func check_glass_does_not_move() -> void:
+	## With direct controls a drag on the glass does not move the mirror.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var start := glass_point()
+	var before: Dictionary = game.mirror.duplicate(true)
+	var history: int = game.history.size()
+	var axes: Array[Vector2] = game._screen_axes(pivot())
 	mouse_button(start, true)
 	await process_frame
 	for step: int in range(1, 13):
 		mouse_move(start.lerp(start + axes[0] * 2.0, step / 12.0))
 		await process_frame
-	await frames(8)
-	check(game.dragging and game.phase == "preview" and game.slide_axis == 0, "Slide: a drag on the glass along X slides the mirror along X")
-	check(not game.hud._cancel.visible and not game.hud._apply.visible and not game.hud._mode_cycle.visible and not game.hud._edit_border.visible,
-		"Slide: no edit buttons appear while dragging")
-	check(game.rings.get_control_rects().is_empty() and game.resize_controls.get_control_rects().is_empty(), "Slide: no rings or resize handles appear")
-	check(game.guide_kind == "rail_0", "Slide: the guide shows the one line the mirror moves along")
+	check(not game.dragging and game.phase == "play", "Glass: a drag on the glass does not hold the mirror")
 	mouse_button(start + axes[0] * 2.0, false)
 	await direct_settled()
-	check(pivot().is_equal_approx(before + Vector3(2, 0, 0)), "Slide: the release applies the mirror two units along X, and nothing else")
-	check(game.phase == "play" and game.history.size() == history + 1, "Slide: one release is one Undo step")
-	check("move" in events, "Slide: a slide reports move")
-	game.undo()
-	await direct_settled()
-	check(pivot().is_equal_approx(before), "Slide: Undo puts the mirror back")
-
-
-func check_slide_up_lifts() -> void:
-	await load_stage("01_route")
-	await press_mirror_button()
-	var start := glass_point()
-	var axes: Array[Vector2] = game._screen_axes(pivot())
-	var before := pivot()
-	events.clear()
-	await drag(start, start + Vector2(0, -axes[1].length() * 1.0))
-	check(pivot().is_equal_approx(before + Vector3(0, 1, 0)), "Lift: a drag straight up the screen raises the mirror one unit, and nothing else")
-	var risen := pivot()
-	var again := glass_point()
-	await drag(again, again + Vector2(0, axes[1].length() * 1.0))
-	check(pivot().is_equal_approx(risen - Vector3(0, 1, 0)), "Lift: a drag straight down lowers it again")
-	check("lower" in events, "Lift: lowering the mirror reports lower")
+	check(MirrorRules.same(game.mirror, before) and game.history.size() == history, "Glass: a drag on the glass leaves the mirror and the history as they were")
 
 
 func check_tap_through_glass() -> void:
@@ -307,41 +375,22 @@ func check_tap_through_glass() -> void:
 	check(not game.walker.route.is_empty() or game.walker.velocity.length() > 0.01, "Tap: a tap on the glass walks to the ground behind it")
 
 
-func check_arrow() -> void:
+func check_turn_knob() -> void:
 	await load_stage("01_route")
 	await press_mirror_button()
-	await frames(2)
-	var knob: Vector2 = game.arrow.knob_point()
-	check(game.arrow.blocks_point(knob), "Arrow: the knob is shown and touchable")
-	var centre: Vector2 = game.camera.unproject_position(pivot())
-	var toward: Vector2 = game.camera.unproject_position(pivot() + Vector3.BACK) - centre
+	var start := knob(1)
 	var before := pivot()
+	var yaw: float = game.mirror["yaw"]
 	events.clear()
-	mouse_button(knob, true)
-	await process_frame
-	check(game.pointing and game.arrow.is_active(), "Arrow: pressing the knob holds the arrow")
-	var target := centre + toward.normalized() * 90.0
-	for step: int in range(1, 11):
-		mouse_move(knob.lerp(target, step / 10.0))
-		await process_frame
-	await frames(8)
-	mouse_button(target, false)
-	await direct_settled()
-	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK), "Arrow: pointing it toward +Z turns the mirror to copy toward +Z")
-	check(pivot().is_equal_approx(before), "Arrow: turning keeps the mirror's centre")
-	check("turn" in events, "Arrow: a turn reports turn")
-	game.begin_point()
-	game.point_toward(Vector3.FORWARD)
-	await frames(8)
-	game.end_point()
-	await direct_settled()
-	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Arrow: pointing the opposite way is the half turn")
-	game.begin_point()
-	game.point_toward(Vector3.UP)
-	await frames(8)
-	game.end_point()
-	await direct_settled()
-	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Arrow: the tutorial keeps the mirror upright")
+	await drag(start, start + Vector2(game.bar.TURN_PIXELS, 0.0))
+	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: a slide to the right turns the mirror one step of 45 degrees")
+	check(pivot().is_equal_approx(before), "Turn: turning keeps the mirror's centre")
+	check("turn" in events, "Turn: a turn reports turn")
+	await point(Vector3.BACK)
+	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK), "Turn: asking for +Z turns the mirror to copy toward +Z")
+	check(pivot().is_equal_approx(before), "Turn: a quarter turn keeps the mirror's centre")
+	await point(Vector3.FORWARD)
+	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Turn: asking for the opposite way is the half turn")
 
 
 func check_first_raise_follows_her_look() -> void:
@@ -385,11 +434,7 @@ func check_blocked_goes_back() -> void:
 	game._refresh()
 	await press_mirror_button()
 	var before: Dictionary = game.mirror.duplicate(true)
-	game.begin_point()
-	game.point_toward(Vector3.LEFT)
-	await frames(8)
-	game.end_point()
-	await direct_settled()
+	await point(Vector3.LEFT)
 	check(MirrorRules.same(game.mirror, before) and game.phase == "play", "Blocked: a turn that would put the wall on the traveller goes back")
 
 
@@ -406,11 +451,11 @@ func check_hover_ghost() -> void:
 		await process_frame
 	await frames(3)
 	check(walked, "Hover: the traveller walks out onto the copy")
-	var start: Vector2 = game.camera.unproject_position(pivot())
-	var finish: Vector2 = start + game._screen_axes(pivot())[0] * 1.5
-	game.begin_slide(start)
+	var start: Vector2 = game.bar.centre
+	var finish: Vector2 = start + travel(Vector3(1.5, 0, 0))
+	game.begin_grip("move", start)
 	for step: int in range(1, 13):
-		game.slide_to(start.lerp(finish, step / 12.0))
+		game.grip_to(start.lerp(finish, step / 12.0))
 		await process_frame
 	for index: int in 240:
 		if game.preview_view.result_status != "":
@@ -418,9 +463,9 @@ func check_hover_ghost() -> void:
 		await process_frame
 	check(game.dragging and game.preview_view.result_status == "failure" and game.preview_view.ghost.visible, "Hover: mid-drag, the ghost shows the fall before anything applies")
 	check(game.walker.position.distance_to(Vector3(4, 0, 0)) < 0.25, "Hover: the traveller holds still while the finger is down")
-	game.slide_to(start)
+	game.grip_to(start)
 	await frames(30)
-	game.end_slide()
+	game.end_grip("move")
 	await direct_settled()
 	check(pivot().is_equal_approx(Vector3(2.5, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(Vector3(4, 0, 0)) < 0.25,
 		"Hover: dragging back and letting go changes nothing")
@@ -432,9 +477,8 @@ func check_camera_stays() -> void:
 	await frames(30)
 	var position: Vector3 = game.camera.position
 	var size: float = game.camera.size
-	var start := glass_point()
-	var axes: Array[Vector2] = game._screen_axes(pivot())
-	await drag(start, start + axes[0] * 0.5)
+	var start := knob(0)
+	await drag(start, start + travel(Vector3(0.5, 0, 0)))
 	await frames(30)
 	check(game.camera.position.is_equal_approx(position) and is_equal_approx(game.camera.size, size), "Camera: a small slide does not reframe the stage")
 
@@ -453,9 +497,7 @@ func check_classic_toggle() -> void:
 	await load_stage("01_route")
 	game._action("classic_controls", true)
 	await frames(2)
-	# The mirror button leaves with the dismiss motion.
-	await create_timer(Motion.duration("dismiss") + 0.05).timeout
-	check(not game.direct_controls and not game.gesture.direct and not game.hud._mirror_button.visible, "Toggle: the debug switch brings back the classic editor")
+	check(not game.direct_controls and not game.gesture.direct and not game.bar.shown, "Toggle: the debug switch brings back the classic editor")
 	game.begin_preview()
 	await direct_settled()
 	check(game.hud._mode_cycle.visible and game.hud._cancel.visible, "Toggle: the classic editor shows its mode button and edit row")
@@ -463,4 +505,4 @@ func check_classic_toggle() -> void:
 	await frames(2)
 	game._action("classic_controls", false)
 	await frames(2)
-	check(game.direct_controls and game.gesture.direct and game.hud._mirror_button.visible, "Toggle: switching back restores the direct controls")
+	check(game.direct_controls and game.gesture.direct and game.bar.shown, "Toggle: switching back restores the direct controls")

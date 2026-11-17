@@ -92,7 +92,7 @@ func occluded_sheet_point() -> Variant:
 	for y: int in 60:
 		for x: int in 60:
 			var point := rect.position + rect.size * Vector2((x + 0.5) / 60.0, (y + 0.5) / 60.0)
-			if game.hud.blocks_world_input(point) or game.arrow.blocks_point(point):
+			if game.hud.blocks_world_input(point) or game.bar.blocks_point(point):
 				continue
 			var origin: Vector3 = game.camera.project_ray_origin(point)
 			var direction: Vector3 = game.camera.project_ray_normal(point)
@@ -120,18 +120,13 @@ func run() -> void:
 	root.size = Vector2i(1152, 800)
 	await frames(4)
 
-	# Camera buttons: a drawn turning block, not the Undo and Redo glyphs.
-	for button: Button in [game.hud._camera_left, game.hud._camera_right]:
-		check(button.text.is_empty() and button.tooltip_text.begins_with("Turn ") and button.draw.get_connections().size() > 0,
-			"Camera: %s is a drawn icon with a 'Turn' tooltip" % button.tooltip_text)
-
 	# First steps leaves the mirror out: no button, and M does nothing.
 	await load_stage("13_first_steps")
-	check(not game.hud._mirror_button.visible, "First steps: the mirror button is hidden")
+	check(not game.bar.shown, "First steps: the mirror button is hidden")
 	await key(KEY_M)
 	check(not game.mirror.get("enabled", false) and not game.can_toggle_mirror(), "First steps: M raises no mirror")
 	await load_stage("01_route")
-	check(game.hud._mirror_button.visible, "A place to stand: the mirror button shows")
+	check(game.bar.shown, "A place to stand: the mirror button shows")
 	var bad := {"title": "t", "objective": "o", "originals": [], "absolutes": [], "start": [0, 0, 0], "goal": [1, 0, 0],
 		"mirror": {"enabled": false, "axis": 0, "source": 1, "offset": 0, "pivot": [0, 0, 0]},
 		"limits": {"axes": [0], "min": [-1, -1, -1], "max": [1, 1, 1]}, "kill_y": -5, "mirror_available": "no"}
@@ -147,24 +142,18 @@ func run() -> void:
 	check(hidden != null, "Grab: a block passes in front of the panel somewhere")
 	if hidden != null:
 		check(game.sheet_hit(hidden), "Grab: a press on the panel behind a block takes the mirror")
-		await hover(hidden)
-		check(game._cursor == Input.CURSOR_MOVE and game.sheet.hovered and game.sheet.edges.visible,
-			"Hover: over the panel, the cursor is a move cursor and the outline shows")
 		var before: Vector3 = game.mirror["pivot"]
 		var axes: Array[Vector2] = game._screen_axes(before)
 		await drag(hidden, hidden + axes[0] * 2.0)
-		check(not (game.mirror["pivot"] as Vector3).is_equal_approx(before), "Grab: a drag that starts behind a block slides the mirror")
-		game.undo()
-		await settled()
+		check((game.mirror["pivot"] as Vector3).is_equal_approx(before), "Grab: a drag that starts on the panel does not slide the mirror")
 	check(game.sheet_hit(past_edge(0.15)), "Grab: a press just past the glass takes the mirror")
 	check(not game.sheet_hit(past_edge(0.6)), "Grab: a press well past the glass does not")
 	var empty: Vector2 = game.play_rect.position + Vector2(30, game.play_rect.size.y * 0.5)
 	await hover(empty)
 	check(game._cursor == Input.CURSOR_ARROW and not game.sheet.hovered and not game.sheet.edges.visible,
 		"Hover: away from the mirror, the cursor and outline go back")
-	if game.arrow.blocks_point(game.arrow.knob_point()):
-		await hover(game.arrow.knob_point())
-		check(game._cursor == Input.CURSOR_POINTING_HAND, "Hover: over the arrow knob, the cursor is a hand")
+	await hover(game.bar.centre)
+	check(game._cursor == Input.CURSOR_POINTING_HAND, "Hover: over the bar, the cursor is a hand")
 	await hover(empty)
 
 	# Restart stage: in the release settings, back to the stage's start.
@@ -183,8 +172,8 @@ func run() -> void:
 	check(game.history.is_empty() and not game.mirror.get("enabled", false) and game.walker.position.is_equal_approx(start),
 		"Restart: the stage is back at its start")
 
-	# Phone framing: on its side, the stage takes the full height between two
-	# side columns; on every size, the stage area stays clear of the controls.
+	# Phone framing: on every size, the stage area stays clear of the controls
+	# and of the mirror bar.
 	for size: Vector2i in [Vector2i(844, 390), Vector2i(390, 844), Vector2i(1152, 800)]:
 		root.size = size
 		await frames(3)
@@ -192,8 +181,7 @@ func run() -> void:
 		var camera_rect: Rect2 = game.hud.get_camera_rect()
 		for bounds: Rect2 in game.hud.get_touch_control_bounds().values():
 			check(not camera_rect.intersects(bounds), "%s: the stage area %s clears the control at %s" % [size, camera_rect, bounds])
-		if size.x > size.y and size.y < 500:
-			check(camera_rect.size.y >= game.play_rect.size.y - 30.0, "%s: the stage area uses the full height (%.0f)" % [size, camera_rect.size.y])
+		check(camera_rect.end.y <= game.hud.get_bar_centre().y - game.bar.HALF_HEIGHT + 0.5, "%s: the stage area ends above the mirror bar" % size)
 		var undo_before: Rect2 = camera_rect
 		game.toggle_mirror()
 		await settled()

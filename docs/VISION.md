@@ -368,7 +368,7 @@ styles and words.
   3D program. Controls on the mirror are acceptable if they are clear, easy
   and look good. Visual: how the reflection shows, and how the girl looks
   in each area. Not decided.
-- DRAFT (owner's proposal for the control, 2026-11-17): a pill bar that
+- DECIDED (owner's design of the control, 2026-11-17), built: a pill bar that
   floats in the horizontal centre, below the centre of the screen; the stage
   moves up so that the stage and the bar together are centred. Before the
   mirror is up, a round mirror button is in the bar's place; a press changes
@@ -383,18 +383,29 @@ styles and words.
   button in pastel red, near the bar, removes the mirror. No arrow shows the
   side of the copy; the look of the reflection does that later. The aims:
   one way for all controls, no finger on the mirror, nothing that overlaps
-  the stage. Not decided; a sketch is in `VALIDATION.md`. The owner played
-  the sketch (2026-11-17): "The control works great." The owner's
+  the stage. The owner played the sketch (2026-11-17): "The control works
+  great." The owner's
   corrections: the movement and the rotation a little slower, because they
   were abrupt; the knobs more rigid, with less change of shape; the bar a
   little below the stage for each window size; more ease in the change
   between the mirror button and the bar. After the second play: the bar
   nearer the bottom of the screen, between the stage and the bottom, and the
   control (mirror button, bar, knobs) larger. After the third play: the size
-  and the place are "correct now".
+  and the place are "correct now". The owner then approved the build into
+  the game: the bar is the one control of the mirror (`world/mirror_bar.gd`),
+  and the drag on the glass, the arrow and the corner button are removed.
+  The rules are in `GAME_DESIGN.md`.
 - DECIDED (owner, 2026-11-17), built: the mirror, when it is raised for the
   first time on a stage, stands in front of the girl, in the direction she
   looks.
+- DECIDED (owner, 2026-11-17), built: no view buttons at the bottom left.
+  The sideways swipe turns the view; it is sufficient. Keys Q and E stay on
+  desktop.
+- OPEN (owner, 2026-11-17): the prompts. The card in the top left with long
+  text "does not feel good and user loses focus". The game needs a clearer
+  prompt UI and style. The agent's proposal is a sketch in `VALIDATION.md`:
+  one short line above the bar, no card, and the control that the line names
+  answers with a ripple and a finger mark. Not decided.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound
