@@ -364,7 +364,12 @@ styles and words.
   button in pastel red, near the bar, removes the mirror. No arrow shows the
   side of the copy; the look of the reflection does that later. The aims:
   one way for all controls, no finger on the mirror, nothing that overlaps
-  the stage. Not decided; a sketch is in `VALIDATION.md`.
+  the stage. Not decided; a sketch is in `VALIDATION.md`. The owner played
+  the sketch (2026-11-17): "The control works great." The owner's
+  corrections: the movement and the rotation a little slower, because they
+  were abrupt; the knobs more rigid, with less change of shape; the bar a
+  little below the stage for each window size; more ease in the change
+  between the mirror button and the bar.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

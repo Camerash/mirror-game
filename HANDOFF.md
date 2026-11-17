@@ -58,10 +58,12 @@ the pane), then the look of the reflection judged in motion (a solid copy
 of the same material, with marks that show the flip), then the garden. The
 owner chose control first.
 
-**The pill bar sketch (2026-11-17), waits for the owner's play.** The
-owner's proposal, in `docs/VISION.md` (DRAFT): a glass bar low in the middle
-with three knobs (move, turn, lift); a held knob uses the full screen; a
-round mirror button opens into the bar; a rose button lowers the mirror.
+**The pill bar sketch (2026-11-17), second round, waits for the owner's
+play.** The owner's proposal, in `docs/VISION.md` (DRAFT): a glass bar below
+the stage with three knobs (move, turn, lift); a held knob uses the full
+screen; a round mirror button opens into the bar; a rose button lowers the
+mirror. The owner played round one: "works great", with three corrections
+(slower, more rigid knobs, the bar a little below the stage); they are in.
 Not in Git: `git apply test-output/polish/pill-proof-sketch.patch` (alone;
 `game.gd`, `world/mirror_arrow.gd`, `ui/mirror_hud.gd`). Key F gives the
 earlier controls; key G changes how the move knob reads the finger. Rules
