@@ -117,15 +117,17 @@ func check_bar(size: Vector2i) -> void:
 	await frames(240)
 	check(not game.mirror.get("enabled", false) and is_zero_approx(game.bar._open), "%s: the bar starts as the mirror button" % label)
 
-	# The bar is below the stage and inside the play area.
+	# The bar is below the stage and inside the play area, and it does not
+	# follow the view.
 	var centre: Vector2 = game.bar.centre
 	var lowest := -INF
 	for point: Vector3 in game.camera.points:
 		lowest = maxf(lowest, game.camera.unproject_position(point).y)
 	var half: float = game.bar.HALF_HEIGHT
-	var row: float = game.hud.get_bar_centre().y
-	check(centre.y - half - lowest >= 15.5 or centre.y >= row - 0.5, "%s: the bar is 16 units or more below the stage, or in its lowest row" % label)
-	check(centre.y <= row + 0.5 and centre.y + half <= game.play_rect.end.y, "%s: the bar is not below its lowest row and is inside the play area" % label)
+	check(centre.is_equal_approx(game.hud.get_bar_centre()) and centre.y - half >= lowest - 0.5, "%s: the bar is in its row, below the stage" % label)
+	check(centre.y + half <= game.play_rect.end.y, "%s: the bar is inside the play area" % label)
+	if size.y > size.x:
+		check(game.play_rect.end.y - centre.y - half >= size.y * 0.12, "%s: a slide from a knob has room below the bar" % label)
 	check(game.bar._remove_point().x + game.bar.REMOVE <= game.play_rect.end.x, "%s: the remove button is inside the play area" % label)
 
 	# The mirror button opens into the bar.

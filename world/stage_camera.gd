@@ -4,10 +4,6 @@ extends Camera3D
 signal view_changed
 signal motion_finished
 
-## In a tall frame the place sits this far below the middle of the play
-## area, as a part of the frame's height, where there is free room for it.
-const LOW_IN_TALL_FRAME := 0.13
-
 var yaw := PI * 0.25
 var target_yaw := PI * 0.25
 var bounds := AABB()
@@ -80,12 +76,23 @@ func turn(direction: int) -> void:
 	var start := yaw
 	var target := yaw + signi(direction) * PI * 0.5
 	target_yaw = target
+	# One fixed world pivot. Its place on the screen and the size of the view
+	# go evenly from the start to the end: no fit between the two, so the
+	# place does not go up and then down in the middle of the turn.
+	var pivot := bounds.get_center()
+	var frame := get_viewport().get_visible_rect().size
+	var end := _pose(target)
 	var start_size := size
-	var end_size: float = _pose(target)["size"]
-	# One captured destination, one fixed world pivot, no intermediate fit.
+	var end_size: float = end["size"]
+	var from_spot := unproject_position(pivot) - frame * 0.5
+	var seen: Vector3 = (end["basis"] as Basis).inverse() * (pivot - end["position"])
+	var to_spot := Vector2(seen.x, -seen.y) * frame.y / end_size
 	motion = Motion.blend(self, func(weight: float) -> void:
 		yaw = lerpf(start, target, weight)
-		_apply_pose(yaw, lerpf(start_size, end_size, weight)), "reveal")
+		var view_basis := _view_basis(yaw)
+		var height := lerpf(start_size, end_size, weight)
+		var spot := from_spot.lerp(to_spot, weight) * height / frame.y
+		_apply(pivot + view_basis.z * 40.0 - view_basis.x * spot.x + view_basis.y * spot.y, view_basis, height), "reveal")
 	motion.tween_callback(_finish)
 
 ## Applies the current pose at once, for the title's `afar` and `drift`.
@@ -104,12 +111,9 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 	var framed: AABB = bounds if stage_bounds == null else stage_bounds
 	var shown := _shown(framed, points if content == null else content)
 	var fit_rect: Rect2 = play_rect if area == null else area
-	angle += drift * afar
-	# From afar the view looks down more steeply, and from further away.
-	var lift := lerpf(PI / 6.0, 0.95, afar)
-	var direction := Vector3(cos(angle) * cos(lift), sin(lift), sin(angle) * cos(lift))
+	var view_basis := _view_basis(angle)
+	var direction := view_basis.z
 	var centre := framed.get_center()
-	var view_basis := Basis.looking_at(-direction, Vector3.UP)
 	var viewport_size := get_viewport().get_visible_rect().size
 	var pixels := viewport_size.y / fixed_size if fixed_size > 0.0 else 1.0
 	# The view is centred on the middle of what it shows, as seen from this
@@ -129,13 +133,21 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 		pixels /= lerpf(1.0, 2.2, afar)
 	var offset := fit_rect.get_center() - viewport_size * 0.5
 	if viewport_size.y > viewport_size.x:
-		# In a tall frame the place sits low, near the thumbs, and the garden
-		# stands in the room above it. It goes down only into free room, so
-		# it stays above the bar.
+		# In a tall frame the mirror bar is high, for the thumb, so the middle
+		# of the area above it is above the middle of the frame. The place
+		# goes down toward the middle of the frame, only into free room, so it
+		# stays above the bar.
 		var room := (fit_rect.size.y - margin - (high.y - low.y) * pixels) * 0.5
-		offset.y += clampf(room, 0.0, viewport_size.y * LOW_IN_TALL_FRAME)
+		offset.y += clampf(viewport_size.y * 0.5 - fit_rect.get_center().y, 0.0, maxf(room, 0.0))
 	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}
+
+## The view's axes at `angle` about the stage. Its z axis is toward the view.
+func _view_basis(angle: float) -> Basis:
+	angle += drift * afar
+	# From afar the view looks down more steeply, and from further away.
+	var lift := lerpf(PI / 6.0, 0.95, afar)
+	return Basis.looking_at(-Vector3(cos(angle) * cos(lift), sin(lift), sin(angle) * cos(lift)), Vector3.UP)
 
 func _apply(location: Vector3, view_basis: Basis, height: float) -> void:
 	position = location

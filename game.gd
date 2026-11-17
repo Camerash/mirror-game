@@ -53,8 +53,6 @@ const MIN_HALF_STEP := 40.0
 ## the stage, and it is this part of the way from there down to its lowest row.
 const KNOB_GAIN := 0.8
 const KNOB_FOLLOW_SECONDS := 0.18
-const BAR_GAP := 16.0
-const BAR_DROP := 0.7
 ## How far past its glass, in world units, a press still takes the mirror.
 const GRAB_MARGIN := 0.25
 ## Keys of the classic editor that mean nothing to the direct controls.
@@ -869,23 +867,11 @@ func _direct_hover_predict() -> void:
 		return
 	prediction_revision = predictor.predict(Geometry.generate(level, _display_state()), preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
 
-## The bar is between the lowest point that the view was fitted to and its
-## row in the HUD, nearer the row, where a thumb gets to it.
-func _bar_centre() -> Vector2:
-	var row := hud.get_bar_centre()
-	if camera.points.is_empty():
-		return row
-	var bottom := -INF
-	for point: Vector3 in camera.points:
-		bottom = maxf(bottom, camera.unproject_position(point).y)
-	var near := bottom + BAR_GAP + Bar.HALF_HEIGHT
-	return Vector2(row.x, row.y if near >= row.y else lerpf(near, row.y, BAR_DROP))
-
 func _update_bar() -> void:
 	if level.is_empty():
 		return
 	bar.shown = direct_controls and _mirror_available() and phase not in ["failure", "transition"]
-	bar.centre = _bar_centre()
+	bar.centre = hud.get_bar_centre()
 	if bar.shown:
 		var half := Vector2(Bar.BUTTON + 6.0, Bar.HALF_HEIGHT)
 		hud.clear_bar(Rect2(bar.centre - half, half * 2.0))

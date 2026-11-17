@@ -125,7 +125,8 @@ func _run() -> void:
 		"Block gallery: a reflected block is cut smaller than its source size at the aperture edge")
 	var absolute_solid := _find_solid(game.solids, "absolute", "goal")
 	check(absolute_solid.has("bounds"), "Block gallery: the jade goal platform is present")
-	# In a tall frame the place sits low, and stays inside the play area.
+	# In a tall frame the place sits toward the middle of the frame, and
+	# stays inside the play area.
 	root.size = Vector2i(390, 844)
 	for tick: int in 4:
 		await process_frame
@@ -137,8 +138,9 @@ func _run() -> void:
 		var seen: Vector2 = game.camera.unproject_position(point)
 		lowest = maxf(lowest, seen.y)
 		highest = minf(highest, seen.y)
-	check(lowest <= area.end.y + 0.5 and (lowest + highest) * 0.5 > area.get_center().y + 20.0,
-		"In a tall frame the place sits below the middle of the play area and inside it")
+	var middle := (lowest + highest) * 0.5
+	check(lowest <= area.end.y + 0.5 and middle >= area.get_center().y - 0.5 and middle <= 422.5,
+		"In a tall frame the place sits between the middle of the play area and the middle of the frame, and inside the area")
 	# The first view looks from +x and +z: the house (-z) and the gate wall
 	# (-x) stand behind the place, and the other two sides would cover it.
 	var garden := _garden(game)

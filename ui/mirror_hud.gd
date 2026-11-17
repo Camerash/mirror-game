@@ -31,6 +31,9 @@ var _bottom_reserved := TOUCH + GAP
 ## The mirror bar (`world/mirror_bar.gd`) is low in the middle, in the bottom
 ## band of this height.
 const BAR_ROW := 94.0
+## Where the bar's centre is in a tall frame, as a part of the play area's
+## height from its top.
+const BAR_HIGH := 0.78
 ## A prompt or a hint is one line, this far above the mirror bar.
 const LINE_GAP := 14.0
 ## On a short landscape screen, the width kept clear on each side of the stage.
@@ -223,9 +226,14 @@ func _place_lines() -> void:
 		line.position = Vector2(_last_play_rect.get_center().x - line.size.x * 0.5, base - LINE_GAP - line.size.y)
 func _bar_shown() -> bool:
 	return bool(_state.get("direct", false)) and bool(_state.get("mirror_available", true))
-## The lowest place for the centre of the mirror bar.
+## The centre of the mirror bar. It does not follow the view, so the bar is
+## still while the view turns. In a tall frame the bar is above the bottom
+## row: a slide from a knob then has room below it.
 func get_bar_centre() -> Vector2:
-	return Vector2(_last_play_rect.get_center().x, _last_play_rect.end.y - BAR_ROW * 0.5)
+	var row := _last_play_rect.end.y - BAR_ROW * 0.5
+	if _last_play_rect.size.y > _last_play_rect.size.x:
+		row = minf(row, _last_play_rect.position.y + _last_play_rect.size.y * BAR_HIGH)
+	return Vector2(_last_play_rect.get_center().x, row)
 ## The stage's name goes below the mirror bar where the two would be on the
 ## same place, or above the bar where there is no room below.
 func clear_bar(bar: Rect2) -> void:
@@ -531,7 +539,7 @@ func _responsive_layout() -> void:
 	# hidden, so its first appearance does not move the view.
 	_side_reserved = 0.0
 	if _bar_shown():
-		_bottom_reserved = BAR_ROW
+		_bottom_reserved = _last_play_rect.end.y - get_bar_centre().y + BAR_ROW * 0.5
 	elif count == 0 and _last_play_rect.size.y < SHORT_LANDSCAPE and _last_play_rect.size.x > _last_play_rect.size.y * 1.3:
 		var right_bottom := _shown_width(_undo) + GAP
 		var right_top := TOUCH * 2.0 + 6.0 + GAP
