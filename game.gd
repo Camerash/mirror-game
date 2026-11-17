@@ -890,6 +890,7 @@ func _update_bar() -> void:
 		var half := Vector2(Bar.BUTTON + 6.0, Bar.HALF_HEIGHT)
 		hud.clear_bar(Rect2(bar.centre - half, half * 2.0))
 	bar.can_toggle = can_toggle_mirror()
+	bar.can_undo = not history.is_empty()
 	bar.set_state(_display_state(), direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy)
 	bar.update_view(camera)
 
@@ -1263,6 +1264,7 @@ func _start_prompts() -> void:
 	if id != _prompt_shown_id:
 		_prompt_shown_id = id
 		hud.show_prompt(str(_active_prompt.get("text", "")))
+		bar.hint = str(_active_prompt.get("control", ""))
 
 ## A prompt with an `after` event stays hidden until that event has happened
 ## on this stage, so it explains what the player has just seen instead of
@@ -1274,6 +1276,7 @@ func _prompt_ready(prompt: Dictionary) -> bool:
 
 func _hide_prompt_card() -> void:
 	_prompt_shown_id = ""
+	bar.hint = ""
 	hud.hide_prompt()
 
 func _on_tutorial_event(name: String) -> void:

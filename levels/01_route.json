@@ -112,12 +112,14 @@
   "prompts": [
     {
       "id": "make_mirror",
-      "text": "Tap the mirror button to raise your mirror.",
+      "text": "Raise your mirror",
+      "control": "mirror",
       "until": "create"
     },
     {
       "id": "move_mirror",
-      "text": "Hold the move knob and slide your finger to move the mirror along the path. It copies what is behind it to the other side.",
+      "text": "Hold, then slide",
+      "control": "move",
       "until": "move"
     }
   ],

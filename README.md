@@ -24,7 +24,7 @@ The game plays with the **direct controls** (trial 03 in `GAME_DESIGN.md`):
 | Lift the mirror | Hold the lift knob and slide up or down | Page Up / Page Down |
 | Turn the mirror | Hold the turn knob and slide sideways to turn it in steps of 45°, or up and down to tilt it | — |
 | Turn camera | Swipe or drag sideways on empty space | Q / E |
-| Undo a change | Undo button. A drag that ends where it started changes nothing | Z |
+| Undo a change | Undo button, to the left of the bar. A drag that ends where it started changes nothing | Z |
 | Cancel a drag | — | Escape |
 | Debug controls | Top-right gear, including **Classic editor** | — |
 

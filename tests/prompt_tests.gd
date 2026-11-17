@@ -234,14 +234,27 @@ func check_first_steps() -> void:
 func check_route() -> void:
 	await load_stage("res://levels/01_route.json")
 	check(active_prompt_id() == "make_mirror", "Route: make_mirror prompt is first")
+	check(game.bar.hint == "mirror", "Route: the first prompt names the mirror button")
+	await frames(2)
+	var line: Rect2 = game.hud._prompt.get_global_rect()
+	check(game.hud._prompt.visible and line.end.y <= game.bar.centre.y - game.bar.HALF_HEIGHT and absf(line.get_center().x - game.bar.centre.x) < 1.0,
+		"Route: the prompt is one line above the mirror bar, on its centre")
 	game.tutorial_event.emit("move")
 	await frames(1)
 	check(active_prompt_id() == "make_mirror", "Route: a non-matching event does not advance make_mirror")
 	await press_mirror_button()
 	check(active_prompt_id() == "move_mirror", "Route: raising the mirror advances to move_mirror")
+	check(game.bar.hint == "move", "Route: the second prompt names the move knob")
 	await slide(0, 2.0)
 	check(bool(game.mirror.get("enabled", false)), "Route: the slid mirror applies on release")
 	check(queue_and_active_empty(), "Route: sliding the mirror closes the last prompt")
+	check(game.bar.hint.is_empty(), "Route: with no prompt, the bar names no control")
+	game.hud.show_prompt("Wait")
+	game.hud.show_stage_title("A name")
+	check(not game.hud._prompt.visible, "Route: a prompt waits while the stage's name shows")
+	game.hud._stage_title_tween.custom_step(60.0)
+	check(game.hud._prompt.visible, "Route: the prompt comes back when the name leaves")
+	game.hud.hide_prompt()
 	check_no_empty_cards("Route")
 
 
@@ -252,7 +265,7 @@ func check_reveal() -> void:
 	await frames(1)
 	check(active_prompt_id() == "remove_mirror" and not game.hud._prompt_wanted, "Reveal: a non-matching event neither shows nor advances remove_mirror")
 	await press_mirror_button()
-	check(game.hud._prompt_wanted and game.hud._prompt.text.begins_with("Lowering the mirror"), "Reveal: raising the mirror shows remove_mirror")
+	check(game.hud._prompt_wanted and game.hud._prompt.text == "Lower the mirror" and game.bar.hint == "remove", "Reveal: raising the mirror shows remove_mirror, and it names the remove button")
 	await slide(0, 2.0)
 	check(active_prompt_id() == "remove_mirror", "Reveal: raising and sliding the mirror do not close remove_mirror")
 	await press_mirror_button()
@@ -292,20 +305,7 @@ func check_turn() -> void:
 
 func check_together() -> void:
 	await load_stage("res://levels/15_together.json")
-	check(active_prompt_id() == "safe_fall", "Together: safe_fall prompt is first")
-	game.tutorial_event.emit("goal")
-	await frames(1)
-	check(active_prompt_id() == "safe_fall", "Together: a non-matching event does not advance safe_fall")
-	await press_mirror_button()
-	await point(Vector3.BACK)
-	await slide(2, 0.5)
-	await slide(1, -1.0)
-	check(await walk_to(Vector3(0, 0, 4)), "Together: the traveller reaches above the low path")
-	await press_mirror_button()
-	await direct_fall()
-	check(game.phase == "play" and game.walker.position.y < -2.5, "Together: lowering the mirror above the low path is a safe fall")
-	await wait_until_prompt_changes("safe_fall")
-	check(queue_and_active_empty(), "Together: a safe fall of at least 0.3 s closes safe_fall")
+	check(queue_and_active_empty() and not game.hud._prompt_wanted and game.bar.hint.is_empty(), "Together: the last stage has no prompt")
 	check_no_empty_cards("Together")
 
 
@@ -385,5 +385,13 @@ func check_prompt_validation() -> void:
 	unknown_after["prompts"] = [{"id": "a", "text": "x", "after": "nonsense", "until": "walk"}]
 	check(not Levels.validate(unknown_after).is_empty(), "Validation: an unknown after event is rejected")
 	var good := raw.duplicate(true)
-	good["prompts"] = [{"id": "a", "text": "x", "after": "create", "until": "walk"}]
+	good["prompts"] = [{"id": "a", "text": "x", "after": "create", "until": "walk", "control": "move"}]
 	check(Levels.validate(good).is_empty(), "Validation: a well-formed prompts field is accepted")
+	var unknown_control := raw.duplicate(true)
+	unknown_control["prompts"] = [{"id": "a", "text": "x", "until": "walk", "control": "nonsense"}]
+	check(not Levels.validate(unknown_control).is_empty(), "Validation: an unknown prompt control is rejected")
+	# The owner's rule: a prompt is short. It says what to do, and no more.
+	for path: String in Game.LEVEL_PATHS:
+		var level: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+		for prompt: Dictionary in level.get("prompts", []):
+			check(str(prompt["text"]).split(" ", false).size() <= 6, "Validation: the prompt %s of %s has six words or fewer" % [prompt["id"], path.get_file()])

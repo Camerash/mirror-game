@@ -28,11 +28,11 @@ var _last_play_rect := Rect2()
 var _last_camera_rect := Rect2()
 var _last_emitted_play_rect := Rect2()
 var _bottom_reserved := TOUCH + GAP
-## The mirror bar (`world/mirror_bar.gd`) is low in the middle: in the bottom
-## band on a wide screen, in its own row above the corner buttons on a narrow
-## one.
+## The mirror bar (`world/mirror_bar.gd`) is low in the middle, in the bottom
+## band of this height.
 const BAR_ROW := 94.0
-const BAR_WIDE := 640.0
+## A prompt or a hint is one line, this far above the mirror bar.
+const LINE_GAP := 14.0
 ## On a short landscape screen, the width kept clear on each side of the stage.
 var _side_reserved := 0.0
 var _touch_controls := {}
@@ -51,9 +51,10 @@ var _classic_check: CheckButton
 var _debug_panel: PanelContainer
 var _settings_panel: PanelContainer
 var _settings_box: VBoxContainer
-## True between `show_prompt` and `hide_prompt`. The card hides while a panel
-## is open and comes back when the panel closes.
+## True between `show_prompt` and `hide_prompt`. The prompt hides while a
+## panel is open or the stage's name shows, and comes back after.
 var _prompt_wanted := false
+var _title_holds := false
 var _music_slider: HSlider
 var _effects_slider: HSlider
 var _fullscreen_check: CheckButton
@@ -115,10 +116,9 @@ func display_state(state: Dictionary) -> void:
 	var direct := bool(_state.get("direct", false))
 	var classic_editing := editing and not direct
 	Motion.fade(_help, bool(_state.get("has_prompts", false)))
-	# A direct drag is a short preview: Undo stays in place through it, so the
-	# corner does not flicker on every drag.
-	Motion.fade(_undo, (direct or not editing) and bool(_state.get("can_undo", false)))
-	_undo.disabled = not bool(_state.get("can_undo", false)) or (direct and editing)
+	# With the direct controls, Undo is a button of the mirror bar.
+	Motion.fade(_undo, not direct and not editing and bool(_state.get("can_undo", false)))
+	_undo.disabled = not bool(_state.get("can_undo", false))
 	_reset.visible = phase == "failure" and not release_mode
 	_cancel.visible = classic_editing
 	_enabled.visible = classic_editing
@@ -177,20 +177,29 @@ func show_stage_title(text: String) -> void:
 	_stage_title.text = text
 	_responsive_layout()
 	Motion.fade(_stage_title, true)
+	# One text at a time: the prompt waits until the name leaves.
+	_title_holds = true
+	_prompt.visible = false
 	_stage_title_tween = create_tween()
 	_stage_title_tween.tween_interval(Motion.duration("appear") + STAGE_TITLE_HOLD)
-	_stage_title_tween.tween_callback(func() -> void: Motion.fade(_stage_title, false))
+	_stage_title_tween.tween_callback(func() -> void:
+		Motion.fade(_stage_title, false)
+		_title_holds = false
+		if _prompt_wanted:
+			show_prompt(_prompt.text))
 
-## The tutorial prompt card. It stays until `hide_prompt`, unlike the transient
-## hint above, and takes the hint's screen slot: hiding any hint in progress
-## avoids the two overlapping.
+## The tutorial prompt: one short line, written on the world above the mirror
+## bar (owner, 2026-11-17: a card in the top left with long text takes the
+## player's focus away). It stays until `hide_prompt`, unlike the transient
+## hint above, and takes the hint's place: hiding any hint in progress avoids
+## the two overlapping.
 func show_prompt(text: String) -> void:
 	if is_instance_valid(_hint_tween): _hint_tween.kill()
 	_hint.visible = false
 	_prompt.text = text
 	_prompt_wanted = not text.is_empty()
-	# An empty prompt card must never show, and an open panel covers its slot.
-	_prompt.visible = _prompt_wanted and not _debug
+	# An empty prompt must never show.
+	_prompt.visible = _prompt_wanted and not _debug and not _title_holds
 	if is_instance_valid(_prompt_tween): _prompt_tween.kill()
 	if _prompt.visible:
 		_prompt_tween = Motion.tween(_prompt, "modulate:a", 1.0, "appear")
@@ -205,15 +214,23 @@ func hide_prompt() -> void:
 	_prompt_tween.tween_callback(func() -> void: _prompt.visible = false)
 
 func get_play_rect() -> Rect2: return _last_play_rect
+## The prompt and the hint are above the mirror bar, or above the bottom
+## controls where the stage has no bar.
+var _bar_top := -1.0
+func _place_lines() -> void:
+	var base := _bar_top if _bar_shown() and _bar_top > 0.0 else _last_play_rect.end.y - _bottom_reserved
+	for line: Label in [_hint, _prompt]:
+		line.position = Vector2(_last_play_rect.get_center().x - line.size.x * 0.5, base - LINE_GAP - line.size.y)
 func _bar_shown() -> bool:
 	return bool(_state.get("direct", false)) and bool(_state.get("mirror_available", true))
 ## The lowest place for the centre of the mirror bar.
 func get_bar_centre() -> Vector2:
-	var above := 0.0 if _last_play_rect.size.x >= BAR_WIDE else TOUCH + GAP
-	return Vector2(_last_play_rect.get_center().x, _last_play_rect.end.y - above - BAR_ROW * 0.5)
+	return Vector2(_last_play_rect.get_center().x, _last_play_rect.end.y - BAR_ROW * 0.5)
 ## The stage's name goes below the mirror bar where the two would be on the
 ## same place, or above the bar where there is no room below.
 func clear_bar(bar: Rect2) -> void:
+	_bar_top = bar.position.y
+	_place_lines()
 	if not _stage_title.visible:
 		return
 	var rect := get_camera_rect()
@@ -257,12 +274,19 @@ func _build() -> void:
 	_hold = Control.new(); _hold.size = Vector2(52, 52); _hold.mouse_filter = MOUSE_FILTER_IGNORE; _hold.visible = false; _hold.draw.connect(_draw_hold); add_child(_hold)
 	_stage_title = UiStyle.label("", "chapter"); _stage_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _stage_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_stage_title.mouse_filter = MOUSE_FILTER_IGNORE; _stage_title.visible = false; add_child(_stage_title)
-	# The hint and the prompt card: the one frost surface, in the one typeface.
+	# The hint and the prompt: each is one line written on the world, with a
+	# soft dark edge so that it reads on bright and on dark water. No card.
 	_hint = UiStyle.label("", "small"); _hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; _hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _hint.mouse_filter = MOUSE_FILTER_IGNORE; _hint.visible = false
-	_hint.add_theme_stylebox_override("normal", UiStyle.frost(0.86)); add_child(_hint)
-	_prompt = UiStyle.label("", "body"); _prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT; _prompt.vertical_alignment = VERTICAL_ALIGNMENT_TOP; _prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _prompt.mouse_filter = MOUSE_FILTER_IGNORE; _prompt.visible = false; _prompt.modulate.a = 0.0
-	var prompt_box := UiStyle.frost(0.9); prompt_box.content_margin_top = 12; prompt_box.content_margin_bottom = 12
-	_prompt.add_theme_stylebox_override("normal", prompt_box); add_child(_prompt)
+	_prompt = UiStyle.label("", "body", UiStyle.SNOW); _prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; _prompt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER; _prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART; _prompt.mouse_filter = MOUSE_FILTER_IGNORE; _prompt.visible = false; _prompt.modulate.a = 0.0
+	for line: Label in [_hint, _prompt]:
+		line.add_theme_font_override("font", UiStyle.font(400, 2))
+		line.add_theme_font_size_override("font_size", 22 if line == _prompt else 18)
+		line.add_theme_color_override("font_color", UiStyle.SNOW)
+		line.add_theme_color_override("font_shadow_color", Color(UiStyle.INK, 0.55))
+		line.add_theme_constant_override("shadow_offset_x", 0)
+		line.add_theme_constant_override("shadow_offset_y", 1)
+		line.add_theme_constant_override("shadow_outline_size", 8)
+		add_child(line)
 	_gear = _icon_button("settings", "Settings" if release_mode else "Debug controls", "debug"); _gear.pressed.connect(_toggle_debug); _rest_faint(_gear)
 	_help = _icon_button("help", "Show this stage's prompts again", "help"); _help.visible = false
 	_help.pressed.connect(func() -> void: _emit("help", null))
@@ -284,8 +308,8 @@ func _build() -> void:
 		_build_settings()
 	else:
 		_build_debug()
-	# The hint and the prompt card carry the tutorial's own guidance and
-	# should never sit behind the gear's panel, which is wider and taller.
+	# The hint and the prompt carry the tutorial's own guidance and should
+	# never be behind a panel.
 	move_child(_hint, get_child_count() - 1)
 	move_child(_prompt, get_child_count() - 1)
 
@@ -475,7 +499,7 @@ func _toggle_debug() -> void:
 		if is_instance_valid(_hint_tween): _hint_tween.kill()
 		Motion.fade(_hint, false)
 	Motion.tween(_gear, "modulate:a", 1.0 if _debug else FAINT, "appear" if _debug else "dismiss")
-	_prompt.visible = _prompt_wanted and not _debug
+	_prompt.visible = _prompt_wanted and not _debug and not _title_holds
 	_prompt.modulate.a = 1.0
 	_emit("debug_visibility", _debug)
 	_responsive_layout()
@@ -507,7 +531,7 @@ func _responsive_layout() -> void:
 	# hidden, so its first appearance does not move the view.
 	_side_reserved = 0.0
 	if _bar_shown():
-		_bottom_reserved = BAR_ROW if _last_play_rect.size.x >= BAR_WIDE else TOUCH + GAP + BAR_ROW
+		_bottom_reserved = BAR_ROW
 	elif count == 0 and _last_play_rect.size.y < SHORT_LANDSCAPE and _last_play_rect.size.x > _last_play_rect.size.y * 1.3:
 		var right_bottom := _shown_width(_undo) + GAP
 		var right_top := TOUCH * 2.0 + 6.0 + GAP
@@ -534,13 +558,12 @@ func _responsive_layout() -> void:
 			panel_height = minf(debug_height, _settings_box.get_combined_minimum_size().y + panel.get_theme_stylebox("panel").get_minimum_size().y)
 		panel.position = safe.position + Vector2(GAP, GAP)
 		panel.size = Vector2(panel_width, panel_height)
-	var card_width := minf(380.0, safe.size.x - TOUCH - GAP * 3.0)
-	_hint.size = Vector2(card_width, _card_height(_hint, card_width)); _hint.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
-	_prompt.size = Vector2(card_width, _card_height(_prompt, card_width))
-	_prompt.position = Vector2(safe.position.x + GAP, safe.position.y + TOUCH + GAP * 2)
+	var line_width := minf(520.0, _last_play_rect.size.x)
+	for line: Label in [_hint, _prompt]:
+		line.size = Vector2(line_width, _card_height(line, line_width))
+	_place_lines()
 	var camera_rect := get_camera_rect()
-	# The stage's name is written on the world, low in the middle, clear of
-	# the prompt card at the top.
+	# The stage's name is written on the world, low in the middle.
 	var title_width := minf(camera_rect.size.x, 640.0)
 	_stage_title.size = Vector2(title_width, _card_height(_stage_title, title_width))
 	_stage_title.position = Vector2(camera_rect.get_center().x - title_width * 0.5, camera_rect.end.y - _stage_title.size.y - camera_rect.size.y * 0.04)

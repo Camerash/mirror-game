@@ -86,7 +86,8 @@
   "prompts": [
     {
       "id": "lower_mirror",
-      "text": "The mirror copies everything inside its frame. Hold the lift knob and slide down to lower the frame.",
+      "text": "Hold, then slide down",
+      "control": "lift",
       "after": "no_path",
       "until": "lower"
     }

@@ -207,8 +207,18 @@ func check_bar(size: Vector2i) -> void:
 	await settled()
 	check(turns[0] == 3 and is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 90.0), "%s: fast drags (left, right, right) are three turns" % label)
 
+	# The Undo button is to the left of the bar. A press takes one change back.
+	var undo: Vector2 = game.bar._undo_point()
+	check(game.bar.can_undo and undo.x + game.bar.REMOVE < game.bar.centre.x - game.bar._half_width(1.0) and undo.x - game.bar.REMOVE >= game.play_rect.position.x,
+		"%s: the Undo button is to the left of the bar and inside the play area" % label)
+	var changes: int = game.history.size()
+	button(undo, true)
+	await frames(2)
+	button(undo, false)
+	await settled()
+	check(game.history.size() == changes - 1 and not game.dragging, "%s: a press on the Undo button takes one change back" % label)
 	# Undo takes each change back.
-	for index: int in 5:
+	for index: int in 4:
 		game.undo()
 		await settled()
 	await frames(20)

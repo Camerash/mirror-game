@@ -4,9 +4,10 @@ extends Node3D
 ## 2026-11-17): a glass bar below the stage. Before the mirror is up, the bar
 ## is one round mirror button. A press opens it slowly into three knobs: move,
 ## turn, lift. A knob is held, and the finger then uses the full screen: the
-## distance from the press gives the amount. A round rose button beside the
-## bar lowers the mirror. The bar is glass; each button is opaque white, as
-## glazed ceramic. Drawn in screen space; the game owns the state change.
+## distance from the press gives the amount. A round rose button to the right
+## of the bar lowers the mirror, and a round Undo button to its left takes the
+## last change back. The bar is glass; each button is opaque, as glazed
+## ceramic. Drawn in screen space; the game owns the state change.
 signal action_requested(action: String, value: Variant)
 
 const Rules := preload("res://core/mirror_state.gd")
@@ -86,6 +87,14 @@ void fragment() {
 ## Set by the game each frame: whether the bar shows, where its centre is,
 ## and whether the mirror can go up or down now.
 var shown := false
+## The control that the prompt names (one of `LevelLoader.PROMPT_CONTROLS`,
+## or ""). Rings leave it, as ripples on the water, and for a knob a finger
+## mark shows the slide.
+var hint := ""
+var _hint_time := 0.0
+## Whether there is a change to take back. The game sets it each frame.
+var can_undo := false
+var _undo_shown := 0.0
 var centre := Vector2.ZERO
 var can_toggle := false
 var _grip := ""
@@ -124,7 +133,7 @@ func set_state(state: Dictionary, available: bool, busy: bool) -> void:
 	_state = state
 	_available = available and state.has("pivot") and bool(state.get("enabled", false))
 	_busy = busy
-	if not _available and _active and _grip not in ["mirror", "remove"]:
+	if not _available and _active and _grip in KNOBS:
 		cancel()
 	_overlay.queue_redraw()
 
@@ -184,7 +193,7 @@ func _finish() -> void:
 		elif not _cancelled and _grip_point.distance_to(_grip_press) > 4.0:
 			_queued = {"kind": kind, "press": _grip_press, "point": _grip_point}
 	elif not _cancelled and _grip_at(_grip_point) == kind:
-		action_requested.emit("mirror_toggle", null)
+		action_requested.emit("undo" if kind == "undo" else "mirror_toggle", null)
 	_overlay.queue_redraw()
 
 func _yaw() -> float:
@@ -203,6 +212,14 @@ func _half_width(open: float) -> float:
 func _remove_point() -> Vector2:
 	return centre + Vector2(_half_width(1.0) + 15.0 + REMOVE, 0.0)
 
+## The Undo button keeps its distance from the bar's left end while the bar
+## opens and closes.
+func _undo_point() -> Vector2:
+	return centre - Vector2(_half_width(_eased()) + 15.0 + REMOVE, 0.0)
+
+func _on_undo(point: Vector2) -> bool:
+	return _undo_shown > 0.5 and point.distance_to(_undo_point()) <= REMOVE + 8.0
+
 ## Whether the bar is below the point. The bar takes each press on it, so a
 ## press there never walks.
 func _on_bar(point: Vector2) -> bool:
@@ -211,13 +228,15 @@ func _on_bar(point: Vector2) -> bool:
 	var local := point - centre
 	if absf(local.y) <= HALF_HEIGHT + 6.0 and absf(local.x) <= _half_width(_eased()) + 6.0:
 		return true
-	return _open > 0.5 and point.distance_to(_remove_point()) <= REMOVE + 8.0
+	return _on_undo(point) or (_open > 0.5 and point.distance_to(_remove_point()) <= REMOVE + 8.0)
 
-## The control below the point: a knob, the mirror button or the remove
-## button. Empty while the bar opens or closes.
+## The control below the point: a knob, the mirror button, the remove button
+## or the Undo button. Empty while the bar opens or closes.
 func _grip_at(point: Vector2) -> String:
 	if not _on_bar(point):
 		return ""
+	if _on_undo(point):
+		return "undo"
 	if not _available:
 		return "mirror" if _open < 0.5 else ""
 	if _open < 0.7:
@@ -230,7 +249,7 @@ func _press(point: Vector2, index: int) -> bool:
 	if _active or not _on_bar(point):
 		return false
 	var kind := _grip_at(point)
-	if kind.is_empty() or (kind not in KNOBS and not can_toggle):
+	if kind.is_empty() or (kind == "undo" and (_busy or not can_undo)) or (kind in ["mirror", "remove"] and not can_toggle):
 		return true
 	_active = true
 	_pointer = index
@@ -324,6 +343,13 @@ func _process(delta: float) -> void:
 	else:
 		_pull = Vector2.ZERO
 	_tick = move_toward(_tick, 0.0, delta / 0.2)
+	var undo_before := _undo_shown
+	_undo_shown = move_toward(_undo_shown, 1.0 if can_undo else 0.0, delta / 0.3)
+	if not is_equal_approx(undo_before, _undo_shown):
+		moving = true
+	if not hint.is_empty():
+		_hint_time += delta
+		moving = true
 	var half := Vector2(_half_width(_eased()), HALF_HEIGHT)
 	_glass.size = (half + Vector2(30.0, 30.0)) * 2.0
 	_glass.position = centre + _pull * 0.15 - _glass.size * 0.5
@@ -358,7 +384,57 @@ func _draw_bar(canvas: Control) -> void:
 		var from := centre + Vector2(_half_width(open) - REMOVE, 0.0)
 		_set_ceramic(canvas, from.lerp(_remove_point(), out), REMOVE, ROSE, out * (0.78 if holding else 1.0), Vector2.ZERO, _grip == "remove", 0.0)
 		_draw_mark(canvas, "remove", REMOVE, Color(ROSE_INK, out))
+	if _undo_shown > 0.01:
+		_set_ceramic(canvas, _undo_point(), REMOVE, CERAMIC, _undo_shown * (0.78 if holding else 1.0), Vector2.ZERO, _grip == "undo", 0.0)
+		_draw_mark(canvas, "undo", REMOVE, Color(INK, _undo_shown))
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
+	_draw_hint(canvas, open)
+
+## The ripples and the finger mark of the control that the prompt names.
+func _draw_hint(canvas: Control, open: float) -> void:
+	if hint.is_empty() or _active:
+		return
+	var at := centre
+	var radius := KNOB
+	if hint == "mirror":
+		if open > 0.05:
+			return
+		radius = BUTTON
+	elif open < 0.95:
+		return
+	elif hint == "remove":
+		at = _remove_point()
+		radius = REMOVE
+	else:
+		at = centre + Vector2((KNOBS.find(hint) - 1) * SPACING, 0.0)
+	# Two rings, half a period apart, each grows and fades in 2.4 s.
+	for offset: float in [0.0, 0.5]:
+		var phase := fposmod(_hint_time / 2.4 + offset, 1.0)
+		canvas.draw_arc(at, radius + 3.0 + phase * 16.0, 0.0, TAU, 64, Color(1.0, 1.0, 1.0, 0.7 * (1.0 - phase) * (1.0 - phase)), 1.6, true)
+	if hint not in KNOBS:
+		return
+	# The slide: a finger mark comes down on the knob, goes its way and fades.
+	# A pause follows. Its dark ring shows on a white knob, its light ring on
+	# the water.
+	var way := Vector2.RIGHT
+	if hint == "lift":
+		way = Vector2.DOWN
+	elif hint == "move":
+		# Along the ground axis that goes up and to the right on the screen,
+		# away from the Undo button.
+		for axis: Vector2 in _ground_axes():
+			var up := axis if axis.y < 0.0 else -axis
+			if up.x >= 0.0:
+				way = up
+	var time := fposmod(_hint_time, 3.6)
+	var travel := clampf((time - 0.5) / 1.5, 0.0, 1.0)
+	var eased := travel * travel * (3.0 - 2.0 * travel)
+	var fade := smoothstep(0.0, 0.3, time) * (1.0 - smoothstep(1.7, 2.3, time))
+	var finger := at + way * eased * 84.0
+	var size := lerpf(22.0, 17.0, smoothstep(0.0, 0.4, time))
+	canvas.draw_circle(finger, size, Color(1.0, 1.0, 1.0, 0.22 * fade), true, -1.0, true)
+	canvas.draw_arc(finger, size, 0.0, TAU, 48, Color(INK, 0.5 * fade), 2.0, true)
+	canvas.draw_arc(finger, size + 2.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.7 * fade), 1.4, true)
 
 ## Draws one opaque round button, as glazed ceramic, and leaves the canvas
 ## in the button's frame for its mark. `pull` moves the button toward a drag
@@ -389,8 +465,8 @@ func _draw_mark(canvas: Control, kind: String, radius: float, ink: Color) -> voi
 	var unit := radius / 23.0
 	var width := 1.9 * unit
 	match kind:
-		"mirror":
-			UiIcons.draw(canvas, "mirror", Rect2(-Vector2.ONE * radius * 0.5, Vector2.ONE * radius), ink)
+		"mirror", "undo":
+			UiIcons.draw(canvas, kind, Rect2(-Vector2.ONE * radius * 0.5, Vector2.ONE * radius), ink)
 		"move":
 			# A ground tile as this view shows it, with a head to each side:
 			# the mirror moves on the ground.

@@ -401,11 +401,18 @@ styles and words.
 - DECIDED (owner, 2026-11-17), built: no view buttons at the bottom left.
   The sideways swipe turns the view; it is sufficient. Keys Q and E stay on
   desktop.
-- OPEN (owner, 2026-11-17): the prompts. The card in the top left with long
-  text "does not feel good and user loses focus". The game needs a clearer
-  prompt UI and style. The agent's proposal is a sketch in `VALIDATION.md`:
-  one short line above the bar, no card, and the control that the line names
-  answers with a ripple and a finger mark. Not decided.
+- DECIDED (owner, 2026-11-17), built: the prompts. The card in the top
+  left with long text "does not feel good and user loses focus". The owner
+  agreed to these rules. (1) A prompt is one line, centred, just above the
+  bar: where the player looks and where the thumb is. (2) It has no card; it
+  is written on the world, as the stage's name is. (3) It is short: a verb
+  first, six words or fewer. It says what to do; the stage shows what the
+  mirror does. Prompts that only explain a rule are removed. (4) The control
+  that the line names answers: ripples leave it, and for a knob a finger
+  mark comes down on it and slides the way of the gesture. (5) The line goes
+  when the player does the action.
+- DECIDED (owner, 2026-11-17), built: the Undo button is to the left of the
+  bar.
 - OPEN: vistas between puzzles with a low camera, perhaps as the opening.
 
 ## Sound

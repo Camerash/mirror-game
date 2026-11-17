@@ -112,7 +112,8 @@
   "prompts": [
     {
       "id": "turn_mirror",
-      "text": "Hold the turn knob and slide sideways to turn the mirror. The copy appears on its other side.",
+      "text": "Hold, then slide sideways",
+      "control": "turn",
       "until": "turn"
     }
   ]

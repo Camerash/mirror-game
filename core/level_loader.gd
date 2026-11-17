@@ -5,6 +5,8 @@ const Rules := preload("res://core/mirror_state.gd")
 ## Names a tutorial prompt can wait for; see game.gd's `tutorial_event` signal.
 const PROMPT_EVENTS: Array[String] = ["walk", "camera_turn", "create", "move", "lower", "confirm",
 	"remove", "resize", "turn", "fall", "goal", "no_path", "glimpse"]
+## The controls of the mirror bar that a prompt can name; see `MirrorBar.hint`.
+const PROMPT_CONTROLS: Array[String] = ["mirror", "move", "turn", "lift", "remove"]
 
 static func load_level(path: String) -> Dictionary:
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -115,6 +117,8 @@ static func _validate_prompts(prompts: Variant) -> String:
 			return "Unknown prompt event: " + until
 		if entry.has("after") and not PROMPT_EVENTS.has(entry["after"]):
 			return "Unknown prompt event: " + str(entry["after"])
+		if entry.has("control") and not PROMPT_CONTROLS.has(entry["control"]):
+			return "Unknown prompt control: " + str(entry["control"])
 		seen_ids[id] = true
 	return ""
 

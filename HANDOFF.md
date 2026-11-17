@@ -72,13 +72,14 @@ sideways swipe turns the view, and keys Q and E stay.
 The earlier sketches (`pill-proof-sketch.patch`, `control-proof-sketch.patch`
 in ignored `test-output/polish/`) are a record only. The owner's working
 tree can have a sketch applied; do not reset it.
-**Proposed, waits for the owner (2026-11-17): a clearer prompt.** The
-owner said the card in the top left with long text takes the player's focus
-away. A sketch, not in Git:
-`git apply test-output/polish/prompt-proof-sketch.patch`. One short line
-above the bar, no card; the control that the line names gives a ripple and
-a finger mark shows the slide (`"control"` in a level's prompt). Frames:
-`prompt-proof-*.jpg` there. Do not build it before the owner agrees.
+The Undo button is a button of the bar, to its left (owner).
+**The prompt is one short line above the bar (2026-11-17), DECIDED in
+`docs/VISION.md`.** No card; six words or fewer; a prompt can name a control
+of the bar (`"control"` in the level file), and that control gives ripples
+and a finger mark (`MirrorBar.hint`). The hints of the game use the same
+line. A prompt waits while the stage's name shows. The last stage has no
+prompt. The pond's prompt has the new look but its text is not changed (the
+pond is on hold).
 Attention to detail is now a rule (`docs/VISION.md`, "Rules for every
 moment").
 
