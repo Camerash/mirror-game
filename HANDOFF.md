@@ -18,8 +18,9 @@ repeat: a small place in an empty frame, stones that read as toys, a small
 pale girl on snow, and no place.
 
 **Proposed, waits for the owner (2026-11-17): the pale winter look as the
-look of the game**, with a dark slate water and a copy in the pane's warm
-light: `test-output/polish/pale-winter-sketch.patch`, `VALIDATION.md`. It
+look of the game**, with a dark slate water and a copy of cool glass, as
+ice (the owner prefers it for the story; a warm copy is also in the sketch):
+`test-output/polish/pale-winter-sketch.patch`, `VALIDATION.md`. It
 replaces the sketch below, which no longer applies.
 
 **The world proof (2026-11-16).** A sketch, not in Git:

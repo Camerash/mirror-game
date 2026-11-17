@@ -1,13 +1,14 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Proposal: the pale winter look, with contrast and a copy in warm light (waits for the owner) — 2026-11-17
+# Proposal: the pale winter look, with contrast and a copy of ice (waits for the owner) — 2026-11-17
 
 - Why: the owner asked which look is better, the blue still-water look of the branch or the pale winter look of the world proof (16 November). The agent recommended the pale look as the base, with two points to gain: contrast, and a copy that the player can tell from the original. The owner: "Plan it, and for the two points that pale look must gain, work towards them."
 - Change: none in the branch. The sketch is `test-output/polish/pale-winter-sketch.patch` (ignored; it applies to commit `af6da6b`). It is the world proof on today's branch, plus the work on the two points.
 - Contrast, in the sketch: the water is dark slate near the view (`ice_mid` 5c6f7b, `ice_near` 2b3944) and goes to pale mist far away; the garden is pale, close to the mist, and paler with distance; the image of the place in the water is stronger; the lit window is weaker. The snow tops are the lightest things and stand on the darkest part of the frame.
 - The copy, in the sketch, two looks. Warm (recommended): the copy is the original, in the warm light of the pane; it has a soft warm light of its own and a warm pool on the water. Cool glass: the copy is the original with a strong cool tint and a sheen. The summer look (moss, flowers) is not used.
 - Checked in the engine: stills at 780x1688 of `11_aperture` and `14_turn` with the mirror up, and frames of the rise and the sink on `11_aperture` at 900x900 with the warm copy. The sheet of the pane's light changes to the copy's warm top with no jump. Sheets in ignored `test-output/polish/`: `pale-winter-a.jpg`, `pale-winter-b.jpg`, `pale-winter-motion.jpg`.
+- The glass copy, tuned (2026-11-17). The owner: the cool glass "seems to fit the story more". The agent agrees: the pond's ice is the first mirror, the sister shows behind a frost pane, and the lit window stays the one warm light. The owner asked for the glass to be tuned before the build. In the sketch now: the copy keeps the light and dark of the stone, so its panels, margins and lips show, and takes the colour of ice (from deep blue to pale blue); it is opaque, with a sheen; it gives no warm light; the sheet that closes the cut and the line of the moving edge are the cool white of the pane; the window is a little stronger again. Sheets: `pale-winter-glass.jpg`, `pale-winter-glass-motion.jpg`. Not checked: the top of an ice copy next to snow on a small phone; a copy of an absolute (bronze band); the other stages.
 - Not done in the sketch: the garden is grey box; its back views show cut wall planes; a side of the garden appears at once in a turn; the garden has no image in the water. Not checked: tests; landscape; the other stages and views; the mirror bar with the lower place of the stage; frame time; a phone; no independent review.
 
 # Earlier check: the cut of the moving edge is closed — 2026-11-17
