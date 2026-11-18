@@ -378,7 +378,9 @@ styles and words.
   into a disc of frosted ice, tinted from the pale sky at the centre to the
   slate water at the rim, with no shadow. No knob stays on it: one dark bead
   is the mirror, a little above the thumb, and the thumb moves it as on a
-  laptop pad. Two long guides cross at the bead: the ring of its tilt (the
+  laptop pad. The owner then said: "The disc should opened centered to the
+  original knob position." Now the map opens on the knob, and the bead
+  starts at the top of its ring. Two long guides cross at the bead: the ring of its tilt (the
   turn) and the line from the centre (the tilt). The guide that the slide
   uses is clear. A hollow ring marks the start; a ring spreads from the
   bead at each step; a resting thumb lets the stage show. The owner judges

@@ -883,7 +883,8 @@ func _update_bar() -> void:
 	bar.can_undo = not history.is_empty()
 	bar.set_state(_display_state(), direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy)
 	bar.update_view(camera)
-	hud.set_prompt_fade(bar.dial_amount())
+	# The prompt is gone before the growing map reaches its line.
+	hud.set_prompt_fade(smoothstep(0.0, 0.25, bar.dial_amount()))
 
 func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():

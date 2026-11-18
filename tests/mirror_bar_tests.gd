@@ -214,7 +214,7 @@ func check_bar(size: Vector2i) -> void:
 	await settled()
 	await frames(20)
 
-	# The turn knob's dial: one step round to the right turns by +45 degrees,
+	# The turn knob's dial: one step round anticlockwise turns by +45 degrees,
 	# which the screen shows as a turn the same way round.
 	var pivot_screen: Vector2 = game.camera.unproject_position(game.mirror["pivot"])
 	var facing_before: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - pivot_screen

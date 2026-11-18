@@ -71,12 +71,13 @@ const PULL_SOFTNESS := 90.0
 ## angle round its centre is the turn: one turn of the thumb is one turn of
 ## the mirror, and the way round is the way the mirror turns on the screen.
 ## The distance from the centre is the tilt: the centre faces the sky, the
-## middle ring stands upright, and the rim faces the ground. One dark bead is
-## the mirror; it starts below the centre, where the mirror faces now.
+## middle ring stands upright, and the rim faces the ground. The map opens
+## centred on the knob (owner, 2026-11-18). One dark bead is the mirror: it
+## starts at the top of its ring, above the thumb, so the thumb does not hide
+## it, and the thumb moves it as on a laptop pad.
 const DIAL_RADIUS := 136.0
-## The bead is this far above the thumb, so the thumb does not hide it. The
-## thumb moves it as on a laptop pad.
-const DIAL_LIFT := 54.0
+## Where on its ring the bead starts: the top.
+const DIAL_START := Vector2.UP
 ## Near the centre and near the rim the way round has no meaning, so the turn
 ## does not change there. The value is half of one step of the tilt.
 const DIAL_POLE := 0.125
@@ -391,14 +392,14 @@ func _start_knob() -> void:
 	_grip_yaw = _yaw()
 	_grip_pitch = _pitch()
 	if _grip == "turn":
-		# The bead, where the mirror faces now, starts just above the thumb.
-		# The map stays on the screen.
+		# The map opens on the knob and stays on the screen. The bead is where
+		# the mirror faces now; the thumb moves it from there.
 		_dial_turn = 0.0
 		_dial_lean = Vector2.ZERO
 		_dial_rest = 0.0
 		var start := dial_offset(0.0, _grip_pitch)
 		var room := get_viewport().get_visible_rect().grow(-8.0 - DIAL_RADIUS)
-		_dial_centre = (_grip_press + Vector2.UP * DIAL_LIFT - start).clamp(room.position, room.end)
+		_dial_centre = _grip_press.clamp(room.position, room.end)
 		_dial_shift = _dial_centre + start - _grip_press
 	action_requested.emit("grip_begin", {"kind": _grip, "point": _grip_press})
 	# The slide made while the knob waited counts from the press.
@@ -431,16 +432,16 @@ func _move_grip() -> void:
 	var offset := _dial_finger()
 	var reach := offset.length() / DIAL_RADIUS
 	if reach > DIAL_POLE and reach < 1.0 - DIAL_POLE:
-		_dial_turn += wrapf(PI * 0.5 - offset.angle() - _dial_turn, -PI, PI)
+		_dial_turn += wrapf(DIAL_START.angle() - offset.angle() - _dial_turn, -PI, PI)
 	_dial_lean = Vector2(_dial_turn, (reach - 0.5) * PI - _grip_pitch) / AIM_STEP
 	action_requested.emit("grip_aim", {"yaw": _grip_yaw + _dial_turn, "pitch": (reach - 0.5) * PI})
 
 ## The point of the dial for a facing `turn` round from the facing at the
-## press, at tilt `pitch`, from the dial's centre. The press is straight below
-## the centre; a turn of +90 degrees is to the right, as a slide to the right
-## turned the mirror +45 degrees with the first knob.
+## press, at tilt `pitch`, from the dial's centre. The facing at the press is
+## at the top; a positive turn goes round to the left (anticlockwise on the
+## screen), as the mirror then turns on the screen.
 static func dial_offset(turn: float, pitch: float) -> Vector2:
-	return Vector2.DOWN.rotated(-turn) * DIAL_RADIUS * (clampf(pitch, -PI * 0.5, PI * 0.5) / PI + 0.5)
+	return DIAL_START.rotated(-turn) * DIAL_RADIUS * (clampf(pitch, -PI * 0.5, PI * 0.5) / PI + 0.5)
 
 ## The finger's point on the dial, from its centre. It stays inside the rim.
 func _dial_finger() -> Vector2:
@@ -629,7 +630,7 @@ func _draw_dial(canvas: Control) -> void:
 	canvas.draw_arc(at, DIAL_RADIUS * 0.5 * scale, 0.0, TAU, 96, Color(INK, clear * 0.12), DIAL_WIDTH * 0.75, true)
 	canvas.draw_arc(at, reach, 0.0, TAU, 96, ring, DIAL_WIDTH, true)
 	for index: int in roundi(TAU / AIM_STEP):
-		canvas.draw_circle(at + Vector2.DOWN.rotated(-index * AIM_STEP) * reach, 2.6, ring, true, -1.0, true)
+		canvas.draw_circle(at + DIAL_START.rotated(-index * AIM_STEP) * reach, 2.6, ring, true, -1.0, true)
 	UiIcons._stroke(canvas, [at + way * 4.5, at + way * DIAL_RADIUS * scale], line, DIAL_WIDTH)
 	for step: int in range(1, 5):
 		canvas.draw_circle(at + way * DIAL_RADIUS * scale * step * 0.25, 2.6, line, true, -1.0, true)
@@ -683,8 +684,8 @@ func _draw_hint(canvas: Control, open: float) -> void:
 	var fade := smoothstep(0.0, 0.3, time) * (1.0 - smoothstep(1.7, 2.3, time))
 	var finger := at + way * eased * 84.0
 	if hint == "turn":
-		# One step round the dial's middle ring, to the right.
-		finger = at - dial_offset(0.0, 0.0) + dial_offset(eased * AIM_STEP * 1.2, 0.0)
+		# The thumb's path for one step round the middle ring, to the right.
+		finger = at - dial_offset(0.0, 0.0) + dial_offset(-eased * AIM_STEP * 1.2, 0.0)
 	var size := lerpf(22.0, 17.0, smoothstep(0.0, 0.4, time))
 	canvas.draw_circle(finger, size, Color(1.0, 1.0, 1.0, 0.22 * fade), true, -1.0, true)
 	canvas.draw_arc(finger, size, 0.0, TAU, 48, Color(INK, 0.5 * fade), 2.0, true)
