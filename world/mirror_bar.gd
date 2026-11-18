@@ -15,11 +15,17 @@ const INK := Color(0.20, 0.25, 0.27, 0.9)
 
 class BarOverlay extends Control:
 	var bar: MirrorBar
+	## The overlay above the dial's glass ball draws the dial's marks.
+	var dial := false
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	func _draw() -> void:
-		if bar != null:
+		if bar == null:
+			return
+		if dial:
+			bar._draw_dial(self)
+		else:
 			bar._draw_bar(self)
 
 var _state: Dictionary = {}
@@ -60,17 +66,29 @@ const HOLD_GLASS_ALPHA := 0.3
 ## about two thirds of that: the resistance grows near the limit.
 const PULL_LIMIT := 6.0
 const PULL_SOFTNESS := 90.0
-## The held turn knob grows into a dial (trial, owner 2026-11-18). The angle
-## round its centre is the turn: one turn of the finger is one turn of the
-## mirror, and the way round is the way the mirror turns on the screen. The
-## distance from the centre is the tilt: the centre faces the sky, the middle
-## ring stands upright, and the rim faces the ground. The finger starts below
-## the centre, where the mirror faces now.
+## The held turn knob opens into a sky map (trial, owner 2026-11-18): a disc
+## of ice that is a map of every way the mirror can face, seen from above. The
+## angle round its centre is the turn: one turn of the thumb is one turn of
+## the mirror, and the way round is the way the mirror turns on the screen.
+## The distance from the centre is the tilt: the centre faces the sky, the
+## middle ring stands upright, and the rim faces the ground. One dark bead is
+## the mirror; it starts below the centre, where the mirror faces now.
 const DIAL_RADIUS := 136.0
+## The bead is this far above the thumb, so the thumb does not hide it. The
+## thumb moves it as on a laptop pad.
+const DIAL_LIFT := 54.0
 ## Near the centre and near the rim the way round has no meaning, so the turn
 ## does not change there. The value is half of one step of the tilt.
 const DIAL_POLE := 0.125
 const DIAL_WIDTH := 2.0
+const DIAL_BEAD := 7.0
+## A thumb that rests this long after a slide lets the stage show: the disc
+## goes to DIAL_REST_ALPHA. A move brings it back.
+const DIAL_REST_SECONDS := 0.5
+const DIAL_REST_ALPHA := 0.45
+## At each step a pale ring spreads from the bead, as on the pond, and fades.
+const RIPPLE_SECONDS := 0.45
+const RIPPLE_REACH := 0.2
 const CERAMIC := Color(0.985, 0.98, 0.965)
 const ROSE := Color(0.94, 0.72, 0.70)
 const ROSE_INK := Color(0.45, 0.24, 0.24)
@@ -110,6 +128,36 @@ void fragment() {
 	COLOR = vec4(mix(vec3(0.10, 0.13, 0.16), colour, inside), max(inside, shadow) * fade);
 }
 """
+## The sky map is a shallow dome of frosted ice. The world behind it is soft
+## and bends a little near the rim. Its tint goes from the pale sky at the
+## centre to the slate water at the rim, so the distance from the centre reads
+## as the tilt. A thin light lies on its upper rim and a soft shade inside its
+## lower rim. It has no shadow, only a faint halo of water. No line is hard.
+const ORB := """
+shader_type canvas_item;
+uniform sampler2D screen : hint_screen_texture, repeat_disable, filter_linear_mipmap;
+uniform vec2 size = vec2(300.0, 300.0);
+uniform float radius = 136.0;
+uniform float fade = 1.0;
+
+void fragment() {
+	vec2 p = (UV - 0.5) * size / radius;
+	float d = length(p);
+	float inside = 1.0 - smoothstep(1.0 - 1.5 / radius, 1.0, d);
+	float z = sqrt(max(1.0 - d * d, 0.0));
+	vec2 uv = SCREEN_UV - p * (1.0 - z) * 0.16 * radius * SCREEN_PIXEL_SIZE;
+	vec3 back = textureLod(screen, uv, 3.0).rgb;
+	vec3 tint = mix(vec3(0.95, 0.965, 0.975), vec3(0.50, 0.58, 0.64), smoothstep(0.1, 1.0, d * d));
+	vec3 colour = mix(back, tint, 0.74);
+	// A soft light from above to the left gives the dome its depth.
+	colour *= 0.95 + 0.07 * clamp(dot(vec3(p, z), normalize(vec3(-0.4, -0.6, 0.7))), 0.0, 1.0);
+	float edge = smoothstep(0.84, 1.0, d);
+	colour += vec3(0.80, 0.91, 1.0) * edge * clamp(-p.y, 0.0, 1.0) * 0.32;
+	colour *= 1.0 - edge * clamp(p.y, 0.0, 1.0) * 0.14;
+	float halo = (1.0 - smoothstep(1.0, 1.14, d)) * 0.10 * (1.0 - inside);
+	COLOR = vec4(mix(vec3(0.17, 0.22, 0.27), colour, inside), max(inside, halo) * fade);
+}
+"""
 ## Set by the game each frame: whether the bar shows, where its centre is,
 ## and whether the mirror can go up or down now.
 var shown := false
@@ -140,6 +188,13 @@ var _dial_centre := Vector2.ZERO
 var _dial_shift := Vector2.ZERO
 ## The turn so far in this hold, in radians. It can pass a full turn.
 var _dial_turn := 0.0
+## The turn and the tilt of this hold so far, in steps, before the steps
+## snap. The track that the slide uses is the clear one.
+var _dial_lean := Vector2.ZERO
+## The seconds the thumb has rested since its last move on the sky map.
+var _dial_rest := 0.0
+## 1 at a step, then down to 0: the ring that spreads from the bead.
+var _ripple := 0.0
 ## 0 is the mirror button, 1 is the open bar.
 var _open := 0.0
 var _open_velocity := 0.0
@@ -155,19 +210,31 @@ var _tick := 0.0
 var _queued: Dictionary = {}
 var _glass := ColorRect.new()
 var _glass_material := ShaderMaterial.new()
+## The dial's glass ball, over the bar, and the dial's marks over the ball.
+var _orb := ColorRect.new()
+var _orb_material := ShaderMaterial.new()
+var _dial_overlay := BarOverlay.new()
 
 func _ready() -> void:
 	_canvas.layer = 2
 	add_child(_canvas)
-	var shader := Shader.new()
-	shader.code = GLASS
-	_glass_material.shader = shader
-	_glass.material = _glass_material
-	_glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_glass.visible = false
+	_shade(_glass, _glass_material, GLASS)
+	_shade(_orb, _orb_material, ORB)
 	_canvas.add_child(_glass)
 	_overlay.bar = self
 	_canvas.add_child(_overlay)
+	_canvas.add_child(_orb)
+	_dial_overlay.bar = self
+	_dial_overlay.dial = true
+	_canvas.add_child(_dial_overlay)
+
+func _shade(rect: ColorRect, material: ShaderMaterial, code: String) -> void:
+	var shader := Shader.new()
+	shader.code = code
+	material.shader = shader
+	rect.material = material
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.visible = false
 
 func set_state(state: Dictionary, available: bool, busy: bool) -> void:
 	_state = state
@@ -207,6 +274,7 @@ func motion(point: Vector2, index: int) -> bool:
 	if not owns_pointer(index):
 		return false
 	_grip_point = point
+	_dial_rest = 0.0
 	if _started:
 		_move_grip()
 	_overlay.queue_redraw()
@@ -323,12 +391,14 @@ func _start_knob() -> void:
 	_grip_yaw = _yaw()
 	_grip_pitch = _pitch()
 	if _grip == "turn":
-		# The finger is on the dial where the mirror faces now. The dial stays
-		# on the screen.
+		# The bead, where the mirror faces now, starts just above the thumb.
+		# The map stays on the screen.
 		_dial_turn = 0.0
+		_dial_lean = Vector2.ZERO
+		_dial_rest = 0.0
 		var start := dial_offset(0.0, _grip_pitch)
 		var room := get_viewport().get_visible_rect().grow(-8.0 - DIAL_RADIUS)
-		_dial_centre = (_grip_press - start).clamp(room.position, room.end)
+		_dial_centre = (_grip_press + Vector2.UP * DIAL_LIFT - start).clamp(room.position, room.end)
 		_dial_shift = _dial_centre + start - _grip_press
 	action_requested.emit("grip_begin", {"kind": _grip, "point": _grip_press})
 	# The slide made while the knob waited counts from the press.
@@ -362,6 +432,7 @@ func _move_grip() -> void:
 	var reach := offset.length() / DIAL_RADIUS
 	if reach > DIAL_POLE and reach < 1.0 - DIAL_POLE:
 		_dial_turn += wrapf(PI * 0.5 - offset.angle() - _dial_turn, -PI, PI)
+	_dial_lean = Vector2(_dial_turn, (reach - 0.5) * PI - _grip_pitch) / AIM_STEP
 	action_requested.emit("grip_aim", {"yaw": _grip_yaw + _dial_turn, "pitch": (reach - 0.5) * PI})
 
 ## The point of the dial for a facing `turn` round from the facing at the
@@ -378,12 +449,14 @@ func _dial_finger() -> Vector2:
 ## The mirror went to its next step: the held knob answers.
 func tick() -> void:
 	_tick = 1.0
+	_ripple = 1.0
 	Input.vibrate_handheld(10)
 
 func _process(delta: float) -> void:
 	var drawn := shown and _camera != null
 	_glass.visible = drawn
 	if not drawn:
+		_orb.visible = false
 		return
 	var before := _open
 	var spring := _spring(_open, _open_velocity, 1.0 if _available else 0.0, delta)
@@ -410,6 +483,16 @@ func _process(delta: float) -> void:
 	else:
 		_pull = Vector2.ZERO
 	_tick = move_toward(_tick, 0.0, delta / 0.2)
+	_ripple = move_toward(_ripple, 0.0, delta / RIPPLE_SECONDS)
+	if _ripple > 0.0:
+		moving = true
+	# The rest counts only after the first move, so a new player can read the
+	# map at the start of a hold.
+	if _grip == "turn" and _started and not _grip_point.is_equal_approx(_grip_press):
+		var rest_before := _dial_rest
+		_dial_rest += delta
+		if rest_before < DIAL_REST_SECONDS + 0.3:
+			moving = true
 	var undo_before := _undo_shown
 	spring = _spring(_undo_shown, _undo_velocity, 1.0 if can_undo else 0.0, delta)
 	_undo_shown = spring.x
@@ -442,21 +525,33 @@ func _process(delta: float) -> void:
 	_glass.position = centre + _pull * 0.15 - _glass.size * 0.5
 	_glass_material.set_shader_parameter("size", _glass.size)
 	_glass_material.set_shader_parameter("half_size", half)
-	_glass_material.set_shader_parameter("fade", lerpf(1.0, HOLD_GLASS_ALPHA, smoothstep(0.0, 1.0, _hold)))
+	_glass_material.set_shader_parameter("fade", lerpf(1.0, HOLD_GLASS_ALPHA, smoothstep(0.0, 1.0, _hold)) * (1.0 - smoothstep(0.0, 0.6, _dial)))
+	_orb.visible = _dialling()
+	if _orb.visible:
+		var radius := _dial_radius()
+		_orb.size = Vector2.ONE * radius * 2.4
+		_orb.position = _dial_at() - _orb.size * 0.5
+		_orb_material.set_shader_parameter("size", _orb.size)
+		_orb_material.set_shader_parameter("radius", radius)
+		_orb_material.set_shader_parameter("fade", smoothstep(0.0, 0.3, _dial) * _dial_opacity())
 	if moving:
 		_overlay.queue_redraw()
+		_dial_overlay.queue_redraw()
 
 func _draw_bar(canvas: Control) -> void:
 	if not shown or _camera == null:
 		return
 	var open := _eased()
 	var middle := centre + _pull * 0.15
-	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold))
-	var dialling := _dial != 0.0 or _dial_velocity != 0.0
+	# The sky map lies over the bar: the other controls go while it shows.
+	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold)) * (1.0 - smoothstep(0.0, 0.6, _dial))
 	for index: int in [0, 2, 1]:
 		var kind := KNOBS[index]
 		var alpha := 1.0 if index == 1 else smoothstep(0.1, 0.7, open)
-		if alpha <= 0.01 or (index == 1 and dialling):
+		# The turn knob opens into the sky map: it fades as the map grows.
+		if index == 1:
+			alpha *= 1.0 - smoothstep(0.0, 0.4, _dial)
+		if alpha <= 0.01:
 			continue
 		if _grip != kind:
 			alpha *= dim
@@ -483,41 +578,68 @@ func _draw_bar(canvas: Control) -> void:
 		var undo_radius := REMOVE * maxf(lerpf(0.7, 1.0, _undo_shown), 0.0)
 		_set_ceramic(canvas, _undo_point(), undo_radius, CERAMIC, undo_alpha, Vector2.ZERO, _presses["undo"], 0.0)
 		_draw_mark(canvas, "undo", undo_radius, Color(INK, undo_alpha))
-	# The dial is drawn last: it grows over the other controls.
-	if dialling:
-		_draw_dial(canvas, middle)
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_hint(canvas, open)
 
-## The turn knob grows into the dial and goes back into the knob. Its marks
-## keep the rule of the knob's mark: the dark part is the mirror, and the pale
-## part is where it can go. Pale rings: the tilt (the middle ring stands
-## upright; the faint inner ring leans 45 degrees to the sky, the faint outer
-## ring 45 degrees to the ground). Pale dots: the steps of the turn, and the
-## sky at the centre. Dark: a hand from the centre to the dot where the mirror
-## faces now. A pale ring: the finger.
-func _draw_dial(canvas: Control, knob_at: Vector2) -> void:
-	var grow := maxf(_dial, 0.0)
-	var radius := lerpf(KNOB, DIAL_RADIUS, grow)
-	_set_ceramic(canvas, knob_at.lerp(_dial_centre, minf(grow, 1.0)), radius, CERAMIC, 1.0, Vector2.ZERO, _presses["turn"], _tick * 0.3)
-	_draw_mark(canvas, "turn", KNOB, Color(INK, 1.0 - smoothstep(0.0, 0.35, grow)))
-	var shown := smoothstep(0.3, 0.9, grow)
-	if shown <= 0.01:
+## Whether the dial shows: the turn knob is held, or its dial still grows or
+## shrinks.
+func _dialling() -> bool:
+	return _dial != 0.0 or _dial_velocity != 0.0
+
+## How far the sky map is open, from 0 to 1. The game fades the prompt with it.
+func dial_amount() -> float:
+	return clampf(_dial, 0.0, 1.0)
+
+## The dial's radius and centre now. It grows from the turn knob.
+func _dial_radius() -> float:
+	return lerpf(KNOB, DIAL_RADIUS, maxf(_dial, 0.0))
+
+func _dial_at() -> Vector2:
+	return (centre + _pull * 0.15).lerp(_dial_centre, clampf(_dial, 0.0, 1.0))
+
+## How clear the sky map is: it lets the stage show while the thumb rests
+## after a slide.
+func _dial_opacity() -> float:
+	if _grip != "turn":
+		return 1.0
+	return lerpf(1.0, DIAL_REST_ALPHA, smoothstep(DIAL_REST_SECONDS, DIAL_REST_SECONDS + 0.3, _dial_rest))
+
+## The marks on the sky map. They keep the rule of the bar's marks: the dark
+## part is the mirror, and the pale part is where it can go. One dark bead is
+## the mirror. Two long guides cross at it, with a small dot at each step: the
+## ring of its tilt (the way round: the turn), and the line from the centre to
+## the rim through it (in and out: the tilt). The centre, the sky, is a small
+## open ring. The guide that the slide uses is clear, the other faint. A faint
+## ring stands for upright, and a hollow ring marks where the hold began: a
+## release there changes nothing. At each step a ring spreads from the bead.
+func _draw_dial(canvas: Control) -> void:
+	if not _dialling() or not shown or _camera == null:
 		return
-	var scale := radius / DIAL_RADIUS
-	var pale := Color(Color(INK, 1.0).lerp(CERAMIC, 0.62), shown)
-	for reach: float in [0.25, 0.75]:
-		canvas.draw_arc(Vector2.ZERO, DIAL_RADIUS * reach * scale, 0.0, TAU, 96, Color(pale, shown * 0.45), DIAL_WIDTH, true)
-	canvas.draw_arc(Vector2.ZERO, DIAL_RADIUS * 0.5 * scale, 0.0, TAU, 96, pale, DIAL_WIDTH, true)
-	canvas.draw_circle(Vector2.ZERO, 2.6, pale, true, -1.0, true)
-	for index: int in roundi(TAU / AIM_STEP):
-		canvas.draw_circle(dial_offset(index * AIM_STEP, 0.0) * scale, 2.6, pale, true, -1.0, true)
-	if _grip == "turn":
-		canvas.draw_arc(_dial_finger() * scale, 11.0, 0.0, TAU, 40, pale, DIAL_WIDTH, true)
-	var ink := Color(INK, shown)
+	var at := _dial_at()
+	var scale := _dial_radius() / DIAL_RADIUS
+	var clear := smoothstep(0.3, 0.9, _dial) * _dial_opacity()
+	if clear <= 0.01:
+		return
 	var facing := dial_offset(wrapf(_yaw() - _grip_yaw, -PI, PI), _pitch()) * scale
-	UiIcons._stroke(canvas, [Vector2.ZERO, facing], ink, DIAL_WIDTH)
-	canvas.draw_circle(facing, 6.0, ink, true, -1.0, true)
+	var focus := clampf(0.5 + absf(_dial_lean.x) - absf(_dial_lean.y), 0.0, 1.0)
+	var ring := Color(INK, clear * lerpf(0.2, 0.55, focus))
+	var line := Color(INK, clear * lerpf(0.2, 0.55, 1.0 - focus))
+	var reach := facing.length()
+	var way := facing / reach if reach > 0.5 else dial_offset(_dial_turn, 0.0).normalized()
+	canvas.draw_arc(at, DIAL_RADIUS * 0.5 * scale, 0.0, TAU, 96, Color(INK, clear * 0.12), DIAL_WIDTH * 0.75, true)
+	canvas.draw_arc(at, reach, 0.0, TAU, 96, ring, DIAL_WIDTH, true)
+	for index: int in roundi(TAU / AIM_STEP):
+		canvas.draw_circle(at + Vector2.DOWN.rotated(-index * AIM_STEP) * reach, 2.6, ring, true, -1.0, true)
+	UiIcons._stroke(canvas, [at + way * 4.5, at + way * DIAL_RADIUS * scale], line, DIAL_WIDTH)
+	for step: int in range(1, 5):
+		canvas.draw_circle(at + way * DIAL_RADIUS * scale * step * 0.25, 2.6, line, true, -1.0, true)
+	canvas.draw_arc(at, 4.5, 0.0, TAU, 24, line, DIAL_WIDTH * 0.75, true)
+	if _grip == "turn":
+		canvas.draw_arc(at + dial_offset(0.0, _grip_pitch) * scale, DIAL_BEAD + 3.5, 0.0, TAU, 40, Color(INK, clear * 0.35), 1.5, true)
+	var bead := at + facing
+	if _ripple > 0.0:
+		canvas.draw_arc(bead, lerpf(DIAL_BEAD, DIAL_RADIUS * RIPPLE_REACH, 1.0 - _ripple), 0.0, TAU, 40, Color(INK, clear * 0.45 * _ripple * _ripple), 1.5, true)
+	canvas.draw_circle(bead, DIAL_BEAD, Color(INK, clear), true, -1.0, true)
 
 ## The ripples and the finger mark of the control that the prompt names.
 func _draw_hint(canvas: Control, open: float) -> void:

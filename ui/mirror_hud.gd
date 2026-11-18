@@ -191,6 +191,11 @@ func show_stage_title(text: String) -> void:
 		if _prompt_wanted:
 			show_prompt(_prompt.text))
 
+## The turn knob's sky map covers the prompt's line, so the prompt fades while
+## the map shows: 0 is clear, 1 is gone.
+func set_prompt_fade(amount: float) -> void:
+	_prompt.self_modulate.a = 1.0 - clampf(amount, 0.0, 1.0)
+
 ## The tutorial prompt: one short line, written on the world above the mirror
 ## bar (owner, 2026-11-17: a card in the top left with long text takes the
 ## player's focus away). It stays until `hide_prompt`, unlike the transient

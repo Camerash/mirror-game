@@ -367,12 +367,22 @@ styles and words.
   only the foot and the side the mirror will face. On the first proof the
   owner said: "The disc seems to be only catering one axis of rotation, no?
   Also looks a bit flat with the hard shadows. I want it to be more zen
-  too." The agent's proposal for the next proof: only the two tracks that
-  cross at the mirror's dot (a ring for the turn, a line through the centre
-  for the tilt); the bar's glass made round, with no hard shadow; the
-  ceramic knob moves on the tracks under the finger. The other way: a ring
-  for the turn and a separate upright slot for the tilt. OPEN: the owner
-  chooses.
+  too." The owner then asked for "crossing tracks, with the sphere like
+  disc", and for blind agents to suggest design patterns. A try with the
+  ceramic knob on a glass ball: "Doesn't look good. I don't prefer the knob
+  still existing." Three blind agents (Opus; lenses: 3D orientation input,
+  calm visual language, first-time player) gave nine patterns
+  (`test-output/polish/dial-patterns.html`). Two put a sky map first, one a
+  turntable with one axis for each hold. The owner: "Lets do sky map".
+- TRIAL (owner, 2026-11-18), built: the sky map. The held turn knob opens
+  into a disc of frosted ice, tinted from the pale sky at the centre to the
+  slate water at the rim, with no shadow. No knob stays on it: one dark bead
+  is the mirror, a little above the thumb, and the thumb moves it as on a
+  laptop pad. Two long guides cross at the bead: the ring of its tilt (the
+  turn) and the line from the centre (the tilt). The guide that the slide
+  uses is clear. A hollow ring marks the start; a ring spreads from the
+  bead at each step; a resting thumb lets the stage show. The owner judges
+  it in play.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The
