@@ -159,15 +159,18 @@ func draw_world(solids: Array[Dictionary]) -> void:
 		shadow_root.set_meta("sweep", Motion.blend(shadow_root, func(weight: float) -> void: shade.set_shader_parameter("shown", smoothstep(0.5, 1.0, weight)), "reveal"))
 	update_debug()
 
-## A soft shadow straight below every floating block, on each surface under
+## A soft shadow straight below every floating block, on each flat top under
 ## its footprint. A copy beside a path and one above it look alike from an
-## isometric view; the shadow tells them apart.
+## isometric view; the shadow tells them apart. The shadow has the shape of
+## the block's footprint on the top: a piece cut on a slant casts a slanted
+## shadow, and a top that slopes takes none.
 func _draw_drop_shadows(solids: Array[Dictionary]) -> void:
 	var tool := SurfaceTool.new()
 	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var count := 0
 	for block: Dictionary in solids:
 		var bounds: AABB = block["bounds"]
+		var footprint := PackedVector2Array()
 		for below: Dictionary in solids:
 			var support: AABB = below["bounds"]
 			if is_same(below, block) or support.end.y > bounds.position.y - SHADOW_GAP:
@@ -176,19 +179,60 @@ func _draw_drop_shadows(solids: Array[Dictionary]) -> void:
 			var high := Vector2(minf(bounds.end.x, support.end.x), minf(bounds.end.z, support.end.z))
 			if high.x - low.x < 0.05 or high.y - low.y < 0.05:
 				continue
-			var size := high - low
-			var height := support.end.y + 0.012
-			# Fainter the further the block floats above the surface.
-			var fade := clampf(1.2 - (bounds.position.y - support.end.y) * 0.15, 0.45, 1.0)
-			var corners := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
-			for index: int in [0, 1, 2, 0, 2, 3]:
-				var corner: Vector2 = corners[index]
-				tool.set_color(Color(1, 1, 1, fade))
-				tool.set_uv(corner)
-				tool.set_uv2(size)
-				tool.add_vertex(Vector3(low.x + size.x * corner.x, height, low.y + size.y * corner.y))
-			count += 1
+			if footprint.is_empty():
+				footprint = _footprint(block)
+			# A flat top of a convex fragment is at the top of its bounds.
+			for face: PackedVector3Array in Queries.faces(below):
+				if face.size() < 3 or Queries.plane(face).normal.y < 0.999:
+					continue
+				var top := PackedVector2Array()
+				for point: Vector3 in face:
+					top.append(Vector2(point.x, point.z))
+				# Fainter the further the block floats above the surface.
+				var fade := clampf(1.2 - (bounds.position.y - face[0].y) * 0.15, 0.45, 1.0)
+				for shade: PackedVector2Array in Geometry2D.intersect_polygons(footprint, top):
+					if shade.size() >= 3:
+						_add_shadow(tool, shade, face[0].y + 0.012, fade)
+						count += 1
 	shadow_root.mesh = tool.commit() if count > 0 else null
+
+## The outline of `solid` seen from straight above, in (x, z).
+func _footprint(solid: Dictionary) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for face: PackedVector3Array in Queries.faces(solid):
+		for point: Vector3 in face:
+			points.append(Vector2(point.x, point.z))
+	var hull := Geometry2D.convex_hull(points)
+	# The hull ends with its first point again.
+	hull.resize(maxi(hull.size() - 1, 0))
+	return hull
+
+## One convex shadow at `height`, as a fan of triangles from its middle. Each
+## point carries its distance to the triangle's own rim (UV.x) and to the rims
+## beside it (UV.y, UV2.x), so `drop_shadow.gdshader` feathers every rim by
+## the same width.
+func _add_shadow(tool: SurfaceTool, polygon: PackedVector2Array, height: float, fade: float) -> void:
+	var count := polygon.size()
+	var middle := Vector2.ZERO
+	for point: Vector2 in polygon:
+		middle += point
+	middle /= count
+	var inside := func(point: Vector2, rim: int) -> float:
+		var start := polygon[posmod(rim, count)]
+		var along := (polygon[posmod(rim + 1, count)] - start).normalized()
+		if along.is_zero_approx():
+			# Two points in one place: no rim to feather.
+			return 1000.0
+		var inward := Vector2(-along.y, along.x)
+		if inward.dot(middle - start) < 0.0:
+			inward = -inward
+		return (point - start).dot(inward)
+	for rim: int in count:
+		for point: Vector2 in [middle, polygon[rim], polygon[(rim + 1) % count]]:
+			tool.set_color(Color(1, 1, 1, fade))
+			tool.set_uv(Vector2(inside.call(point, rim), inside.call(point, rim - 1)))
+			tool.set_uv2(Vector2(inside.call(point, rim + 1), 0.0))
+			tool.add_vertex(Vector3(point.x, height, point.y))
 
 ## Grows a fragment out of the mirror's plane to its full shape.
 func _grow(instance: MeshInstance3D) -> void:

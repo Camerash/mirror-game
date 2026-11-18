@@ -5,6 +5,7 @@ extends SceneTree
 
 const Game := preload("res://game.gd")
 const Geometry := preload("res://core/world_geometry.gd")
+const Polygons := preload("res://core/display_geometry.gd")
 
 var game: Node3D
 var checks := 0
@@ -40,6 +41,17 @@ func screen(point: Vector3) -> Vector2:
 	return game.camera.unproject_position(point)
 
 
+func shadow_area() -> float:
+	var mesh := game.world.shadow_root.mesh as ArrayMesh
+	if mesh == null:
+		return 0.0
+	var points: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	var area := 0.0
+	for index: int in range(0, points.size(), 3):
+		area += (points[index + 1] - points[index]).cross(points[index + 2] - points[index]).length() * 0.5
+	return area
+
+
 func run() -> void:
 	root.size = Vector2i(1152, 800)
 	game = Game.new()
@@ -52,6 +64,17 @@ func run() -> void:
 	check(game.world.shadow_root.mesh == null, "First steps: nothing floats, so no drop shadow")
 	await load_stage("11_aperture")
 	check(game.world.shadow_root.mesh != null, "Only the ground: the floating tower casts a drop shadow onto the ledge")
+	# A piece cut on a slant casts a shadow of its own shape, and a top that
+	# slopes takes none: a flat shadow there would hang in the air.
+	var cube := AABB(Vector3(0, -1, 0), Vector3.ONE)
+	var wedge := {"bounds": AABB(Vector3(0, 1, 0), Vector3.ONE),
+		"faces": Polygons.clip(Polygons.box_faces(AABB(Vector3(0, 1, 0), Vector3.ONE)), Plane(Vector3(1, 0, 1).normalized(), sqrt(0.5)))}
+	var on_flat: Array[Dictionary] = [{"bounds": cube}, wedge]
+	game.world._draw_drop_shadows(on_flat)
+	check(absf(shadow_area() - 0.5) < 0.01, "A piece cut on a slant casts a shadow of its own shape")
+	var on_slope: Array[Dictionary] = [{"bounds": cube, "faces": Polygons.clip(Polygons.box_faces(cube), Plane(Vector3(1, 1, 0).normalized(), 0.0))}, wedge]
+	game.world._draw_drop_shadows(on_slope)
+	check(game.world.shadow_root.mesh == null, "A top that slopes takes no flat shadow")
 
 	await load_stage("01_route")
 	var goal := Geometry.vector(game.level["goal"])
