@@ -13,6 +13,10 @@ const TutorialProgress := preload("res://core/tutorial_progress.gd")
 const SafeArea := preload("res://core/safe_area.gd")
 
 const END_CARD_DELAY := 1.5
+## A desktop window opens phone-shaped, in points, so the Mac shows what the
+## phone shows (owner, 2026-11-18). The shape of a 428 x 926 point iPhone, at
+## a size that still fits a laptop screen's height.
+const DESKTOP_WINDOW := Vector2(400, 866)
 ## How long the title waits before the small light shows where to tap.
 const TITLE_HINT_DELAY := 1.8
 ## The title's slow sway about the stage: radians, and radians per second.
@@ -112,9 +116,16 @@ func _apply_bus_volume(bus_name: String, linear: float) -> void:
 
 
 func _apply_fullscreen() -> void:
-	if OS.get_name() in ["iOS", "Android"]:
+	if OS.get_name() in ["iOS", "Android"] or Engine.is_embedded_in_editor():
 		return
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if progress.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED)
+	if progress.fullscreen or DisplayServer.get_name() == "headless":
+		return
+	var window_size := DESKTOP_WINDOW * DisplayServer.screen_get_scale()
+	var usable := Vector2(DisplayServer.screen_get_usable_rect().size) * 0.95
+	window_size *= minf(1.0, minf(usable.x / window_size.x, usable.y / window_size.y))
+	get_window().size = Vector2i(window_size.round())
+	get_window().move_to_center()
 
 
 func _on_stage_reached(index: int) -> void:

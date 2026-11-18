@@ -1,7 +1,7 @@
 extends SceneTree
-## The direct mirror controls: the mirror bar (the mirror button, the move,
-## turn and lift knobs, the remove button), apply on release with Undo, and
-## no editor.
+## The direct mirror controls: a slide on the glass moves the mirror; the
+## mirror bar (the mirror button, the turn and lift knobs, the remove button);
+## apply on release with Undo, and no editor.
 ## Pointer checks push real mouse events through the game's own input path.
 ##
 ## Run: godot --headless --path . --script tests/direct_controls_tests.gd
@@ -114,7 +114,7 @@ func press_remove_button() -> void:
 
 
 func knob(index: int) -> Vector2:
-	return game.bar.centre + Vector2((index - 1) * game.bar.SPACING, 0.0)
+	return game.bar.centre + Vector2(game.bar._knob_x(index, 1.0), 0.0)
 
 
 ## The finger travel that moves the mirror by `world`.
@@ -128,8 +128,8 @@ func travel(world: Vector3) -> Vector2:
 	return (game.camera.unproject_position(pivot() + world) - origin) / (gain * game.KNOB_GAIN)
 
 
-## The command path of the move knob (x or z) or the lift knob (y): the knob
-## is held and dragged until the mirror goes `units` along `axis`.
+## The command path of a glass slide (x or z) or the lift knob (y): the slide
+## goes on until the mirror goes `units` along `axis`.
 func slide(axis: int, units: float) -> void:
 	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
 	var start: Vector2 = game.bar.centre
@@ -202,7 +202,6 @@ func run() -> void:
 	await check_axes_in_every_view()
 	await check_no_editor()
 	await check_mirror_button()
-	await check_move_knob()
 	await check_lift_knob()
 	await check_glass_slide()
 	await check_tap_through_glass()
@@ -287,45 +286,16 @@ func check_mirror_button() -> void:
 	check(bool(game.mirror.get("enabled", false)) and pivot().is_equal_approx(Vector3(0.5, 0, 0)), "Button: raising again puts it back")
 
 
-func check_move_knob() -> void:
-	await load_stage("01_route")
-	await press_mirror_button()
-	var start := knob(0)
-	var before := pivot()
-	var history: int = game.history.size()
-	events.clear()
-	var finish := start + travel(Vector3(2, 0, 0))
-	mouse_button(start, true)
-	await process_frame
-	for step: int in range(1, 13):
-		mouse_move(start.lerp(finish, step / 12.0))
-		await process_frame
-	await frames(8)
-	check(game.dragging and game.phase == "preview", "Move: holding the move knob and sliding moves the mirror")
-	check(not game.hud._cancel.visible and not game.hud._apply.visible and not game.hud._mode_cycle.visible and not game.hud._edit_border.visible,
-		"Move: no edit buttons appear while dragging")
-	check(game.rings.get_control_rects().is_empty() and game.resize_controls.get_control_rects().is_empty(), "Move: no rings or resize handles appear")
-	check(game.guide_kind == "ground", "Move: the guide shows the ground")
-	mouse_button(finish, false)
-	await direct_settled()
-	check(pivot().is_equal_approx(before + Vector3(2, 0, 0)), "Move: the release applies the mirror two units along X, and nothing else")
-	check(game.phase == "play" and game.history.size() == history + 1, "Move: one release is one Undo step")
-	check("move" in events, "Move: a slide reports move")
-	# One drag changes both ground axes.
-	before = pivot()
-	await drag(start, start + travel(Vector3(1.0, 0, 0.5)))
-	check(pivot().is_equal_approx(before + Vector3(1, 0, 0.5)), "Move: one drag moves along X and Z and keeps the height")
-	game.undo()
-	await direct_settled()
-	game.undo()
-	await direct_settled()
-	check(pivot().is_equal_approx(before - Vector3(2, 0, 0)), "Move: Undo puts the mirror back")
+## The finger travel on the screen that moves the mirror's glass by `world`
+## on the ground: a slide on the glass goes under the finger.
+func ground_travel(world: Vector3) -> Vector2:
+	return game.camera.unproject_position(pivot() + world) - game.camera.unproject_position(pivot())
 
 
 func check_lift_knob() -> void:
 	await load_stage("01_route")
 	await press_mirror_button()
-	var start := knob(2)
+	var start := knob(1)
 	var before := pivot()
 	events.clear()
 	var finish := start + travel(Vector3.UP)
@@ -347,25 +317,40 @@ func check_lift_knob() -> void:
 
 func check_glass_slide() -> void:
 	## A slide that starts on the glass moves the mirror on the ground, under
-	## the finger, with the sign of the move knob (trial, owner 2026-11-18).
+	## the finger, with the sign of the ground. It is the only way to move the
+	## mirror on the ground with a finger (owner, 2026-11-18).
 	await load_stage("01_route")
 	await press_mirror_button()
 	var start := glass_point()
 	var before := pivot()
 	var history: int = game.history.size()
-	var finish: Vector2 = start + game.camera.unproject_position(before + Vector3.RIGHT * 2.0) - game.camera.unproject_position(before)
+	var finish: Vector2 = start + ground_travel(Vector3.RIGHT * 2.0)
 	events.clear()
 	mouse_button(start, true)
 	await process_frame
 	for step: int in range(1, 13):
 		mouse_move(start.lerp(finish, step / 12.0))
 		await process_frame
-	check(game.dragging and game.placement_guide._data.get("sign", false), "Glass: a slide on the glass holds the mirror and shows the sign")
+	check(game.dragging and game.phase == "preview" and game.placement_guide._data.get("sign", false), "Glass: a slide on the glass holds the mirror and shows the sign")
+	check(not game.hud._cancel.visible and not game.hud._apply.visible and not game.hud._mode_cycle.visible and not game.hud._edit_border.visible,
+		"Glass: no edit buttons appear while dragging")
+	check(game.rings.get_control_rects().is_empty() and game.resize_controls.get_control_rects().is_empty(), "Glass: no rings or resize handles appear")
+	check(game.guide_kind == "ground", "Glass: the guide shows the ground")
 	await frames(6)
 	mouse_button(finish, false)
 	await direct_settled()
 	check(pivot().is_equal_approx(before + Vector3.RIGHT * 2.0), "Glass: the mirror goes as far on the ground as the finger")
 	check(game.history.size() == history + 1 and "move" in events, "Glass: the slide is one change, and it reports move")
+	# One slide changes both ground axes.
+	before = pivot()
+	start = glass_point()
+	await drag(start, start + ground_travel(Vector3(1.0, 0, 0.5)))
+	check(pivot().is_equal_approx(before + Vector3(1, 0, 0.5)), "Glass: one slide moves along X and Z and keeps the height")
+	game.undo()
+	await direct_settled()
+	game.undo()
+	await direct_settled()
+	check(pivot().is_equal_approx(before - Vector3(2, 0, 0)), "Glass: Undo puts the mirror back")
 
 
 func check_tap_through_glass() -> void:
@@ -383,26 +368,26 @@ func check_tap_through_glass() -> void:
 func check_turn_knob() -> void:
 	await load_stage("01_route")
 	await press_mirror_button()
-	var start := knob(1)
+	var start := knob(0)
 	var before := pivot()
 	var yaw: float = game.mirror["yaw"]
 	var pitch: float = game.mirror["pitch"]
 	events.clear()
 	await drag(start, start + dial_travel(PI * 0.25, 0.0))
-	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: one step round the dial turns the mirror 45 degrees")
+	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: one step to the right on the pad turns the mirror 45 degrees")
 	check(pivot().is_equal_approx(before), "Turn: turning keeps the mirror's centre")
 	check("turn" in events, "Turn: a turn reports turn")
-	# Half way round the dial, along its ring, is a half turn; the tilt stays.
+	# Four steps to the left in one hold is a half turn; the tilt stays.
 	yaw = game.mirror["yaw"]
 	mouse_button(start, true)
 	await process_frame
 	for step: int in range(1, 25):
-		mouse_move(start + dial_travel(PI * step / 24.0, 0.0))
+		mouse_move(start + dial_travel(-PI * step / 24.0, 0.0))
 		await process_frame
 	await frames(6)
-	mouse_button(start + dial_travel(PI, 0.0), false)
+	mouse_button(start + dial_travel(-PI, 0.0), false)
 	await direct_settled()
-	check(is_equal_approx(absf(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI)), PI) and is_equal_approx(float(game.mirror["pitch"]), pitch), "Turn: half way round the dial is a half turn, and the tilt stays")
+	check(is_equal_approx(absf(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI)), PI) and is_equal_approx(float(game.mirror["pitch"]), pitch), "Turn: four steps in one hold is a half turn, and the tilt stays")
 	game.undo()
 	await direct_settled()
 	await point(Vector3.BACK)
@@ -412,21 +397,19 @@ func check_turn_knob() -> void:
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Turn: asking for the opposite way is the half turn")
 
 
-## The finger travel on the dial that turns the mirror by `turn` and tilts it
-## by `tilt` from its facing now.
+## The finger travel on the turn pad that turns the mirror by `turn` and tilts
+## it by `tilt` from its facing now.
 func dial_travel(turn: float, tilt: float) -> Vector2:
-	var pitch: float = game.mirror["pitch"]
-	return game.bar.dial_offset(turn, pitch + tilt) - game.bar.dial_offset(0.0, pitch)
+	return game.bar.pad_travel(turn, tilt)
 
 
 func check_freedom_sign() -> void:
-	## While the move or lift knob is held, the guide shows that knob's sign:
-	## its pale lines at the mirror. The held turn knob grows into its dial
-	## instead, and the world shows only where the mirror faces. Each goes when
-	## the knob is let go.
+	## While the lift knob is held, the guide shows its sign: its pale lines at
+	## the mirror. The held turn knob grows into its pad instead, and the world
+	## shows only where the mirror faces. Each goes when the knob is let go.
 	await load_stage("01_route")
 	await press_mirror_button()
-	for index: int in 3:
+	for index: int in game.bar.KNOBS.size():
 		var kind: String = game.bar.KNOBS[index]
 		mouse_button(knob(index), true)
 		await frames(6)
@@ -437,7 +420,7 @@ func check_freedom_sign() -> void:
 					break
 				await process_frame
 			check(game.placement_guide._data.get("sign", false) and not lines and game.placement_guide._data.get("target") is Vector3 and game.bar._dial >= 1.0,
-				"Sign: holding the turn knob grows it into the dial, and the world shows only where the mirror faces")
+				"Sign: holding the turn knob grows it into the pad, and the world shows only where the mirror faces")
 		else:
 			check(game.placement_guide._data.get("sign", false) and lines, "Sign: holding the %s knob shows its lines at the mirror" % kind)
 		mouse_button(knob(index), false)
@@ -533,8 +516,8 @@ func check_camera_stays() -> void:
 	await frames(30)
 	var position: Vector3 = game.camera.position
 	var size: float = game.camera.size
-	var start := knob(0)
-	await drag(start, start + travel(Vector3(0.5, 0, 0)))
+	var start := glass_point()
+	await drag(start, start + ground_travel(Vector3(0.5, 0, 0)))
 	await frames(30)
 	check(game.camera.position.is_equal_approx(position) and is_equal_approx(game.camera.size, size), "Camera: a small slide does not reframe the stage")
 

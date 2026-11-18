@@ -220,7 +220,7 @@ func press_mirror_button() -> void:
 
 
 func slide(axis: int, units: float) -> void:
-	## The move knob (x or z) or the lift knob (y) is held, dragged until the
+	## A glass slide (x or z) or the lift knob (y) is held, dragged until the
 	## mirror goes `units` along one axis, and let go.
 	var pivot: Vector3 = game.mirror["pivot"]
 	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units

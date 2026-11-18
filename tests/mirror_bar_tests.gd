@@ -1,7 +1,7 @@
 extends SceneTree
-## The mirror bar below the stage: the mirror button opens it into three
-## knobs (move, turn, lift) and a remove button. Every check pushes real
-## mouse events through the game's own input path, once for each window size.
+## The mirror bar below the stage: the mirror button opens it into two knobs
+## (turn, lift) and a remove button. Every check pushes real mouse events
+## through the game's own input path, once for each window size.
 ##
 ## Run: godot --headless --path . --script tests/mirror_bar_tests.gd
 
@@ -89,7 +89,7 @@ func degrees(key: String) -> float:
 
 
 func knob(index: int) -> Vector2:
-	return game.bar.centre + Vector2((index - 1) * game.bar.SPACING, 0.0)
+	return game.bar.centre + Vector2(game.bar._knob_x(index, 1.0), 0.0)
 
 
 ## The finger travel that moves the mirror by `world`.
@@ -104,11 +104,10 @@ func travel(world: Vector3) -> Vector2:
 	return (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
 
 
-## The finger travel on the turn knob's dial that turns the mirror by `turn`
+## The finger travel on the turn knob's pad that turns the mirror by `turn`
 ## and tilts it by `tilt` from its facing now.
 func dial_travel(turn: float, tilt: float) -> Vector2:
-	var pitch: float = game.mirror["pitch"]
-	return game.bar.dial_offset(turn, pitch + tilt) - game.bar.dial_offset(0.0, pitch)
+	return game.bar.pad_travel(turn, tilt)
 
 
 func run() -> void:
@@ -145,6 +144,10 @@ func check_bar(size: Vector2i) -> void:
 	if size.y > size.x:
 		check(game.play_rect.end.y - centre.y - half >= size.y * 0.12, "%s: a slide from a knob has room below the bar" % label)
 	check(game.bar._remove_point().x + game.bar.REMOVE <= game.play_rect.end.x, "%s: the remove button is inside the play area" % label)
+	# One unit is one point on a device, so each control takes a press at
+	# least 44 points wide, Apple's least touch size.
+	check(game.bar.KNOB * 2.0 >= 44.0 and (game.bar.REMOVE + 8.0) * 2.0 >= 44.0 and (game.bar.HALF_HEIGHT + 6.0) * 2.0 >= 44.0,
+		"%s: each control takes a press at least 44 points wide" % label)
 
 	# The mirror button opens into the bar.
 	# A press grows the button smoothly: not full on the first frame.
@@ -187,18 +190,16 @@ func check_bar(size: Vector2i) -> void:
 	await frames(20)
 	game.walker.route.clear()
 
-	# The move knob: one drag that changes both ground axes.
-	pivot = game.mirror["pivot"]
-	var from := knob(0)
-	await drag(from, from + travel(Vector3(1.0, 0.0, 0.5)))
-	var moved: Vector3 = game.mirror["pivot"] - pivot
-	check(is_equal_approx(moved.x, 1.0) and is_equal_approx(moved.z, 0.5) and is_zero_approx(moved.y), "%s: the move knob moves x by 1 and z by 0.5, height stays" % label)
+	# The bar has no move knob: a slide on the glass moves the mirror
+	# (direct_controls_tests.gd checks it).
+	check(game.bar.KNOBS == ["turn", "lift"] and game.bar._grip_at(knob(0)) == "turn" and game.bar._grip_at(knob(1)) == "lift",
+		"%s: the bar has two knobs, turn to the left and lift to the right" % label)
 
 	# The lift knob.
 	pivot = game.mirror["pivot"]
-	from = knob(2)
+	var from := knob(1)
 	await drag(from, from + travel(Vector3.UP))
-	moved = game.mirror["pivot"] - pivot
+	var moved: Vector3 = game.mirror["pivot"] - pivot
 	check(is_equal_approx(moved.y, 1.0) and is_zero_approx(moved.x) and is_zero_approx(moved.z), "%s: the lift knob lifts by 1 and nothing else" % label)
 
 	# One hold that turns and tilts.
@@ -207,27 +208,26 @@ func check_bar(size: Vector2i) -> void:
 		if event == "turn": turns[0] += 1)
 	var yaw := degrees("yaw")
 	var pitch := degrees("pitch")
-	from = knob(1)
+	from = knob(0)
 	await drag(from, from + dial_travel(PI * 0.25, -PI * 0.25))
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch") - pitch, -45.0), "%s: one slide on the dial turns and tilts" % label)
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch") - pitch, -45.0), "%s: one slide on a slant on the pad turns and tilts" % label)
 	game.undo()
 	await settled()
 	await frames(20)
 
-	# The turn knob's dial: one step round anticlockwise turns by +45 degrees,
-	# which the screen shows as a turn the same way round.
+	# The turn pad: one step to the right turns by +45 degrees, anticlockwise
+	# on the screen, as the near edge of a turntable that the thumb pushes.
 	var pivot_screen: Vector2 = game.camera.unproject_position(game.mirror["pivot"])
 	var facing_before: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - pivot_screen
-	await drag(from, from + dial_travel(PI * 0.25, PI * 0.06))
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0), "%s: one step round the dial turns by +45 degrees" % label)
-	check(is_equal_approx(degrees("pitch"), pitch), "%s: a small drift off the ring does not tilt" % label)
+	await drag(from, from + dial_travel(PI * 0.25, PI * 0.1))
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0), "%s: one step to the right on the pad turns by +45 degrees" % label)
+	check(is_equal_approx(degrees("pitch"), pitch), "%s: a drift of 0.4 step down does not tilt" % label)
 	var facing_after: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - game.camera.unproject_position(game.mirror["pivot"])
-	var finger_way: Vector2 = game.bar.dial_offset(PI * 0.25, 0.0)
-	check(signf(facing_before.cross(facing_after)) == signf(game.bar.dial_offset(0.0, 0.0).cross(finger_way)), "%s: the mirror turns on the screen the same way round as the finger" % label)
+	check(facing_before.cross(facing_after) < 0.0, "%s: a slide to the right turns the mirror anticlockwise on the screen" % label)
 
-	# A slide toward the dial's centre tilts the mirror 45 degrees to the sky.
+	# A slide up tilts the mirror 45 degrees to the sky.
 	await drag(from, from + dial_travel(0.0, -PI * 0.25))
-	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a slide toward the centre tilts the mirror to face the sky" % label)
+	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a slide up tilts the mirror to face the sky" % label)
 	game.undo()
 	await settled()
 	await frames(20)

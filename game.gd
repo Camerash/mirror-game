@@ -222,8 +222,12 @@ var _stage_events := {}
 var _cursor := Input.CURSOR_ARROW
 
 func _ready() -> void:
-	if OS.get_name() in ["iOS", "Android"]:
-		get_window().content_scale_factor = maxf(1.0, DisplayServer.screen_get_dpi() / 160.0)
+	# One game unit is one point of the device's own interface on every
+	# platform: 2 pixels on a Retina Mac, 3 on the owner's iPhone. So a size
+	# looks the same on the Mac as on the phone (owner, 2026-11-18).
+	# ponytail: read once; a window moved to a screen of another scale keeps
+	# the first scale until the game starts again.
+	get_window().content_scale_factor = maxf(1.0, DisplayServer.screen_get_scale())
 	_setup_scene()
 	var titles: Array[String] = []
 	for path: String in LEVEL_PATHS:
@@ -780,8 +784,8 @@ func nudge_mirror(axis: int, amount: float) -> void:
 		if amount < 0.0 and axis == 1:
 			tutorial_event.emit("lower")
 
-## The move knob or the lift knob is held. `point` is where the finger went
-## down; the mirror goes by the finger's travel from there.
+## A slide on the mirror's glass, or the lift knob held. `point` is where the
+## finger went down; the mirror goes by the finger's travel from there.
 func _begin_slide(point: Vector2, lift: bool) -> void:
 	if not direct_controls or dragging or not mirror.get("enabled", false):
 		return
@@ -829,7 +833,7 @@ func begin_grip(kind: String, point: Vector2) -> void:
 	_begin_constellation("aim", preview)
 	_refresh()
 
-## The held move knob or lift knob: the finger is at `point`.
+## The held lift knob: the finger is at `point`.
 func grip_to(point: Vector2) -> void:
 	if direct_controls and dragging:
 		_drag(_knob_point(point))
@@ -881,9 +885,12 @@ func _update_bar() -> void:
 		hud.clear_bar(Rect2(bar.centre - half, half * 2.0))
 	bar.can_toggle = can_toggle_mirror()
 	bar.can_undo = not history.is_empty()
-	bar.set_state(_display_state(), direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy)
+	var shown_state := _display_state()
+	if shown_state.has("pivot"):
+		bar.glass_point = camera.unproject_position(shown_state["pivot"])
+	bar.set_state(shown_state, direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy)
 	bar.update_view(camera)
-	# The prompt is gone before the growing map reaches its line.
+	# The prompt is gone before the growing pad reaches its line.
 	hud.set_prompt_fade(smoothstep(0.0, 0.25, bar.dial_amount()))
 
 func _open_preview(proposal: Dictionary) -> void:

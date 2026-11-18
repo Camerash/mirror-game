@@ -118,7 +118,7 @@
     },
     {
       "id": "move_mirror",
-      "text": "Hold, then slide",
+      "text": "Slide the mirror",
       "control": "move",
       "until": "move"
     }

@@ -30,10 +30,11 @@ var _last_emitted_play_rect := Rect2()
 var _bottom_reserved := TOUCH + GAP
 ## The mirror bar (`world/mirror_bar.gd`) is low in the middle, in the bottom
 ## band of this height.
-const BAR_ROW := 94.0
+const BAR_ROW := 76.0
 ## Where the bar's centre is in a tall frame, as a part of the play area's
-## height from its top.
-const BAR_HIGH := 0.78
+## height from its top. Low, with room below it for the turn pad's tilt down
+## (owner, 2026-11-18).
+const BAR_HIGH := 0.84
 ## A prompt or a hint is one line, this far above the mirror bar.
 const LINE_GAP := 14.0
 ## On a short landscape screen, the width kept clear on each side of the stage.
@@ -191,8 +192,8 @@ func show_stage_title(text: String) -> void:
 		if _prompt_wanted:
 			show_prompt(_prompt.text))
 
-## The turn knob's sky map covers the prompt's line, so the prompt fades while
-## the map shows: 0 is clear, 1 is gone.
+## The turn knob's pad covers the prompt's line, so the prompt fades while
+## the pad shows: 0 is clear, 1 is gone.
 func set_prompt_fade(amount: float) -> void:
 	_prompt.self_modulate.a = 1.0 - clampf(amount, 0.0, 1.0)
 

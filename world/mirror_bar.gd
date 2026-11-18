@@ -2,12 +2,14 @@ class_name MirrorBar
 extends Node3D
 ## The control of the mirror in the direct controls (owner's design,
 ## 2026-11-17): a glass bar below the stage. Before the mirror is up, the bar
-## is one round mirror button. A press opens it slowly into three knobs: move,
-## turn, lift. A knob is held, and the finger then uses the full screen: the
-## distance from the press gives the amount. A round rose button to the right
-## of the bar lowers the mirror, and a round Undo button to its left takes the
-## last change back. The bar is glass; each button is opaque, as glazed
-## ceramic. Drawn in screen space; the game owns the state change.
+## is one round mirror button. A press opens it slowly into two knobs: turn
+## and lift. The mirror itself moves by a slide on its glass (owner,
+## 2026-11-18), so the bar has no move knob. A knob is held, and the finger
+## then uses the full screen: the distance from the press gives the amount. A
+## round rose button to the right of the bar lowers the mirror, and a round
+## Undo button to its left takes the last change back. The bar is glass; each
+## button is opaque, as glazed ceramic. Drawn in screen space; the game owns
+## the state change. Sizes are in points: one unit is one point (game.gd).
 signal action_requested(action: String, value: Variant)
 
 const Rules := preload("res://core/mirror_state.gd")
@@ -39,12 +41,17 @@ var _overlay := BarOverlay.new()
 
 ## One step of a turn or a tilt.
 const AIM_STEP := PI * 0.25
-const KNOBS: Array[String] = ["move", "turn", "lift"]
-const HALF_HEIGHT := 39.0
-const KNOB := 29.0
-const SPACING := 70.0
-const BUTTON := 33.0
-const REMOVE := 23.0
+const KNOBS: Array[String] = ["turn", "lift"]
+## The knobs are 46 points wide, above Apple's least touch size of 44; Undo
+## and remove are 38 and take a press a little past their rims (owner,
+## 2026-11-18).
+const HALF_HEIGHT := 31.0
+const KNOB := 23.0
+const SPACING := 56.0
+const BUTTON := 26.0
+const REMOVE := 19.0
+## The space between the bar's end and the Undo or the remove button.
+const SIDE_GAP := 12.0
 ## A damped spring moves the open amount and the Undo button. Damping ratio
 ## 0.7 and natural frequency 12 rad/s give an overshoot of about 4.6 percent.
 const SPRING_STIFFNESS := 144.0
@@ -66,21 +73,28 @@ const HOLD_GLASS_ALPHA := 0.3
 ## about two thirds of that: the resistance grows near the limit.
 const PULL_LIMIT := 6.0
 const PULL_SOFTNESS := 90.0
-## The held turn knob opens into a sky map (trial, owner 2026-11-18): a disc
-## of ice that is a map of every way the mirror can face, seen from above. The
-## angle round its centre is the turn: one turn of the thumb is one turn of
-## the mirror, and the way round is the way the mirror turns on the screen.
-## The distance from the centre is the tilt: the centre faces the sky, the
-## middle ring stands upright, and the rim faces the ground. The map opens
-## centred on the knob (owner, 2026-11-18). One dark bead is the mirror: it
-## starts at the top of its ring, above the thumb, so the thumb does not hide
-## it, and the thumb moves it as on a laptop pad.
-const DIAL_RADIUS := 136.0
-## Where on its ring the bead starts: the top.
-const DIAL_START := Vector2.UP
-## Near the centre and near the rim the way round has no meaning, so the turn
-## does not change there. The value is half of one step of the tilt.
-const DIAL_POLE := 0.125
+## The held turn knob opens into a turntable pad (owner, 2026-11-18): a disc
+## of ice centred on the knob. A slide sideways turns the mirror and a slide
+## up or down tilts it, both in one hold; a slide on a slant does both. Each
+## axis goes one step for each PAD_STEP of travel and keeps its own margin
+## (the game's step rule), so a small drift does not change the other axis.
+## The thumb pushes the near edge of a turntable: a slide to the right turns
+## the mirror anticlockwise on the screen. Up tilts its face to the sky. The
+## steps are the same size everywhere, unlike on the sky map before it, whose
+## steps came close together near its centre.
+const DIAL_RADIUS := 100.0
+const PAD_STEP := 40.0
+## The most steps of turn in one hold, each way: half a turn.
+const PAD_TURNS := 4.0
+## The turn gauge: a flat ring in the upper part of the pad, the ground as the
+## camera sees it. Its centre and radii are from the pad's centre. Its front,
+## the nearest point, is the facing at the press.
+const TURN_RING_CENTRE := Vector2(0.0, -48.0)
+const TURN_RING_SIZE := Vector2(52.0, 18.0)
+## The tilt gauge: an arc on the pad's left rim, away from a right thumb. Its
+## top is the sky, its middle upright, and its bottom the ground.
+const TILT_RADIUS := 86.0
+const TILT_SPAN := PI * 52.0 / 180.0
 const DIAL_WIDTH := 2.0
 const DIAL_BEAD := 7.0
 ## A thumb that rests this long after a slide lets the stage show: the disc
@@ -129,16 +143,16 @@ void fragment() {
 	COLOR = vec4(mix(vec3(0.10, 0.13, 0.16), colour, inside), max(inside, shadow) * fade);
 }
 """
-## The sky map is a shallow dome of frosted ice. The world behind it is soft
-## and bends a little near the rim. Its tint goes from the pale sky at the
-## centre to the slate water at the rim, so the distance from the centre reads
-## as the tilt. A thin light lies on its upper rim and a soft shade inside its
-## lower rim. It has no shadow, only a faint halo of water. No line is hard.
+## The pad is a shallow dome of frosted ice. The world behind it is soft and
+## bends a little near the rim. Its tint goes from the pale sky at the top to
+## the water at the bottom, so up reads as the sky. A thin light lies on its
+## upper rim and a soft shade inside its lower rim. It has no shadow, only a
+## faint halo of water. No line is hard.
 const ORB := """
 shader_type canvas_item;
 uniform sampler2D screen : hint_screen_texture, repeat_disable, filter_linear_mipmap;
 uniform vec2 size = vec2(300.0, 300.0);
-uniform float radius = 136.0;
+uniform float radius = 100.0;
 uniform float fade = 1.0;
 
 void fragment() {
@@ -148,7 +162,7 @@ void fragment() {
 	float z = sqrt(max(1.0 - d * d, 0.0));
 	vec2 uv = SCREEN_UV - p * (1.0 - z) * 0.16 * radius * SCREEN_PIXEL_SIZE;
 	vec3 back = textureLod(screen, uv, 3.0).rgb;
-	vec3 tint = mix(vec3(0.95, 0.965, 0.975), vec3(0.50, 0.58, 0.64), smoothstep(0.1, 1.0, d * d));
+	vec3 tint = mix(vec3(0.95, 0.965, 0.975), vec3(0.64, 0.71, 0.76), smoothstep(-0.7, 1.0, p.y));
 	vec3 colour = mix(back, tint, 0.74);
 	// A soft light from above to the left gives the dome its depth.
 	colour *= 0.95 + 0.07 * clamp(dot(vec3(p, z), normalize(vec3(-0.4, -0.6, 0.7))), 0.0, 1.0);
@@ -164,8 +178,10 @@ void fragment() {
 var shown := false
 ## The control that the prompt names (one of `LevelLoader.PROMPT_CONTROLS`,
 ## or ""). Rings leave it, as ripples on the water, and for a knob a finger
-## mark shows the slide.
+## mark shows the slide. "move" names the mirror's glass.
 var hint := ""
+## Where the mirror's glass is on the screen. The game sets it each frame.
+var glass_point := Vector2.ZERO
 var _hint_time := 0.0
 ## Whether there is a change to take back. The game sets it each frame.
 var can_undo := false
@@ -180,19 +196,14 @@ var _grip_press := Vector2.ZERO
 var _grip_point := Vector2.ZERO
 var _grip_yaw := 0.0
 var _grip_pitch := 0.0
-## 0 is the turn knob, 1 is the full dial. A spring moves it.
+## 0 is the turn knob, 1 is the full pad. A spring moves it.
 var _dial := 0.0
 var _dial_velocity := 0.0
 var _dial_centre := Vector2.ZERO
-## From the finger to its point on the dial. It is zero unless the dial had to
-## move to stay on the screen.
-var _dial_shift := Vector2.ZERO
-## The turn so far in this hold, in radians. It can pass a full turn.
-var _dial_turn := 0.0
 ## The turn and the tilt of this hold so far, in steps, before the steps
-## snap. The track that the slide uses is the clear one.
+## snap. The gauge that the slide uses is the clear one.
 var _dial_lean := Vector2.ZERO
-## The seconds the thumb has rested since its last move on the sky map.
+## The seconds the thumb has rested since its last move on the pad.
 var _dial_rest := 0.0
 ## 1 at a step, then down to 0: the ring that spreads from the bead.
 var _ripple := 0.0
@@ -202,7 +213,7 @@ var _open_velocity := 0.0
 ## 0 is rest, 1 is a knob held and started. It fades the other controls.
 var _hold := 0.0
 ## The press growth of each button, from 0 to 1.
-var _presses := {"mirror": 0.0, "move": 0.0, "turn": 0.0, "lift": 0.0, "undo": 0.0, "remove": 0.0}
+var _presses := {"mirror": 0.0, "turn": 0.0, "lift": 0.0, "undo": 0.0, "remove": 0.0}
 var _pull := Vector2.ZERO
 var _pull_velocity := Vector2.ZERO
 var _pull_knob := ""
@@ -211,7 +222,7 @@ var _tick := 0.0
 var _queued: Dictionary = {}
 var _glass := ColorRect.new()
 var _glass_material := ShaderMaterial.new()
-## The dial's glass ball, over the bar, and the dial's marks over the ball.
+## The pad's ice, over the bar, and the pad's marks over the ice.
 var _orb := ColorRect.new()
 var _orb_material := ShaderMaterial.new()
 var _dial_overlay := BarOverlay.new()
@@ -327,15 +338,19 @@ func _spring(value: float, velocity: float, target: float, delta: float) -> Vect
 	return Vector2(value, velocity)
 
 func _half_width(open: float) -> float:
-	return lerpf(BUTTON + 6.0, SPACING + KNOB + 10.0, open)
+	return lerpf(BUTTON + 5.0, SPACING * 0.5 + KNOB + 8.0, open)
+
+## A knob's distance from the bar's centre: the two sit either side of it.
+func _knob_x(index: int, open: float) -> float:
+	return (index - 0.5) * SPACING * open
 
 func _remove_point() -> Vector2:
-	return centre + Vector2(_half_width(1.0) + 15.0 + REMOVE, 0.0)
+	return centre + Vector2(_half_width(1.0) + SIDE_GAP + REMOVE, 0.0)
 
 ## The Undo button keeps its distance from the bar's left end while the bar
 ## opens and closes.
 func _undo_point() -> Vector2:
-	return centre - Vector2(_half_width(_eased()) + 15.0 + REMOVE, 0.0)
+	return centre - Vector2(_half_width(_eased()) + SIDE_GAP + REMOVE, 0.0)
 
 func _on_undo(point: Vector2) -> bool:
 	return _undo_shown > 0.5 and point.distance_to(_undo_point()) <= REMOVE + 8.0
@@ -363,7 +378,7 @@ func _grip_at(point: Vector2) -> String:
 		return ""
 	if point.distance_to(_remove_point()) <= REMOVE + 8.0:
 		return "remove"
-	return KNOBS[clampi(roundi((point.x - centre.x) / SPACING), -1, 1) + 1]
+	return KNOBS[0 if point.x < centre.x else 1]
 
 func _press(point: Vector2, index: int) -> bool:
 	if _active or not _on_bar(point):
@@ -392,15 +407,11 @@ func _start_knob() -> void:
 	_grip_yaw = _yaw()
 	_grip_pitch = _pitch()
 	if _grip == "turn":
-		# The map opens on the knob and stays on the screen. The bead is where
-		# the mirror faces now; the thumb moves it from there.
-		_dial_turn = 0.0
+		# The pad opens on the knob and stays on the screen.
 		_dial_lean = Vector2.ZERO
 		_dial_rest = 0.0
-		var start := dial_offset(0.0, _grip_pitch)
 		var room := get_viewport().get_visible_rect().grow(-8.0 - DIAL_RADIUS)
 		_dial_centre = _grip_press.clamp(room.position, room.end)
-		_dial_shift = _dial_centre + start - _grip_press
 	action_requested.emit("grip_begin", {"kind": _grip, "point": _grip_press})
 	# The slide made while the knob waited counts from the press.
 	if not _grip_point.is_equal_approx(_grip_press):
@@ -429,23 +440,27 @@ func _move_grip() -> void:
 	if _grip != "turn":
 		action_requested.emit("grip_drag", _grip_point)
 		return
-	var offset := _dial_finger()
-	var reach := offset.length() / DIAL_RADIUS
-	if reach > DIAL_POLE and reach < 1.0 - DIAL_POLE:
-		_dial_turn += wrapf(DIAL_START.angle() - offset.angle() - _dial_turn, -PI, PI)
-	_dial_lean = Vector2(_dial_turn, (reach - 0.5) * PI - _grip_pitch) / AIM_STEP
-	action_requested.emit("grip_aim", {"yaw": _grip_yaw + _dial_turn, "pitch": (reach - 0.5) * PI})
+	_dial_lean = (_grip_point - _grip_press) / PAD_STEP
+	action_requested.emit("grip_aim", {
+		"yaw": _grip_yaw + clampf(_dial_lean.x, -PAD_TURNS, PAD_TURNS) * AIM_STEP,
+		"pitch": _grip_pitch + _dial_lean.y * AIM_STEP})
 
-## The point of the dial for a facing `turn` round from the facing at the
-## press, at tilt `pitch`, from the dial's centre. The facing at the press is
-## at the top; a positive turn goes round to the left (anticlockwise on the
-## screen), as the mirror then turns on the screen.
-static func dial_offset(turn: float, pitch: float) -> Vector2:
-	return DIAL_START.rotated(-turn) * DIAL_RADIUS * (clampf(pitch, -PI * 0.5, PI * 0.5) / PI + 0.5)
+## The thumb's travel on the pad for a turn and a tilt, in radians. A positive
+## turn (anticlockwise on the screen) is to the right; a positive tilt (toward
+## the ground) is down.
+static func pad_travel(turn: float, tilt: float) -> Vector2:
+	return Vector2(turn, tilt) / AIM_STEP * PAD_STEP
 
-## The finger's point on the dial, from its centre. It stays inside the rim.
-func _dial_finger() -> Vector2:
-	return (_grip_point + _dial_shift - _dial_centre).limit_length(DIAL_RADIUS)
+## The point of the turn gauge for a turn from the facing at the press. That
+## facing is the ring's front; a positive turn goes to the right from there,
+## anticlockwise round the ring, as the mirror turns.
+func _ring_point(at: Vector2, scale: float, turn: float) -> Vector2:
+	return at + (TURN_RING_CENTRE + Vector2.from_angle(PI * 0.5 - turn) * TURN_RING_SIZE) * scale
+
+## The point of the tilt gauge for a tilt: the sky at the top, the ground at
+## the bottom.
+func _tilt_point(at: Vector2, scale: float, pitch: float) -> Vector2:
+	return at + Vector2.from_angle(PI - clampf(pitch, -PI * 0.5, PI * 0.5) * TILT_SPAN / (PI * 0.5)) * TILT_RADIUS * scale
 
 ## The mirror went to its next step: the held knob answers.
 func tick() -> void:
@@ -488,7 +503,7 @@ func _process(delta: float) -> void:
 	if _ripple > 0.0:
 		moving = true
 	# The rest counts only after the first move, so a new player can read the
-	# map at the start of a hold.
+	# pad at the start of a hold.
 	if _grip == "turn" and _started and not _grip_point.is_equal_approx(_grip_press):
 		var rest_before := _dial_rest
 		_dial_rest += delta
@@ -544,27 +559,29 @@ func _draw_bar(canvas: Control) -> void:
 		return
 	var open := _eased()
 	var middle := centre + _pull * 0.15
-	# The sky map lies over the bar: the other controls go while it shows.
+	# The pad lies over the bar: the other controls go while it shows.
 	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold)) * (1.0 - smoothstep(0.0, 0.6, _dial))
-	for index: int in [0, 2, 1]:
+	for index: int in [1, 0]:
 		var kind := KNOBS[index]
-		var alpha := 1.0 if index == 1 else smoothstep(0.1, 0.7, open)
-		# The turn knob opens into the sky map: it fades as the map grows.
-		if index == 1:
+		# The mirror button opens into the turn knob; the lift knob comes in.
+		var morph := kind == "turn"
+		var alpha := 1.0 if morph else smoothstep(0.1, 0.7, open)
+		# The turn knob opens into the pad: it fades as the pad grows.
+		if morph:
 			alpha *= 1.0 - smoothstep(0.0, 0.4, _dial)
 		if alpha <= 0.01:
 			continue
 		if _grip != kind:
 			alpha *= dim
-		var held := _grip == kind or (index == 1 and _grip == "mirror")
-		var press: float = maxf(_presses[kind], _presses["mirror"]) if index == 1 else _presses[kind]
-		var radius := lerpf(BUTTON, KNOB, open) if index == 1 else KNOB
-		_set_ceramic(canvas, middle + Vector2((index - 1) * SPACING * open, 0.0), radius, CERAMIC, alpha,
+		var held := _grip == kind or (morph and _grip == "mirror")
+		var press: float = maxf(_presses[kind], _presses["mirror"]) if morph else _presses[kind]
+		var radius := lerpf(BUTTON, KNOB, open) if morph else KNOB
+		_set_ceramic(canvas, middle + Vector2(_knob_x(index, open), 0.0), radius, CERAMIC, alpha,
 			_pull if _pull_knob == kind else Vector2.ZERO, press, _tick if held else 0.0)
-		if index == 1 and open < 0.5:
+		if morph and open < 0.5:
 			_draw_mark(canvas, "mirror", radius, Color(INK, (1.0 - smoothstep(0.0, 0.45, open)) * alpha))
 		else:
-			_draw_mark(canvas, kind, radius, Color(INK, alpha * (smoothstep(0.55, 1.0, open) if index == 1 else 1.0)))
+			_draw_mark(canvas, kind, radius, Color(INK, alpha * (smoothstep(0.55, 1.0, open) if morph else 1.0)))
 	# The remove button comes out of the bar's right end with the spring. It is
 	# clear while it starts, so it does not pop.
 	var out := clampf(smoothstep(0.4, 0.9, open), 0.0, 1.0) * dim
@@ -582,37 +599,39 @@ func _draw_bar(canvas: Control) -> void:
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_hint(canvas, open)
 
-## Whether the dial shows: the turn knob is held, or its dial still grows or
+## Whether the pad shows: the turn knob is held, or its pad still grows or
 ## shrinks.
 func _dialling() -> bool:
 	return _dial != 0.0 or _dial_velocity != 0.0
 
-## How far the sky map is open, from 0 to 1. The game fades the prompt with it.
+## How far the pad is open, from 0 to 1. The game fades the prompt with it.
 func dial_amount() -> float:
 	return clampf(_dial, 0.0, 1.0)
 
-## The dial's radius and centre now. It grows from the turn knob.
+## The pad's radius and centre now. It grows from the turn knob.
 func _dial_radius() -> float:
 	return lerpf(KNOB, DIAL_RADIUS, maxf(_dial, 0.0))
 
 func _dial_at() -> Vector2:
 	return (centre + _pull * 0.15).lerp(_dial_centre, clampf(_dial, 0.0, 1.0))
 
-## How clear the sky map is: it lets the stage show while the thumb rests
-## after a slide.
+## How clear the pad is: it lets the stage show while the thumb rests after a
+## slide.
 func _dial_opacity() -> float:
 	if _grip != "turn":
 		return 1.0
 	return lerpf(1.0, DIAL_REST_ALPHA, smoothstep(DIAL_REST_SECONDS, DIAL_REST_SECONDS + 0.3, _dial_rest))
 
-## The marks on the sky map. They keep the rule of the bar's marks: the dark
-## part is the mirror, and the pale part is where it can go. One dark bead is
-## the mirror. Two long guides cross at it, with a small dot at each step: the
-## ring of its tilt (the way round: the turn), and the line from the centre to
-## the rim through it (in and out: the tilt). The centre, the sky, is a small
-## open ring. The guide that the slide uses is clear, the other faint. A faint
-## ring stands for upright, and a hollow ring marks where the hold began: a
-## release there changes nothing. At each step a ring spreads from the bead.
+## The marks on the pad. They keep the rule of the bar's marks: the dark part
+## is the mirror, and the pale part is where it can go. Two gauges, each with
+## a pale dot at each step and one dark bead, the mirror:
+## - the turn: a flat ring in the upper part, the ground as the camera sees
+##   it. The bead goes round it as the mirror turns.
+## - the tilt: an arc on the left rim. The bead goes up to the sky and down to
+##   the ground.
+## The gauge that the slide uses is clear, the other faint. A hollow ring on
+## each marks where the hold began: a release there changes nothing. At each
+## step a ring spreads from the bead of the gauge in use.
 func _draw_dial(canvas: Control) -> void:
 	if not _dialling() or not shown or _camera == null:
 		return
@@ -621,26 +640,30 @@ func _draw_dial(canvas: Control) -> void:
 	var clear := smoothstep(0.3, 0.9, _dial) * _dial_opacity()
 	if clear <= 0.01:
 		return
-	var facing := dial_offset(wrapf(_yaw() - _grip_yaw, -PI, PI), _pitch()) * scale
 	var focus := clampf(0.5 + absf(_dial_lean.x) - absf(_dial_lean.y), 0.0, 1.0)
-	var ring := Color(INK, clear * lerpf(0.2, 0.55, focus))
-	var line := Color(INK, clear * lerpf(0.2, 0.55, 1.0 - focus))
-	var reach := facing.length()
-	var way := facing / reach if reach > 0.5 else dial_offset(_dial_turn, 0.0).normalized()
-	canvas.draw_arc(at, DIAL_RADIUS * 0.5 * scale, 0.0, TAU, 96, Color(INK, clear * 0.12), DIAL_WIDTH * 0.75, true)
-	canvas.draw_arc(at, reach, 0.0, TAU, 96, ring, DIAL_WIDTH, true)
+	var turn_ink := Color(INK, clear * lerpf(0.2, 0.55, focus))
+	var tilt_ink := Color(INK, clear * lerpf(0.2, 0.55, 1.0 - focus))
+	var ring := at + TURN_RING_CENTRE * scale
+	# The far half of the ring is fainter than the near half.
+	canvas.draw_polyline(UiIcons._arc(ring, scale, TURN_RING_SIZE, 180.0, 360.0), Color(turn_ink, turn_ink.a * 0.5), DIAL_WIDTH * 0.75, true)
+	canvas.draw_polyline(UiIcons._arc(ring, scale, TURN_RING_SIZE, 0.0, 180.0), turn_ink, DIAL_WIDTH, true)
 	for index: int in roundi(TAU / AIM_STEP):
-		canvas.draw_circle(at + DIAL_START.rotated(-index * AIM_STEP) * reach, 2.6, ring, true, -1.0, true)
-	UiIcons._stroke(canvas, [at + way * 4.5, at + way * DIAL_RADIUS * scale], line, DIAL_WIDTH)
-	for step: int in range(1, 5):
-		canvas.draw_circle(at + way * DIAL_RADIUS * scale * step * 0.25, 2.6, line, true, -1.0, true)
-	canvas.draw_arc(at, 4.5, 0.0, TAU, 24, line, DIAL_WIDTH * 0.75, true)
+		canvas.draw_circle(_ring_point(at, scale, index * AIM_STEP), 2.6, turn_ink, true, -1.0, true)
+	var tilt_from := rad_to_deg(PI - TILT_SPAN)
+	canvas.draw_polyline(UiIcons._arc(at, TILT_RADIUS * scale, Vector2.ONE, tilt_from, tilt_from + rad_to_deg(TILT_SPAN) * 2.0), tilt_ink, DIAL_WIDTH, true)
+	for step: int in range(-2, 3):
+		canvas.draw_circle(_tilt_point(at, scale, step * AIM_STEP), 2.6, tilt_ink, true, -1.0, true)
 	if _grip == "turn":
-		canvas.draw_arc(at + dial_offset(0.0, _grip_pitch) * scale, DIAL_BEAD + 3.5, 0.0, TAU, 40, Color(INK, clear * 0.35), 1.5, true)
-	var bead := at + facing
+		var start := Color(INK, clear * 0.35)
+		canvas.draw_arc(_ring_point(at, scale, 0.0), DIAL_BEAD + 3.5, 0.0, TAU, 40, start, 1.5, true)
+		canvas.draw_arc(_tilt_point(at, scale, _grip_pitch), DIAL_BEAD + 3.5, 0.0, TAU, 40, start, 1.5, true)
+	var turn_bead := _ring_point(at, scale, wrapf(_yaw() - _grip_yaw, -PI, PI))
+	var tilt_bead := _tilt_point(at, scale, _pitch())
 	if _ripple > 0.0:
+		var bead := turn_bead if focus >= 0.5 else tilt_bead
 		canvas.draw_arc(bead, lerpf(DIAL_BEAD, DIAL_RADIUS * RIPPLE_REACH, 1.0 - _ripple), 0.0, TAU, 40, Color(INK, clear * 0.45 * _ripple * _ripple), 1.5, true)
-	canvas.draw_circle(bead, DIAL_BEAD, Color(INK, clear), true, -1.0, true)
+	canvas.draw_circle(turn_bead, DIAL_BEAD, Color(INK, clear), true, -1.0, true)
+	canvas.draw_circle(tilt_bead, DIAL_BEAD, Color(INK, clear), true, -1.0, true)
 
 ## The ripples and the finger mark of the control that the prompt names.
 func _draw_hint(canvas: Control, open: float) -> void:
@@ -657,13 +680,17 @@ func _draw_hint(canvas: Control, open: float) -> void:
 	elif hint == "remove":
 		at = _remove_point()
 		radius = REMOVE
+	elif hint == "move":
+		# A slide on the mirror's glass moves it.
+		at = glass_point
+		radius = 18.0
 	else:
-		at = centre + Vector2((KNOBS.find(hint) - 1) * SPACING, 0.0)
+		at = centre + Vector2(_knob_x(KNOBS.find(hint), 1.0), 0.0)
 	# Two rings, half a period apart, each grows and fades in 2.4 s.
 	for offset: float in [0.0, 0.5]:
 		var phase := fposmod(_hint_time / 2.4 + offset, 1.0)
 		canvas.draw_arc(at, radius + 3.0 + phase * 16.0, 0.0, TAU, 64, Color(1.0, 1.0, 1.0, 0.7 * (1.0 - phase) * (1.0 - phase)), 1.6, true)
-	if hint not in KNOBS:
+	if hint not in KNOBS and hint != "move":
 		return
 	# The slide: a finger mark comes down on the knob, goes its way and fades.
 	# A pause follows. Its dark ring shows on a white knob, its light ring on
@@ -683,9 +710,6 @@ func _draw_hint(canvas: Control, open: float) -> void:
 	var eased := travel * travel * (3.0 - 2.0 * travel)
 	var fade := smoothstep(0.0, 0.3, time) * (1.0 - smoothstep(1.7, 2.3, time))
 	var finger := at + way * eased * 84.0
-	if hint == "turn":
-		# The thumb's path for one step round the middle ring, to the right.
-		finger = at - dial_offset(0.0, 0.0) + dial_offset(-eased * AIM_STEP * 1.2, 0.0)
 	var size := lerpf(22.0, 17.0, smoothstep(0.0, 0.4, time))
 	canvas.draw_circle(finger, size, Color(1.0, 1.0, 1.0, 0.22 * fade), true, -1.0, true)
 	canvas.draw_arc(finger, size, 0.0, TAU, 48, Color(INK, 0.5 * fade), 2.0, true)
@@ -732,10 +756,6 @@ func _draw_mark(canvas: Control, kind: String, radius: float, ink: Color) -> voi
 				for lift: float in [-2.6, 2.6]:
 					UiIcons._stroke(canvas, [Vector2(-1.7, lift + 2.0) * unit, Vector2(1.7, lift - 2.0) * unit], pale, width)
 			UiIcons._stroke(canvas, UiIcons._rounded(frame, 2.0 * unit), ink, width)
-		"move":
-			# The two ways of the ground as this view shows them.
-			for axis: Vector2 in _ground_axes():
-				UiIcons._stroke(canvas, [-axis * 10.0 * unit, axis * 10.0 * unit], pale, width)
 		"turn":
 			UiIcons._stroke(canvas, UiIcons._arc(Vector2.ZERO, 8.6 * unit, Vector2.ONE, -60.0, 240.0), pale, width)
 		"lift":

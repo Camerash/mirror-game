@@ -92,7 +92,7 @@ func press_mirror_button() -> void:
 
 ## A finger on the mirror's centre drags along one axis (0 x, 1 y, 2 z).
 func slide(axis: int, units: float) -> void:
-	## The move knob (x or z) or the lift knob (y) is held, dragged until the
+	## A glass slide (x or z) or the lift knob (y) is held, dragged until the
 	## mirror goes `units` along one axis, and let go.
 	var pivot: Vector3 = game.mirror["pivot"]
 	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
@@ -244,7 +244,7 @@ func check_route() -> void:
 	check(active_prompt_id() == "make_mirror", "Route: a non-matching event does not advance make_mirror")
 	await press_mirror_button()
 	check(active_prompt_id() == "move_mirror", "Route: raising the mirror advances to move_mirror")
-	check(game.bar.hint == "move", "Route: the second prompt names the move knob")
+	check(game.bar.hint == "move", "Route: the second prompt names the mirror's glass")
 	await slide(0, 2.0)
 	check(bool(game.mirror.get("enabled", false)), "Route: the slid mirror applies on release")
 	check(queue_and_active_empty(), "Route: sliding the mirror closes the last prompt")

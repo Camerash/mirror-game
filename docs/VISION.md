@@ -350,7 +350,8 @@ styles and words.
   ground, under the finger (one to one), with the sign of the move knob. A
   tap through the glass still walks. A slide that starts on the glass does
   not turn the view. The move knob stays while the owner judges the trial;
-  if the slide on the glass is sufficient, the knob can go.
+  if the slide on the glass is sufficient, the knob can go. (It went:
+  see the decision on the controls below.)
 - TRIAL (owner, 2026-11-18: "Yes, make the proof for the disc for the turn
   knob"), built: the held turn knob grows into a dial. The idea came to the
   owner from another player: a held knob grows into a round pad, the finger
@@ -385,6 +386,33 @@ styles and words.
   uses is clear. A hollow ring marks the start; a ring spreads from the
   bead at each step; a resting thumb lets the stage show. The owner judges
   it in play.
+- DECIDED (owner, 2026-11-18), built: the controls after play on the
+  owner's iPhone. "I think the directly dragging the mirror is much more
+  intuitive": the move knob goes, and a slide on the glass is the one way
+  to move the mirror with a finger. The sky map goes too: "The closer it
+  got to the center, the more difficult the control gets due to smaller
+  separation distance with smaller radius. I think we need the two axis
+  option (Turntable?), and maybe allow them to move both axis
+  independently, no need lift and rehold." The held turn knob opens into a
+  turntable pad: sideways turns, up and down tilts, both in one hold, each
+  axis with its own steps of 40 points and its own margin. Two gauges in
+  the pad, away from a right thumb: a flat ring for the turn and an arc on
+  the left rim for the tilt (the "glass globe" of the blind agents).
+- DECIDED (owner, 2026-11-18), built: one unit is one point. The bar was
+  much larger on the iPhone than on the Mac, because the phone counted a
+  unit by its pixel density and the Mac by its pixels. The owner: "I don't
+  want the case where we shrink the size for iPhone just to find it also
+  get smaller on mac. Any way to map these correctly?" Now both count a
+  unit as one point of the device's own interface, and a desktop window
+  opens phone-shaped. Then the bar set is smaller and lower: knobs of 46
+  points, Undo and remove of 38, the bar at 0.84 of the play area's height.
+- DECIDED (owner, 2026-11-18), to do after the controls: (1) some
+  reflections are wrong; the owner will give the cases. (2) When the
+  mirror moves the block that the traveller stands on, she moves with it.
+  (3) A change that makes her fall is applied: she falls through the
+  level, the stage fades quickly to dark, and she comes back where she was
+  before that change. The mirror no longer snaps back. (4) The fall-path
+  sign goes, because a fall is now shown as it happens.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The

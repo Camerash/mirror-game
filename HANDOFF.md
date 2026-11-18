@@ -67,13 +67,15 @@ owner chose control first.
 
 **The pill bar is built (2026-11-17), the owner's design, DECIDED in
 `docs/VISION.md`.** It is the one control of the mirror: a glass bar below
-the stage with three knobs (move, turn, lift); a held knob uses the full
-screen; a round mirror button opens into the bar; a red button lowers the
-mirror. Code: `world/mirror_bar.gd` draws it and reads the finger;
-`game.begin_grip`, `grip_to`, `aim_to`, `end_grip` change the mirror. The
-drag on the glass, the arrow (`world/mirror_arrow.gd`) and the corner
-mirror button are removed (a trial of 2026-11-18 brings back a slide on the
-glass, through the move knob's path). Tilt and 45-degree turns are permitted on each
+the stage with two knobs (turn, lift; the move knob went on 2026-11-18,
+because a slide on the glass moves the mirror); a held knob uses the full
+screen, and the turn knob opens into a turntable pad; a round mirror button
+opens into the bar; a red button lowers the mirror. Sizes are in points:
+one unit is one point on every platform (`game.gd`), and a desktop window
+opens phone-shaped (`app.gd`). Code: `world/mirror_bar.gd` draws it and
+reads the finger; `game.begin_grip`, `grip_to`, `aim_to`, `end_grip` change
+the mirror. The arrow (`world/mirror_arrow.gd`) and the corner mirror
+button are removed. Tilt and 45-degree turns are permitted on each
 stage. `tests/mirror_bar_tests.gd` presses the bar with real mouse events.
 The two view buttons at the bottom left are removed too (owner): the
 sideways swipe turns the view, and keys Q and E stay.
