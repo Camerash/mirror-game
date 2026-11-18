@@ -65,16 +65,21 @@ func run() -> void:
 	await load_stage("11_aperture")
 	check(game.world.shadow_root.mesh != null, "Only the ground: the floating tower casts a drop shadow onto the ledge")
 	# A piece cut on a slant casts a shadow of its own shape, and a top that
-	# slopes takes none: a flat shadow there would hang in the air.
+	# slopes takes it on the slope, not flat in the air over it.
 	var cube := AABB(Vector3(0, -1, 0), Vector3.ONE)
 	var wedge := {"bounds": AABB(Vector3(0, 1, 0), Vector3.ONE),
 		"faces": Polygons.clip(Polygons.box_faces(AABB(Vector3(0, 1, 0), Vector3.ONE)), Plane(Vector3(1, 0, 1).normalized(), sqrt(0.5)))}
 	var on_flat: Array[Dictionary] = [{"bounds": cube}, wedge]
 	game.world._draw_drop_shadows(on_flat)
 	check(absf(shadow_area() - 0.5) < 0.01, "A piece cut on a slant casts a shadow of its own shape")
-	var on_slope: Array[Dictionary] = [{"bounds": cube, "faces": Polygons.clip(Polygons.box_faces(cube), Plane(Vector3(1, 1, 0).normalized(), 0.0))}, wedge]
+	var slope := Plane(Vector3(1, 1, 0).normalized(), 0.0)
+	var on_slope: Array[Dictionary] = [{"bounds": cube, "faces": Polygons.clip(Polygons.box_faces(cube), slope)}, wedge]
 	game.world._draw_drop_shadows(on_slope)
-	check(game.world.shadow_root.mesh == null, "A top that slopes takes no flat shadow")
+	var on_it := shadow_area() > 0.1
+	if on_it:
+		for point: Vector3 in (game.world.shadow_root.mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
+			on_it = on_it and absf(slope.distance_to(point) - game.world.SHADOW_LIFT) < 0.001
+	check(on_it, "A top that slopes takes the shadow on the slope")
 
 	await load_stage("01_route")
 	var goal := Geometry.vector(game.level["goal"])
