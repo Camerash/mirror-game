@@ -1,6 +1,6 @@
 class_name MirrorContact
 extends Node3D
-## Surface-local seams on the five boundaries of the replacement column.
+## Surface-local seams on the six boundaries of the box the mirror replaces.
 
 const Display := preload("res://core/display_geometry.gd")
 const ContactShader := preload("res://world/mirror_contact.gdshader")

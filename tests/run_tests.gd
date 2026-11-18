@@ -75,8 +75,10 @@ func _test_geometry() -> void:
 	contact_state["pivot"] = Vector3(5,0,0)
 	var contacts := effect._contours(world, contact_state, preload("res://core/mirror_state.gd").frame(contact_state))
 	_check(not contacts.is_empty(), "Panel intersection includes the absolute resting platform")
+	# The replaced box is x 5 to 8: the panel's plane and the far face 3 on.
 	for contact: Dictionary in contacts:
-		_check(is_equal_approx(contact["a"].x, 5.0) and is_equal_approx(contact["b"].x, 5.0), "Contact contour follows the exact panel plane")
+		var on_face := func(x: float) -> bool: return is_equal_approx(contact["a"].x, x) and is_equal_approx(contact["b"].x, x)
+		_check(on_face.call(5.0) or on_face.call(8.0), "Contact contour follows the panel plane or the far face of the replaced box")
 	effect.free()
 	_check(Geometry.walkable(Vector3(3, 0, 0), world), "Reflection creates walkable support")
 	_check(not Geometry.embedded(Vector3(3, 0, 0), world), "Floor contact is not an embedded character")

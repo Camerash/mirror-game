@@ -15,6 +15,10 @@ owner chose it over the blue still-water look, and chose mirror glass for
 the copy ("Yes, build it"). The rules are in `docs/art/STYLE.md`; the proof
 is in `VALIDATION.md`. The still-water rules for the surface still stand.
 
+- Since 2026-11-19: the mirror reaches only `MirrorState.depth` along its
+  normal (owner); each cut plane faces away from the mean of the fragment's
+  corners, not the centre of its bounds; a drop shadow is the block's
+  footprint laid on the plane of each top below it.
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

@@ -91,14 +91,18 @@ static func selected_source(bounds: AABB, mirror: Dictionary) -> AABB:
 		high[axis] = minf(high[axis], pivot[axis] + lengths[index] * 0.5)
 	return AABB(low, (high - low).max(Vector3.ZERO))
 
+## The part of `bounds` on the mirror's source side, no deeper than its reach.
 static func source_part(bounds: AABB, mirror: Dictionary) -> AABB:
 	var axis: int = mirror["axis"]
 	var low := bounds.position
 	var high := bounds.end
+	var offset := float(mirror["offset"])
 	if int(mirror["source"]) > 0:
-		high[axis] = minf(high[axis], float(mirror["offset"]))
+		high[axis] = minf(high[axis], offset)
+		low[axis] = maxf(low[axis], offset - MirrorRules.depth(mirror))
 	else:
-		low[axis] = maxf(low[axis], float(mirror["offset"]))
+		low[axis] = maxf(low[axis], offset)
+		high[axis] = minf(high[axis], offset + MirrorRules.depth(mirror))
 	return AABB(low, (high - low).max(Vector3.ZERO))
 
 static func reflect(bounds: AABB, mirror: Dictionary) -> AABB:

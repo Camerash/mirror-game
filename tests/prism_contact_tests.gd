@@ -24,18 +24,20 @@ func contours(bounds: AABB, selected: Dictionary = state, frame: Basis = Basis.I
 func _run() -> void:
 	contact = Contact.new()
 	root.add_child(contact)
-	var remote := AABB(Vector3(1.0, -0.5, 8.0), Vector3(1.0, 1.0, 1.0))
+	# The mirror reaches 3 along its normal (`MirrorState.depth`).
+	var remote := AABB(Vector3(1.0, -0.5, 1.5), Vector3(1.0, 1.0, 1.0))
 	var seams := contours(remote)
-	check(seams.size() == 4, "Side contact has four face contours beyond the six-unit guide")
+	check(seams.size() == 4, "Side contact away from the panel has four face contours")
 	for seam: Dictionary in seams:
 		check(is_equal_approx(seam["a"].x, 1.5) and is_equal_approx(seam["b"].x, 1.5), "Contact follows the side boundary")
-		check(seam["a"].z >= 8.0 and seam["b"].z >= 8.0, "Remote contact does not move to the panel")
-	check(contours(AABB(Vector3(2.0, -0.5, 8.0), Vector3.ONE)).is_empty(), "Outside volume has no contact")
-	check(contours(AABB(Vector3(1.0, -0.5, -9.0), Vector3.ONE)).is_empty(), "Source side has no side contact")
+		check(seam["a"].z >= 1.5 and seam["b"].z >= 1.5, "Remote contact does not move to the panel")
+	check(contours(AABB(Vector3(2.0, -0.5, 1.5), Vector3.ONE)).is_empty(), "Outside volume has no contact")
+	check(contours(AABB(Vector3(1.0, -0.5, 8.0), Vector3.ONE)).is_empty(), "A block past the mirror's reach has no contact")
+	check(contours(AABB(Vector3(1.0, -0.5, -2.5), Vector3.ONE)).is_empty(), "Source side has no side contact")
 	var reverse := state.duplicate()
 	reverse["source_sign"] = -1.0
 	check(contours(remote, reverse).is_empty(), "Reversal clears old side contact")
-	check(contours(AABB(Vector3(1.0, -0.5, -9.0), Vector3.ONE), reverse).size() == 4, "Reversal moves the prism")
+	check(contours(AABB(Vector3(1.0, -0.5, -2.5), Vector3.ONE), reverse).size() == 4, "Reversal moves the prism")
 	var wide := state.duplicate()
 	wide["width"] = 5.0
 	check(contours(remote, wide).is_empty(), "Resize moves boundary away from the block")
@@ -162,7 +164,7 @@ func _transformed_faces(bounds: AABB, frame: Basis) -> Array:
 func _check_adjacent_surfaces() -> void:
 	var solids: Array[Dictionary] = []
 	for edges: Vector2 in [Vector2(1,1.5), Vector2(1.5,2)]:
-		var face := PackedVector3Array([Vector3(edges.x,0,2), Vector3(edges.x,0,3), Vector3(edges.y,0,3), Vector3(edges.y,0,2)])
+		var face := PackedVector3Array([Vector3(edges.x,0,1), Vector3(edges.x,0,2), Vector3(edges.y,0,2), Vector3(edges.y,0,1)])
 		solids.append({"faces":[face], "kind":"original"})
 	var seams: Array = contact._contours(solids, state, Basis.IDENTITY)
 	check(seams.size() == 2, "Adjacent surfaces retain the glow on both sides of a shared seam")

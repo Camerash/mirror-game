@@ -429,6 +429,22 @@ styles and words.
   level, the stage fades quickly to dark, and she comes back where she was
   before that change. The mirror no longer snaps back. (4) The fall-path
   sign goes, because a fall is now shown as it happens.
+- DECIDED (owner, 2026-11-19, during the night's reflection fixes): "The
+  cut away of existing structures should be bounded by width and height of
+  the mirror", then "Yes, depth bounded by width and height". Built: the
+  mirror copies from a box behind it and replaces the matching box in front,
+  each as wide and high as the pane and as deep as its larger side (3 for
+  the 3×3 pane). Before, the reach along the normal had no end, so the
+  mirror cut stones and drew seams far from the glass. OPEN: the depth of
+  an oblong pane; it goes with the question of the size control.
+- FOUND (2026-11-19, the owner's seven screenshots of `01_route`): all had a
+  pane on a diagonal. Two faults in the drawing, both fixed: a stone cut on a
+  slant was drawn on the wrong side of its cut, and drop shadows were boxes
+  (on a diagonal piece they were too large, or hung in the air). Four of the
+  screenshots (4, 5, 8, 9) show the rule itself: a diagonal pane splits a
+  block into a stone half and a glass half, shows flat cut faces, and turns
+  the row of copies by 90°. Whether that reads as a reflection is for the
+  owner.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The

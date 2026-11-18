@@ -2,6 +2,7 @@ class_name MirrorDisplayGeometry
 extends RefCounted
 ## Closed convex fragments shared by rendering, collision, and prediction.
 
+const MirrorRules := preload("res://core/mirror_state.gd")
 const EPS := 0.00001
 
 static func box(data: Dictionary) -> AABB:
@@ -69,9 +70,12 @@ static func hidden(level: Dictionary, state: Dictionary, frame: Basis) -> Array:
 				result.append(faces)
 	return result
 
+## The box the mirror copies from (behind its normal) or, with `reverse`, the
+## box it replaces (in front): as wide and high as the pane, and
+## `MirrorState.depth` deep. Each plane keeps its negative side.
 static func column(pivot: Vector3, frame: Basis, state: Dictionary, reverse: bool) -> Array[Plane]:
 	var normal := frame.z * float(state.get("source_sign", 1)) * (-1.0 if reverse else 1.0)
-	var planes: Array[Plane] = [Plane(normal, normal.dot(pivot))]
+	var planes: Array[Plane] = [Plane(normal, normal.dot(pivot)), Plane(-normal, -normal.dot(pivot) + MirrorRules.depth(state))]
 	for pair: Array in [[frame.x, float(state.get("width", 3))], [frame.y, float(state.get("height", 3))]]:
 		var axis: Vector3 = pair[0]
 		for sign_value: float in [-1.0, 1.0]:

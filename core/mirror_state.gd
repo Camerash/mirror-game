@@ -5,6 +5,15 @@ extends RefCounted
 static func normal(state: Dictionary) -> Vector3:
 	return frame(state).z * float(state.get("source_sign", 1))
 
+## How far the mirror reaches along its normal, on each side: it copies what
+## lies this deep behind it and replaces what lies this deep in front (owner,
+## 2026-11-19: the cut-away is bounded by the width and height). A 3 x 3
+## pane reaches 3.
+# ponytail: the larger side, while every pane is 3 x 3; the owner decides the
+# rule for an oblong pane with the size control.
+static func depth(state: Dictionary) -> float:
+	return maxf(float(state.get("width", 3.0)), float(state.get("height", 3.0)))
+
 static func frame(state: Dictionary) -> Basis:
 	if state.has("yaw"):
 		return Basis(Vector3.UP, float(state["yaw"])) * Basis(Vector3.RIGHT, float(state["pitch"]))
