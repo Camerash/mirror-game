@@ -54,10 +54,12 @@ const MIN_HALF_STEP := 40.0
 const KNOB_GAIN := 0.8
 const KNOB_FOLLOW_SECONDS := 0.18
 ## The sign of a held knob (`_sign_traces`): a straight line has a point each
-## this many units, the ring has this many points, all of this weight.
+## this many units, a full ring has this many points. A ring of the turn knob
+## that the slide uses has the full weight, and the other the faint weight.
 const SIGN_STEP := 0.125
 const SIGN_RING_STEPS := 72
 const SIGN_RING_WEIGHT := 0.75
+const SIGN_FAINT_WEIGHT := 0.2
 ## How far past its glass, in world units, a press still takes the mirror.
 const GRAB_MARGIN := 0.25
 ## Keys of the classic editor that mean nothing to the direct controls.
@@ -88,6 +90,9 @@ var rings := Rings.new()
 var direct_controls := false
 ## The turn and the tilt that the held turn knob has selected.
 var aim_selected := {"yaw": 0.0, "pitch": 0.0}
+## The turn and the tilt that the held turn knob asks for, from where it began,
+## before the steps. The sign shows which way the slide goes (`_aim_focus`).
+var aim_lean := Vector2.ZERO
 var bar := Bar.new()
 ## True while the turn knob is held; `point_origin` is the mirror it started
 ## from.
@@ -825,6 +830,7 @@ func begin_grip(kind: String, point: Vector2) -> void:
 	pointing = true
 	point_origin = preview.duplicate(true)
 	aim_selected = {"yaw": float(point_origin["yaw"]), "pitch": float(point_origin["pitch"])}
+	aim_lean = Vector2.ZERO
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
@@ -841,6 +847,7 @@ func grip_to(point: Vector2) -> void:
 func aim_to(yaw: float, pitch: float) -> void:
 	if not direct_controls or not pointing or not is_finite(yaw) or not is_finite(pitch):
 		return
+	aim_lean = Vector2(yaw - float(point_origin["yaw"]), clampf(pitch, -PI * 0.5, PI * 0.5) - float(point_origin["pitch"]))
 	aim_selected["yaw"] = Targets.step(yaw, aim_selected["yaw"], Bar.AIM_STEP)
 	aim_selected["pitch"] = Targets.step(clampf(pitch, -PI * 0.5, PI * 0.5), aim_selected["pitch"], Bar.AIM_STEP)
 	var target := point_origin.duplicate(true)
@@ -1991,12 +1998,21 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	if kind in ["ground","height"]:
 		dots = Targets.position_dots(displayed["pivot"],origin["pivot"],level["limits"],kind == "height")
 	elif kind == "aim":
-		# The turn knob: a dot at each step of the turn on the ring round the
-		# foot. The step under the slide is the target.
-		var yaw := float(MirrorRules.normalized(displayed)["yaw"])
+		# The turn knob: a dot at each step of 45 degrees on the ring of the
+		# turn and on the half ring of the tilt (`_sign_traces`). The dots of
+		# the way that the slide does not use are faint. The step under the
+		# slide is the target.
+		var facing := MirrorRules.normalized(displayed)
+		var yaw := float(facing["yaw"])
+		var pitch := float(facing["pitch"])
+		var focus := _aim_focus()
 		for candidate: Dictionary in Targets.rotation_angles(yaw, Bar.AIM_STEP):
-			dots.append({"position": _aim_point(displayed, candidate["angle"]), "weight": candidate["weight"]})
-		destination = _aim_point(displayed, float(MirrorRules.normalized(target)["yaw"]))
+			dots.append({"position": _aim_point(displayed, candidate["angle"], pitch), "weight": candidate["weight"] * lerpf(SIGN_FAINT_WEIGHT, 1.0, focus)})
+		for candidate: Dictionary in Targets.rotation_angles(pitch, Bar.AIM_STEP):
+			if absf(float(candidate["angle"])) <= PI * 0.5 + 0.001:
+				dots.append({"position": _aim_point(displayed, yaw, candidate["angle"]), "weight": candidate["weight"] * lerpf(SIGN_FAINT_WEIGHT, 1.0, 1.0 - focus)})
+		var aimed := MirrorRules.normalized(target)
+		destination = _aim_point(displayed, float(aimed["yaw"]), float(aimed["pitch"]))
 	elif kind.begins_with("size_"):
 		var key := kind.trim_prefix("size_")
 		dots = Targets.resize_dots(origin,displayed,key,level["limits"])
@@ -2015,26 +2031,43 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 		data["traces"] = _sign_traces(displayed,kind)
 	return data
 
-## A point on the ring of the turn knob's sign: round the mirror's foot, past
-## the ends of its pane, on the side that faces `yaw`.
-func _aim_point(state: Dictionary, yaw: float) -> Vector3:
+## A point of the turn knob's sign: the side that the mirror faces at `yaw`
+## and `pitch`, on a ball round its foot, past the ends of its pane.
+func _aim_point(state: Dictionary, yaw: float, pitch: float) -> Vector3:
 	var reach := float(state.get("width", 3.0)) * 0.5 + 0.25
-	return (state["pivot"] as Vector3) + Basis(Vector3.UP, yaw).z * reach
+	return (state["pivot"] as Vector3) + (Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch)).z * reach
+
+## How much the turn knob's slide is a turn round (1) and not a tilt (0): one
+## half before the slide goes one way, and all one way after half a step.
+func _aim_focus() -> float:
+	return clampf(0.5 + (absf(aim_lean.x) - absf(aim_lean.y)) / Bar.AIM_STEP, 0.0, 1.0)
 
 ## The pale lines of a held knob's sign: the pale part of the knob's mark
 ## (`_draw_mark` in `world/mirror_bar.gd`), made large at the mirror. Move: a
-## line along each way of the ground. Lift: an upright line. Turn: a ring round
-## the foot. A straight line fades with its distance from the mirror, as the
-## dots do.
+## line along each way of the ground. Lift: an upright line. Turn: the side
+## that the mirror faces goes on a ball round the foot, so a slide to the side
+## follows a flat ring and a slide up or down follows an upright half ring over
+## the foot. The two cross where the mirror faces. Only the ring that the slide
+## uses is bright, so the sign stays quiet. A straight line fades with its
+## distance from the mirror, as the dots do.
 func _sign_traces(displayed: Dictionary, kind: String) -> Array[Dictionary]:
 	var traces: Array[Dictionary] = []
 	if kind == "aim":
-		var ring := PackedVector3Array()
-		var even := PackedFloat32Array()
+		var facing := MirrorRules.normalized(displayed)
+		var focus := _aim_focus()
+		var circle := PackedVector3Array()
+		var circle_weights := PackedFloat32Array()
 		for step: int in SIGN_RING_STEPS + 1:
-			ring.append(_aim_point(displayed, TAU * step / SIGN_RING_STEPS))
-			even.append(SIGN_RING_WEIGHT)
-		traces.append({"points": ring, "weights": even})
+			circle.append(_aim_point(displayed, TAU * step / SIGN_RING_STEPS, float(facing["pitch"])))
+			circle_weights.append(lerpf(SIGN_FAINT_WEIGHT, SIGN_RING_WEIGHT, focus))
+		var over := PackedVector3Array()
+		var over_weights := PackedFloat32Array()
+		var half := int(SIGN_RING_STEPS * 0.5)
+		for step: int in half + 1:
+			over.append(_aim_point(displayed, float(facing["yaw"]), lerpf(-PI * 0.5, PI * 0.5, float(step) / half)))
+			over_weights.append(lerpf(SIGN_FAINT_WEIGHT, SIGN_RING_WEIGHT, 1.0 - focus))
+		traces.append({"points": circle, "weights": circle_weights})
+		traces.append({"points": over, "weights": over_weights})
 		return traces
 	var pivot: Vector3 = displayed["pivot"]
 	for axis: int in ([1] if kind == "height" else [0, 2]):

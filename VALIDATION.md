@@ -1,7 +1,15 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the undo arc, and a trial of the freedom sign — 2026-11-18
+# Latest check: the turn knob's sign shows the tilt too — 2026-11-18
+
+- Why: the owner said "The sign looks good", and asked for a sign of both ways of the turn knob (turn and tilt) that does not make the screen busy.
+- Change (`_aim_point`, `_aim_focus`, `aim_lean`, `_sign_traces` in `game.gd`). The side that the mirror faces is a point on a ball round its foot. A slide to the side moves it on a flat ring (the ring of its present tilt; at no tilt it lies at the foot). A slide up or down moves it on an upright half ring over the foot, from straight up to straight down. The two cross where the mirror faces, and each has a dot at each step of 45 degrees. Before the slide goes one way, both have weight 0.48; after half a step one way, that ring has 0.75 and the other 0.2. The weight changes with the slide, so nothing pops.
+- Tests, no failure: `direct_controls_tests` 78 (new: a slide to the side lights the ring of the turn, and a slide up lights the ring of the tilt), `constellation_tests` 88, `constellation_view_tests` exit 0, `prompt_tests` 94, `level_solvability_tests` 68, `mirror_bar_tests` 59.
+- Checked in the engine: `test-output/polish/sign-tilt.jpg` (`14_turn` at 780x1688: the turn knob held, slid to the side, slid up).
+- Not done, not checked: a phone; where the foot is at the edge of a stone, the lower part of the half ring shows over the water; after a tilt, the ring of the turn is in the air above the foot, and the copies can hide the sign.
+
+# Earlier check: the undo arc, and a trial of the freedom sign — 2026-11-18
 
 - Why: the owner said the hooked undo arrow is "too traditional and not zen enough", and asked for the first arc with a rounder head. The owner also asked for a trial of the freedom sign as the agent proposed: the pale part of the held knob's mark, made large at the mirror.
 - Change, undo (`_draw_mark` in `world/mirror_bar.gd`): one open arc over the top, from the right to the left, with a short, wide chevron head (about 100 degrees open), round ends and a round point, in the same stroke as the arc.

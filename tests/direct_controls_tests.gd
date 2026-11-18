@@ -411,6 +411,17 @@ func check_freedom_sign() -> void:
 				break
 			await process_frame
 		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty(), "Sign: letting go of the %s knob takes its sign away" % kind)
+	# The turn knob's sign lights the ring of the way the slide goes.
+	var faced := MirrorRules.normalized(game.mirror)
+	game.begin_grip("turn", knob(1))
+	game.aim_to(float(faced["yaw"]) + PI * 0.25, float(faced["pitch"]))
+	var turned: float = game._aim_focus()
+	game.aim_to(float(faced["yaw"]), float(faced["pitch"]) - PI * 0.25)
+	var tilted: float = game._aim_focus()
+	game.aim_to(float(faced["yaw"]), float(faced["pitch"]))
+	game.end_grip("turn")
+	await direct_settled()
+	check(is_equal_approx(turned, 1.0) and is_equal_approx(tilted, 0.0), "Sign: a slide to the side lights the ring of the turn, and a slide up or down lights the ring of the tilt")
 
 
 func check_first_raise_follows_her_look() -> void:

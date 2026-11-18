@@ -337,7 +337,13 @@ styles and words.
   upright line. Turn: a ring round the foot, with a dot at each step of 45
   degrees. The mirror is a dark dot with a pale rim, and the step under the
   slide has a pale ring. The lines fade with distance from the mirror. The
-  owner judges the trial in play.
+  owner said "The sign looks good", and asked for a sign of both ways of
+  the turn knob that does not make the screen busy. Built: the side that the
+  mirror faces goes on a ball round its foot. A slide to the side follows a
+  flat ring, and a slide up or down follows an upright half ring over the
+  foot; the two cross where the mirror faces. Before the slide goes one way
+  both are faint; after half a step, only the ring of that way is bright.
+  The owner judges the trial in play.
 - OPEN (owner, 2026-11-18, to discuss): a direct drag on the mirror in place
   of the move knob.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
