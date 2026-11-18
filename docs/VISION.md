@@ -406,6 +406,22 @@ styles and words.
   unit as one point of the device's own interface, and a desktop window
   opens phone-shaped. Then the bar set is smaller and lower: knobs of 46
   points, Undo and remove of 38, the bar at 0.84 of the play area's height.
+- TRIAL (owner, 2026-11-19), built: stepping stones on a ball. On the
+  phone the owner said: "The arc lines on the turn disc is weird, doesn't
+  look good. Can we make is simpler and more intuitive", and asked for blind
+  advisors with no direction from him. Three blind agents (Opus; lenses:
+  motion and touch, calm visual language, first-time player) gave nine
+  patterns (`test-output/polish/pad-patterns.html`). All three first choices
+  were straight rows of dots with no lines; two ranked rails first, one
+  stepping stones. The owner: "Leaning towards stepping stone", then, while
+  it was built: "maybe the placement of the stepping stones should look
+  like on a sphere, i.e. they should be curved. In fact, the disc itself
+  should be use a sphere as the concept". Built: the pad is a ball of ice;
+  one pale stone for each facing the hold can reach lies on it, in rows of
+  tilt round its poles and columns of turn, seen a little from above. The
+  thumb rolls the ball as a trackball, and the stone that comes to the
+  press point is the facing the mirror goes to. No stone past a limit; no
+  dark mark on the ball. The owner judges it in play.
 - DECIDED (owner, 2026-11-18), to do after the controls: (1) some
   reflections are wrong; the owner will give the cases. (2) When the
   mirror moves the block that the traveller stands on, she moves with it.

@@ -228,6 +228,19 @@ func check_bar(size: Vector2i) -> void:
 	# A slide up tilts the mirror 45 degrees to the sky.
 	await drag(from, from + dial_travel(0.0, -PI * 0.25))
 	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a slide up tilts the mirror to face the sky" % label)
+
+	# The ball rolls the way the thumb goes: a roll of one step brings that
+	# facing's stone to the start point, and the start stone goes the thumb's
+	# way (right on the screen is +x, up is +y on the ball).
+	var bar = game.bar
+	var front := Vector3.BACK.rotated(Vector3.RIGHT, bar.PAD_VIEW_TILT)
+	bar._pad_view = Vector2(PI * 0.25, 0.0)
+	check(bar._ball_point(PI * 0.25, 0.0).is_equal_approx(front) and bar._ball_point(0.0, 0.0).x > 0.1,
+		"%s: a roll to the right brings the next turn's stone to the start point" % label)
+	bar._pad_view = Vector2(0.0, -PI * 0.25)
+	check(bar._ball_point(0.0, -PI * 0.25).is_equal_approx(front) and bar._ball_point(0.0, 0.0).y > front.y + 0.1,
+		"%s: a roll up brings the stone toward the sky to the start point" % label)
+	bar._pad_view = Vector2.ZERO
 	game.undo()
 	await settled()
 	await frames(20)

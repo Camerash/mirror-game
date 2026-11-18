@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: points everywhere, two knobs, the turntable pad — 2026-11-19
+# Latest check: stepping stones on a ball — 2026-11-19
+
+- Why: the owner found the gauges' arc lines "weird" and asked for something simpler from blind advisors (`test-output/polish/pad-patterns.html`, nine patterns from three Opus agents). The owner leaned to stepping stones, then asked that the stones lie on a sphere and that the pad be a sphere.
+- Change (`world/mirror_bar.gd`): the two gauges are removed. The pad is a ball of radius 100. One pale stone for each facing the hold can reach (four steps of turn each way; the tilts from the sky to the ground) lies on the ball at its turn (longitude) and its tilt (latitude; the ground at the top pole, the sky at the bottom one). The ball is seen 20° from above (`PAD_VIEW_TILT`), so the rows curve; its centre is above the knob so that the start facing's stone is on the knob. While the knob is held the ball rolls with the thumb, smoothly and without steps (`_pad_view`); after the release it rolls to the facing that the mirror took. The mechanics do not change: 40 points a step, hysteresis on each axis. Stones on the far side do not show, stones near the rim are smaller and fainter, and a pole has one stone. The start stone is a hollow ring. The step ripple spreads from the press point to 40 points, past the thumb. The ice's tint is pale at the centre and darker at the rim again.
+- Tests, no failure: `mirror_bar_tests` 67 (new: a roll of one step right brings that turn's stone to the press point and the start stone goes right; a roll up brings the stone toward the sky there and the start stone goes up), `direct_controls_tests` 75, `prompt_tests` 94, `app_flow_tests` 88, `small_fix_tests` 34. The other files were not run again: the change is in the pad's drawing and its view only.
+- Checked in the engine at 428 × 926 points: `test-output/polish/ball/ball-sheet.jpg` and `ball-close.jpg` (held; half a step right; one step right; then one up; then at the sky, where the rows are rings round the pole).
+- At the sky, the release in the proof went back. The same change through the game's commands (`begin_grip`, `aim_to`, `end_grip`, with no pad) also goes back on `14_turn`, with the hint "A block would fill the traveller's place, so the mirror stays put." So the stage's rule refuses it, not the pad.
+- Not checked: the feel on the phone.
+
+# Earlier check: points everywhere, two knobs, the turntable pad — 2026-11-19
 
 - Why: on the owner's iPhone the bar set filled about 76% of the screen's width, much more than on the Mac. The owner asked to map the sizes correctly, then: "Yes, rule first". The owner also said a slide on the glass is "much more intuitive", and that the sky map was hard near its centre, and asked for a turntable with both axes in one hold.
 - Measured: the Mac (Retina, scale 2) drew one unit as one pixel, half a point; the iPhone drew one unit as dpi/160 pixels, 0.95 of a point. A 58-unit knob was 5.8 mm on the Mac and 9.2 mm on the phone.
