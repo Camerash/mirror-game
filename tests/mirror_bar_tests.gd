@@ -6,6 +6,7 @@ extends SceneTree
 ## Run: godot --headless --path . --script tests/mirror_bar_tests.gd
 
 const Game := preload("res://game.gd")
+const MirrorRules := preload("res://core/mirror_state.gd")
 const SIZES: Array[Vector2i] = [Vector2i(884, 1472), Vector2i(1280, 720)]
 
 var game: Node3D
@@ -101,6 +102,13 @@ func travel(world: Vector3) -> Vector2:
 		unit = game.camera.unproject_position(pivot + Vector3.UP) - origin
 		gain = unit.length() / game._screen_axes(pivot)[1].length()
 	return (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
+
+
+## The finger travel on the turn knob's dial that turns the mirror by `turn`
+## and tilts it by `tilt` from its facing now.
+func dial_travel(turn: float, tilt: float) -> Vector2:
+	var pitch: float = game.mirror["pitch"]
+	return game.bar.dial_offset(turn, pitch + tilt) - game.bar.dial_offset(0.0, pitch)
 
 
 func run() -> void:
@@ -200,27 +208,33 @@ func check_bar(size: Vector2i) -> void:
 	var yaw := degrees("yaw")
 	var pitch := degrees("pitch")
 	from = knob(1)
-	await drag(from, from + Vector2(96.0, -96.0))
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and absf(absf(degrees("pitch") - pitch) - 45.0) < 0.01, "%s: one diagonal slide turns and tilts" % label)
+	await drag(from, from + dial_travel(PI * 0.25, -PI * 0.25))
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch") - pitch, -45.0), "%s: one slide on the dial turns and tilts" % label)
 	game.undo()
 	await settled()
 	await frames(20)
 
-	# The turn knob: a slide to the right turns counterclockwise.
-	await drag(from, from + Vector2(96.0, 24.0))
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0), "%s: a slide to the right turns by +45 degrees" % label)
-	check(is_equal_approx(degrees("pitch"), pitch), "%s: a small vertical drift does not tilt" % label)
+	# The turn knob's dial: one step round to the right turns by +45 degrees,
+	# which the screen shows as a turn the same way round.
+	var pivot_screen: Vector2 = game.camera.unproject_position(game.mirror["pivot"])
+	var facing_before: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - pivot_screen
+	await drag(from, from + dial_travel(PI * 0.25, PI * 0.06))
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0), "%s: one step round the dial turns by +45 degrees" % label)
+	check(is_equal_approx(degrees("pitch"), pitch), "%s: a small drift off the ring does not tilt" % label)
+	var facing_after: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - game.camera.unproject_position(game.mirror["pivot"])
+	var finger_way: Vector2 = game.bar.dial_offset(PI * 0.25, 0.0)
+	check(signf(facing_before.cross(facing_after)) == signf(game.bar.dial_offset(0.0, 0.0).cross(finger_way)), "%s: the mirror turns on the screen the same way round as the finger" % label)
 
-	# A vertical slide tilts.
-	await drag(from, from + Vector2(0.0, -96.0))
-	check(absf(absf(degrees("pitch") - pitch) - 45.0) < 0.01, "%s: a slide up tilts by 45 degrees" % label)
+	# A slide toward the dial's centre tilts the mirror 45 degrees to the sky.
+	await drag(from, from + dial_travel(0.0, -PI * 0.25))
+	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a slide toward the centre tilts the mirror to face the sky" % label)
 	game.undo()
 	await settled()
 	await frames(20)
 
 	# A second drag at once after a release is not lost.
 	turns[0] = 0
-	await drag(from, from + Vector2(-96.0, 0.0), false)
+	await drag(from, from + dial_travel(-PI * 0.25, 0.0), false)
 	await frames(2)
 	var waited := 2
 	button(from, true)
@@ -230,9 +244,9 @@ func check_bar(size: Vector2i) -> void:
 	button(from, false)
 	await settled()
 	await frames(20)
-	await drag(from, from + Vector2(96.0, 0.0), false)
+	await drag(from, from + dial_travel(PI * 0.25, 0.0), false)
 	await frames(2)
-	await drag(from, from + Vector2(96.0, 0.0))
+	await drag(from, from + dial_travel(PI * 0.25, 0.0))
 	await settled()
 	await frames(40)
 	await settled()

@@ -112,7 +112,7 @@
   "prompts": [
     {
       "id": "turn_mirror",
-      "text": "Hold, then slide sideways",
+      "text": "Hold, then slide round",
       "control": "turn",
       "until": "turn"
     }

@@ -351,10 +351,28 @@ styles and words.
   tap through the glass still walks. A slide that starts on the glass does
   not turn the view. The move knob stays while the owner judges the trial;
   if the slide on the glass is sufficient, the knob can go.
-- OPEN (an idea the owner brought, 2026-11-18, to discuss): a held knob
-  grows into a round pad. The finger stays on the pad, so the control has a
-  limit, and the pad shows which path of the finger changes the mirror in
-  which way.
+- TRIAL (owner, 2026-11-18: "Yes, make the proof for the disc for the turn
+  knob"), built: the held turn knob grows into a dial. The idea came to the
+  owner from another player: a held knob grows into a round pad, the finger
+  stays on the pad, so the control has a limit, and the pad shows which path
+  of the finger changes the mirror in which way. The agent's view: it fits
+  the turn best (the move may go to the slide on the glass; the lift is a
+  straight line). The dial: the angle round the centre is the turn, one turn
+  of the finger for one turn of the mirror; the distance from the centre is
+  the tilt (the centre faces the sky, the middle ring stands upright, the
+  rim faces the ground). The finger starts on the middle ring below the
+  centre, so a short slide to the right still turns the mirror +45 degrees.
+  A dark hand shows where the mirror faces. The world sign of the turn knob
+  (the two rings round the foot) is removed in this trial; the world shows
+  only the foot and the side the mirror will face. On the first proof the
+  owner said: "The disc seems to be only catering one axis of rotation, no?
+  Also looks a bit flat with the hard shadows. I want it to be more zen
+  too." The agent's proposal for the next proof: only the two tracks that
+  cross at the mirror's dot (a ring for the turn, a line through the centre
+  for the tilt); the bar's glass made round, with no hard shadow; the
+  ceramic knob moves on the tracks under the finger. The other way: a ring
+  for the turn and a separate upright slot for the tilt. OPEN: the owner
+  chooses.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The

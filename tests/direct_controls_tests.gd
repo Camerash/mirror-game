@@ -386,11 +386,25 @@ func check_turn_knob() -> void:
 	var start := knob(1)
 	var before := pivot()
 	var yaw: float = game.mirror["yaw"]
+	var pitch: float = game.mirror["pitch"]
 	events.clear()
-	await drag(start, start + Vector2(game.bar.TURN_PIXELS, 0.0))
-	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: a slide to the right turns the mirror one step of 45 degrees")
+	await drag(start, start + dial_travel(PI * 0.25, 0.0))
+	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: one step round the dial turns the mirror 45 degrees")
 	check(pivot().is_equal_approx(before), "Turn: turning keeps the mirror's centre")
 	check("turn" in events, "Turn: a turn reports turn")
+	# Half way round the dial, along its ring, is a half turn; the tilt stays.
+	yaw = game.mirror["yaw"]
+	mouse_button(start, true)
+	await process_frame
+	for step: int in range(1, 25):
+		mouse_move(start + dial_travel(PI * step / 24.0, 0.0))
+		await process_frame
+	await frames(6)
+	mouse_button(start + dial_travel(PI, 0.0), false)
+	await direct_settled()
+	check(is_equal_approx(absf(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI)), PI) and is_equal_approx(float(game.mirror["pitch"]), pitch), "Turn: half way round the dial is a half turn, and the tilt stays")
+	game.undo()
+	await direct_settled()
 	await point(Vector3.BACK)
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.BACK), "Turn: asking for +Z turns the mirror to copy toward +Z")
 	check(pivot().is_equal_approx(before), "Turn: a quarter turn keeps the mirror's centre")
@@ -398,34 +412,41 @@ func check_turn_knob() -> void:
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Turn: asking for the opposite way is the half turn")
 
 
+## The finger travel on the dial that turns the mirror by `turn` and tilts it
+## by `tilt` from its facing now.
+func dial_travel(turn: float, tilt: float) -> Vector2:
+	var pitch: float = game.mirror["pitch"]
+	return game.bar.dial_offset(turn, pitch + tilt) - game.bar.dial_offset(0.0, pitch)
+
+
 func check_freedom_sign() -> void:
-	## While a knob is held, the guide shows that knob's sign: its pale lines at
-	## the mirror. It goes when the knob is let go.
+	## While the move or lift knob is held, the guide shows that knob's sign:
+	## its pale lines at the mirror. The held turn knob grows into its dial
+	## instead, and the world shows only where the mirror faces. Each goes when
+	## the knob is let go.
 	await load_stage("01_route")
 	await press_mirror_button()
 	for index: int in 3:
 		var kind: String = game.bar.KNOBS[index]
 		mouse_button(knob(index), true)
 		await frames(6)
-		check(game.placement_guide._data.get("sign", false) and not game.placement_guide.get_visible_traces().is_empty(), "Sign: holding the %s knob shows its lines at the mirror" % kind)
+		var lines: bool = not game.placement_guide.get_visible_traces().is_empty()
+		if kind == "turn":
+			for wait: int in 120:
+				if game.bar._dial >= 1.0:
+					break
+				await process_frame
+			check(game.placement_guide._data.get("sign", false) and not lines and game.placement_guide._data.get("target") is Vector3 and game.bar._dial >= 1.0,
+				"Sign: holding the turn knob grows it into the dial, and the world shows only where the mirror faces")
+		else:
+			check(game.placement_guide._data.get("sign", false) and lines, "Sign: holding the %s knob shows its lines at the mirror" % kind)
 		mouse_button(knob(index), false)
 		await direct_settled()
 		for wait: int in 120:
-			if game.placement_guide._data.is_empty():
+			if game.placement_guide._data.is_empty() and game.bar._dial == 0.0:
 				break
 			await process_frame
-		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty(), "Sign: letting go of the %s knob takes its sign away" % kind)
-	# The turn knob's sign lights the ring of the way the slide goes.
-	var faced := MirrorRules.normalized(game.mirror)
-	game.begin_grip("turn", knob(1))
-	game.aim_to(float(faced["yaw"]) + PI * 0.25, float(faced["pitch"]))
-	var turned: float = game._aim_focus()
-	game.aim_to(float(faced["yaw"]), float(faced["pitch"]) - PI * 0.25)
-	var tilted: float = game._aim_focus()
-	game.aim_to(float(faced["yaw"]), float(faced["pitch"]))
-	game.end_grip("turn")
-	await direct_settled()
-	check(is_equal_approx(turned, 1.0) and is_equal_approx(tilted, 0.0), "Sign: a slide to the side lights the ring of the turn, and a slide up or down lights the ring of the tilt")
+		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty() and game.bar._dial == 0.0, "Sign: letting go of the %s knob takes its sign away" % kind)
 
 
 func check_first_raise_follows_her_look() -> void:

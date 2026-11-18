@@ -60,8 +60,17 @@ const HOLD_GLASS_ALPHA := 0.3
 ## about two thirds of that: the resistance grows near the limit.
 const PULL_LIMIT := 6.0
 const PULL_SOFTNESS := 90.0
-## The slide that turns or tilts the mirror one step of 45 degrees.
-const TURN_PIXELS := 96.0
+## The held turn knob grows into a dial (trial, owner 2026-11-18). The angle
+## round its centre is the turn: one turn of the finger is one turn of the
+## mirror, and the way round is the way the mirror turns on the screen. The
+## distance from the centre is the tilt: the centre faces the sky, the middle
+## ring stands upright, and the rim faces the ground. The finger starts below
+## the centre, where the mirror faces now.
+const DIAL_RADIUS := 136.0
+## Near the centre and near the rim the way round has no meaning, so the turn
+## does not change there. The value is half of one step of the tilt.
+const DIAL_POLE := 0.125
+const DIAL_WIDTH := 2.0
 const CERAMIC := Color(0.985, 0.98, 0.965)
 const ROSE := Color(0.94, 0.72, 0.70)
 const ROSE_INK := Color(0.45, 0.24, 0.24)
@@ -122,7 +131,15 @@ var _grip_press := Vector2.ZERO
 var _grip_point := Vector2.ZERO
 var _grip_yaw := 0.0
 var _grip_pitch := 0.0
-var _tilt_sign := 1.0
+## 0 is the turn knob, 1 is the full dial. A spring moves it.
+var _dial := 0.0
+var _dial_velocity := 0.0
+var _dial_centre := Vector2.ZERO
+## From the finger to its point on the dial. It is zero unless the dial had to
+## move to stay on the screen.
+var _dial_shift := Vector2.ZERO
+## The turn so far in this hold, in radians. It can pass a full turn.
+var _dial_turn := 0.0
 ## 0 is the mirror button, 1 is the open bar.
 var _open := 0.0
 var _open_velocity := 0.0
@@ -305,12 +322,14 @@ func _start_knob() -> void:
 	_started = true
 	_grip_yaw = _yaw()
 	_grip_pitch = _pitch()
-	# A slide up moves the top edge away from the viewer. Seen edge-on, the
-	# top edge goes to the right.
-	var away := Basis(Vector3.UP, _grip_yaw).z
-	var forward := -_camera.global_basis.z
-	var depth := away.dot(Vector3(forward.x, 0.0, forward.z).normalized())
-	_tilt_sign = signf(depth) if absf(depth) > 0.1 else (1.0 if away.dot(_camera.global_basis.x) >= 0.0 else -1.0)
+	if _grip == "turn":
+		# The finger is on the dial where the mirror faces now. The dial stays
+		# on the screen.
+		_dial_turn = 0.0
+		var start := dial_offset(0.0, _grip_pitch)
+		var room := get_viewport().get_visible_rect().grow(-8.0 - DIAL_RADIUS)
+		_dial_centre = (_grip_press - start).clamp(room.position, room.end)
+		_dial_shift = _dial_centre + start - _grip_press
 	action_requested.emit("grip_begin", {"kind": _grip, "point": _grip_press})
 	# The slide made while the knob waited counts from the press.
 	if not _grip_point.is_equal_approx(_grip_press):
@@ -339,10 +358,22 @@ func _move_grip() -> void:
 	if _grip != "turn":
 		action_requested.emit("grip_drag", _grip_point)
 		return
-	var drag := _grip_point - _grip_press
-	action_requested.emit("grip_aim", {
-		"yaw": _grip_yaw + drag.x / TURN_PIXELS * AIM_STEP,
-		"pitch": clampf(_grip_pitch - drag.y / TURN_PIXELS * AIM_STEP * _tilt_sign, -PI * 0.5, PI * 0.5)})
+	var offset := _dial_finger()
+	var reach := offset.length() / DIAL_RADIUS
+	if reach > DIAL_POLE and reach < 1.0 - DIAL_POLE:
+		_dial_turn += wrapf(PI * 0.5 - offset.angle() - _dial_turn, -PI, PI)
+	action_requested.emit("grip_aim", {"yaw": _grip_yaw + _dial_turn, "pitch": (reach - 0.5) * PI})
+
+## The point of the dial for a facing `turn` round from the facing at the
+## press, at tilt `pitch`, from the dial's centre. The press is straight below
+## the centre; a turn of +90 degrees is to the right, as a slide to the right
+## turned the mirror +45 degrees with the first knob.
+static func dial_offset(turn: float, pitch: float) -> Vector2:
+	return Vector2.DOWN.rotated(-turn) * DIAL_RADIUS * (clampf(pitch, -PI * 0.5, PI * 0.5) / PI + 0.5)
+
+## The finger's point on the dial, from its centre. It stays inside the rim.
+func _dial_finger() -> Vector2:
+	return (_grip_point + _dial_shift - _dial_centre).limit_length(DIAL_RADIUS)
 
 ## The mirror went to its next step: the held knob answers.
 func tick() -> void:
@@ -385,6 +416,12 @@ func _process(delta: float) -> void:
 	_undo_velocity = spring.y
 	if not is_equal_approx(undo_before, _undo_shown) or _undo_velocity != 0.0:
 		moving = true
+	var dial_before := _dial
+	spring = _spring(_dial, _dial_velocity, 1.0 if _grip == "turn" and _started else 0.0, delta)
+	_dial = spring.x
+	_dial_velocity = spring.y
+	if _dial != dial_before or _dial_velocity != 0.0:
+		moving = true
 	var hold_before := _hold
 	var holding := _grip in KNOBS and _started
 	_hold = move_toward(_hold, 1.0 if holding else 0.0, delta / (HOLD_IN_SECONDS if holding else HOLD_OUT_SECONDS))
@@ -415,10 +452,11 @@ func _draw_bar(canvas: Control) -> void:
 	var open := _eased()
 	var middle := centre + _pull * 0.15
 	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold))
+	var dialling := _dial != 0.0 or _dial_velocity != 0.0
 	for index: int in [0, 2, 1]:
 		var kind := KNOBS[index]
 		var alpha := 1.0 if index == 1 else smoothstep(0.1, 0.7, open)
-		if alpha <= 0.01:
+		if alpha <= 0.01 or (index == 1 and dialling):
 			continue
 		if _grip != kind:
 			alpha *= dim
@@ -445,8 +483,41 @@ func _draw_bar(canvas: Control) -> void:
 		var undo_radius := REMOVE * maxf(lerpf(0.7, 1.0, _undo_shown), 0.0)
 		_set_ceramic(canvas, _undo_point(), undo_radius, CERAMIC, undo_alpha, Vector2.ZERO, _presses["undo"], 0.0)
 		_draw_mark(canvas, "undo", undo_radius, Color(INK, undo_alpha))
+	# The dial is drawn last: it grows over the other controls.
+	if dialling:
+		_draw_dial(canvas, middle)
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_hint(canvas, open)
+
+## The turn knob grows into the dial and goes back into the knob. Its marks
+## keep the rule of the knob's mark: the dark part is the mirror, and the pale
+## part is where it can go. Pale rings: the tilt (the middle ring stands
+## upright; the faint inner ring leans 45 degrees to the sky, the faint outer
+## ring 45 degrees to the ground). Pale dots: the steps of the turn, and the
+## sky at the centre. Dark: a hand from the centre to the dot where the mirror
+## faces now. A pale ring: the finger.
+func _draw_dial(canvas: Control, knob_at: Vector2) -> void:
+	var grow := maxf(_dial, 0.0)
+	var radius := lerpf(KNOB, DIAL_RADIUS, grow)
+	_set_ceramic(canvas, knob_at.lerp(_dial_centre, minf(grow, 1.0)), radius, CERAMIC, 1.0, Vector2.ZERO, _presses["turn"], _tick * 0.3)
+	_draw_mark(canvas, "turn", KNOB, Color(INK, 1.0 - smoothstep(0.0, 0.35, grow)))
+	var shown := smoothstep(0.3, 0.9, grow)
+	if shown <= 0.01:
+		return
+	var scale := radius / DIAL_RADIUS
+	var pale := Color(Color(INK, 1.0).lerp(CERAMIC, 0.62), shown)
+	for reach: float in [0.25, 0.75]:
+		canvas.draw_arc(Vector2.ZERO, DIAL_RADIUS * reach * scale, 0.0, TAU, 96, Color(pale, shown * 0.45), DIAL_WIDTH, true)
+	canvas.draw_arc(Vector2.ZERO, DIAL_RADIUS * 0.5 * scale, 0.0, TAU, 96, pale, DIAL_WIDTH, true)
+	canvas.draw_circle(Vector2.ZERO, 2.6, pale, true, -1.0, true)
+	for index: int in roundi(TAU / AIM_STEP):
+		canvas.draw_circle(dial_offset(index * AIM_STEP, 0.0) * scale, 2.6, pale, true, -1.0, true)
+	if _grip == "turn":
+		canvas.draw_arc(_dial_finger() * scale, 11.0, 0.0, TAU, 40, pale, DIAL_WIDTH, true)
+	var ink := Color(INK, shown)
+	var facing := dial_offset(wrapf(_yaw() - _grip_yaw, -PI, PI), _pitch()) * scale
+	UiIcons._stroke(canvas, [Vector2.ZERO, facing], ink, DIAL_WIDTH)
+	canvas.draw_circle(facing, 6.0, ink, true, -1.0, true)
 
 ## The ripples and the finger mark of the control that the prompt names.
 func _draw_hint(canvas: Control, open: float) -> void:
@@ -489,6 +560,9 @@ func _draw_hint(canvas: Control, open: float) -> void:
 	var eased := travel * travel * (3.0 - 2.0 * travel)
 	var fade := smoothstep(0.0, 0.3, time) * (1.0 - smoothstep(1.7, 2.3, time))
 	var finger := at + way * eased * 84.0
+	if hint == "turn":
+		# One step round the dial's middle ring, to the right.
+		finger = at - dial_offset(0.0, 0.0) + dial_offset(eased * AIM_STEP * 1.2, 0.0)
 	var size := lerpf(22.0, 17.0, smoothstep(0.0, 0.4, time))
 	canvas.draw_circle(finger, size, Color(1.0, 1.0, 1.0, 0.22 * fade), true, -1.0, true)
 	canvas.draw_arc(finger, size, 0.0, TAU, 48, Color(INK, 0.5 * fade), 2.0, true)
