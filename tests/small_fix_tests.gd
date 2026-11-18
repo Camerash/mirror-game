@@ -145,7 +145,7 @@ func run() -> void:
 		var before: Vector3 = game.mirror["pivot"]
 		var axes: Array[Vector2] = game._screen_axes(before)
 		await drag(hidden, hidden + axes[0] * 2.0)
-		check((game.mirror["pivot"] as Vector3).is_equal_approx(before), "Grab: a drag that starts on the panel does not slide the mirror")
+		check(not (game.mirror["pivot"] as Vector3).is_equal_approx(before), "Grab: a slide that starts on the panel behind a block moves the mirror (trial, 2026-11-18)")
 	check(game.sheet_hit(past_edge(0.15)), "Grab: a press just past the glass takes the mirror")
 	check(not game.sheet_hit(past_edge(0.6)), "Grab: a press well past the glass does not")
 	var empty: Vector2 = game.play_rect.position + Vector2(30, game.play_rect.size.y * 0.5)

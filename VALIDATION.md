@@ -1,7 +1,15 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the turn knob's sign shows the tilt too — 2026-11-18
+# Latest check: a trial of a slide on the glass — 2026-11-18
+
+- Why: the owner found that the mind goes to the mirror itself to move it on the ground, and chose the first of two ways: a slide that starts on the glass (not a handle at the foot).
+- Change (`_pointer`, `_gesture_action`, `_follow_target`, `_hover_at` in `game.gd`). With the direct controls, a press on the raised mirror's glass starts the gesture on the sheet. A slide past the tap distance opens the same hold as the move knob (`_begin_slide`), with its sign, and the mirror follows the finger on the ground one to one (no knob gain). Each step gives the short haptic tick of a held knob. The release applies the change as a knob does (`end_grip`). A tap through the glass still walks. A slide that starts on the glass does not turn the view. On a desktop the pointer over the glass shows the move cursor and the pane's hover glow. The move knob is not changed.
+- Tests, each main test file, no failure but one: `direct_controls_tests` 79 (changed: a slide on the glass holds the mirror and shows the sign, the mirror goes as far on the ground as the finger, and the slide is one change that reports move; before, the check said that a drag on the glass does nothing), `small_fix_tests` 34 (changed: a slide that starts on the panel behind a block now moves the mirror), `run_tests` 796, `app_flow_tests` 88, `constellation_tests` 88, `constellation_tuning_tests` 25, `continuous_controls_tests` 27, `display_geometry_tests` 4153, `edit_mode_tests` 22, `extent_tests` 68, `gameplay_art_tests` 94, `goal_tests` 9, `level_solvability_tests` 68, `mirror_bar_tests` 59, `prism_contact_tests` 62, `prism_guide_tests` 7, `prompt_tests` 94, `readability_tests` 11, `reflected_join_tests` 10, `sound_tests` 38, `step_tests` 20; `constellation_ui_tests`, `constellation_view_tests`, `mirror_contact_tests`, `mode_ui_tests` and `ring_tests` end with exit 0. `legal_angles_tests`: 47 checks, 1 failure, the old fault from before this work.
+- Checked in the engine: `test-output/polish/glass-slide.jpg` (`14_turn` at 780x1688: a slide from the glass, halfway, at 2 units with the sign, and after the release).
+- Not done, not checked: a phone; a slide from the glass where the glass is small on the screen.
+
+# Earlier check: the turn knob's sign shows the tilt too — 2026-11-18
 
 - Why: the owner said "The sign looks good", and asked for a sign of both ways of the turn knob (turn and tilt) that does not make the screen busy.
 - Change (`_aim_point`, `_aim_focus`, `aim_lean`, `_sign_traces` in `game.gd`). The side that the mirror faces is a point on a ball round its foot. A slide to the side moves it on a flat ring (the ring of its present tilt; at no tilt it lies at the foot). A slide up or down moves it on an upright half ring over the foot, from straight up to straight down. The two cross where the mirror faces, and each has a dot at each step of 45 degrees. Before the slide goes one way, both have weight 0.48; after half a step one way, that ring has 0.75 and the other 0.2. The weight changes with the slide, so nothing pops.

@@ -204,7 +204,7 @@ func run() -> void:
 	await check_mirror_button()
 	await check_move_knob()
 	await check_lift_knob()
-	await check_glass_does_not_move()
+	await check_glass_slide()
 	await check_tap_through_glass()
 	await check_turn_knob()
 	await check_freedom_sign()
@@ -345,23 +345,27 @@ func check_lift_knob() -> void:
 	check("lower" in events, "Lift: lowering the mirror reports lower")
 
 
-func check_glass_does_not_move() -> void:
-	## With direct controls a drag on the glass does not move the mirror.
+func check_glass_slide() -> void:
+	## A slide that starts on the glass moves the mirror on the ground, under
+	## the finger, with the sign of the move knob (trial, owner 2026-11-18).
 	await load_stage("01_route")
 	await press_mirror_button()
 	var start := glass_point()
-	var before: Dictionary = game.mirror.duplicate(true)
+	var before := pivot()
 	var history: int = game.history.size()
-	var axes: Array[Vector2] = game._screen_axes(pivot())
+	var finish: Vector2 = start + game.camera.unproject_position(before + Vector3.RIGHT * 2.0) - game.camera.unproject_position(before)
+	events.clear()
 	mouse_button(start, true)
 	await process_frame
 	for step: int in range(1, 13):
-		mouse_move(start.lerp(start + axes[0] * 2.0, step / 12.0))
+		mouse_move(start.lerp(finish, step / 12.0))
 		await process_frame
-	check(not game.dragging and game.phase == "play", "Glass: a drag on the glass does not hold the mirror")
-	mouse_button(start + axes[0] * 2.0, false)
+	check(game.dragging and game.placement_guide._data.get("sign", false), "Glass: a slide on the glass holds the mirror and shows the sign")
+	await frames(6)
+	mouse_button(finish, false)
 	await direct_settled()
-	check(MirrorRules.same(game.mirror, before) and game.history.size() == history, "Glass: a drag on the glass leaves the mirror and the history as they were")
+	check(pivot().is_equal_approx(before + Vector3.RIGHT * 2.0), "Glass: the mirror goes as far on the ground as the finger")
+	check(game.history.size() == history + 1 and "move" in events, "Glass: the slide is one change, and it reports move")
 
 
 func check_tap_through_glass() -> void:

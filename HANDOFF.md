@@ -72,7 +72,8 @@ screen; a round mirror button opens into the bar; a red button lowers the
 mirror. Code: `world/mirror_bar.gd` draws it and reads the finger;
 `game.begin_grip`, `grip_to`, `aim_to`, `end_grip` change the mirror. The
 drag on the glass, the arrow (`world/mirror_arrow.gd`) and the corner
-mirror button are removed. Tilt and 45-degree turns are permitted on each
+mirror button are removed (a trial of 2026-11-18 brings back a slide on the
+glass, through the move knob's path). Tilt and 45-degree turns are permitted on each
 stage. `tests/mirror_bar_tests.gd` presses the bar with real mouse events.
 The two view buttons at the bottom left are removed too (owner): the
 sideways swipe turns the view, and keys Q and E stay.

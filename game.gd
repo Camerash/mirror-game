@@ -956,7 +956,8 @@ func _mode_busy() -> bool:
 func _follow_target(target: Dictionary) -> void:
 	if target == display_target:
 		return
-	var held := bar.is_active()
+	# A held knob, or a slide on the glass.
+	var held := bar.is_active() or (direct_controls and dragging)
 	if held:
 		bar.tick()
 	_animate_display(target, KNOB_FOLLOW_SECONDS if held else 0.10, _direct_hover_predict if direct_controls else Callable())
@@ -1577,8 +1578,11 @@ func _pointer(point: Vector2, pressed: bool, touch: int) -> void:
 		return
 	var target := "surface" if _solid_hit(point) else "empty"
 	if direct_controls:
-		# No holds: a tap walks, and a swipe on empty space turns the view.
-		# The mirror is moved by the bar's knobs, not by a drag on it.
+		# No holds: a tap walks, through the glass too, and a swipe on empty
+		# space turns the view. A slide that starts on the glass moves the
+		# mirror on the ground, under the finger (trial, owner 2026-11-18).
+		if mirror.get("enabled", false) and sheet_hit(point):
+			target = "sheet"
 		gesture.begin(point, touch, target, false, true)
 		return
 	if phase == "preview":
@@ -1601,13 +1605,14 @@ func _gesture_action(action: String, value: Variant) -> void:
 		"edit": edit_mirror()
 		"walk": _walk_at(value)
 		"drag_begin":
-			if not direct_controls and edit_mode == "move": _start_drag(value)
+			if direct_controls: _begin_slide(value, false)
+			elif edit_mode == "move": _start_drag(value)
 		"drag_move":
-			if not direct_controls and dragging:
+			if dragging:
 				_drag(value)
 		"drag_end":
-			if not direct_controls and not cancelling_gesture:
-				_finish_drag()
+			if direct_controls: end_grip("move")
+			elif not cancelling_gesture: _finish_drag()
 		"apply":
 			if not apply_preview():
 				hud.show_hint("Wait for the preview." if prediction["status"] == "pending" else "This placement is blocked. Move the mirror or cancel.")
@@ -1652,7 +1657,7 @@ func _hover_at(point: Vector2) -> void:
 	if phase == "play" and not camera.busy and play_rect.has_point(point) and not hud.blocks_world_input(point):
 		if bar.blocks_point(point):
 			cursor = Input.CURSOR_POINTING_HAND
-		elif not direct_controls and mirror.get("enabled", false) and not sheet.is_transitioning() and sheet_hit(point):
+		elif mirror.get("enabled", false) and not sheet.is_transitioning() and sheet_hit(point):
 			cursor = Input.CURSOR_MOVE
 			on_sheet = true
 		if walker.route.is_empty() and pending.is_empty() and settle_frames == 0:

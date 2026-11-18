@@ -344,8 +344,17 @@ styles and words.
   foot; the two cross where the mirror faces. Before the slide goes one way
   both are faint; after half a step, only the ring of that way is bright.
   The owner judges the trial in play.
-- OPEN (owner, 2026-11-18, to discuss): a direct drag on the mirror in place
-  of the move knob.
+- TRIAL (owner, 2026-11-18: "Try 1."), built: a direct slide on the mirror.
+  The owner found that the mind goes to the mirror itself to move it on the
+  ground. A slide that starts on the glass now moves the mirror on the
+  ground, under the finger (one to one), with the sign of the move knob. A
+  tap through the glass still walks. A slide that starts on the glass does
+  not turn the view. The move knob stays while the owner judges the trial;
+  if the slide on the glass is sufficient, the knob can go.
+- OPEN (an idea the owner brought, 2026-11-18, to discuss): a held knob
+  grows into a round pad. The finger stays on the pad, so the control has a
+  limit, and the pad shows which path of the finger changes the mirror in
+  which way.
 - DECIDED (owner, 2026-11-17): the pale winter look is the look of the
   game, and the copy is mirror glass, not summer: "Copy as cool glass seems
   to fit the story more", then "C, mirror glass", then "Yes, build it". The
