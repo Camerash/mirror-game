@@ -63,7 +63,7 @@ Editing freezes the real character, including during a walk or fall. The ghost s
 
 Level 1's intended route: enable the mirror at 2.5, walk to the striped platform at 5, change the offset to 4.0, then walk to the goal ring. Other safe solutions count. Reaching the goal sweeps a mirror across the stage to the next puzzle.
 
-Level 2’s intended route: place the mirror at offset 2.5, walk to the end of the reflection at 5, then disable it. The original platform returns beneath the character and restores the approach to the goal at 8. Deactivating above the gap causes a fall; Undo lets you try again. The goal stays visible on its absolute platform. All positions in the broad placement area and all orientations remain available for experiments.
+Level 2’s intended route: place the mirror at offset 1.5, walk to the end of the reflection at 3, then disable it. The original platform returns beneath the character and restores the approach to the goal at 7. Deactivating above the gap causes a fall; Undo lets you try again. The goal stays visible on its absolute platform. All positions in the broad placement area and all orientations remain available for experiments.
 
 ## Bounded mirror workshop
 

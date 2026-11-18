@@ -61,7 +61,7 @@
       "center": [
         0,
         -0.5,
-        5
+        4
       ],
       "size": [
         1,
@@ -78,7 +78,7 @@
   "goal": [
     0,
     0,
-    5
+    4
   ],
   "mirror": {
     "enabled": false,

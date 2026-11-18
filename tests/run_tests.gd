@@ -133,7 +133,7 @@ func _test_route() -> void:
 	# This test inspects "complete" state at length (undo/redo, cancel), so the
 	# stage sweep must not carry it away the instant the goal is reached.
 	game.auto_advance = false
-	_check(not game.request_walk(Vector3(8, 0, 0)), "Goal is unreachable before a reflection")
+	_check(not game.request_walk(_goal()), "Goal is unreachable before a reflection")
 	game.begin_preview()
 	await _preview_ready()
 	game.change_preview("enabled", true)
@@ -151,7 +151,7 @@ func _test_route() -> void:
 	_check(game.apply_preview(), "Second placement is accepted on an absolute")
 	await _frames(5)
 	_check(game.walker.position.distance_to(before) < 0.01, "Mirror adjustment does not move the character")
-	_check(game.request_walk(Vector3(8, 0, 0)), "Second reflected route reaches the goal")
+	_check(game.request_walk(_goal()), "Second reflected route reaches the goal")
 	await _walk_finished()
 	_check(game.phase == "complete", "Shared input actions complete Level 1")
 	game.begin_preview()
@@ -171,6 +171,10 @@ func _test_route() -> void:
 	await _frames(5)
 	_check(game.phase == "play" and game.walker.position.x < 5.1, "Undo restores the pre-walk position and goal state")
 
+## The loaded stage's goal, where the walk ends.
+func _goal() -> Vector3:
+	return Geometry.vector(game.level["goal"])
+
 func _test_progression() -> void:
 	# 01_route is currently loaded (from the previous test). Find its own index
 	# in PUZZLE_PATHS, so this check keeps working if a stage is inserted
@@ -179,7 +183,7 @@ func _test_progression() -> void:
 	var next_index := route_index + 1
 	_check(not game.advance_level(), "Next level cannot skip an unfinished puzzle")
 	game.auto_advance = true
-	_check(game.request_walk(Vector3(8, 0, 0)), "Level 1 can be completed again after Undo")
+	_check(game.request_walk(_goal()), "Level 1 can be completed again after Undo")
 	await _walk_finished()
 	_check(game.phase == "transition", "Reaching the goal with auto_advance starts the stage sweep")
 	_check(not game.can_edit(), "Editing is blocked during the sweep")
@@ -233,22 +237,22 @@ func _test_reveal() -> void:
 	# Same reason as _test_route: this test keeps completing and undoing
 	# Level 2, and the sweep would carry it to Level 3 mid-check.
 	game.auto_advance = false
-	_check(not game.request_walk(Vector3(8, 0, 0)), "Level 2 goal is blocked by the original gap")
+	_check(not game.request_walk(_goal()), "Level 2 goal is blocked by the original gap")
 	game.begin_preview()
 	await _preview_ready()
 	_check(game.phase == "preview" and not game.dragging, "Level 2 opens preview without starting a drag")
 	game.change_preview("offset", 4.0)
 	await _preview_ready()
 	_check(game.preview["offset"] == 4.0, "Level 2 allows placements beyond the old fixed offset")
-	game.change_preview("offset", 2.5)
+	game.change_preview("offset", 1.5)
 	await _preview_ready()
 	game.change_preview("enabled", true)
 	await _preview_ready()
 	_check(game.apply_preview(), "Level 2 reflection can be enabled")
 	await _frames(5)
-	_check(not Geometry.supported(Vector3(6, 0, 0), game.solids), "Reflection removes the original final approach")
-	_check(not game.request_walk(Vector3(8, 0, 0)), "Reflection alone cannot reach the goal")
-	_check(game.request_walk(Vector3(3.5, 0, 0)), "Player can try an unsafe point above the original gap")
+	_check(not Geometry.supported(Vector3(4, 0, 0), game.solids), "Reflection removes the original final approach")
+	_check(not game.request_walk(_goal()), "Reflection alone cannot reach the goal")
+	_check(game.request_walk(Vector3(2, 0, 0)), "Player can try an unsafe point above the original gap")
 	await _walk_finished()
 	game.begin_preview()
 	await _preview_ready()
@@ -259,7 +263,7 @@ func _test_reveal() -> void:
 	await _frames(100)
 	_check(game.phase == "failure" and game.undo(), "Unsafe Level 2 experiment can be undone after failure")
 	await _frames(5)
-	_check(game.request_walk(Vector3(5, 0, 0)), "Reflection reaches the safe replacement point")
+	_check(game.request_walk(Vector3(3, 0, 0)), "Reflection reaches the safe replacement point")
 	await _walk_finished()
 	var before: Vector3 = game.walker.position
 	game.begin_preview()
@@ -268,7 +272,7 @@ func _test_reveal() -> void:
 	await _preview_ready()
 	_check(game.status.begins_with("Supported"), "Original ground gives a supported preview without an absolute")
 	game.cancel_preview()
-	_check(game.mirror["enabled"] and not Geometry.supported(Vector3(6, 0, 0), game.solids), "Cancel keeps the final approach replaced")
+	_check(game.mirror["enabled"] and not Geometry.supported(Vector3(4, 0, 0), game.solids), "Cancel keeps the final approach replaced")
 	game.begin_preview()
 	await _preview_ready()
 	game.change_preview("enabled", false)
@@ -276,7 +280,7 @@ func _test_reveal() -> void:
 	_check(game.apply_preview(), "Restoration on an original platform is accepted")
 	await _frames(20)
 	_check(game.walker.position.distance_to(before) < 0.01 and game.walker.is_on_floor(), "Support returns without moving or dropping the character")
-	_check(game.request_walk(Vector3(8, 0, 0)), "Restored approach connects to the visible absolute goal")
+	_check(game.request_walk(_goal()), "Restored approach connects to the visible absolute goal")
 	await _walk_finished()
 	_check(game.phase == "complete", "Shared player commands complete Level 2")
 	# Level 2 used to be the last puzzle, so this asked whether it advanced at

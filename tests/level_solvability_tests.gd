@@ -311,22 +311,22 @@ func check_direct_reveal() -> void:
 	## "The path beneath": bridge, walk out, lower, and the ground returns.
 	await load_level("08_reveal")
 	await press_mirror_button()
-	await slide(0, 2.0)
-	check(await walk_to(Vector3(5, 0, 0)), "Direct reveal: the copy reaches x 5")
+	await slide(0, 1.0)
+	check(await walk_to(Vector3(3, 0, 0)), "Direct reveal: the copy reaches x 3, where return ground lay")
 	check(not reaches_goal(), "Direct reveal: the goal is cut off while the mirror stands")
 	await press_mirror_button()
 	await direct_fall()
-	check(not bool(game.mirror.get("enabled", true)) and pivot_is(Vector3(2.5, 0, 0)), "Direct reveal: lowering keeps the mirror's place")
+	check(not bool(game.mirror.get("enabled", true)) and pivot_is(Vector3(1.5, 0, 0)), "Direct reveal: lowering keeps the mirror's place")
 	check(game.phase == "play" and reaches_goal(), "Direct reveal: lowering the mirror returns the ground to the goal")
 	await press_mirror_button()
-	check(bool(game.mirror.get("enabled", false)) and pivot_is(Vector3(2.5, 0, 0)), "Direct reveal: raising again puts the mirror back where it stood")
+	check(bool(game.mirror.get("enabled", false)) and pivot_is(Vector3(1.5, 0, 0)), "Direct reveal: raising again puts the mirror back where it stood")
 	await press_mirror_button()
 	await direct_fall()
 	check(game.phase == "play" and await walk_to(goal_point()), "Direct reveal: the returned ground leads to the goal")
 	await load_level("08_reveal")
 	await press_mirror_button()
-	await slide(0, 2.0)
-	check(await walk_to(Vector3(4, 0, 0)), "Direct reveal: the traveller stands on the copy")
+	await slide(0, 1.0)
+	check(await walk_to(Vector3(2, 0, 0)), "Direct reveal: the traveller stands on the copy over the gap")
 	check(game.world.hidden_root.get_child_count() > 0, "Direct reveal: the raised mirror outlines the ground it hides")
 	await press_mirror_button()
 	await direct_fall()
@@ -338,7 +338,8 @@ func check_direct_reveal() -> void:
 func direct_aperture_case(lower_units: float) -> bool:
 	await load_level("11_aperture")
 	await press_mirror_button()
-	await slide(0, 1.5)
+	# She starts at x 1; the first raise stands the mirror at x 1.5.
+	await slide(0, 0.5)
 	if lower_units > 0.0:
 		await slide(1, -lower_units)
 	await direct_fall()
@@ -389,7 +390,7 @@ func direct_together_bridge(lower_units: float) -> void:
 func check_direct_together() -> void:
 	## "Together": point, slide, lower past the floating block, walk out, then
 	## lower the mirror and fall onto the low path.
-	var above_low := Vector3(0, 0, 4)
+	var above_low := Vector3(0, 0, 3)
 	await direct_together_bridge(0.0)
 	check(not await walk_to(above_low), "Direct together: the full frame copies the floating block into the way")
 	await direct_together_bridge(1.0)
@@ -461,9 +462,9 @@ func check_route() -> void:
 func check_reveal() -> void:
 	## "The path beneath": bridge, walk out, remove, and the ground returns.
 	await load_level("08_reveal")
-	await create_at(2.5, 0.0)
+	await create_at(1.5, 0.0)
 	await confirm()
-	check(await walk_to(Vector3(5, 0, 0)), "Reveal: the bridge reaches x 5")
+	check(await walk_to(Vector3(3, 0, 0)), "Reveal: the bridge reaches x 3, where return ground lay")
 	check(not reaches_goal(), "Reveal: the goal is cut off while the mirror stands")
 	await remove()
 	await settle_fall()
@@ -531,7 +532,7 @@ func together_bridge(height: float) -> void:
 func check_together() -> void:
 	## "Together": turn, resize past the floating block, walk out above the
 	## low path, then remove the mirror and fall onto it.
-	var above_low := Vector3(0, 0, 4)
+	var above_low := Vector3(0, 0, 3)
 	await load_level("15_together")
 	check(not reaches_goal(), "Together: without a mirror the goal is out of reach")
 	await load_level("15_together")
