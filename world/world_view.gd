@@ -316,7 +316,16 @@ func _apply_mesh(instance: MeshInstance3D, solid: Dictionary) -> void:
 func _cuts(solid: Dictionary) -> PackedVector4Array:
 	var cuts := PackedVector4Array()
 	var faces: Array = solid["faces"] if solid.has("faces") and not solid["faces"].is_empty() else Polygons.box_faces(solid["bounds"])
-	var inside: Vector3 = (solid["bounds"] as AABB).get_center()
+	# The mean of the corners is inside a convex fragment. The centre of its
+	# bounds is not always: a stone cut on a slant has it on the cut, or out
+	# of the fragment, and the cut then kept the wrong part of the stone.
+	var inside := Vector3.ZERO
+	var corners := 0
+	for polygon: PackedVector3Array in faces:
+		for point: Vector3 in polygon:
+			inside += point
+			corners += 1
+	inside /= maxi(corners, 1)
 	for polygon: PackedVector3Array in faces:
 		if polygon.size() < 3 or not _is_cut_face(polygon, solid):
 			continue

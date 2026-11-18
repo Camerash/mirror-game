@@ -65,6 +65,21 @@ func _run() -> void:
 	var solid := {"source_bounds": bounds, "material_to_world":Transform3D.IDENTITY}
 	check(faces.any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Angled cap is identified for opaque cross-section shading")
 	check(not Display.box_faces(bounds).any(func(face: PackedVector3Array) -> bool: return game.world._is_cut_face(face, solid)), "Outer faces are not taken for cut faces")
+	# A corner cut off on a slant: the centre of its bounds lies on the cut.
+	# The drawing must keep the corner and drop the rest of the stone.
+	var corner := Display.clip(Display.box_faces(bounds), Plane(Vector3(1, 1, 0).normalized(), -0.4))
+	var corner_bounds := AABB(corner[0][0], Vector3.ZERO)
+	for face: PackedVector3Array in corner:
+		for point: Vector3 in face:
+			corner_bounds = corner_bounds.expand(point)
+	var corner_solid := {"faces": corner, "bounds": corner_bounds, "source_bounds": bounds, "material_to_world": Transform3D.IDENTITY}
+	var kept := func(point: Vector3) -> bool:
+		for cut: Vector4 in game.world._cuts(corner_solid):
+			if cut != Vector4() and Vector3(cut.x, cut.y, cut.z).dot(point) > cut.w:
+				return false
+		return true
+	check(kept.call(Vector3(-0.45, -0.45, 0.2)) and not kept.call(Vector3(0.3, 0.3, 0.0)) and not kept.call(Vector3(-0.2, -0.2, 0.0)),
+		"A stone cut on a slant draws the part the mirror keeps, not the rest")
 	var clip_view := WorldView.new()
 	root.add_child(clip_view)
 	clip_view.position = Vector3(5, 0, 0)
