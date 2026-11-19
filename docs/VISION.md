@@ -536,6 +536,16 @@ styles and words.
   body that hides what is behind it), the ground steps stay, and the
   height is in whole units and only on the stages whose idea is height
   (each stage file already has its own limits).
+- DECIDED (2026-11-20, owner: "But the height is a core part of the
+  puzzle's freedom"): the height stays a freedom of the mirror on every
+  stage. It is not removed and not limited to some stages. So the mirror
+  must show its own height and its own place on the ground. First engine
+  proof of that at phone size (a scratch script, nothing built): the two
+  side posts always reach the water, each post stands in a small mound of
+  snow, and the glass has a light body (0.14 in its middle, where today it
+  is 0.012). In a lift the feet stay and the glass goes up its posts; in a
+  move on the ground the feet go with it. For a half step the two are
+  still close in a still image; the motion is not yet proved.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
