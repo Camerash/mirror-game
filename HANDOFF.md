@@ -25,9 +25,11 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   the world goes dark and comes back at the move before (`_fail` in
   `game.gd`). A raise or a lower that takes her ground waits until the
   pane's edge is at her feet (`_direct_wait` in `game.gd`), so she does not
-  sink into a copy that is still drawn. Next, by the owner's decision: a
-  slide of the mirror locks to one ground axis (a rail), and the ball pad
-  of the turn knob goes (`docs/VISION.md`, "DECIDED 2026-11-19").
+  sink into a copy that is still drawn. The camera stays at 45 degrees and
+  the move control stays as it is (owner, 2026-11-20; the rail lock is
+  withdrawn). Next, by the owner's decision: the ball pad of the turn knob
+  goes. Open: how the mirror shows its place, because a lift and a move
+  back on the two ground axes look the same (`docs/VISION.md`).
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

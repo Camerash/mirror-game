@@ -498,7 +498,23 @@ styles and words.
   puzzle design, a first-time player) and the agent each gave the same
   answer: the result must depend only on where the mirror ends, and stage
   2 already says "Find a place that stays still".
-- DECIDED (2026-11-19, owner: "Yes. That is it."), not yet built: the move
+- WITHDRAWN (2026-11-20, owner: "Nah, then rather we use the current
+  control."): the rail lock below. At 45 degrees the rail lock keeps the
+  present gesture, hold the glass and slide on a diagonal, and only stops a
+  step on the other axis. The move control stays as it is. The owner's
+  words for the larger fault: the "player cannot visually distinguish a
+  mirror going up vs the mirror going a similar distance in both axis",
+  and "it is hard to tell visually about the mirror's position, until we
+  turn the camera angle". OPEN: how the mirror shows its place. Measured in
+  the engine at phone size (2026-11-20): a lift of a half unit and a move
+  back of a half unit on the two ground axes put the pane 4 points apart
+  on the screen. A proof tried three marks, with no decision yet: a line
+  where the pane's plane meets each top and the water, a stem at each
+  lower corner while the pane is above the water, and the mirror's two
+  boxes (what it reads, where it writes) laid on the water. The water is
+  the one flat surface that every stage has. The present contact seam is
+  white on the white tops, so it does not show there.
+- HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
   then moves along that axis only, and the lock stays until release. The
@@ -516,9 +532,7 @@ styles and words.
   at 20, where the stage also looks almost front-on. At 45 degrees each
   rail is a diagonal on the screen, 27 degrees from level, so the quarter
   of the screen that the slide goes into picks the rail, and a level slide
-  or an upright slide is a tie. OPEN: what a tie does. The agent's advice:
-  no pick and no move while the slide is near a tie; both rails stay lit
-  until the slide is clearly on one of them.
+  or an upright slide is a tie.
 - DECIDED (2026-11-19, owner: "The ball disc is a bit hard to use"), form
   not yet decided: the ball pad of the turn knob goes. All four views: one
   axis for each gesture, the stage stays in view, the steps show at the
