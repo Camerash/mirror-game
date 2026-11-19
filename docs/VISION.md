@@ -546,6 +546,28 @@ styles and words.
   is 0.012). In a lift the feet stay and the glass goes up its posts; in a
   move on the ground the feet go with it. For a half step the two are
   still close in a still image; the motion is not yet proved.
+- OPEN (2026-11-20), the owner's first intent: "The initial stage's blocks
+  and structures are initially intended to be floating, just like how
+  Monument Valley does it, and by extension, the mirror should be floating
+  as well. [...] If it does make sense, the water below can still stay or
+  be gone." The agent's view: floating fits this game better than the
+  standing mirror. "Together" floats 3 units above the water, and "Only
+  the ground" and "Together" each have a stone that hovers; on "Together"
+  the standing mirror needs posts 3 units long, which shows that the
+  standing form fits only the stages that touch the water. So the standing
+  mirror is withdrawn as the general answer. But Monument Valley floats
+  for two reasons that this game does not have: there the screen is the
+  truth (what looks joined is joined), and each part that moves is fixed
+  to the structure with one freedom. Here the depth is real and the view
+  turns. In one fixed view with no perspective, nothing can tell the
+  height of a free thing from its depth unless a surface below shows it.
+  So the agent's advice is to keep the water as the one floor of a world
+  that floats: each stone, copy and mirror has a soft shadow straight
+  below it on the water, the water then holds the plan of the stage, and
+  the height of a thing is its distance from its shadow. Not proved. Two
+  costs: the stages that stand in the water must float higher, and the
+  rule that an image in the water is gone 1.1 units up ("never taken for
+  ground") stays, so the sign is a shadow, not an image.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
