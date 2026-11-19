@@ -18,7 +18,8 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
 - Since 2026-11-19: the mirror reaches only `MirrorState.depth` along its
   normal (owner); each cut plane faces away from the mean of the fragment's
   corners, not the centre of its bounds; a drop shadow is the block's
-  footprint laid on the plane of each top below it.
+  footprint laid on the plane of each top below it. The pane is always 3×3
+  and the player has no size control (owner; `docs/VISION.md`).
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row
@@ -185,9 +186,9 @@ puzzles must stay at the front.
 | 1 | `13_first_steps` | First steps | walk; turn the view to find the goal |
 | 2 | `01_route` | A place to stand | make, move and place a mirror |
 | 3 | `08_reveal` | The path beneath | lowering the mirror restores the ground |
-| 4 | `11_aperture` | Only the ground | resize |
+| 4 | `11_aperture` | Only the ground | the frame decides what is copied: lower the mirror |
 | 5 | `14_turn` | Another way round | turn |
-| 6 | `15_together` | Together | turn, resize, a safe fall |
+| 6 | `15_together` | Together | turn, lower the mirror, a safe fall |
 
 Fixtures (`is_test`): `02`–`07`, `09`, `10`, `12_block_gallery`.
 

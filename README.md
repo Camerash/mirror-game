@@ -67,7 +67,7 @@ Level 2’s intended route: place the mirror at offset 1.5, walk to the end of t
 
 ## Bounded mirror workshop
 
-Open **Bounded mirror workshop** from the level list. Its three ledges, side obstacles, and absolute start and goal check bounded cuts, original geometry outside the aperture, side crossing, and absolute priority. A new panel is 3×3 units. Resize it locally from 1 to 6 whole units after release; the aperture extends without a depth limit. Removal discards placement and dimensions.
+Open **Bounded mirror workshop** from the level list. Its three ledges, side obstacles, and absolute start and goal check bounded cuts, original geometry outside the aperture, side crossing, and absolute priority. A new panel is 3×3 units. In the classic editor, resize it locally from 1 to 6 whole units after release; the aperture reaches as deep as its larger side. The game itself has no size control: the panel is always 3×3. Removal discards placement and dimensions.
 
 ## First art trial
 

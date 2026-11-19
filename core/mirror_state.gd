@@ -9,8 +9,9 @@ static func normal(state: Dictionary) -> Vector3:
 ## lies this deep behind it and replaces what lies this deep in front (owner,
 ## 2026-11-19: the cut-away is bounded by the width and height). A 3 x 3
 ## pane reaches 3.
-# ponytail: the larger side, while every pane is 3 x 3; the owner decides the
-# rule for an oblong pane with the size control.
+# ponytail: the larger side. In the game the pane is always 3 x 3 (owner,
+# 2026-11-19: no size control), so the box is a cube; only the classic editor
+# (debug) resizes. Decide the rule for an oblong pane if a stage needs one.
 static func depth(state: Dictionary) -> float:
 	return maxf(float(state.get("width", 3.0)), float(state.get("height", 3.0)))
 

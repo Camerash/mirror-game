@@ -435,8 +435,28 @@ styles and words.
   mirror copies from a box behind it and replaces the matching box in front,
   each as wide and high as the pane and as deep as its larger side (3 for
   the 3×3 pane). Before, the reach along the normal had no end, so the
-  mirror cut stones and drew seams far from the glass. OPEN: the depth of
-  an oblong pane; it goes with the question of the size control.
+  mirror cut stones and drew seams far from the glass. The depth of an
+  oblong pane is not decided, and it does not need to be: see the next
+  entry.
+- DECIDED (owner, 2026-11-19): "A: fixed 3×3". The pane is always 3×3 and
+  the player gets no size control, so the mirror always swaps one 3×3×3
+  box with another. The owner asked for an independent opinion first.
+  Three blind advisors (Opus; lenses: puzzle design, touch on a phone,
+  clarity of the rule) did not see the agent's recommendation. None chose a
+  size control for the player: lift and slide already select what Resize
+  did, a large pane wins most stages in one step, and the bar has no good
+  place for it. Two chose the fixed pane; one chose a size set by each
+  stage, which plays the same while every stage uses 3×3. The `width` and
+  `height` of a stage file stay unused, in reserve. If a stage needs another
+  size later, keep the pane square, so the frame still tells all three
+  sizes of the box. The risk the advisors named: gaps of 3 and towers of 3
+  can make stages feel the same, so the variety must come from the world
+  (absolutes, safe falls, a flat pane, a second mirror).
+- FOUND (2026-11-19, the rule-clarity advisor; checked): nothing shows how
+  far the mirror reaches. The guides along its normal have an alpha of
+  0.005 and fade within about 2.7 units (`world/mirror_guides.gdshader`).
+  The player learns the depth only from results. This goes with the doubt
+  of 2026-11-16 below and with how the mirror appears.
 - FOUND (2026-11-19, the owner's seven screenshots of `01_route`): all had a
   pane on a diagonal. Two faults in the drawing, both fixed: a stone cut on a
   slant was drawn on the wrong side of its cut, and drop shadows were boxes
