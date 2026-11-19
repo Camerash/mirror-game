@@ -51,51 +51,8 @@ func _run() -> void:
 		check(Display.volume(fragment["faces"]) > Display.EPS, "Arbitrary fragments have volume")
 		for absolute: Dictionary in level["absolutes"]:
 			check(Display.volume(Display.intersect(fragment["faces"], Display.box_planes(Geometry.box(absolute)))) < 0.001, "Arbitrary fragments respect absolute priority")
-	_check_carried()
 	print("Display geometry: %d checks, %d failures" % [checks, failures])
 	quit(0 if failures == 0 else 1)
-
-func _route_mirror(level: Dictionary, pivot: Vector3, degrees: float) -> Dictionary:
-	var state: Dictionary = level["mirror"].duplicate(true)
-	state.merge({"enabled": true, "pivot": pivot, "yaw": deg_to_rad(degrees), "pitch": 0.0, "source_sign": 1}, true)
-	return Rules.sync(state)
-
-func _check_carried() -> void:
-	## The traveller goes with the copy she stands on (owner, 2026-11-18).
-	## In `01_route` a mirror at x 2.5 copies the platforms (x -0.5 to 2.5) to
-	## x 2.5 to 4.5; an absolute platform is at x 4.5 to 5.5.
-	var level := Levels.load_level("res://levels/01_route.json")
-	var before := _route_mirror(level, Vector3(2.5, 0, 0), 90)
-	var solids := Geometry.generate(level, before)
-	var on_copy := Vector3(3.5, 0, 0)
-	var slid := _route_mirror(level, Vector3(4, 0, 0), 90)
-	check(Geometry.carried(on_copy, before, solids, slid, Geometry.generate(level, slid)).is_equal_approx(Vector3(6.5, 0, 0)),
-		"Carried: a slide of 1.5 takes her 3 along with her copy")
-	var turned := _route_mirror(level, Vector3(2.5, 0, 0), 45)
-	check(Geometry.carried(on_copy, before, solids, turned, Geometry.generate(level, turned)).distance_to(Vector3(2.5, 0, 1)) < 0.001,
-		"Carried: a turn of 45 degrees takes her a quarter circle round the pivot")
-	# At 3.25 her part of the copy would be in the absolute platform, which has
-	# the same height. That platform is then her floor.
-	var onto := _route_mirror(level, Vector3(3.25, 0, 0), 90)
-	check(Geometry.carried(on_copy, before, solids, onto, Geometry.generate(level, onto)).is_equal_approx(Vector3(5, 0, 0)),
-		"Carried: she rides onto a fixed block that stands where her copy would be")
-	var far := _route_mirror(level, Vector3(5.5, 0, 0), 90)
-	check(Geometry.carried(on_copy, before, solids, far, Geometry.generate(level, far)).is_equal_approx(on_copy),
-		"Carried: she stays when the new mirror no longer copies her block")
-	check(Geometry.carried(Vector3(1, 0, 0), before, solids, slid, Geometry.generate(level, slid)).is_equal_approx(Vector3(1, 0, 0)),
-		"Carried: ground that does not move holds her")
-	# The caller gives the place where the copy left her (owner, 2026-11-19).
-	var left := Vector3(6, 0, 0)
-	check(Geometry.carried(on_copy, before, solids, far, Geometry.generate(level, far), left) == left
-		and Geometry.carried(on_copy, before, solids, far, Geometry.generate(level, far), Geometry.DROPPED) == Geometry.DROPPED,
-		"Carried: when her copy leaves her, the result is the place that the caller gives")
-	check(Geometry.carried(on_copy, before, solids, slid, Geometry.generate(level, slid), left).is_equal_approx(Vector3(6.5, 0, 0))
-		and Geometry.carried(Vector3(1, 0, 0), before, solids, far, Geometry.generate(level, far), left).is_equal_approx(Vector3(1, 0, 0)),
-		"Carried: that place is not used while her copy holds her, or on ground that does not move")
-	var lowered := slid.duplicate(true)
-	lowered["enabled"] = false
-	check(Geometry.carried(on_copy, before, solids, lowered, Geometry.generate(level, lowered)).is_equal_approx(on_copy),
-		"Carried: she stays when the mirror is lowered")
 
 func _volumes(solids: Array[Dictionary]) -> Dictionary:
 	var result := {}

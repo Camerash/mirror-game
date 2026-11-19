@@ -107,9 +107,6 @@ var _direct_event := ""
 ## until the edge passes her feet (owner, 2026-11-19: she fell into a copy
 ## that was still drawn).
 var _direct_wait := 0.0
-## The last shown state of the mirror in which her copy held the traveller.
-## Empty when the copy has left her, and when a preview opens.
-var _held_state: Dictionary = {}
 var resize_controls := Resize.new()
 var resizing := false
 var resize_origin: Dictionary = {}
@@ -723,7 +720,6 @@ func _open_direct_preview(proposal: Dictionary) -> bool:
 	_direct_event = ""
 	_direct_wait = 0.0
 	preview_origin = _snapshot()
-	_held_state.clear()
 	preview = MirrorRules.normalized(proposal)
 	edit_mode = "move"
 	walker.paused = true
@@ -905,7 +901,6 @@ func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():
 		return
 	preview_origin = _snapshot()
-	_held_state.clear()
 	preview = MirrorRules.normalized(proposal)
 	edit_mode = "move"
 	walker.paused = true
@@ -1160,12 +1155,10 @@ func _execute_pending() -> void:
 	if command["action"] == "apply":
 		history.append(preview_origin.duplicate(true))
 		var applied: Dictionary = command["mirror"]
-		# She goes with the copy she stands on.
-		# The preview has put her where the copy left her, if it left her.
-		var feet := Geometry.carried(preview_origin["position"], mirror, solids, applied, Geometry.generate(level, applied), walker.position)
 		# A lowered direct mirror keeps its place for the next raise.
 		mirror = applied if applied["enabled"] or direct_controls else {"enabled": false}
-		walker.restore(feet, preview_origin["velocity"])
+		# She keeps her place in the world (owner, 2026-11-19: no riding).
+		walker.restore(preview_origin["position"], preview_origin["velocity"])
 		phase = "play"
 		status = "Mirror changed. Find your next path."
 		var event := str(command.get("event", ""))
@@ -1209,9 +1202,6 @@ func _display_state() -> Dictionary:
 
 func _update_preview() -> void:
 	var proposed := Geometry.generate(level, _display_state())
-	# She rides the copy she stands on, so she shows where the change takes her.
-	var feet := _ridden(_display_state(), proposed)
-	walker.position = feet
 	world.draw_world(proposed)
 	world.draw_hidden(Geometry.hidden(level, _display_state()))
 	world.draw_hover(PackedVector3Array())
@@ -1219,38 +1209,9 @@ func _update_preview() -> void:
 	# The direct controls apply every change, so they predict nothing and show
 	# no fall before it happens (owner, 2026-11-18).
 	if not _manipulating() and not direct_controls:
-		prediction_revision = predictor.predict(proposed, feet, preview_origin["velocity"], float(level["kill_y"]))
+		prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
 	status = "Checking the landing…"
 	_refresh()
-
-## Where the shown mirror `state` puts the traveller. Her copy carries her.
-## When the copy leaves her (the pane's frame no longer has her part of the
-## stone, or the copy is not a floor there), she keeps the last place where it
-## held her, and she falls from there when the change applies (owner,
-## 2026-11-19: "Fall where copy left").
-func _ridden(state: Dictionary, proposed: Array[Dictionary]) -> Vector3:
-	var origin: Vector3 = preview_origin.get("position", walker.position)
-	var feet := Geometry.carried(origin, mirror, solids, state, proposed, Geometry.DROPPED)
-	if feet != Geometry.DROPPED:
-		_held_state = state.duplicate(true)
-		return feet
-	feet = walker.position
-	# The copy left her between the last shown state that held her and this
-	# one. Halve that step to find the place, so that the place does not change
-	# with the frame rate.
-	if not _held_state.is_empty() and state.get("enabled", false):
-		var low := 0.0
-		var high := 1.0
-		for index: int in 12:
-			var between := Targets.interpolate(_held_state, state, (low + high) * 0.5)
-			var place := Geometry.carried(origin, mirror, solids, between, Geometry.generate(level, between), Geometry.DROPPED)
-			if place == Geometry.DROPPED:
-				high = (low + high) * 0.5
-			else:
-				low = (low + high) * 0.5
-				feet = place
-	_held_state.clear()
-	return feet
 
 func _prediction_ready(result: Dictionary) -> void:
 	if phase != "preview" or int(result["revision"]) != prediction_revision:

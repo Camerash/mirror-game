@@ -314,12 +314,11 @@ func check_direct_route() -> void:
 	await slide(0, 2.0)
 	check(await walk_to(Vector3(3.5, 0, 0)), "Direct route: the traveller stands on the copy")
 	var steps: int = game.history.size()
+	# She keeps her place in the world (owner, 2026-11-19: no riding). The copy
+	# goes from under her, so she falls, and the rest platform is needed.
 	await slide(0, 1.5)
-	await direct_fall()
-	check(game.phase == "play" and pivot_is(Vector3(4, 0, 0)) and game.history.size() == steps + 1
-		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.22, "Direct route: the traveller rides the copy when the mirror slides")
-	# Known since the riding rule: the rest platform is no longer needed.
-	check(await walk_to(goal_point()), "Direct route: from the copy that carried her, the goal is one walk away")
+	check(await fall_and_return() and pivot_is(Vector3(2.5, 0, 0)) and game.history.size() == steps
+		and game.walker.position.distance_to(Vector3(3.5, 0, 0)) < 0.22, "Direct route: a slide that takes the copy from under her drops her, and the stage comes back at the move before")
 
 
 func check_direct_reveal() -> void:

@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: she falls from the place where her copy left her — 2026-11-19
+# Latest check: riding is removed — 2026-11-19
+
+- Why: the owner, after play on the phone: riding "creates quite a chaotic and stage breaking behaviour"; then "remove the riding". Three blind advisors (general-purpose agents on Opus: touch interaction, puzzle design, a first-time player) and the agent each gave the same answer before the decision.
+- Change: `Geometry.carried` and `DROPPED` are removed from `core/world_geometry.gd`; `_ridden` and `_held_state` are removed from `game.gd`. `_update_preview` no longer moves her, and `_execute_pending` puts her back at her place of before the change. She keeps her place in the world; when the change applies and no floor is under her, she falls. The two checks below this one describe rules that are now history.
+- Kept: every change applies; a real fall goes dark and comes back at the move before; a block that comes onto her ends the same way; a raise or a lower that takes her ground waits until the pane's edge is at her feet (`_direct_wait`).
+- Tests, all 27 files, no failure but the old one in `legal_angles_tests` ("Native capsule crosses uphill joint at 45 degrees"): `direct_controls_tests` 82 (changed: she keeps her place while the copy moves under the finger; a slide that takes the copy from under her drops her, and the stage comes back at the move before; the checks for the place where the copy left her are removed), `level_solvability_tests` 67 (changed: in `01_route` a slide with her on the copy drops her, so the rest platform is needed again), `display_geometry_tests` 4174 (the riding checks are removed; the file is as before the riding rule), `run_tests` 804, `continuous_controls_tests` 27, `extent_tests` 68, `app_flow_tests` 88, `prompt_tests` 94, `mirror_bar_tests` 67, and the others as before.
+- Not checked: the phone (the build on the owner's phone is commit `c53929c`, which still has riding); no new image, because the change takes a behaviour away.
+- Decided in the same talk, not yet built: the move control becomes a rail lock, and the ball pad of the turn knob goes (`docs/VISION.md`).
+
+# Earlier check: she falls from the place where her copy left her — 2026-11-19
 
 - Why: the owner's decision on the open point of the check below: "Fall where copy left".
 - Before: when a slide or a turn took her part of the stone out of the pane's frame, she went back to her start place in one frame, stayed in the air there, and fell from there on the release.

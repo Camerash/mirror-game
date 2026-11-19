@@ -490,6 +490,36 @@ styles and words.
   place (a wall stands there, or a tilt makes the face too steep); the copy
   takes her again if the mirror comes back while the finger is down; the
   place depends on the way the mirror went, not only on where it ends.
+- DECIDED (2026-11-19, owner, after play on the phone: riding "creates
+  quite a chaotic and stage breaking behaviour"; then "remove the riding")
+  and BUILT: she no longer rides her copy. She keeps her place in the
+  world, and falls when the change applies and no floor is under her. The
+  two entries above are history. Three blind advisors (touch interaction,
+  puzzle design, a first-time player) and the agent each gave the same
+  answer: the result must depend only on where the mirror ends, and stage
+  2 already says "Find a place that stays still".
+- DECIDED (2026-11-19, owner: "Yes. That is it."), not yet built: the move
+  control is a rail lock. A slide that starts on the glass picks the
+  nearest of the two ground axes in its first points of travel, the mirror
+  then moves along that axis only, and the lock stays until release. The
+  owner's words for the fault: "panning right now moves the mirror in user
+  unintended direction, making movement not confident". Cause, calculated:
+  the ground is seen at 30 degrees, so a finger move up or down counts
+  twice as much as a move sideways; a slip of 8 to 12 points steps both
+  axes. All four views agreed. The owner also considers a camera that is
+  not at 45 degrees to the ground axes.
+- DECIDED (2026-11-19, owner: "The ball disc is a bit hard to use"), form
+  not yet decided: the ball pad of the turn knob goes. All four views: one
+  axis for each gesture, the stage stays in view, the steps show at the
+  mirror. OPEN: the facings. The puzzle advisor and the agent: quarter
+  turns by a tap, and one control to lay the pane flat (the tested routes
+  of the six stages use quarter turns only, with no tilt). The other two
+  advisors: 45 degree steps by a slide.
+- OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
+  depends on how we achieve it. Don't want it to hinder the puzzle
+  experience." OPEN: what a block that comes onto her does (now: dark, then
+  back; two advisors asked for a rule). OPEN: with no riding, the copy
+  slides under her feet again while the finger is down.
 - FOUND (2026-11-19, the rule-clarity advisor; checked): nothing shows how
   far the mirror reaches. The guides along its normal have an alpha of
   0.005 and fade within about 2.7 units (`world/mirror_guides.gdshader`).

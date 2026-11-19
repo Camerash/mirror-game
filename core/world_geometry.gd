@@ -175,49 +175,6 @@ static func supported(feet: Vector3, solids: Array[Dictionary], inset := 0.0) ->
 			return true
 	return false
 
-## A place that no traveller has. Give it to `carried` as `left` to learn that
-## her copy left her.
-const DROPPED := Vector3.INF
-
-## Where a change of the mirror takes the traveller (owner, 2026-11-18: she
-## stays on the block she stands on). `solids` is the world of the mirror
-## `before`, and `proposed` the world of the mirror `after`. A copy moves with
-## its mirror: a point on it goes back through the old mirror to its source,
-## then out through the new one. She goes with her copy only while the new
-## mirror still copies the place she stands on and there is a floor under her
-## there: her copy, or a block that does not move and stands where that part
-## of the copy would be. If she stands on ground that does not move, she stays
-## at `feet`. If her copy does not hold her at the new place, the result is
-## `left`: the place where the copy left her (owner, 2026-11-19: "Fall where
-## copy left"). The caller knows that place; with none given, it is `feet`.
-static func carried(feet: Vector3, before: Dictionary, solids: Array[Dictionary], after: Dictionary, proposed: Array[Dictionary], left := feet) -> Vector3:
-	if not (before.get("enabled", false) and before.has("pivot")):
-		return feet
-	var on_copy := false
-	for solid: Dictionary in solids:
-		var one: Array[Dictionary] = [solid]
-		if not supported(feet, one):
-			continue
-		if solid["kind"] != "reflected":
-			return feet
-		on_copy = true
-	if not on_copy:
-		return feet
-	if not (after.get("enabled", false) and after.has("pivot")):
-		return left
-	var back := Polygons.reflection_through(before["pivot"], MirrorRules.normal(before))
-	# A point just below her feet is in her copy, so its source is in the stone.
-	var inside := back * (feet + Vector3.DOWN * 0.05)
-	for plane: Plane in Polygons.column(after["pivot"], MirrorRules.frame(after), after, false):
-		if plane.distance_to(inside) > EPS:
-			return left
-	var moved := Polygons.reflection_through(after["pivot"], MirrorRules.normal(after)) * (back * feet)
-	for point: Vector3 in Queries.floor_points(moved.x, moved.z, proposed):
-		# A slope lifts the capsule's lowest point a little above the face.
-		if absf(point.y - moved.y) < 0.1:
-			return point
-	return left
-
 static func walkable(feet: Vector3, solids: Array[Dictionary]) -> bool:
 	if has_polygons(solids):
 		return Queries.walkable(feet, solids)

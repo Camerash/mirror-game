@@ -222,7 +222,7 @@ func run() -> void:
 	await check_freedom_sign()
 	await check_buried_comes_back()
 	await check_first_raise_follows_her_look()
-	await check_ride_and_fall()
+	await check_stay_and_fall()
 	await check_camera_stays()
 	await check_keyboard()
 	await check_classic_toggle()
@@ -494,10 +494,11 @@ func check_buried_comes_back() -> void:
 		and game.walker.position.distance_to(Vector3(4, 0, -1)) < 0.25, "Buried: the stage goes dark and comes back at the move before")
 
 
-func check_ride_and_fall() -> void:
-	## She stands on a copy. A drag of the mirror takes her with the copy and
-	## shows no fall ghost. Lowering the mirror drops her for real: the stage
-	## goes dark and comes back at the move before (owner, 2026-11-18).
+func check_stay_and_fall() -> void:
+	## She stands on a copy. A drag of the mirror shows no fall ghost, and she
+	## keeps her place in the world (owner, 2026-11-19: no riding). When the
+	## change takes the copy from under her, she falls for real: the stage goes
+	## dark and comes back at the move before (owner, 2026-11-18).
 	await load_stage("01_route")
 	await press_mirror_button()
 	await slide(0, 2.0)
@@ -507,7 +508,8 @@ func check_ride_and_fall() -> void:
 			break
 		await process_frame
 	await frames(3)
-	check(walked, "Ride: the traveller walks out onto the copy")
+	check(walked, "Stay: the traveller walks out onto the copy")
+	var place: Vector3 = game.walker.position
 	var start: Vector2 = game.bar.centre
 	var finish: Vector2 = start + travel(Vector3(1.5, 0, 0))
 	game.begin_grip("move", start)
@@ -515,19 +517,18 @@ func check_ride_and_fall() -> void:
 		game.grip_to(start.lerp(finish, step / 12.0))
 		await process_frame
 	await frames(40)
-	check(game.dragging and not game.preview_view.ghost.visible and game.prediction["status"] == "pending", "Ride: mid-drag, nothing predicts or shows a fall")
-	check(game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Ride: she goes with the copy while the finger is down")
+	check(game.dragging and not game.preview_view.ghost.visible and game.prediction["status"] == "pending", "Stay: mid-drag, nothing predicts or shows a fall")
+	check(game.walker.position.is_equal_approx(place), "Stay: she keeps her place while the copy moves under the finger")
 	game.grip_to(start)
 	await frames(30)
 	game.end_grip("move")
 	await direct_settled()
-	check(pivot().is_equal_approx(Vector3(2.5, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(Vector3(3.5, 0, 0)) < 0.25,
-		"Ride: dragging back and letting go changes nothing")
-	await slide(0, 1.5)
-	await direct_settled()
-	check(pivot().is_equal_approx(Vector3(4, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25,
-		"Ride: letting go at the new place leaves her on the copy there")
+	check(pivot().is_equal_approx(Vector3(2.5, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(place) < 0.05,
+		"Stay: dragging back and letting go changes nothing")
 	var steps: int = game.history.size()
+	await slide(0, 1.5)
+	check(await fall_and_return() and pivot().is_equal_approx(Vector3(2.5, 0, 0)) and game.history.size() == steps
+		and game.walker.position.distance_to(place) < 0.25, "Fall: a slide that takes the copy from under her drops her; the stage goes dark and comes back at the move before")
 	game.toggle_mirror()
 	# The copy is cut away from the top down with the pane's edge. It holds her
 	# until the edge is at her feet, which are at the pane's middle here.
@@ -540,41 +541,8 @@ func check_ride_and_fall() -> void:
 		await process_frame
 	check(waits and still, "Fall: the sinking copy holds her until the pane's edge is at her feet")
 	check(await fall_and_return() and bool(game.mirror.get("enabled", false)) and game.history.size() == steps
-		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Fall: lowering the mirror under her drops her; the stage goes dark and comes back at the move before")
+		and game.walker.position.distance_to(place) < 0.25, "Fall: lowering the mirror under her drops her; the stage goes dark and comes back at the move before")
 	check(game.dark_veil.size.is_equal_approx(root.get_visible_rect().size), "Fall: the dark covers the whole screen")
-	# A turn takes her part of the stone out of the pane's frame. The frame is
-	# 3 wide and her source point is about 2.5 from the pivot, so the frame's
-	# edge passes it at a turn of about 37 degrees. She keeps the place where
-	# the copy left her and falls from there (owner, 2026-11-19).
-	var yaw: float = game.mirror["yaw"]
-	var source: Vector3 = game.walker.position
-	source.x = 2.0 * pivot().x - source.x
-	var low := 0.0
-	var high := deg_to_rad(45)
-	for index: int in 30:
-		var middle := (low + high) * 0.5
-		if absf((source - pivot()).dot(Vector3.RIGHT.rotated(Vector3.UP, yaw + middle))) < 1.5:
-			low = middle
-		else:
-			high = middle
-	var normal := Vector3.BACK.rotated(Vector3.UP, yaw + low)
-	var left: Vector3 = source - 2.0 * (source - pivot()).dot(normal) * normal
-	game.begin_grip("turn", game.bar.centre)
-	game.aim_to(yaw + deg_to_rad(45), float(game.mirror["pitch"]))
-	await frames(40)
-	check(game.pointing and game.walker.position.distance_to(left) < 0.02
-		and not Queries.supported(game.walker.position, WorldGeometry.generate(game.level, game._display_state())),
-		"Left: when a turn takes her part out of the frame, she stays where the copy left her")
-	game.end_grip("turn")
-	for index: int in 600:
-		if game.phase == "play":
-			break
-		await process_frame
-	await frames(12)
-	var feet: Vector3 = game.walker.position
-	check(Vector2(feet.x, feet.z).distance_to(Vector2(left.x, left.z)) < 0.02 and feet.y < -0.01, "Left: she falls from that place when the turn applies")
-	check(await fall_and_return() and is_equal_approx(float(game.mirror["yaw"]), yaw) and game.history.size() == steps
-		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Left: the fall goes dark and comes back at the move before")
 	await load_stage("01_route")
 	game.toggle_mirror()
 	check(game.phase == "preview" and game._direct_wait == 0.0, "Raise: a raise that leaves her ground as it is does not wait for the pane")
