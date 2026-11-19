@@ -506,8 +506,19 @@ styles and words.
   unintended direction, making movement not confident". Cause, calculated:
   the ground is seen at 30 degrees, so a finger move up or down counts
   twice as much as a move sideways; a slip of 8 to 12 points steps both
-  axes. All four views agreed. The owner also considers a camera that is
-  not at 45 degrees to the ground axes.
+  axes. All four views agreed.
+- DECIDED (2026-11-20, owner: "Keep 45."): the camera stays at 45 degrees
+  to the ground axes. The owner considered other angles. Engine proof at
+  phone size (2026-11-19, four angles, each with its quarter turn): a level
+  slide is 0 degrees from a tie between the rails at 45, 8 at 35, 12 at 30
+  and 22 at 20. Away from 45 the four views fit at different sizes: a long
+  stage changes size 1.5 times at a camera turn at 30 degrees and 2 times
+  at 20, where the stage also looks almost front-on. At 45 degrees each
+  rail is a diagonal on the screen, 27 degrees from level, so the quarter
+  of the screen that the slide goes into picks the rail, and a level slide
+  or an upright slide is a tie. OPEN: what a tie does. The agent's advice:
+  no pick and no move while the slide is near a tie; both rails stay lit
+  until the slide is clearly on one of them.
 - DECIDED (2026-11-19, owner: "The ball disc is a bit hard to use"), form
   not yet decided: the ball pad of the turn knob goes. All four views: one
   axis for each gesture, the stage stays in view, the steps show at the
