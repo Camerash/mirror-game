@@ -1,7 +1,19 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: she does not sink into a copy that moves — 2026-11-19
+# Latest check: she falls from the place where her copy left her — 2026-11-19
+
+- Why: the owner's decision on the open point of the check below: "Fall where copy left".
+- Before: when a slide or a turn took her part of the stone out of the pane's frame, she went back to her start place in one frame, stayed in the air there, and fell from there on the release.
+- Change (`Geometry.carried` in `core/world_geometry.gd`; `_ridden`, `_update_preview` and `_execute_pending` in `game.gd`): `carried` now takes the place where the copy left her and gives it back when the copy does not hold her at the new place. The game gives her shown place. In the frame in which the copy leaves her, the game halves the step between the last shown state that held her and the new state (12 times) and keeps the last place where the copy held her. Thus the place does not change with the frame rate. While the finger is down she stays in the air there; the copy takes her again if the mirror comes back; the change applies with her at that place, and she falls.
+- Agent decisions: the same rule applies when the copy is not a floor at the new place (a wall stands there, or a tilt makes the face too steep). The place depends on the way the mirror went, not only on where it ends.
+- Measured (scratch probe, 60 frames a second, `01_route`, she is at 6.5 on the copy, the mirror at 4 turns 45°): she rides the arc (6.30, −0.99), (5.77, −1.77), (5.11, −2.24), then stays at (4.6998, 0, −2.4001). The rule gives (4.7, 0, −2.4): the frame is 3 wide and her source point is 2.5 from the pivot, so the edge passes it at a turn of 36.87°. On the release she falls from that place, with x and z constant.
+- Tests, all 27 files: `direct_controls_tests` 85 (new: she stays where the copy left her; she falls from that place; the fall goes dark and comes back at the move before), `display_geometry_tests` 4182 (new: the result is the place that the caller gives; that place is not used while the copy holds her or on ground that does not move), `level_solvability_tests` 68, `run_tests` 803, `extent_tests` 68, `app_flow_tests` 88, `prompt_tests` 94, `mirror_bar_tests` 67, and the others as before. `legal_angles_tests` has its old failure.
+- One failure in the suite run, not seen again: `continuous_controls_tests`, "Ground drag display reaches its selected target". The file then passed 20 times in a row when run alone. The check waits 0.12 s of clock time for a motion of 0.10 s, so one slow frame can make it fail. That stage has no raised mirror before the preview, so the new code returns at its first line there. The test is not changed.
+- Checked in the engine at 428 × 926 points: `test-output/polish/rules/left-sheet.jpg` (on the copy; she rides the turn; near the frame's edge; the copy has left her and she stays in the air; she falls from there; back at the move before).
+- Not checked: the phone; a slide that leaves her in the air (in `01_route` a slide to the right puts her on the goal platform, by the rule of the check below); a tilt; the classic editor.
+
+# Earlier check: she does not sink into a copy that moves — 2026-11-19
 
 - Why: the owner's report from play: "Can you check her collision with the parts when the part is moving? Seems now when the mirror is deactivated, she rode down the part with her body clipped inside the part a bit".
 - Measured first (scratch probe, 60 frames a second, `01_route`, she stands on the copy at 3.5 and the mirror is lowered): the collision changed in the frame of the tap, but the pane's edge cuts the copy away over 0.8 s. She fell at once and was as much as 0.63 inside the copy that was still drawn (at 0.42 s).

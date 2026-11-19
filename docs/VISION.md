@@ -481,11 +481,15 @@ styles and words.
   Found in the same check and fixed: a copy that passed through a fixed
   block of the same height sent her back to her start place for those
   frames. That block is now her floor.
-- OPEN (2026-11-19), found in the same check, not changed: when a slide or a
-  turn takes her part of the stone out of the pane's frame, she goes back
-  to her start place in one frame and stays in the air there until the
-  release. Then she falls. The owner decides if she must fall from the
-  place where the copy left her.
+- DECIDED (2026-11-19, owner: "Fall where copy left") and BUILT: when a
+  slide or a turn takes her part of the stone out of the pane's frame, she
+  keeps the last place where the copy held her. While the finger is down
+  she stays in the air there; when the change applies, she falls from
+  there. Before, she went back to her start place in one frame. AGENT
+  DECISIONS: the same rule applies when the copy is not a floor at the new
+  place (a wall stands there, or a tilt makes the face too steep); the copy
+  takes her again if the mirror comes back while the finger is down; the
+  place depends on the way the mirror went, not only on where it ends.
 - FOUND (2026-11-19, the rule-clarity advisor; checked): nothing shows how
   far the mirror reaches. The guides along its normal have an alpha of
   0.005 and fade within about 2.7 units (`world/mirror_guides.gdshader`).

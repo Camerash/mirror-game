@@ -84,6 +84,14 @@ func _check_carried() -> void:
 		"Carried: she stays when the new mirror no longer copies her block")
 	check(Geometry.carried(Vector3(1, 0, 0), before, solids, slid, Geometry.generate(level, slid)).is_equal_approx(Vector3(1, 0, 0)),
 		"Carried: ground that does not move holds her")
+	# The caller gives the place where the copy left her (owner, 2026-11-19).
+	var left := Vector3(6, 0, 0)
+	check(Geometry.carried(on_copy, before, solids, far, Geometry.generate(level, far), left) == left
+		and Geometry.carried(on_copy, before, solids, far, Geometry.generate(level, far), Geometry.DROPPED) == Geometry.DROPPED,
+		"Carried: when her copy leaves her, the result is the place that the caller gives")
+	check(Geometry.carried(on_copy, before, solids, slid, Geometry.generate(level, slid), left).is_equal_approx(Vector3(6.5, 0, 0))
+		and Geometry.carried(Vector3(1, 0, 0), before, solids, far, Geometry.generate(level, far), left).is_equal_approx(Vector3(1, 0, 0)),
+		"Carried: that place is not used while her copy holds her, or on ground that does not move")
 	var lowered := slid.duplicate(true)
 	lowered["enabled"] = false
 	check(Geometry.carried(on_copy, before, solids, lowered, Geometry.generate(level, lowered)).is_equal_approx(on_copy),

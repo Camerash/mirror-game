@@ -542,6 +542,39 @@ func check_ride_and_fall() -> void:
 	check(await fall_and_return() and bool(game.mirror.get("enabled", false)) and game.history.size() == steps
 		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Fall: lowering the mirror under her drops her; the stage goes dark and comes back at the move before")
 	check(game.dark_veil.size.is_equal_approx(root.get_visible_rect().size), "Fall: the dark covers the whole screen")
+	# A turn takes her part of the stone out of the pane's frame. The frame is
+	# 3 wide and her source point is about 2.5 from the pivot, so the frame's
+	# edge passes it at a turn of about 37 degrees. She keeps the place where
+	# the copy left her and falls from there (owner, 2026-11-19).
+	var yaw: float = game.mirror["yaw"]
+	var source: Vector3 = game.walker.position
+	source.x = 2.0 * pivot().x - source.x
+	var low := 0.0
+	var high := deg_to_rad(45)
+	for index: int in 30:
+		var middle := (low + high) * 0.5
+		if absf((source - pivot()).dot(Vector3.RIGHT.rotated(Vector3.UP, yaw + middle))) < 1.5:
+			low = middle
+		else:
+			high = middle
+	var normal := Vector3.BACK.rotated(Vector3.UP, yaw + low)
+	var left: Vector3 = source - 2.0 * (source - pivot()).dot(normal) * normal
+	game.begin_grip("turn", game.bar.centre)
+	game.aim_to(yaw + deg_to_rad(45), float(game.mirror["pitch"]))
+	await frames(40)
+	check(game.pointing and game.walker.position.distance_to(left) < 0.02
+		and not Queries.supported(game.walker.position, WorldGeometry.generate(game.level, game._display_state())),
+		"Left: when a turn takes her part out of the frame, she stays where the copy left her")
+	game.end_grip("turn")
+	for index: int in 600:
+		if game.phase == "play":
+			break
+		await process_frame
+	await frames(12)
+	var feet: Vector3 = game.walker.position
+	check(Vector2(feet.x, feet.z).distance_to(Vector2(left.x, left.z)) < 0.02 and feet.y < -0.01, "Left: she falls from that place when the turn applies")
+	check(await fall_and_return() and is_equal_approx(float(game.mirror["yaw"]), yaw) and game.history.size() == steps
+		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Left: the fall goes dark and comes back at the move before")
 	await load_stage("01_route")
 	game.toggle_mirror()
 	check(game.phase == "preview" and game._direct_wait == 0.0, "Raise: a raise that leaves her ground as it is does not wait for the pane")
