@@ -473,6 +473,19 @@ styles and words.
   stage's lesson ("Rest, then rebuild the route") can be passed by. The
   other stages are not searched for such ways. A copy carries her at most 6
   from its source, because the mirror reaches 3.
+- FIXED (2026-11-19), after the owner's report in play: "when the mirror is
+  deactivated, she rode down the part with her body clipped inside the part
+  a bit". The collision changed at once, but the pane's edge cuts the copy
+  away over 0.8 s, so she fell into a copy that was still drawn. A raise or
+  a lower that takes her ground now waits until the edge is at her feet.
+  Found in the same check and fixed: a copy that passed through a fixed
+  block of the same height sent her back to her start place for those
+  frames. That block is now her floor.
+- OPEN (2026-11-19), found in the same check, not changed: when a slide or a
+  turn takes her part of the stone out of the pane's frame, she goes back
+  to her start place in one frame and stays in the air there until the
+  release. Then she falls. The owner decides if she must fall from the
+  place where the copy left her.
 - FOUND (2026-11-19, the rule-clarity advisor; checked): nothing shows how
   far the mirror reaches. The guides along its normal have an alpha of
   0.005 and fade within about 2.7 units (`world/mirror_guides.gdshader`).

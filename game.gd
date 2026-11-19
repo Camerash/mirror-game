@@ -46,6 +46,9 @@ const ADVANCE_PAUSE := 1.2
 const FALL_DARK := 0.22
 const FALL_LIGHT := 0.4
 const DARK := Color(0.04, 0.05, 0.07)
+## The physics steps from the apply of a change to the traveller's first move
+## after it: one to run the change and two for the world to settle.
+const APPLY_STEPS := 3
 ## The least drag, in screen units, that moves the mirror half a unit. Where
 ## the stage is drawn small (phones), a half step would otherwise be a few
 ## pixels; the mirror then moves slower than the finger.
@@ -99,6 +102,11 @@ var _direct_apply := false
 ## The tutorial event the pending direct apply reports; empty means the usual
 ## "confirm" or "remove".
 var _direct_event := ""
+## Seconds that a raise or a lower still waits before it applies. The mirror's
+## effect follows the pane's moving edge, so what holds the traveller is there
+## until the edge passes her feet (owner, 2026-11-19: she fell into a copy
+## that was still drawn).
+var _direct_wait := 0.0
 var resize_controls := Resize.new()
 var resizing := false
 var resize_origin: Dictionary = {}
@@ -656,6 +664,13 @@ func toggle_mirror() -> void:
 	if _open_direct_preview(proposal):
 		_direct_apply = true
 		_direct_event = event
+		# A change that takes her ground, or puts a block on her, waits for the
+		# pane's edge to pass her feet. Any other change applies at once.
+		var feet := walker.position
+		var proposed := Geometry.generate(level, preview)
+		if Geometry.supported(feet, solids) and (not Geometry.supported(feet, proposed) or Geometry.embedded(feet, proposed)):
+			var passed := clampf(inverse_lerp(middle - reach, middle + reach, up.dot(feet)), 0.0, 1.0)
+			_direct_wait = maxf(Motion.time_at("reveal", passed if proposal["enabled"] else 1.0 - passed) - float(APPLY_STEPS) / Engine.physics_ticks_per_second, 0.0)
 		# The pane disturbs the water where it rises or sinks.
 		ice.ring(proposal["pivot"])
 		if proposal["enabled"]:
@@ -703,6 +718,7 @@ func _open_direct_preview(proposal: Dictionary) -> bool:
 		return false
 	_direct_apply = false
 	_direct_event = ""
+	_direct_wait = 0.0
 	preview_origin = _snapshot()
 	preview = MirrorRules.normalized(proposal)
 	edit_mode = "move"
@@ -723,6 +739,9 @@ func _try_direct_apply() -> void:
 		cancel_preview()
 		return
 	if camera.busy:
+		return
+	if _direct_wait > 0.0:
+		_direct_wait -= get_physics_process_delta_time()
 		return
 	pending = {"action": "apply", "mirror": preview.duplicate(true), "event": _direct_event}
 	_direct_apply = false

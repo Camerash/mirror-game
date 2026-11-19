@@ -54,6 +54,21 @@ static func blend(host: Node, step: Callable, verb: String) -> Tween:
 	return motion
 
 
+## The seconds after which a `blend` of `verb` reaches `weight` (0 to 1), for
+## a rule that must keep step with a motion on screen. For a curve that only
+## rises.
+static func time_at(verb: String, weight: float) -> float:
+	var low := 0.0
+	var high := 1.0
+	for index: int in 24:
+		var middle := (low + high) * 0.5
+		if float(Tween.interpolate_value(0.0, 1.0, middle, 1.0, VERBS[verb][1], VERBS[verb][2])) < weight:
+			low = middle
+		else:
+			high = middle
+	return high * duration(verb)
+
+
 ## Fades a laid-out control in or out where it stands: for HUD controls,
 ## whose position the layout owns. Hiding sets `visible` false at the end.
 static func fade(item: Control, shown: bool) -> void:

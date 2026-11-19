@@ -74,6 +74,11 @@ func _check_carried() -> void:
 	var turned := _route_mirror(level, Vector3(2.5, 0, 0), 45)
 	check(Geometry.carried(on_copy, before, solids, turned, Geometry.generate(level, turned)).distance_to(Vector3(2.5, 0, 1)) < 0.001,
 		"Carried: a turn of 45 degrees takes her a quarter circle round the pivot")
+	# At 3.25 her part of the copy would be in the absolute platform, which has
+	# the same height. That platform is then her floor.
+	var onto := _route_mirror(level, Vector3(3.25, 0, 0), 90)
+	check(Geometry.carried(on_copy, before, solids, onto, Geometry.generate(level, onto)).is_equal_approx(Vector3(5, 0, 0)),
+		"Carried: she rides onto a fixed block that stands where her copy would be")
 	var far := _route_mirror(level, Vector3(5.5, 0, 0), 90)
 	check(Geometry.carried(on_copy, before, solids, far, Geometry.generate(level, far)).is_equal_approx(on_copy),
 		"Carried: she stays when the new mirror no longer copies her block")

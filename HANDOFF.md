@@ -23,8 +23,10 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   direct controls every change applies: she rides the copy she stands on
   (`Geometry.carried`), nothing predicts a fall, and a fall off the world
   goes dark and comes back at the move before (`_fail` in `game.gd`).
-  Riding lets her pass by the rest platform of `01_route`; the stages are
-  not yet designed for it.
+  A raise or a lower that takes her ground waits until the pane's edge is
+  at her feet (`_direct_wait` in `game.gd`), so she does not sink into a
+  copy that is still drawn. Riding lets her pass by the rest platform of
+  `01_route`; the stages are not yet designed for it.
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

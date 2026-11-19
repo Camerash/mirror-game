@@ -529,9 +529,26 @@ func check_ride_and_fall() -> void:
 		"Ride: letting go at the new place leaves her on the copy there")
 	var steps: int = game.history.size()
 	game.toggle_mirror()
+	# The copy is cut away from the top down with the pane's edge. It holds her
+	# until the edge is at her feet, which are at the pane's middle here.
+	var waits: bool = absf(game._direct_wait + float(game.APPLY_STEPS) / Engine.physics_ticks_per_second - Motion.time_at("reveal", 0.5)) < 0.001
+	var still := true
+	for index: int in 600:
+		if game.phase != "preview":
+			break
+		still = still and absf(game.walker.position.y) < 0.01
+		await process_frame
+	check(waits and still, "Fall: the sinking copy holds her until the pane's edge is at her feet")
 	check(await fall_and_return() and bool(game.mirror.get("enabled", false)) and game.history.size() == steps
 		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Fall: lowering the mirror under her drops her; the stage goes dark and comes back at the move before")
 	check(game.dark_veil.size.is_equal_approx(root.get_visible_rect().size), "Fall: the dark covers the whole screen")
+	await load_stage("01_route")
+	game.toggle_mirror()
+	check(game.phase == "preview" and game._direct_wait == 0.0, "Raise: a raise that leaves her ground as it is does not wait for the pane")
+	await direct_settled()
+	# The curve is flat at its ends, so the end has a tolerance.
+	check(is_equal_approx(Motion.time_at("reveal", 0.5), Motion.duration("reveal") * 0.5) and Motion.time_at("reveal", 0.0) < 0.001
+		and absf(Motion.time_at("reveal", 1.0) - Motion.duration("reveal")) < 0.001, "Motion: time_at gives the time of a weight on the reveal curve")
 
 
 func check_camera_stays() -> void:
