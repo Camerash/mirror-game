@@ -161,8 +161,9 @@ top down, and the ground returns from the top down. The owner can reverse it.
 
 **Falling.** Feeling: a drop, then a gentle catch; never punishing. Motion: a
 short, slightly slowed fall; she lands in a small puff of snow and crouches.
-A refused change: the fall plays as a ghost, the glass rings flat, and the
-mirror drifts back, with no sentence. Today: a hint in words.
+No change is refused (owner, 2026-11-18): a fall off the world is a real
+fall, the stage goes dark quickly, and it comes back at the move before, with
+no sentence. Today: built; the fall has no sound of its own and no snow.
 
 **Undo.** Feeling: time rewinds kindly. Motion: a quick reverse of the last
 change, with a soft breath of sound. An icon, not a word.
@@ -428,7 +429,8 @@ styles and words.
   (3) A change that makes her fall is applied: she falls through the
   level, the stage fades quickly to dark, and she comes back where she was
   before that change. The mirror no longer snaps back. (4) The fall-path
-  sign goes, because a fall is now shown as it happens.
+  sign goes, because a fall is now shown as it happens. Items 2 to 4 were
+  built on 2026-11-19; see the BUILT entry below.
 - DECIDED (owner, 2026-11-19, during the night's reflection fixes): "The
   cut away of existing structures should be bounded by width and height of
   the mirror", then "Yes, depth bounded by width and height". Built: the
@@ -452,6 +454,25 @@ styles and words.
   sizes of the box. The risk the advisors named: gaps of 3 and towers of 3
   can make stages feel the same, so the variety must come from the world
   (absolutes, safe falls, a flat pane, a second mirror).
+- BUILT (2026-11-19): the rule changes of 2026-11-18, in the owner's words
+  of that night: "1: Character stick to the current platform, move along
+  with it. 2: Falling will result in actually falling, and fade to black and
+  restart in previous move (No more invalid move and snap back to the
+  previous move automatically, which feels weird) 3: No more falling
+  indicators." With the direct controls every change applies. She goes with
+  the copy she stands on, also during the drag. A fall off the world goes
+  dark in 0.22 s and comes back at the move before. No ghost shows and
+  nothing is predicted. AGENT DECISIONS, for the owner to judge in play: a
+  change that puts a block on her ends as a fall does (dark, then back),
+  because no move is refused; she rides only while her copy is still a floor
+  under her at the new place, and stays if not; her facing does not turn
+  with the copy; the classic editor keeps its ghost.
+- FOUND (2026-11-19): riding is a new way to travel. In `01_route` she can
+  stand on the copy, slide the mirror from 2.5 to 4.0, ride from 3.5 to 6.5
+  and walk to the goal. The rest platform is no longer needed, so the
+  stage's lesson ("Rest, then rebuild the route") can be passed by. The
+  other stages are not searched for such ways. A copy carries her at most 6
+  from its source, because the mirror reaches 3.
 - FOUND (2026-11-19, the rule-clarity advisor; checked): nothing shows how
   far the mirror reaches. The guides along its normal have an alpha of
   0.005 and fade within about 2.7 units (`world/mirror_guides.gdshader`).

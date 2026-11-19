@@ -19,7 +19,12 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   normal (owner); each cut plane faces away from the mean of the fragment's
   corners, not the centre of its bounds; a drop shadow is the block's
   footprint laid on the plane of each top below it. The pane is always 3×3
-  and the player has no size control (owner; `docs/VISION.md`).
+  and the player has no size control (owner; `docs/VISION.md`). With the
+  direct controls every change applies: she rides the copy she stands on
+  (`Geometry.carried`), nothing predicts a fall, and a fall off the world
+  goes dark and comes back at the move before (`_fail` in `game.gd`).
+  Riding lets her pass by the rest platform of `01_route`; the stages are
+  not yet designed for it.
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

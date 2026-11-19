@@ -529,7 +529,8 @@ func _process(delta: float) -> void:
 	_dial_velocity = spring.y
 	if _dial != dial_before or _dial_velocity != 0.0:
 		moving = true
-	if _dialling():
+	# A stage that loads while the pad still closes has no mirror to follow.
+	if _dialling() and _state.has("pivot"):
 		# The ball rolls with the thumb, without steps; after the release it
 		# rolls to the facing the mirror took. A half turn takes the short way.
 		var target := Vector2(_pad_view.x + wrapf(_yaw() - _grip_yaw - _pad_view.x, -PI, PI), _pitch())

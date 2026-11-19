@@ -28,7 +28,7 @@ The game plays with the **direct controls** (trial 03 in `GAME_DESIGN.md`):
 | Cancel a drag | — | Escape |
 | Debug controls | Top-right gear, including **Classic editor** | — |
 
-Each change applies when the finger lifts. While it is down, the world shows the result and the fall ghost warns of a fall. Start a playtest from the title with **New game**: it clears the saved stage and the prompts already seen.
+Each change applies when the finger lifts; no move is refused. While the finger is down, the world shows the result. The traveller goes with the copy she stands on. If a change drops her off the world, or puts a block on her, the stage goes dark and comes back at the move before. Start a playtest from the title with **New game**: it clears the saved stage and the prompts already seen.
 
 ### Classic editor
 

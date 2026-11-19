@@ -40,10 +40,12 @@ const PrologueScene := preload("res://world/prologue.gd")
 const PropsScene := preload("res://world/place_props.gd")
 ## A moment of stillness at the goal before she moves on.
 const ADVANCE_PAUSE := 1.2
-## How long a refused fall's ghost stays on screen before the mirror goes back.
-const REFUSE_HOLD := 1.2
-## How long a fall stays on screen before the direct controls rewind it.
-const FAIL_REWIND := 1.0
+## A fall off the world with the direct controls (owner, 2026-11-18): the
+## stage goes dark quickly, the last change is taken back in the dark, and the
+## stage comes back. Seconds to go dark, and to come back.
+const FALL_DARK := 0.22
+const FALL_LIGHT := 0.4
+const DARK := Color(0.04, 0.05, 0.07)
 ## The least drag, in screen units, that moves the mirror half a unit. Where
 ## the stage is drawn small (phones), a half step would otherwise be a few
 ## pixels; the mirror then moves slower than the finger.
@@ -130,6 +132,8 @@ var hud := HUD.new()
 ## the placement guide's own internal 2D layers, for an app overlay.
 var overlay_canvas := CanvasLayer.new()
 var failure_veil := ColorRect.new()
+## The dark that a fall off the world brings with the direct controls.
+var dark_veil := ColorRect.new()
 var play_rect := Rect2()
 var dragging := false
 var drag_origin := Vector2.ZERO
@@ -290,6 +294,14 @@ func _setup_scene() -> void:
 	overlay_canvas.add_child(failure_veil)
 	failure_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	failure_veil.color = Color(0.8, 0.67, 0.57, 0)
+	# Above the bar and the guides, below the app's title and end card.
+	var dark_canvas := CanvasLayer.new()
+	dark_canvas.layer = 5
+	add_child(dark_canvas)
+	dark_canvas.add_child(dark_veil)
+	dark_veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dark_veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dark_veil.color = Color(DARK, 0.0)
 
 ## Hides every 2D overlay (the HUD and its prompt or hint card, the resize
 ## handles, the failure veil, the rotate/tilt rings, and the placement guide)
@@ -700,41 +712,20 @@ func _open_direct_preview(proposal: Dictionary) -> bool:
 	_update_preview()
 	return true
 
-## Commits a finished direct action once its prediction is in. An unchanged
-## mirror closes quietly; a blocked one goes back where it was.
+## Commits a finished direct action. An unchanged mirror closes quietly.
+## Every other change applies (owner, 2026-11-18): no move is refused and the
+## mirror never goes back by itself. What the change does to the traveller
+## then happens for real (`_execute_pending`, `_fail`).
 func _try_direct_apply() -> void:
 	if _manipulating() or sheet.is_transitioning() or not pending.is_empty():
 		return
 	if MirrorRules.same(preview, mirror):
 		cancel_preview()
 		return
-	var outcome := str(prediction.get("status", "idle"))
-	if outcome in ["pending", "idle"] or camera.busy:
+	if camera.busy:
 		return
-	if outcome in ["blocked", "unresolved"]:
-		cancel_preview()
-		hud.show_hint("A block would fill the traveller's place, so the mirror stays put.")
-		return
-	if outcome == "failure":
-		_refuse_fall()
-		return
-	var event := _direct_event
-	if apply_preview():
-		pending["event"] = event
-		_direct_apply = false
-
-## A change that would drop the traveller off the world is never applied.
-## The preview stays long enough for the ghost to show the fall, then the
-## mirror goes back where it was.
-func _refuse_fall() -> void:
+	pending = {"action": "apply", "mirror": preview.duplicate(true), "event": _direct_event}
 	_direct_apply = false
-	hud.show_hint("The traveller would fall off the world, so the mirror goes back.")
-	var origin := preview_origin
-	var hold := create_tween()
-	hold.tween_interval(REFUSE_HOLD)
-	hold.tween_callback(func() -> void:
-		if phase == "preview" and pending.is_empty() and preview_origin == origin:
-			cancel_preview())
 
 ## The screen drag that slides the mirror one world unit along x, y and z at
 ## `point`: the axis's screen direction, lengthened where needed so a half
@@ -850,7 +841,7 @@ func aim_to(yaw: float, pitch: float) -> void:
 	target["pitch"] = aim_selected["pitch"]
 	_follow_target(MirrorRules.sync(target))
 
-## The held knob is let go: the change applies once its prediction is in.
+## The held knob is let go: the change applies.
 func end_grip(kind: String) -> void:
 	if not direct_controls or cancelling_gesture:
 		return
@@ -868,17 +859,11 @@ func end_grip(kind: String) -> void:
 	_direct_apply = true
 	_direct_event = ""
 
-## While a direct drag rests on a target, predicts that world, so the fall
-## ghost warns before the release applies it.
-func _direct_hover_predict() -> void:
-	if phase != "preview" or not (dragging or pointing):
-		return
-	prediction_revision = predictor.predict(Geometry.generate(level, _display_state()), preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
-
 func _update_bar() -> void:
 	if level.is_empty():
 		return
-	bar.shown = direct_controls and _mirror_available() and phase not in ["failure", "transition"]
+	# The bar stays through a fall: the dark covers it and it is back at once.
+	bar.shown = direct_controls and _mirror_available() and phase != "transition"
 	bar.centre = hud.get_bar_centre()
 	if bar.shown:
 		var half := Vector2(Bar.BUTTON + 6.0, Bar.HALF_HEIGHT)
@@ -888,7 +873,7 @@ func _update_bar() -> void:
 	var shown_state := _display_state()
 	if shown_state.has("pivot"):
 		bar.glass_point = camera.unproject_position(shown_state["pivot"])
-	bar.set_state(shown_state, direct_controls and phase not in ["failure", "transition"], not can_edit() or _manipulating() or camera.busy)
+	bar.set_state(shown_state, direct_controls and phase != "transition", not can_edit() or _manipulating() or camera.busy)
 	bar.update_view(camera)
 	# The prompt is gone before the growing pad reaches its line.
 	hud.set_prompt_fade(smoothstep(0.0, 0.25, bar.dial_amount()))
@@ -960,7 +945,7 @@ func _follow_target(target: Dictionary) -> void:
 	var held := bar.is_active() or (direct_controls and dragging)
 	if held:
 		bar.tick()
-	_animate_display(target, KNOB_FOLLOW_SECONDS if held else 0.10, _direct_hover_predict if direct_controls else Callable())
+	_animate_display(target, KNOB_FOLLOW_SECONDS if held else 0.10)
 
 func _animate_display(target: Dictionary, seconds: float, finished := Callable()) -> void:
 	if display_motion and display_motion.is_valid():
@@ -1151,9 +1136,11 @@ func _execute_pending() -> void:
 	if command["action"] == "apply":
 		history.append(preview_origin.duplicate(true))
 		var applied: Dictionary = command["mirror"]
+		# She goes with the copy she stands on.
+		var feet := Geometry.carried(preview_origin["position"], mirror, solids, applied, Geometry.generate(level, applied))
 		# A lowered direct mirror keeps its place for the next raise.
 		mirror = applied if applied["enabled"] or direct_controls else {"enabled": false}
-		walker.restore(preview_origin["position"], preview_origin["velocity"])
+		walker.restore(feet, preview_origin["velocity"])
 		phase = "play"
 		status = "Mirror changed. Find your next path."
 		var event := str(command.get("event", ""))
@@ -1170,6 +1157,10 @@ func _execute_pending() -> void:
 	prediction = {"status": "idle"}
 	preview_view.clear()
 	_commit_world()
+	# Every direct change applies. One that puts a block on her ends as a fall
+	# off the world does: the stage goes dark and the change is taken back.
+	if command["action"] == "apply" and direct_controls and Geometry.embedded(walker.position, solids):
+		_fail()
 	dragging = false
 	_refresh()
 	_fit_camera(hud.get_play_rect())
@@ -1193,12 +1184,17 @@ func _display_state() -> Dictionary:
 
 func _update_preview() -> void:
 	var proposed := Geometry.generate(level, _display_state())
+	# She rides the copy she stands on, so she shows where the change takes her.
+	var feet := Geometry.carried(preview_origin.get("position", walker.position), mirror, solids, _display_state(), proposed)
+	walker.position = feet
 	world.draw_world(proposed)
 	world.draw_hidden(Geometry.hidden(level, _display_state()))
 	world.draw_hover(PackedVector3Array())
 	_invalidate_prediction()
-	if not _manipulating():
-		prediction_revision = predictor.predict(proposed, preview_origin["position"], preview_origin["velocity"], float(level["kill_y"]))
+	# The direct controls apply every change, so they predict nothing and show
+	# no fall before it happens (owner, 2026-11-18).
+	if not _manipulating() and not direct_controls:
+		prediction_revision = predictor.predict(proposed, feet, preview_origin["velocity"], float(level["kill_y"]))
 	status = "Checking the landing…"
 	_refresh()
 
@@ -1317,16 +1313,22 @@ func _fail() -> void:
 	walker.stop()
 	status = "The path fell away. Undo to try another idea."
 	_hide_prompt_card()
-	failure_veil.color.a = 0.0
-	var tween := Motion.tween(failure_veil, "color:a", 0.30, "press")
-	tween.tween_property(failure_veil, "color:a", 0.0, Motion.duration("dismiss")) \
-		.set_trans(Motion.VERBS["dismiss"][1]).set_ease(Motion.VERBS["dismiss"][2])
 	if direct_controls:
-		hud.show_hint("The traveller fell off the world. Going back.")
-		tween.tween_interval(FAIL_REWIND)
-		tween.tween_callback(func() -> void:
+		# The stage goes dark quickly and comes back at the move before, with
+		# no words (owner, 2026-11-18).
+		var dark := create_tween()
+		dark.tween_property(dark_veil, "color:a", 1.0, FALL_DARK)
+		dark.tween_callback(func() -> void:
 			if phase == "failure":
 				undo())
+		# The undo runs at the next physics step and the world settles in two.
+		dark.tween_interval(0.1)
+		dark.tween_property(dark_veil, "color:a", 0.0, FALL_LIGHT)
+	else:
+		failure_veil.color.a = 0.0
+		var tween := Motion.tween(failure_veil, "color:a", 0.30, "press")
+		tween.tween_property(failure_veil, "color:a", 0.0, Motion.duration("dismiss")) \
+			.set_trans(Motion.VERBS["dismiss"][1]).set_ease(Motion.VERBS["dismiss"][2])
 	_refresh()
 
 func _refresh() -> void:

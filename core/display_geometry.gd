@@ -11,13 +11,17 @@ static func box(data: Dictionary) -> AABB:
 	var size := Vector3(values[0], values[1], values[2])
 	return AABB(Vector3(center[0], center[1], center[2]) - size * 0.5, size)
 
+## The reflection through the plane at `pivot` with the unit `normal`.
+static func reflection_through(pivot: Vector3, normal: Vector3) -> Transform3D:
+	return Transform3D(Basis(Vector3.RIGHT - 2.0 * normal * normal.x,
+		Vector3.UP - 2.0 * normal * normal.y, Vector3.BACK - 2.0 * normal * normal.z),
+		2.0 * normal * normal.dot(pivot))
+
 static func generate(level: Dictionary, state: Dictionary, frame: Basis) -> Array[Dictionary]:
 	var output: Array[Dictionary] = []
 	var pivot: Vector3 = state["pivot"]
 	var normal := frame.z.normalized() * float(state.get("source_sign", 1))
-	var reflection := Transform3D(Basis(Vector3.RIGHT - 2.0 * normal * normal.x,
-		Vector3.UP - 2.0 * normal * normal.y, Vector3.BACK - 2.0 * normal * normal.z),
-		2.0 * normal * normal.dot(pivot))
+	var reflection := reflection_through(pivot, normal)
 	var source := column(pivot, frame, state, false)
 	var destination := column(pivot, frame, state, true)
 	var absolutes: Array = []

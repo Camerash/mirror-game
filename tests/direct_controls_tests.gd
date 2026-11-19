@@ -40,6 +40,19 @@ func direct_settled() -> void:
 		await process_frame
 
 
+func fall_and_return() -> bool:
+	## Waits for a fall off the world to go dark and to come back at the move
+	## before. False when the stage never failed, or never came back.
+	var failed := false
+	for index: int in 1200:
+		if game.phase == "failure":
+			failed = true
+		elif failed and game.phase == "play" and game.pending.is_empty() and game.settle_frames == 0 and is_zero_approx(game.dark_veil.color.a):
+			return true
+		await process_frame
+	return false
+
+
 func load_stage(file: String) -> void:
 	game.load_level(Game.LEVEL_PATHS.find("res://levels/%s.json" % file))
 	await direct_settled()
@@ -207,9 +220,9 @@ func run() -> void:
 	await check_tap_through_glass()
 	await check_turn_knob()
 	await check_freedom_sign()
-	await check_blocked_goes_back()
+	await check_buried_comes_back()
 	await check_first_raise_follows_her_look()
-	await check_hover_ghost()
+	await check_ride_and_fall()
 	await check_camera_stays()
 	await check_keyboard()
 	await check_classic_toggle()
@@ -454,9 +467,10 @@ func check_first_raise_follows_her_look() -> void:
 		"First raise: after a walk, the mirror is in front of her, across the way she looks")
 
 
-func check_blocked_goes_back() -> void:
-	## Standing beside the wall in "First steps", turning the mirror to copy
-	## the wall onto the traveller is blocked, so the mirror stays as it was.
+func check_buried_comes_back() -> void:
+	## Standing beside the wall in "First steps", turning the mirror copies the
+	## wall onto the traveller. No move is refused (owner, 2026-11-18): the
+	## turn applies, the stage goes dark, and it comes back at the move before.
 	await load_stage("13_first_steps")
 	var walked: bool = game.request_walk(Vector3(4, 0, -1))
 	for index: int in 900:
@@ -473,41 +487,51 @@ func check_blocked_goes_back() -> void:
 	game._refresh()
 	await press_mirror_button()
 	var before: Dictionary = game.mirror.duplicate(true)
+	var steps: int = game.history.size()
 	await point(Vector3.LEFT)
-	check(MirrorRules.same(game.mirror, before) and game.phase == "play", "Blocked: a turn that would put the wall on the traveller goes back")
+	check(game.phase == "failure" and not MirrorRules.same(game.mirror, before), "Buried: a turn that puts the wall on the traveller is applied, not refused")
+	check(await fall_and_return() and MirrorRules.same(game.mirror, before) and game.history.size() == steps
+		and game.walker.position.distance_to(Vector3(4, 0, -1)) < 0.25, "Buried: the stage goes dark and comes back at the move before")
 
 
-func check_hover_ghost() -> void:
-	## A drag that would pull the ground from under the traveller shows the
-	## fall ghost while the finger rests, before anything applies.
+func check_ride_and_fall() -> void:
+	## She stands on a copy. A drag of the mirror takes her with the copy and
+	## shows no fall ghost. Lowering the mirror drops her for real: the stage
+	## goes dark and comes back at the move before (owner, 2026-11-18).
 	await load_stage("01_route")
 	await press_mirror_button()
 	await slide(0, 2.0)
-	var walked: bool = game.request_walk(Vector3(4, 0, 0))
+	var walked: bool = game.request_walk(Vector3(3.5, 0, 0))
 	for index: int in 900:
 		if game.walker.route.is_empty():
 			break
 		await process_frame
 	await frames(3)
-	check(walked, "Hover: the traveller walks out onto the copy")
+	check(walked, "Ride: the traveller walks out onto the copy")
 	var start: Vector2 = game.bar.centre
 	var finish: Vector2 = start + travel(Vector3(1.5, 0, 0))
 	game.begin_grip("move", start)
 	for step: int in range(1, 13):
 		game.grip_to(start.lerp(finish, step / 12.0))
 		await process_frame
-	for index: int in 240:
-		if game.preview_view.result_status != "":
-			break
-		await process_frame
-	check(game.dragging and game.preview_view.result_status == "failure" and game.preview_view.ghost.visible, "Hover: mid-drag, the ghost shows the fall before anything applies")
-	check(game.walker.position.distance_to(Vector3(4, 0, 0)) < 0.25, "Hover: the traveller holds still while the finger is down")
+	await frames(40)
+	check(game.dragging and not game.preview_view.ghost.visible and game.prediction["status"] == "pending", "Ride: mid-drag, nothing predicts or shows a fall")
+	check(game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Ride: she goes with the copy while the finger is down")
 	game.grip_to(start)
 	await frames(30)
 	game.end_grip("move")
 	await direct_settled()
-	check(pivot().is_equal_approx(Vector3(2.5, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(Vector3(4, 0, 0)) < 0.25,
-		"Hover: dragging back and letting go changes nothing")
+	check(pivot().is_equal_approx(Vector3(2.5, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(Vector3(3.5, 0, 0)) < 0.25,
+		"Ride: dragging back and letting go changes nothing")
+	await slide(0, 1.5)
+	await direct_settled()
+	check(pivot().is_equal_approx(Vector3(4, 0, 0)) and game.phase == "play" and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25,
+		"Ride: letting go at the new place leaves her on the copy there")
+	var steps: int = game.history.size()
+	game.toggle_mirror()
+	check(await fall_and_return() and bool(game.mirror.get("enabled", false)) and game.history.size() == steps
+		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.25, "Fall: lowering the mirror under her drops her; the stage goes dark and comes back at the move before")
+	check(game.dark_veil.size.is_equal_approx(root.get_visible_rect().size), "Fall: the dark covers the whole screen")
 
 
 func check_camera_stays() -> void:

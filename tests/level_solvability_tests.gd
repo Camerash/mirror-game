@@ -265,6 +265,19 @@ func direct_fall() -> void:
 		await process_frame
 
 
+func fall_and_return() -> bool:
+	## Waits for a fall off the world to go dark and to come back at the move
+	## before. False when the stage never failed, or never came back.
+	var failed := false
+	for index: int in 1200:
+		if game.phase == "failure":
+			failed = true
+		elif failed and game.phase == "play" and game.pending.is_empty() and game.settle_frames == 0 and is_zero_approx(game.dark_veil.color.a):
+			return true
+		await process_frame
+	return false
+
+
 func pivot_is(expected: Vector3) -> bool:
 	return game.mirror.has("pivot") and (game.mirror["pivot"] as Vector3).is_equal_approx(expected)
 
@@ -299,12 +312,14 @@ func check_direct_route() -> void:
 	await load_level("01_route")
 	await press_mirror_button()
 	await slide(0, 2.0)
-	check(await walk_to(Vector3(4, 0, 0)), "Direct route: the traveller stands on the copy")
+	check(await walk_to(Vector3(3.5, 0, 0)), "Direct route: the traveller stands on the copy")
 	var steps: int = game.history.size()
 	await slide(0, 1.5)
 	await direct_fall()
-	check(game.phase == "play" and pivot_is(Vector3(2.5, 0, 0)), "Direct route: a slide that would drop the traveller off the world goes back")
-	check(game.walker.position.distance_to(Vector3(4, 0, 0)) < 0.22 and game.history.size() == steps, "Direct route: the refused slide leaves the traveller and the history as they were")
+	check(game.phase == "play" and pivot_is(Vector3(4, 0, 0)) and game.history.size() == steps + 1
+		and game.walker.position.distance_to(Vector3(6.5, 0, 0)) < 0.22, "Direct route: the traveller rides the copy when the mirror slides")
+	# Known since the riding rule: the rest platform is no longer needed.
+	check(await walk_to(goal_point()), "Direct route: from the copy that carried her, the goal is one walk away")
 
 
 func check_direct_reveal() -> void:
@@ -328,9 +343,10 @@ func check_direct_reveal() -> void:
 	await slide(0, 1.0)
 	check(await walk_to(Vector3(2, 0, 0)), "Direct reveal: the traveller stands on the copy over the gap")
 	check(game.world.hidden_root.get_child_count() > 0, "Direct reveal: the raised mirror outlines the ground it hides")
+	var reveal_steps: int = game.history.size()
 	await press_mirror_button()
-	await direct_fall()
-	check(game.phase == "play" and bool(game.mirror.get("enabled", false)), "Direct reveal: lowering the mirror under the traveller is refused, not a fall")
+	check(await fall_and_return() and bool(game.mirror.get("enabled", false)) and game.history.size() == reveal_steps
+		and game.walker.position.distance_to(Vector3(2, 0, 0)) < 0.22, "Direct reveal: lowering the mirror under the traveller drops her, and the stage comes back at the move before")
 	await load_level("08_reveal")
 	check(game.world.hidden_root.get_child_count() == 0, "Direct reveal: with no mirror up, nothing is outlined as hidden")
 
@@ -395,9 +411,10 @@ func check_direct_together() -> void:
 	check(not await walk_to(above_low), "Direct together: the full frame copies the floating block into the way")
 	await direct_together_bridge(1.0)
 	check(await walk_to(Vector3(0, 0, 1.5)), "Direct together: one unit lower, the bridge carries the traveller out")
+	var together_steps: int = game.history.size()
 	await press_mirror_button()
-	await direct_fall()
-	check(game.phase == "play" and bool(game.mirror.get("enabled", false)), "Direct together: lowering the mirror above empty space is refused, not a fatal fall")
+	check(await fall_and_return() and bool(game.mirror.get("enabled", false)) and game.history.size() == together_steps
+		and game.walker.position.distance_to(Vector3(0, 0, 1.5)) < 0.22, "Direct together: lowering the mirror above empty space drops her, and the stage comes back at the move before")
 	await direct_together_bridge(1.0)
 	check(await walk_to(above_low), "Direct together: the traveller stands above the low path")
 	await press_mirror_button()

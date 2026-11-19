@@ -1,7 +1,22 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the reflection faults in the owner's screenshots — 2026-11-19
+# Latest check: she rides her copy; a real fall; no fall sign — 2026-11-19
+
+- Why: the owner's rule changes of 2026-11-18, chosen as the next work: "1: Character stick to the current platform, move along with it. 2: Falling will result in actually falling, and fade to black and restart in previous move (No more invalid move and snap back to the previous move automatically, which feels weird) 3: No more falling indicators."
+- Riding (`Geometry.carried` in `core/world_geometry.gd`; used in `_update_preview` and `_execute_pending` of `game.gd`): when she stands on a copy, her point goes back through the old mirror to its source and out through the new one. She goes there only while the new mirror still makes that copy a floor under her; if not, or on ground that does not move, she stays. She moves with the copy during the drag too. The classic editor uses the same rule, and its prediction starts from the carried place.
+- Every change applies (`_try_direct_apply`): the direct controls no longer wait for a prediction, refuse a fall, or send the mirror back. They predict nothing, so no ghost shows. The hints in words for a refused move are gone.
+- A fall off the world (`_fail`): the stage goes dark in 0.22 s on a layer above the bar, the change is taken back in the dark, and the stage comes back in 0.4 s. The bar stays in place through it.
+- Agent decision: a change that puts a block on her ends the same way (dark, then back), because no move is refused. Before, the mirror stayed put with a hint.
+- Fault found by the proof, fixed: the dark layer had no size, so it did not draw while its value changed. A test now checks that it covers the screen.
+- Fault found by the tests, fixed (`world/mirror_bar.gd`): a stage that loads while the turn pad still closes gave script errors for three frames. A change now applies sooner, so the tests reached this case.
+- Found, not changed: in `01_route` she can stand on the copy at 3.5, slide the mirror from 2.5 to 4.0, ride to 6.5 and walk to the goal. The rest platform is not needed. The other stages are not searched for such ways.
+- Tests, all 27 files, no failure but the old one in `legal_angles_tests` ("Native capsule crosses uphill joint at 45 degrees"): `direct_controls_tests` 79 (new: no move is refused; she rides during the drag and after the release; nothing predicts a fall; a fall goes dark and comes back with the history as it was; the dark covers the screen), `level_solvability_tests` 68 (the refused moves are now a ride on `01_route` and real falls on `08_reveal` and `15_together`), `display_geometry_tests` 4179 (new: five checks of `carried`), `run_tests` (804; one check runs once for each frame of a camera blend, so its count changes from run to run: 117 on the old code and 113 on the new in the same minute, with every other check the same), `app_flow_tests` 88, `prompt_tests` 94, `mirror_bar_tests` 67, and the others as before.
+- Checked in the engine at 428 × 926 points: `test-output/polish/rules/rules-sheet.jpg` (she stands on the copy; the finger is down and she rides; released; the mirror is lowered and she falls; dark; back at the move before).
+- Not done: her facing does not turn with the copy; the fall has no sound of its own; the dark starts when she passes `kill_y` (about one second of fall from the ground level).
+- Not checked: the phone; the feel of the timings.
+
+# Earlier check: the reflection faults in the owner's screenshots — 2026-11-19
 
 - Why: the owner asked, for the night: "Investigate, find and fix the reflection bugs we stumbled upon", with seven screenshots of `01_route` (the phone). During the work the owner added: "The cut away of existing structures should be bounded by width and height of the mirror", then "Yes, depth bounded by width and height".
 - Rebuilt in the engine: six of the seven poses, next to the owner's screenshots (scratch scripts; the pivot, the turn, the tilt, the side and the view guessed from the pictures). All seven have the pane on a diagonal; screenshot 3 is between two steps, so it was taken during a turn.
