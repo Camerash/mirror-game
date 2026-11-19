@@ -513,7 +513,29 @@ styles and words.
   lower corner while the pane is above the water, and the mirror's two
   boxes (what it reads, where it writes) laid on the water. The water is
   the one flat surface that every stage has. The present contact seam is
-  white on the white tops, so it does not show there.
+  white on the white tops, so it does not show there. The owner's answer to
+  that proof (2026-11-20): "Seems like a very patchy way of doing it. Can
+  we rethink our approach?"
+- ADVICE (2026-11-20), no decision yet: three blind advisors (how the eye
+  reads depth with no perspective; puzzle design; touch and a first-time
+  player) each got the owner's words, the measured facts and the decisions,
+  and none of the agent's ideas. All three gave the same answer. Cause: the
+  mirror floats and touches nothing, and it has three freedoms on a screen
+  that shows two. Remedy: the mirror stands on the world, the free height
+  goes, and no sign is added. All three rejected fixed sockets, more
+  signs, and a view that turns by itself. The agent agrees with the cause
+  and the remedy, and corrects two points from the tested solutions:
+  (1) steps of a half unit on the ground must stay, because the copy moves
+  two units for each unit of the mirror (Route uses 2.5 and 4.0; Turn and
+  Together use a slide of a half unit); (2) the height is used: "Only the
+  ground" and "Together" are each solved by a mirror one unit lower, and
+  the pane cannot stand on a top, because it must pass through the stones
+  that it copies. The agent's brief said wrongly that no tested solution
+  uses the height. The agent's direction: the mirror is an object that
+  stands in the pond (posts that always reach the water, glass with a
+  body that hides what is behind it), the ground steps stay, and the
+  height is in whole units and only on the stages whose idea is height
+  (each stage file already has its own limits).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
