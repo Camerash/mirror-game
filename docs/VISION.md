@@ -568,6 +568,31 @@ styles and words.
   costs: the stages that stand in the water must float higher, and the
   rule that an image in the water is gone 1.1 units up ("never taken for
   ground") stays, so the sign is a shadow, not an image.
+- PROOF (2026-11-20, owner: "Proof with water"), no decision yet: an
+  engine proof at phone size of the floating world (scratch script only,
+  nothing built; images in `test-output/polish/float/`, git-ignored). On
+  "Turn" and "Together" the water is 2 units below the lowest stone, and
+  the pond and the garden are built again at that height. The rule of the
+  drop shadow, which the game has on tops, is laid on the water also: the
+  stones and the copies make one shadow, and the pane has its own shadow
+  on top of it. The glass has a light body. Nothing else is added.
+  Results: the look holds (the stage floats, the reeds and the garden stay
+  at the water). In a lift the plan on the water does not change; in a
+  move on the ground the line of the pane moves with the mirror. On
+  "Turn" the pane's lower edge is about 70 points above its shadow at the
+  start, about 94 points after a lift of a half unit, and about 70 points
+  after a move back of a half unit on both axes (read from the image). On
+  "Together" the shadows show that the upper path is not above the low
+  path, which one view could not show before. Weak points: the shadow of
+  the pane is a thin dark line on dark water (about 10 points wide), and
+  on "Together" it is about 170 points below the pane, so the eye has a
+  long way to go; the stones lose their image in the water (the 1.1 rule),
+  only the reeds and the garden keep one; the sign is not proved in motion
+  or in play. Three heights of the water were compared on "Turn": at a
+  half unit the image and the shadow mix; at 1 unit the stones hide a part
+  of their shadow, and a mirror that is 1 unit lower goes into the water;
+  at 2 units the plan is whole and apart from the stones. The agent's
+  advice: 2 units, and a trial in play before a decision.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
