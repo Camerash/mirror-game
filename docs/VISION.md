@@ -593,6 +593,26 @@ styles and words.
   of their shadow, and a mirror that is 1 unit lower goes into the water;
   at 2 units the plan is whole and apart from the stones. The agent's
   advice: 2 units, and a trial in play before a decision.
+- ACCEPTED AS THE SIGN, the look is in tuning (2026-11-20, owner: "I think
+  the shadow gives a clear indication about the position of the mirror,
+  but would need to be fine tuned a bit. Now the shadow seems too sharp").
+  The build is not yet approved. Second engine proof (scratch script only;
+  `test-output/polish/float/soft-*.jpg`, git-ignored), four looks of the
+  soft rim on "Turn" and "Together": 0.12 units (the first proof), 0.4,
+  0.7, and a rim by height (0.2 units for each unit that the thing is
+  above the water, at most 0.6). Results: at 0.4 the edge is soft and the
+  line of the pane stays clear on the two stages. At 0.7 the plan becomes
+  a blur and the line of the pane is weak. With the rim by height, the
+  line of the pane is sharp when the mirror is near the water and soft
+  when it is high, so a lift changes the shadow although its place stays;
+  the cost is a weaker line when the mirror is high (on "Together" it is
+  weaker than at 0.4, but it shows). Two corrections in the proof: the
+  shade on the water is a cool dark blue (0.07, 0.10, 0.16), because the
+  game's shade for snow (0.16, 0.13, 0.2) made a purple line where the
+  shadow of the pane lay on the shadow of the stones; and the depth of the
+  rim is measured from the edge of the whole shadow, so that two blocks
+  that touch have no light line between them. The agent's advice: the rim
+  by height.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
