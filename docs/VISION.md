@@ -781,6 +781,41 @@ styles and words.
   owner. Clips: `test-output/polish/float/proof-motion.mp4` and
   `proof-motion-compare.mp4`; the code: `proof-code/motion_clip.gd` (all
   git-ignored).
+- LENS TEST (2026-11-21, owner: "Make the test"), no decision yet. The
+  owner saw in the clip that a lift and a slide still look the same, and
+  asked if the ortho camera makes this unavoidable. In an ortho view, a
+  point's distance along the line of sight does not show, so a pane
+  lifted 2 units and a pane slid about 2.5 units back on each ground axis
+  make the same image. A perspective lens makes the size of the pane show
+  its distance. The test, as scratch code on the build (not the proof):
+  a perspective stage camera at 30 and 45 degrees of vertical view, with
+  the same angles (30 degrees down, 45 degrees to the grid). The plane
+  through the middle of the view keeps the ortho scale, the framing
+  follows the ortho rules, and the image in the water gets the same lens.
+  Each pair is seen in one view that does not move. Measured: on the
+  screen the lifted pane is 13 and 16 percent taller than the slid pane
+  at 30 degrees, and 19 and 27 percent at 45 degrees (the same size in
+  ortho). On the half grid, the slide that matches a 2-unit lift is half
+  a step longer in perspective, and it lands within 6 to 12 points of the
+  lift on the screen (2 in ortho). Blind test, three new Opus readers for
+  each lens, the same task as before: ortho 6 of 6, 88 percent sure; 30
+  degrees 6 of 6, 90 percent; 45 degrees 6 of 6, 92 percent. All six
+  perspective readers measured the size of the pane and used it, but as
+  their second or third cue, after the light on the water (and the
+  traveller in front of or behind the glass, which the ortho readers
+  used too). All nine said no to a one-second read; one called the
+  change of size "too small to see quickly". The earlier 75 percent came
+  from older frames, not from the lens. So, in stills, a perspective lens
+  adds a true cue, but a weak one, and it does not make the place of the
+  mirror clear at a glance. The look changes: the view shows more of the
+  walls, windows and tree behind the stage, and at 45 degrees far blocks
+  are a little smaller. Not judged: motion (in a lift the pane grows a
+  little; in a slide it shrinks), the puzzle read, and the eye of the
+  owner. Clips: `test-output/polish/float/lens-motion-compare.mp4` (ortho,
+  30 and 45 degrees side by side) and `lens-motion-30.mp4`,
+  `lens-motion-45.mp4`; stills: `lens-stages.jpg`, `lens-pairs.jpg`; the
+  reports: `lens-board-reports.md`; the code: `proof-code/lens/` (all
+  git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
