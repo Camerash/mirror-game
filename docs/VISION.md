@@ -649,6 +649,12 @@ styles and words.
   the glow of the frame is today the cue that the pointer rests on the
   mirror, so that cue must become a second level. The agent's advice: the
   low level at rest, and the medium level while the mirror is held.
+- DECIDED (2026-11-20, owner: "Yes, keep it"): the edge of the mirror
+  glows and puts light on the water straight below its lower edge. The
+  glow is at the low level at rest (energy 0.9, light 0.22) and at the
+  medium level while the mirror is held (energy 1.6, light 0.34). The
+  mirror has no dark shadow and no tinted shadow. Not built; the build of
+  the floating world needs an approved plan.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
