@@ -679,6 +679,50 @@ styles and words.
   has no shadow on the water while it drifts away. Not proved: play on
   the phone, the cost on the phone, motion seen by a person. Captures:
   `test-output/polish/float/build-*.jpg` (git-ignored).
+- ADVICE (2026-11-20, owner: "An independent board of blind advisors for
+  look judgement and give directions"), no decision yet: three blind
+  advisors (Opus; eyes: a new player, an art director, a critic of finish
+  on a small screen) each got 22 engine frames of the build at phone size,
+  the rules of the game, the fixed decisions, and none of the agent's
+  opinions. First a blind test: two pairs of frames in which the pane is
+  at the same place on the screen to 2 points, one time lifted 2 units and
+  one time moved back 2.5 units on each ground axis. All three named both
+  pairs correctly (6 of 6), 70 to 85 percent sure. All three used one cue,
+  the light on the water, and all three said: the pane itself tells
+  nothing, and the cue is faint, far from the pane, and lost behind stones
+  that are in front of it. Limit: the advisors read stills with care and
+  with no limit of time; a glance by a person is not proved. All three
+  keep: the water and the fog, the soft shadows on the water (named the
+  best sign of depth), the snow tops, gold for the ring alone, the empty
+  space. All three mark the mirror as the weak part. Their directions, by
+  agreement: (1) all three: the light of the frame must also fall on the
+  stone and snow that the pane crosses, as light and not as a mark (the
+  item "not built" above); (2) all three: the light on the water must be
+  stronger and wider, and must not go faint when the pane is high;
+  (3) all three: the glass hides the traveller (measured: her darkest
+  tone is 27 of 255 in front of the pane and 86 behind it), so the frost
+  and the body of 0.14 go down by 40 to 60 percent, or stay near the
+  frame only; (4) two, and measured: the frame is a thin even line that
+  reads as an outline and not as a glow, and rest and held do not differ
+  (the peak of the line is 219 of 255 at rest and 237 held; the brightest
+  point of the light on the water is 13 percent brighter held); (5) all
+  three: the dashed lower edge of a mirror that is down or goes down reads
+  as a selection sign; (6) two: the on/off button of the mirror is salmon
+  pink, which is warm on the cool tool; (7) the ice copies read as soap
+  (two), and their tops merge with the snow (one); (8) two: the grip rings
+  look like the rain rings on the water. Not agreed: the control bar (two:
+  generic and heavy; one: quiet) and the far buildings (one: unfinished;
+  two: keep). One advisor each: a stone that the mirror replaces goes with
+  no trace; the blotches on tall stone faces; the dotted rim of the snow.
+  The agent's corrections: the light on the water is straight below the
+  lower edge (one advisor read the gap of 1.5 units as an offset: the gap
+  is the fault, not the place); light that shows through stones in front
+  of it would be a sign, so "never hidden" cannot be met in full; the
+  agent's brief said "gold and warm tints belong to the goal alone" where
+  the rule names gold, so the finding on the warm windows has little
+  weight. Images: `test-output/polish/float/board-lift-or-slide-*.jpg`;
+  the three reports in full: `test-output/polish/float/board-reports.md`
+  (git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
