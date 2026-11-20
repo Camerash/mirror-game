@@ -766,6 +766,21 @@ styles and words.
   `test-output/polish/float/proof-*.jpg`; the reports:
   `test-output/polish/float/proof-board-reports.md`; the code of the
   proof: `test-output/polish/float/proof-code/` (all git-ignored).
+- CLIP (2026-11-21, owner: "Make the clip"), no decision yet: a motion
+  clip of the second version of the proof, 19 seconds at phone size, on
+  the stages `01_route` and `14_turn`. On each stage a held knob lifts
+  the mirror 2 units and brings it back, then the mirror slides 2.5 units
+  back on each ground axis, to the same place on the screen, and comes
+  back. A second clip shows the build and the proof side by side, frame
+  for frame. Seen in the frames: in a lift the light on the water stays
+  in its place and gets wider and paler; in a slide it travels with the
+  pane. The game moves the mirror in half steps, and during a drag it
+  already draws a guide in the pane (a ring and an upright line for a
+  lift, ground lines for a slide). Not judged: no advisor saw the clip,
+  because an advisor reads stills only; the clip is for the eye of the
+  owner. Clips: `test-output/polish/float/proof-motion.mp4` and
+  `proof-motion-compare.mp4`; the code: `proof-code/motion_clip.gd` (all
+  git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
