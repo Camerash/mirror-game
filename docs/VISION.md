@@ -613,6 +613,23 @@ styles and words.
   rim is measured from the edge of the whole shadow, so that two blocks
   that touch have no light line between them. The agent's advice: the rim
   by height.
+- DECIDED (2026-11-20, owner: "By height."): the soft rim of a shadow on
+  the water is by height: 0.2 units for each unit that the thing is above
+  the water, at most 0.6. Not built.
+- OPEN (2026-11-20), the owner's question: "would it work if the mirror
+  has a different shadow tint?" Third engine proof (scratch script only;
+  `test-output/polish/float/tint-*.jpg`, git-ignored), four tints for the
+  shadow of the pane on "Turn" and "Together", each with the rim by
+  height: the same shade as the stones; a deep teal (0.0, 0.30, 0.38); a
+  pale ice (0.80, 0.90, 0.96), which is a light and not a shade; a warm
+  tint (0.95, 0.72, 0.42). Results: a different tint works, and it tells
+  the mirror from the stones at once. On dark water a dark tint has
+  little room: the deep teal is weaker than the same shade. The pale ice
+  is the clearest at each height, also where it lies on the shadow of the
+  stones, and it is the colour of the glass and of the copies. The warm
+  tint is as clear, but it is loud and it takes the colour of the ring,
+  which is the sign of the goal. The agent's advice: the pale ice; its
+  strength (0.3 in the proof) can go down if it is too much like a mark.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
