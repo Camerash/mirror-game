@@ -11,6 +11,14 @@ const Rules := preload("res://core/mirror_state.gd")
 const RibbonShader := preload("res://world/mirror_ribbon.gdshader")
 const GuideShader := preload("res://world/mirror_guides.gdshader")
 const MoteShader := preload("res://world/mirror_motes.gdshader")
+const LightShader := preload("res://world/mirror_light.gdshader")
+## Strength of the light that the frame puts on the water: at rest, and held.
+const LIGHT_REST := 0.22
+const LIGHT_HELD := 0.34
+## The light plane lies this far above the water, to avoid z-fighting.
+const LIGHT_LIFT := 0.03
+## The light plane is this much larger than the pane, on each side.
+const LIGHT_MARGIN := 3.0
 
 var frame := Frame.new()
 ## Holds every visible part, so the whole pane can rise without touching the
@@ -28,6 +36,15 @@ var edge_material := StandardMaterial3D.new()
 var ribbon_material := ShaderMaterial.new()
 var guide_material := ShaderMaterial.new()
 var mote_material := ShaderMaterial.new()
+## The light of the frame on the water. It lies level and is not part of `body`.
+var light := MeshInstance3D.new()
+var light_material := ShaderMaterial.new()
+## The height of the water. Glass and light both use it.
+var water_level := -100.0:
+	set(value):
+		water_level = value
+		sheet_material.set_shader_parameter("water_level", value)
+		light_material.set_shader_parameter("water_level", value)
 var state: Dictionary = {}
 var editing := false
 ## A lowered direct mirror keeps its panel: a faint dashed outline shows where
@@ -71,6 +88,17 @@ func _ready() -> void:
 	mote_material.shader = MoteShader
 	mote_material.render_priority = 74
 	motes.material_override = mote_material
+	light_material.shader = LightShader
+	light_material.render_priority = 1
+	light_material.set_shader_parameter("tint", Color("9ee9f2"))
+	var plane := PlaneMesh.new()
+	plane.size = Vector2.ONE
+	light.mesh = plane
+	light.material_override = light_material
+	light.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	light.top_level = true
+	light.visible = false
+	add_child(light)
 	add_child(body)
 	for part: Node3D in [frame, sheet, edges, ribbons, guides, motes]:
 		body.add_child(part)
@@ -102,7 +130,7 @@ func set_state(next_state: Dictionary, bounds: AABB, is_editing: bool) -> void:
 		_draw_guides(panel_size.x, panel_size.y)
 		_draw_motes(panel_size.x, panel_size.y)
 	var enabled: bool = state.get("enabled", false)
-	frame.update_frame(panel_size, editing, enabled)
+	frame.update_frame(panel_size, editing and not hovered, enabled)
 	sheet.visible = enabled or _sinking
 	ribbons.visible = enabled
 	guides.visible = enabled or editing
@@ -148,9 +176,13 @@ func sink() -> void:
 		body.position = Vector3.ZERO)
 
 func set_hover(value: bool) -> void:
+	if value == hovered:
+		return
 	hovered = value
 	frame.set_glow(value)
 	if has_geometry:
+		# A held pane is the mirror itself: its frame is the metal, and glows.
+		frame.material_override = frame.ghost if editing and not hovered else frame.metal
 		edges.visible = editing or lowered or (hovered and sheet.visible)
 
 ## `margin` widens the panel, in world units, for a forgiving grab.
@@ -288,3 +320,27 @@ func _process(delta: float) -> void:
 	ribbon_material.set_shader_parameter("ribbon_alpha", 0.85 if editing else 1.0)
 	mote_material.set_shader_parameter("mote_time", elapsed)
 	mote_material.set_shader_parameter("mote_alpha", 0.85 if editing else 1.0)
+	_update_light()
+
+## Gives the light the corners of the pane as drawn, and puts its plane level
+## on the water below them.
+func _update_light() -> void:
+	# The light shows while the glass shows. `state` is not used here: it is
+	# empty for a time after a transition stops.
+	light.visible = has_geometry and water_level > -99.0 and sheet.visible
+	# The light comes and goes with the pane, as the pane rises and sinks.
+	light_material.set_shader_parameter("strength", (LIGHT_HELD if hovered else LIGHT_REST) * body.scale.y)
+	if not light.visible:
+		return
+	var corners := PackedVector3Array()
+	for point: Vector2 in [Vector2(-1,-1), Vector2(1,-1), Vector2(1,1), Vector2(-1,1)]:
+		corners.append(body.to_global(Vector3(point.x * panel_size.x, point.y * panel_size.y, 0) * 0.5))
+	var low := Vector2(corners[0].x, corners[0].z)
+	var high := low
+	for corner: Vector3 in corners:
+		low = low.min(Vector2(corner.x, corner.z))
+		high = high.max(Vector2(corner.x, corner.z))
+	low -= Vector2.ONE * LIGHT_MARGIN
+	high += Vector2.ONE * LIGHT_MARGIN
+	light.global_transform = Transform3D(Basis.from_scale(Vector3(high.x - low.x, 1.0, high.y - low.y)), Vector3((low.x + high.x) * 0.5, water_level + LIGHT_LIFT, (low.y + high.y) * 0.5))
+	light_material.set_shader_parameter("corners", corners)

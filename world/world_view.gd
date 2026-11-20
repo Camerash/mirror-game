@@ -10,6 +10,7 @@ const MAX_CUTS := 12
 const SHRINK := 0.999
 const BlockSet := preload("res://world/block_set.gd")
 const DropShadowShader := preload("res://world/drop_shadow.gdshader")
+const WaterShadow := preload("res://world/water_shadow.gd")
 ## Gaps under a block smaller than this count as resting on the surface.
 const SHADOW_GAP := 0.05
 ## A shadow lies this far off its top, so the two do not flicker.
@@ -24,6 +25,11 @@ var overlay_root := Node3D.new()
 var path_root := Node3D.new()
 var hidden_root := Node3D.new()
 var shadow_root := MeshInstance3D.new()
+var water_shadow := WaterShadow.new()
+## The plan on the water before the last change that followed the pane. It
+## goes out while the new plan comes in, so the shadows of stones that stay
+## do not go out.
+var water_shadow_before := WaterShadow.new()
 var hover_root := Node3D.new()
 var mark_root := Node3D.new()
 var drawn_solids: Array[Dictionary] = []
@@ -50,6 +56,9 @@ var ice_height := -100.0:
 		ice_height = value
 		for slot: Dictionary in visual_slots.values():
 			(slot["material"] as ShaderMaterial).set_shader_parameter("ice_height", value)
+		# A new water height is a new place. The plan before is not of this place.
+		water_shadow_before.shown = 0.0
+		_draw_water_shadows(drawn_solids)
 
 func _ready() -> void:
 	for node: Node3D in [visual_root, ghost_root, collision_root, overlay_root, path_root, hidden_root, shadow_root, hover_root, mark_root]:
@@ -58,6 +67,8 @@ func _ready() -> void:
 	var shade := ShaderMaterial.new()
 	shade.shader = DropShadowShader
 	shadow_root.material_override = shade
+	add_child(water_shadow)
+	add_child(water_shadow_before)
 
 func commit(solids: Array[Dictionary]) -> void:
 	_clear(collision_root)
@@ -152,14 +163,35 @@ func draw_world(solids: Array[Dictionary]) -> void:
 			_grow(instance)
 	_draw_drop_shadows(solids)
 	if not sweep.is_empty():
+		# The plan before the change stays in its own picture.
+		var before := water_shadow
+		water_shadow = water_shadow_before
+		water_shadow_before = before
+	_draw_water_shadows(solids)
+	if not sweep.is_empty():
 		# The shadows are of the new place. They come in with its second
 		# half, when the blocks that carry them are there.
 		var shade := shadow_root.material_override as ShaderMaterial
 		if shadow_root.has_meta("sweep") and (shadow_root.get_meta("sweep") as Tween).is_valid():
 			(shadow_root.get_meta("sweep") as Tween).kill()
 		shade.set_shader_parameter("shown", 0.0)
-		shadow_root.set_meta("sweep", Motion.blend(shadow_root, func(weight: float) -> void: shade.set_shader_parameter("shown", smoothstep(0.5, 1.0, weight)), "reveal"))
+		water_shadow.shown = 0.0
+		water_shadow_before.shown = 1.0
+		shadow_root.set_meta("sweep", Motion.blend(shadow_root, func(weight: float) -> void:
+			var shown := smoothstep(0.5, 1.0, weight)
+			shade.set_shader_parameter("shown", shown)
+			water_shadow.shown = shown
+			water_shadow_before.shown = 1.0 - shown, "reveal"))
 	update_debug()
+
+## A soft shadow straight below every solid, on the water. The game sets
+## `ice_height` after the first draw of a place, so the setter lays it again.
+func _draw_water_shadows(solids: Array[Dictionary]) -> void:
+	var shapes: Array[Dictionary] = []
+	if ice_height > -99.0:
+		for solid: Dictionary in solids:
+			shapes.append({"outline": _footprint(solid), "height": (solid["bounds"] as AABB).position.y - ice_height})
+	water_shadow.show_shapes(shapes, ice_height)
 
 ## A soft shadow straight below every floating block, on each top under its
 ## footprint. A copy beside a path and one above it look alike from an

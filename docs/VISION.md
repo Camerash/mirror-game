@@ -655,6 +655,30 @@ styles and words.
   medium level while the mirror is held (energy 1.6, light 0.34). The
   mirror has no dark shadow and no tinted shadow. Not built; the build of
   the floating world needs an approved plan.
+- BUILT (2026-11-20, owner: "Approve the plan"): the floating world. The
+  water is 2 units below the lowest stone of a stage (`FLOAT_GAP` in
+  `world/trial_lighting.gd`); the fall limit of "Together" is -8, below
+  its water. Each stone and each copy has one soft shadow straight below
+  it on the water (`world/water_shadow.gd`): a picture from above that
+  holds the darkest value at each point, so shadows that overlap do not
+  add up and a plan with a hole is correct. The rim goes outward only:
+  0.15 units for each unit above the water, from 0.05 to 0.45. The frame
+  of the mirror glows at 0.9 at rest and at 1.6 while the mirror is held,
+  and each edge puts light on the water straight below it
+  (`world/mirror_light.gdshader`), 0.22 at rest and 0.34 while held; the
+  light of an edge that is much higher than the lowest edge is almost
+  nothing. The glass has a body of 0.14. Three decisions that the agent
+  made in the build: (1) while a finger holds the mirror, the frame is
+  the metal that glows and not the pale ghost of before, because the
+  ghost has no glow; (2) when the mirror comes up or goes down, the plan
+  before goes out while the new plan comes in, so the shadows of stones
+  that stay do not go out; (3) the view also holds the shadows and the
+  light on the water, so a stage sits a little higher on the screen (the
+  size of the view did not change on any of the seven stages). Not built:
+  light of the glow on stones and snow. Known: the place that she leaves
+  has no shadow on the water while it drifts away. Not proved: play on
+  the phone, the cost on the phone, motion seen by a person. Captures:
+  `test-output/polish/float/build-*.jpg` (git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror

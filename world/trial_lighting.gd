@@ -26,9 +26,11 @@ const SCRIPTS := {
 	},
 }
 const DEFAULT_SCRIPT := "pale"
-## The lowest ground of a place stands in the water, so each stone joins its
-## own image at the foot and the image cannot be taken for a second stone.
-const ICE_CLEAR := 0.01
+## A place floats this far above the water. The water is the one floor of
+## the place: each stone and each copy has its shadow straight below it on
+## the water, so the water shows the plan of the place, and the height of a
+## thing is its distance from its shadow.
+const FLOAT_GAP := 2.0
 
 var environment := WorldEnvironment.new()
 var key := DirectionalLight3D.new()
@@ -92,4 +94,4 @@ func set_place(name: String) -> void:
 ## Sets the water for a place whose lowest ground has its underside at
 ## `lowest`. Falls end at `kill_y`, somewhere under the water.
 func set_floor(kill_y: float, lowest: float) -> void:
-	floor_height = maxf(kill_y, lowest - ICE_CLEAR)
+	floor_height = maxf(kill_y, lowest - FLOAT_GAP)

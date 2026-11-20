@@ -15,6 +15,19 @@ owner chose it over the blue still-water look, and chose mirror glass for
 the copy ("Yes, build it"). The rules are in `docs/art/STYLE.md`; the proof
 is in `VALIDATION.md`. The still-water rules for the surface still stand.
 
+- Since 2026-11-20: the world floats (owner; `docs/VISION.md`). The water
+  is `FLOAT_GAP` (2 units) below the lowest stone
+  (`world/trial_lighting.gd`). Each stone and each copy has a soft shadow
+  straight below it on the water (`world/water_shadow.gd`;
+  `MirrorWorldView` has two and fades from one to the other when the
+  mirror comes up or goes down). The frame of the mirror glows (`REST`,
+  `HELD` in `world/mirror_frame.gd`) and puts light on the water below its
+  edges (`world/mirror_light.gdshader`, `_update_light` in
+  `world/mirror_sheet.gd`). "Held" is `_manipulating()` or the desktop
+  pointer on the glass (`game.gd`). This is how the mirror shows its
+  place: in a lift the plan on the water does not change, in a ground move
+  it does. `_fit_camera` also holds the plan on the water. Not yet on the
+  phone.
 - Since 2026-11-19: the mirror reaches only `MirrorState.depth` along its
   normal (owner); each cut plane faces away from the mean of the fragment's
   corners, not the centre of its bounds; a drop shadow is the block's
@@ -28,8 +41,7 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   sink into a copy that is still drawn. The camera stays at 45 degrees and
   the move control stays as it is (owner, 2026-11-20; the rail lock is
   withdrawn). Next, by the owner's decision: the ball pad of the turn knob
-  goes. Open: how the mirror shows its place, because a lift and a move
-  back on the two ground axes look the same (`docs/VISION.md`).
+  goes.
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

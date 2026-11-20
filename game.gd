@@ -232,6 +232,8 @@ var _prompt_replay := false
 var _stage_events := {}
 ## The desktop pointer shape the hover last set.
 var _cursor := Input.CURSOR_ARROW
+## The mouse pointer rests on the glass. A phone never sets it.
+var _pointer_on_sheet := false
 
 func _ready() -> void:
 	# One game unit is one point of the device's own interface on every
@@ -356,7 +358,7 @@ func load_level(index: int) -> bool:
 	trial_lighting.set_place(str(level.get("light", "")))
 	trial_lighting.set_floor(float(level.get("kill_y", -5.0)), Geometry.total_bounds(world.drawn_solids).position.y)
 	ice.height = trial_lighting.floor_height
-	sheet.sheet_material.set_shader_parameter("water_level", trial_lighting.floor_height)
+	sheet.water_level = trial_lighting.floor_height
 	world.ice_height = trial_lighting.floor_height
 	ice.set_palette(trial_lighting.palette())
 	for child: Node in goal_root.get_children():
@@ -1512,6 +1514,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	gesture.advance(delta)
+	sheet.set_hover(_pointer_on_sheet or _manipulating())
 	if guide_preview_enabled and guide_kind.is_empty():
 		_update_constellation()
 	else:
@@ -1522,7 +1525,10 @@ func _process(delta: float) -> void:
 	_update_bar()
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_MOUSE_EXIT:
+		_pointer_on_sheet = false
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_pointer_on_sheet = false
 		_cancel_manipulation()
 		if phase == "preview" and direct_controls:
 			cancel_preview()
@@ -1682,7 +1688,7 @@ func _hover_at(point: Vector2) -> void:
 			if target != null:
 				route = navigation.route(walker.position, _walk_target(target))
 	world.draw_hover(route)
-	sheet.set_hover(on_sheet)
+	_pointer_on_sheet = on_sheet
 	if cursor != _cursor:
 		_cursor = cursor
 		Input.set_default_cursor_shape(cursor)
@@ -1805,12 +1811,17 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 	if _manipulating():
 		return
 	# The view is fitted to what is drawn: each solid with a little room, the
-	# mirror, the goal and the girl. `framing` is the box round all of them.
+	# mirror, the goal and the girl. It also holds the shadow of each solid and
+	# the light of the mirror on the water, straight below them: they show
+	# where a thing is. `framing` is the box round all of them.
+	var water := trial_lighting.floor_height
 	var shown := PackedVector3Array()
 	for solid: Dictionary in world.drawn_solids:
 		var roomy := (solid["bounds"] as AABB).grow(0.15)
 		for index: int in 8:
-			shown.append(roomy.get_endpoint(index))
+			var point := roomy.get_endpoint(index)
+			shown.append(point)
+			shown.append(Vector3(point.x, water, point.z))
 	if sweep.active:
 		for index: int in 8:
 			shown.append(sweep.union.get_endpoint(index))
@@ -1819,8 +1830,9 @@ func _fit_camera(rect: Rect2, instant := false) -> void:
 		# against blocks that stay put and the view does not follow each step.
 		var step := sheet.global_basis.z.normalized()
 		for corner: Vector3 in sheet.get_corners():
-			shown.append(corner + step)
-			shown.append(corner - step)
+			for point: Vector3 in [corner + step, corner - step]:
+				shown.append(point)
+				shown.append(Vector3(point.x, water, point.z))
 	shown.append_array(rings.get_fit_points())
 	shown.append(Geometry.vector(level["goal"]) + Vector3.UP)
 	shown.append(walker.position)

@@ -2,6 +2,9 @@ extends MeshInstance3D
 ## Rounded metal tube. Cross-section dimensions stay fixed when the panel resizes.
 const THICKNESS := 0.03
 const CORNER := 0.065
+## The glow of the frame at rest, and while the mirror is held.
+const REST := 0.9
+const HELD := 1.6
 var dimensions := Vector2.ZERO
 var metal := StandardMaterial3D.new()
 var ghost := StandardMaterial3D.new()
@@ -12,19 +15,19 @@ func _init() -> void:
 	metal.metallic = 0.8
 	metal.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT
 	metal.roughness = 0.24
-	# Off until the pointer rests on the mirror; always enabled so the hover
-	# does not compile a new shader.
+	# The frame always glows: low at rest, medium while held. Emission is
+	# always enabled so a change of level does not compile a new shader.
 	metal.emission_enabled = true
 	metal.emission = Color("9ee9f2")
-	metal.emission_energy_multiplier = 0.0
+	metal.emission_energy_multiplier = REST
 	ghost.albedo_color = Color(0.72, 0.8, 0.83, 0.24)
 	ghost.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	ghost.roughness = 0.32
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-## The pointer rests on the mirror: the frame glows as the grab cue.
-func set_glow(value: bool) -> void:
-	metal.emission_energy_multiplier = 0.9 if value else 0.0
+## The mirror is held: the frame glows more.
+func set_glow(held: bool) -> void:
+	metal.emission_energy_multiplier = HELD if held else REST
 
 func update_frame(size: Vector2, editing: bool, enabled: bool) -> void:
 	material_override = ghost if editing else metal
