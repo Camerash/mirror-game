@@ -630,6 +630,25 @@ styles and words.
   tint is as clear, but it is loud and it takes the colour of the ring,
   which is the sign of the goal. The agent's advice: the pale ice; its
   strength (0.3 in the proof) can go down if it is too much like a mark.
+- OPEN (2026-11-20), the owner's idea: "the mirror might not be casting a
+  shadow, but lets assume it's edge is glowing, and therefore emitting
+  light onto the water. How would that look?" Fourth engine proof (scratch
+  script only; `test-output/polish/float/glow-*.jpg`, git-ignored) on
+  "Turn" and "Together". The frame glows in the colour that it has today
+  for the grab cue (`9ee9f2` in `world/mirror_frame.gd`). The lower edge
+  puts a pool of light on the water straight below it; the light is added
+  to the water, and it is wider and weaker when the edge is higher (its
+  width follows the rim by height). The stones and the copies keep their
+  dark shadow. Three levels: the energy of the frame is 0.9, 1.6 or 2.6,
+  and the strength of the light is 0.22, 0.34 or 0.48. Results: the glow
+  and the light read as one thing with a cause, not as a mark. The glow
+  also makes the outline of the whole pane clear. The low level fits the
+  quiet look; the high level is loud. The light shows on "Together",
+  where the edge is 4.5 units above the water. Not in the proof: the glow
+  puts no light on the stones or the snow. One result for the controls:
+  the glow of the frame is today the cue that the pointer rests on the
+  mirror, so that cue must become a second level. The agent's advice: the
+  low level at rest, and the medium level while the mirror is held.
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
