@@ -723,6 +723,49 @@ styles and words.
   weight. Images: `test-output/polish/float/board-lift-or-slide-*.jpg`;
   the three reports in full: `test-output/polish/float/board-reports.md`
   (git-ignored).
+- PROOF (2026-11-21, owner: "Make the proof"), no decision yet: the four
+  main directions of the board for the mirror, in the engine at phone
+  size, as scratch code (no file of the game changed). The second
+  version, by its values: (1) the stone shader gets the place of the pane
+  and makes the light of the mirror on stone, snow and copies: a line of
+  light where the glass passes through a surface (clear to 0.16 units,
+  soft to 0.55), light near the frame, and light on the tops straight
+  below the lower edge by the rule of the water. White snow cannot become
+  brighter, so it takes a cool tint (0.35, 0.80, 1.0) and darker stone
+  gets added light; strength 0.85 at rest, 1.0 held. A first try with
+  decals failed: added light does not show on the snow. (2) The light on
+  the water is a pool: width 0.2 + 0.18 for each unit of height (0.3 to
+  0.9), 1.3 times the strength, a paler tint (`c4eef5`). (3) The glass
+  has a body of 0.07 in the middle and at the foot and 0.17 at the top
+  and the sides; half the frost. (4) The frame has a glow around it in
+  the plane of the pane, brightest at the lower edge (strength 0.3 and
+  width 0.08 at rest; 0.6 and 0.13 held); the metal glows at 0.9 at rest
+  and 2.0 held. Measured against the build: held now differs from rest
+  (peak of the frame 224 and 246 of 255, width of its glow 24 and 37
+  pixels; the build: 219 and 237, 20 and 19). Her darkest tone behind the
+  glass is 75 to 85 (the build: 83 to 104; the first version, with a body
+  of 0.03: 54 to 70). Blind tests, the same two pairs, new advisors each
+  time, all Opus. The build: 6 of 6, 75 percent sure, one cue (the light
+  on the water). The first version (a full board of three): 6 of 6, 80
+  percent, one cue; two called its stronger light on the water "a neon
+  bar"; two said its clear glass "disappears", where the first board said
+  that the glass hid her (the body of the glass is a trade between the
+  pane and the traveller); none saw its light on the snow; two praised
+  the held state. The second version (three readers, the pairs only): 6
+  of 6, 79 percent, two cues: all three also used the line of light on
+  the block top, and two took it for ice. All three readers said that a
+  player cannot tell a lift from a slide in one second from a still, and
+  all three asked for a mark from the frame down to the water, which the
+  owner rejected. So the proof makes the mirror a better object and adds
+  a second cue, but it does not make the place of the mirror clear at a
+  glance in a still. Not proved: motion (in a lift the light on the water
+  stays in its place and gets wider; in a slide it travels with the pane)
+  and the eye of a person. New ideas of the second board, not tried: an
+  image of the glowing frame in the water (one advisor); the glass fills
+  from its foot as the mirror comes up (one). Images:
+  `test-output/polish/float/proof-*.jpg`; the reports:
+  `test-output/polish/float/proof-board-reports.md`; the code of the
+  proof: `test-output/polish/float/proof-code/` (all git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
