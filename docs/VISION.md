@@ -870,6 +870,19 @@ styles and words.
   turns by a tap, and one control to lay the pane flat (the tested routes
   of the six stages use quarter turns only, with no tilt). The other two
   advisors: 45 degree steps by a slide.
+- IDEAS (2026-11-22, owner: "Next up lets fix the rotation control", then
+  "Can we do a round of ideation and mockup?"), not decided: three blind
+  advisors (Opus; lenses: touch and thumb, calm visual language, first-time
+  player) gave nine forms, each drawn over frames of the game at phone
+  size (`test-output/polish/turn-ideas/index.html`, git-ignored). First
+  choices: Nudge (one short push of the turn knob for each 45 degree step),
+  Glide stone (hold and slide, a set distance for each step, five dots at
+  the mirror), Pull the edge (a slide from an edge of the glass turns it).
+  All nine have no pad; seven show a small sign of dots at the mirror.
+  Checked: the solution of "Another way round" turns the yaw from 90 to 0
+  degrees, the other way from a slide to the right now, so both ways must
+  be equally easy. The agent's advice: a trial of Nudge with the ring of
+  eight dots at the mirror. The owner decides.
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then
