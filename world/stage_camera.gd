@@ -4,7 +4,21 @@ extends Camera3D
 signal view_changed
 signal motion_finished
 
+## The lens: the angle from the top to the bottom of the view, in degrees.
+## Things far away look smaller, so a lift of the mirror (nearer) and a slide
+## back (farther) do not look the same. A larger angle makes the effect, and
+## the shrink of the back of the stage, stronger. 0 gives a flat view.
+const LENS_ANGLE := 30.0
+## A flat view stands this far in front of the middle of what it shows. All
+## poses are first made as flat poses; `_apply` then moves the lens back on
+## the same line, so that the middle of the view keeps the scale of `size`.
+const FLAT_DISTANCE := 40.0
+
 var yaw := PI * 0.25
+## The distance from the lens to the middle of the view.
+var distance := FLAT_DISTANCE
+## Where a flat view with this pose would stand. A move starts from here.
+var _location := Vector3.ZERO
 var target_yaw := PI * 0.25
 var bounds := AABB()
 ## What the view must show. When it is not empty, the view is fitted to these
@@ -23,6 +37,18 @@ var drift := 0.0
 ## places travels with "transition".
 var travel_verb := ""
 
+func _init() -> void:
+	if LENS_ANGLE > 0.0:
+		projection = PROJECTION_PERSPECTIVE
+		fov = LENS_ANGLE
+	else:
+		projection = PROJECTION_ORTHOGONAL
+	# Until the first fit, the view looks at the middle of the world from the
+	# play angle. A lens cannot show a point in its own plane, and at the
+	# origin the points of a stage can be in that plane.
+	basis = _view_basis(yaw)
+	position = basis.z * FLAT_DISTANCE
+
 func fit(stage_bounds: AABB, rect: Rect2, instant := false, content := PackedVector3Array()) -> void:
 	if rect.size.x < 10 or rect.size.y < 10:
 		return
@@ -39,7 +65,7 @@ func fit(stage_bounds: AABB, rect: Rect2, instant := false, content := PackedVec
 		_apply(pose["position"], pose["basis"], pose["size"])
 		return
 	busy = true
-	var start_position := position
+	var start_position := _location
 	var start_size := size
 	var start_basis := basis
 	var verb := travel_verb if not travel_verb.is_empty() else "settle"
@@ -92,7 +118,7 @@ func turn(direction: int) -> void:
 		var view_basis := _view_basis(yaw)
 		var height := lerpf(start_size, end_size, weight)
 		var spot := from_spot.lerp(to_spot, weight) * height / frame.y
-		_apply(pivot + view_basis.z * 40.0 - view_basis.x * spot.x + view_basis.y * spot.y, view_basis, height), "reveal")
+		_apply(pivot + view_basis.z * FLAT_DISTANCE - view_basis.x * spot.x + view_basis.y * spot.y, view_basis, height), "reveal")
 	motion.tween_callback(_finish)
 
 ## Applies the current pose at once, for the title's `afar` and `drift`.
@@ -112,35 +138,52 @@ func _pose(angle: float, fixed_size := 0.0, stage_bounds: Variant = null, area: 
 	var shown := _shown(framed, points if content == null else content)
 	var fit_rect: Rect2 = play_rect if area == null else area
 	var view_basis := _view_basis(angle)
-	var direction := view_basis.z
 	var centre := framed.get_center()
 	var viewport_size := get_viewport().get_visible_rect().size
 	var pixels := viewport_size.y / fixed_size if fixed_size > 0.0 else 1.0
-	# The view is centred on the middle of what it shows, as seen from this
-	# angle. For a box's own corners that is the box's centre.
-	var low := Vector2(INF, INF)
-	var high := Vector2(-INF, -INF)
-	for point: Vector3 in shown:
-		var seen := view_basis.inverse() * (point - centre)
-		low = low.min(Vector2(seen.x, seen.y))
-		high = high.max(Vector2(seen.x, seen.y))
-	centre += view_basis.x * (low.x + high.x) * 0.5 + view_basis.y * (low.y + high.y) * 0.5
 	# A small screen keeps a smaller margin, so a phone shows more stage.
 	var margin := minf(48.0, 0.08 * minf(fit_rect.size.x, fit_rect.size.y))
-	if fixed_size <= 0.0:
-		var extent := (high - low).max(Vector2.ONE)
-		pixels = minf(maxf(10, fit_rect.size.x - margin) / extent.x, maxf(10, fit_rect.size.y - margin) / extent.y)
-		pixels /= lerpf(1.0, 2.2, afar)
-	var offset := fit_rect.get_center() - viewport_size * 0.5
-	if viewport_size.y > viewport_size.x:
-		# In a tall frame the mirror bar is high, for the thumb, so the middle
-		# of the area above it is above the middle of the frame. The place
-		# goes down toward the middle of the frame, only into free room, so it
-		# stays above the bar.
-		var room := (fit_rect.size.y - margin - (high.y - low.y) * pixels) * 0.5
-		offset.y += clampf(viewport_size.y * 0.5 - fit_rect.get_center().y, 0.0, maxf(room, 0.0))
-	var location := centre + direction * 40.0 - view_basis.x * offset.x / pixels + view_basis.y * offset.y / pixels
+	var seen := PackedVector3Array()
+	for point: Vector3 in shown:
+		seen.append(view_basis.inverse() * (point - centre))
+	# The lens across the view from `centre`, and its distance from it.
+	var lens := Vector2.ZERO
+	var reach := 0.0
+	# A flat view fits what it shows in one pass. With a lens, a near point
+	# shows larger and a far point smaller, and how much depends on where the
+	# lens stands. Each pass fits the points where the last pass's lens shows
+	# them; a few passes settle to the exact fit.
+	for pass_index: int in (5 if LENS_ANGLE > 0.0 else 1):
+		# The view is centred on the middle of what it shows, as seen from
+		# this angle. For a box's own corners that is the box's centre.
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for point: Vector3 in seen:
+			var across := Vector2(point.x, point.y)
+			if pass_index > 0:
+				across = lens + (across - lens) * reach / maxf(reach - point.z, 1.0)
+			low = low.min(across)
+			high = high.max(across)
+		if fixed_size <= 0.0:
+			var extent := (high - low).max(Vector2.ONE)
+			pixels = minf(maxf(10, fit_rect.size.x - margin) / extent.x, maxf(10, fit_rect.size.y - margin) / extent.y)
+			pixels /= lerpf(1.0, 2.2, afar)
+		var offset := fit_rect.get_center() - viewport_size * 0.5
+		if viewport_size.y > viewport_size.x:
+			# In a tall frame the mirror bar is high, for the thumb, so the
+			# middle of the area above it is above the middle of the frame.
+			# The place goes down toward the middle of the frame, only into
+			# free room, so it stays above the bar.
+			var room := (fit_rect.size.y - margin - (high.y - low.y) * pixels) * 0.5
+			offset.y += clampf(viewport_size.y * 0.5 - fit_rect.get_center().y, 0.0, maxf(room, 0.0))
+		lens = (low + high) * 0.5 + Vector2(-offset.x, offset.y) / pixels
+		reach = _distance(viewport_size.y / pixels)
+	var location := centre + view_basis * Vector3(lens.x, lens.y, FLAT_DISTANCE)
 	return {"position": location, "basis": view_basis, "size": viewport_size.y / pixels}
+
+## How far the lens stands from the middle of a view that is `height` tall.
+func _distance(height: float) -> float:
+	return height * 0.5 / tan(deg_to_rad(LENS_ANGLE) * 0.5) if LENS_ANGLE > 0.0 else FLAT_DISTANCE
 
 ## The view's axes at `angle` about the stage. Its z axis is toward the view.
 func _view_basis(angle: float) -> Basis:
@@ -149,10 +192,17 @@ func _view_basis(angle: float) -> Basis:
 	var lift := lerpf(PI / 6.0, 0.95, afar)
 	return Basis.looking_at(-Vector3(cos(angle) * cos(lift), sin(lift), sin(angle) * cos(lift)), Vector3.UP)
 
+## `location` is where a flat view would stand. The lens stands back on the
+## same line, at the distance where the middle of the view has the scale of a
+## flat view `height` tall.
 func _apply(location: Vector3, view_basis: Basis, height: float) -> void:
-	position = location
+	_location = location
+	distance = _distance(height)
+	position = location + view_basis.z * (distance - FLAT_DISTANCE)
 	basis = view_basis
 	size = height
+	# The view reaches 60 units past its middle at all distances.
+	far = distance + 60.0
 	view_changed.emit()
 
 func _stop() -> void:

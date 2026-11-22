@@ -781,7 +781,7 @@ styles and words.
   owner. Clips: `test-output/polish/float/proof-motion.mp4` and
   `proof-motion-compare.mp4`; the code: `proof-code/motion_clip.gd` (all
   git-ignored).
-- LENS TEST (2026-11-21, owner: "Make the test"), no decision yet. The
+- LENS TEST (2026-11-21, owner: "Make the test"), decided in LENS below. The
   owner saw in the clip that a lift and a slide still look the same, and
   asked if the ortho camera makes this unavoidable. In an ortho view, a
   point's distance along the line of sight does not show, so a pane
@@ -816,6 +816,33 @@ styles and words.
   `lens-motion-45.mp4`; stills: `lens-stages.jpg`, `lens-pairs.jpg`; the
   reports: `lens-board-reports.md`; the code: `proof-code/lens/` (all
   git-ignored).
+- LENS (2026-11-21, owner: "Although the difference is subtle it really
+  helped with the read", then "Try it"), built for the owner to try: the
+  stage camera has a perspective lens of 30 degrees from the top to the
+  bottom of the view. The angles of the view do not change. Each pose is
+  made as a flat pose, and the lens then stands back on the same line, so
+  that the middle of the view keeps the flat scale (31 to 42 units from
+  the middle on the seven stages). The fit is exact through the lens: a few
+  passes fit each point where the lens shows it (16 points of margin at
+  the sides of every stage). The image in the water uses the same lens.
+  The rings and the motes take their scale at the mirror. The reach of the
+  view and of the shadow map follow the distance (60 and 40 units past the
+  middle). Measured on the seven stages: the back of a stage looks 17 to
+  21 percent smaller than its front, and a lift and its matching slide
+  differ in size by 5 to 6 percent for each unit. At 45 degrees these are
+  26 to 31 percent and 7.5 to 10 percent: the cue and the shrink are one
+  effect, and the angle turns both up or down. The angle is one value,
+  `LENS_ANGLE` in `world/stage_camera.gd`; 0 gives the flat view. A slide
+  counts the finger's travel as if it began at the mirror. Through a lens,
+  one unit shows at a different size at the bar, so a slide from the bar
+  moved the mirror an incorrect distance (found by
+  `tests/direct_controls_tests.gd`). Not
+  changed: the ground arrows of the mirror bar take their directions at
+  the middle of the world; with a lens, the true directions change a
+  little across the stage (not measured). Not judged yet: the owner's eye
+  on the phone. Review:
+  `test-output/polish/float/lens-build-motion.mp4`, `lens-build-stages.jpg`
+  and `lens-build-turns.jpg` (git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror

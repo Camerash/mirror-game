@@ -59,8 +59,8 @@ func _ready() -> void:
 	add_child(environment)
 	key.shadow_enabled = true
 	key.shadow_blur = 1.0
-	# The stage camera stands 40 units from the place; one shadow map covers
-	# the whole view.
+	# One shadow map covers the whole view. The game sets its reach from the
+	# distance of the stage camera; 80 suits a camera 40 units away.
 	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	key.directional_shadow_max_distance = 80.0
 	key.shadow_bias = 0.06

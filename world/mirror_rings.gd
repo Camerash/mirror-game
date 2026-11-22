@@ -76,7 +76,8 @@ func _update() -> void:
 
 func _ring(kind: String, axis: Vector3, u: Vector3, dimension: float) -> Dictionary:
 	var pivot: Vector3 = _pose.origin if _has_pose else _state["pivot"]
-	var pixels_per_unit := _camera.get_viewport().get_visible_rect().size.y / _camera.size
+	# Measured at the pivot: through a lens, a near ring shows larger.
+	var pixels_per_unit := maxf(0.001, _camera.unproject_position(pivot + _camera.global_basis.x).distance_to(_camera.unproject_position(pivot)))
 	var radius := maxf(dimension * 0.5 + GAP, MIN_PIXEL_RADIUS / pixels_per_unit)
 	var v := axis.cross(u).normalized()
 	var center := _camera.unproject_position(pivot)

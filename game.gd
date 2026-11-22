@@ -147,7 +147,6 @@ var dragging := false
 var drag_origin := Vector2.ZERO
 var drag_axis := Vector2.ZERO
 var drag_pivot := Vector3.ZERO
-var drag_ground_origin := Vector3.ZERO
 var height_drag := false
 var drag_touch := -1
 var gesture := WorldGesture.new()
@@ -286,10 +285,8 @@ func _setup_scene() -> void:
 	add_child(sweep)
 	sweep.finished.connect(_finish_sweep)
 	add_child(camera)
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.current = true
 	camera.near = 0.05
-	camera.far = 100.0
 	add_child(trial_lighting)
 	ice.camera = camera
 	add_child(ice)
@@ -809,7 +806,6 @@ func _begin_slide(point: Vector2, lift: bool) -> void:
 	drag_touch = gesture.pointer
 	drag_origin = point
 	drag_pivot = preview["pivot"]
-	drag_ground_origin = _ground_point(point, drag_pivot.y)
 	if lift:
 		drag_axis = camera.unproject_position(drag_pivot + Vector3.UP) - camera.unproject_position(drag_pivot)
 	display_target = preview.duplicate(true)
@@ -1712,7 +1708,6 @@ func _start_drag(point: Vector2) -> void:
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	drag_axis = camera.unproject_position(drag_pivot + Vector3.RIGHT) - camera.unproject_position(drag_pivot)
-	drag_ground_origin = _ground_point(point, drag_pivot.y)
 	_begin_constellation("ground", preview)
 	_refresh()
 
@@ -1747,7 +1742,10 @@ func _drag(point: Vector2) -> void:
 			return
 		pivot.y += (point - drag_origin).dot(drag_axis) / drag_axis.length_squared()
 	else:
-		pivot += _ground_point(point, drag_pivot.y) - drag_ground_origin
+		# The finger's travel counts as if it began at the mirror: through a
+		# lens, one unit shows at a different size at other points on the
+		# screen, such as at the bar.
+		pivot = _ground_point(camera.unproject_position(drag_pivot) + point - drag_origin, drag_pivot.y)
 	var limited := pivot
 	for axis: int in 3:
 		limited[axis] = clampf(pivot[axis], level["limits"]["min"][axis], level["limits"]["max"][axis])
@@ -1857,6 +1855,8 @@ func turn_camera(direction: int) -> void:
 	_refresh()
 
 func _camera_changed() -> void:
+	# One shadow map covers the view: it reaches 40 units past the middle.
+	trial_lighting.key.directional_shadow_max_distance = camera.distance + 40.0
 	if level.is_empty():
 		return
 	preview_view.update_view(camera)

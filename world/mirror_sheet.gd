@@ -308,8 +308,11 @@ func _draw_motes(width: float, height: float) -> void:
 func _process(delta: float) -> void:
 	elapsed += delta
 	var camera := get_viewport().get_camera_3d()
-	if camera:
-		mote_material.set_shader_parameter("pixel_world_size", camera.size / maxf(1.0, get_viewport().get_visible_rect().size.y) * 1.1)
+	if camera and not camera.is_position_behind(global_position):
+		# The world size of one point at the mirror: through a lens it changes
+		# with the distance.
+		var point_scale := camera.unproject_position(global_position + camera.global_basis.x).distance_to(camera.unproject_position(global_position))
+		mote_material.set_shader_parameter("pixel_world_size", 1.1 / maxf(point_scale, 0.001))
 	settle_time = maxf(0.0, settle_time - delta)
 	sheet_material.set_shader_parameter("sheet_time", elapsed)
 	var pulse := 0.70 + sin(elapsed * 2.2) * 0.20 if editing else 1.0

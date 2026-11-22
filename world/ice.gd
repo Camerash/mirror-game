@@ -49,11 +49,14 @@ func _ready() -> void:
 	view.msaa_3d = Viewport.MSAA_2X
 	view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(view)
-	eye.projection = Camera3D.PROJECTION_ORTHOGONAL
 	eye.cull_mask = MIRRORED_LAYER
 	view.add_child(eye)
 	eye.current = true
 	material.set_shader_parameter("reflection", view.get_texture())
+	if camera != null:
+		# The image in the ice is seen through the same lens as the stage.
+		eye.projection = camera.projection
+		eye.fov = camera.fov
 	# The stage camera moves on tweens, which step after `_process`; following
 	# its signal keeps the mirror image on the same frame.
 	if camera != null and camera.has_signal("view_changed"):
