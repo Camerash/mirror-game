@@ -40,8 +40,9 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   pane's edge is at her feet (`_direct_wait` in `game.gd`), so she does not
   sink into a copy that is still drawn. The camera stays at 45 degrees and
   the move control stays as it is (owner, 2026-11-20; the rail lock is
-  withdrawn). Next, by the owner's decision: the ball pad of the turn knob
-  goes.
+  withdrawn). The ball pad of the turn knob went (owner, 2026-11-19); the
+  turn knob nudges (trial, owner 2026-11-23: "Try the nudge"): each short
+  push is one step of 45 degrees and a tap turns one step clockwise.
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row
@@ -96,7 +97,7 @@ owner chose control first.
 `docs/VISION.md`.** It is the one control of the mirror: a glass bar below
 the stage with two knobs (turn, lift; the move knob went on 2026-11-18,
 because a slide on the glass moves the mirror); a held knob uses the full
-screen, and the turn knob opens into a turntable pad; a round mirror button
+screen, and the turn knob nudges in steps (since 2026-11-23); a round mirror button
 opens into the bar; a red button lowers the mirror. Sizes are in points:
 one unit is one point on every platform (`game.gd`), and a desktop window
 opens phone-shaped (`app.gd`). Code: `world/mirror_bar.gd` draws it and

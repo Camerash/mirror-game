@@ -17,17 +17,11 @@ const INK := Color(0.20, 0.25, 0.27, 0.9)
 
 class BarOverlay extends Control:
 	var bar: MirrorBar
-	## The overlay above the dial's glass ball draws the dial's marks.
-	var dial := false
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	func _draw() -> void:
-		if bar == null:
-			return
-		if dial:
-			bar._draw_dial(self)
-		else:
+		if bar != null:
 			bar._draw_bar(self)
 
 var _state: Dictionary = {}
@@ -73,36 +67,29 @@ const HOLD_GLASS_ALPHA := 0.3
 ## about two thirds of that: the resistance grows near the limit.
 const PULL_LIMIT := 6.0
 const PULL_SOFTNESS := 90.0
-## The held turn knob opens into a turntable pad (owner, 2026-11-18): a disc
-## of ice on the knob. A slide sideways turns the mirror and a slide up or
-## down tilts it, both in one hold; a slide on a slant does both. Each axis
-## goes one step for each PAD_STEP of travel and keeps its own margin (the
-## game's step rule), so a small drift does not change the other axis. The
-## thumb pushes the near edge of a turntable: a slide to the right turns the
-## mirror anticlockwise on the screen. Up tilts its face to the sky. The steps
-## are the same size everywhere, unlike on the sky map before it, whose steps
-## came close together near its centre.
-## The pad is a ball of ice with stepping stones on it (trial, owner
-## 2026-11-19: stones from three blind advisors, then "the disc itself should
-## use a sphere as the concept"): see `_draw_dial`.
-const DIAL_RADIUS := 100.0
-const PAD_STEP := 40.0
-## The most steps of turn in one hold, each way: half a turn.
-const PAD_TURNS := 4
-## The ball is seen this much from above, as the stage is, so that its rows
-## of stones curve.
-const PAD_VIEW_TILT := PI * 20.0 / 180.0
-## A stone's radius at the front of the ball.
-const STONE := 3.4
-const DIAL_BEAD := 7.0
-## A thumb that rests this long after a slide lets the stage show: the disc
-## goes to DIAL_REST_ALPHA. A move brings it back.
-const DIAL_REST_SECONDS := 0.5
-const DIAL_REST_ALPHA := 0.45
-## At each step a pale ring spreads from the stone reached, as on the pond,
-## out past the thumb's edge, and fades.
-const RIPPLE_SECONDS := 0.45
-const RIPPLE_RADIUS := 40.0
+## The held turn knob nudges the mirror (trial, owner 2026-11-23: "Try the
+## nudge", from a round of three blind advisors). A short push of the knob is
+## one step of 45 degrees; the thumb then comes back a little, and the next
+## push is ready. A push sideways turns the mirror and a push up or down tilts
+## it, both in one hold. A push on a slant gives no step, so the curved sweep
+## of a thumb does not step the other axis, and a long push is still one
+## step. The thumb pushes the near edge of a turntable: a push to the right
+## turns the mirror anticlockwise on the screen. Up tilts its face to the sky.
+## A tap (owner: "the tap maybe going 45º turn") turns the mirror one step
+## clockwise on the screen. Nothing grows under the thumb: the world shows
+## each step, and the game draws the ring of facings at the mirror. The ball
+## pad before it went (owner, 2026-11-19: "The ball disc is a bit hard to
+## use").
+## The push that makes a step, and the way back that readies the next push.
+const NUDGE_PUSH := 16.0
+const NUDGE_RETURN := 8.0
+## A push counts for an axis only within this angle of it.
+const NUDGE_SLANT := PI / 6.0
+## A press that lifts within this time and this travel is a tap.
+const TAP_SECONDS := 0.3
+const TAP_TRAVEL := 8.0
+## The steps of turn of one tap: one step clockwise on the screen.
+const TAP_STEPS := -1
 const CERAMIC := Color(0.985, 0.98, 0.965)
 const ROSE := Color(0.94, 0.72, 0.70)
 const ROSE_INK := Color(0.45, 0.24, 0.24)
@@ -142,36 +129,6 @@ void fragment() {
 	COLOR = vec4(mix(vec3(0.10, 0.13, 0.16), colour, inside), max(inside, shadow) * fade);
 }
 """
-## The pad is a ball of frosted ice. The world behind it is soft and bends a
-## little near the rim. Its tint goes from pale at the centre to the colour of
-## the water at the rim, so it reads as round. A thin light lies on its upper
-## rim and a soft shade inside its lower rim. It has no shadow, only a faint
-## halo of water. No line is hard.
-const ORB := """
-shader_type canvas_item;
-uniform sampler2D screen : hint_screen_texture, repeat_disable, filter_linear_mipmap;
-uniform vec2 size = vec2(300.0, 300.0);
-uniform float radius = 100.0;
-uniform float fade = 1.0;
-
-void fragment() {
-	vec2 p = (UV - 0.5) * size / radius;
-	float d = length(p);
-	float inside = 1.0 - smoothstep(1.0 - 1.5 / radius, 1.0, d);
-	float z = sqrt(max(1.0 - d * d, 0.0));
-	vec2 uv = SCREEN_UV - p * (1.0 - z) * 0.16 * radius * SCREEN_PIXEL_SIZE;
-	vec3 back = textureLod(screen, uv, 3.0).rgb;
-	vec3 tint = mix(vec3(0.95, 0.965, 0.975), vec3(0.62, 0.69, 0.74), smoothstep(0.2, 1.0, d * d));
-	vec3 colour = mix(back, tint, 0.74);
-	// A soft light from above to the left gives the dome its depth.
-	colour *= 0.95 + 0.07 * clamp(dot(vec3(p, z), normalize(vec3(-0.4, -0.6, 0.7))), 0.0, 1.0);
-	float edge = smoothstep(0.84, 1.0, d);
-	colour += vec3(0.80, 0.91, 1.0) * edge * clamp(-p.y, 0.0, 1.0) * 0.32;
-	colour *= 1.0 - edge * clamp(p.y, 0.0, 1.0) * 0.14;
-	float halo = (1.0 - smoothstep(1.0, 1.14, d)) * 0.10 * (1.0 - inside);
-	COLOR = vec4(mix(vec3(0.17, 0.22, 0.27), colour, inside), max(inside, halo) * fade);
-}
-"""
 ## Set by the game each frame: whether the bar shows, where its centre is,
 ## and whether the mirror can go up or down now.
 var shown := false
@@ -195,21 +152,19 @@ var _grip_press := Vector2.ZERO
 var _grip_point := Vector2.ZERO
 var _grip_yaw := 0.0
 var _grip_pitch := 0.0
-## 0 is the turn knob, 1 is the full pad. A spring moves it.
-var _dial := 0.0
-var _dial_velocity := 0.0
-var _dial_centre := Vector2.ZERO
-## The turn and the tilt of this hold so far, in steps, before the steps
-## snap.
-var _dial_lean := Vector2.ZERO
-## How the ball is rolled now: x is the turn from the press, y the tilt, in
-## radians. It follows the thumb smoothly while the knob is held, and goes to
-## the mirror's facing after.
-var _pad_view := Vector2.ZERO
-## The seconds the thumb has rested since its last move on the pad.
-var _dial_rest := 0.0
-## 1 at a step, then down to 0: the ring that spreads from the bead.
-var _ripple := 0.0
+## Where the push now starts: the press, then the thumb's place each time
+## it comes back after a step.
+var _nudge_from := Vector2.ZERO
+## The way of the last step (a unit vector), until the thumb comes back.
+var _nudge_way := Vector2.ZERO
+## How far the thumb went that way, from `_nudge_from`, since the step.
+var _nudge_reach := 0.0
+## The steps of this hold: x is the turn (right is +), y the tilt (down is +).
+var _nudge_steps := Vector2i.ZERO
+## When the knob was pressed, and the farthest the thumb went from the press:
+## a tap is a short press with no travel.
+var _press_msec := 0
+var _grip_far := 0.0
 ## 0 is the mirror button, 1 is the open bar.
 var _open := 0.0
 var _open_velocity := 0.0
@@ -221,27 +176,18 @@ var _pull := Vector2.ZERO
 var _pull_velocity := Vector2.ZERO
 var _pull_knob := ""
 var _tick := 0.0
-## A slide that was made and released while the last change still settled.
+## A slide or taps made and released while the last change still settled.
 var _queued: Dictionary = {}
 var _glass := ColorRect.new()
 var _glass_material := ShaderMaterial.new()
-## The pad's ice, over the bar, and the pad's marks over the ice.
-var _orb := ColorRect.new()
-var _orb_material := ShaderMaterial.new()
-var _dial_overlay := BarOverlay.new()
 
 func _ready() -> void:
 	_canvas.layer = 2
 	add_child(_canvas)
 	_shade(_glass, _glass_material, GLASS)
-	_shade(_orb, _orb_material, ORB)
 	_canvas.add_child(_glass)
 	_overlay.bar = self
 	_canvas.add_child(_overlay)
-	_canvas.add_child(_orb)
-	_dial_overlay.bar = self
-	_dial_overlay.dial = true
-	_canvas.add_child(_dial_overlay)
 
 func _shade(rect: ColorRect, material: ShaderMaterial, code: String) -> void:
 	var shader := Shader.new()
@@ -289,7 +235,7 @@ func motion(point: Vector2, index: int) -> bool:
 	if not owns_pointer(index):
 		return false
 	_grip_point = point
-	_dial_rest = 0.0
+	_grip_far = maxf(_grip_far, point.distance_to(_grip_press))
 	if _started:
 		_move_grip()
 	_overlay.queue_redraw()
@@ -311,8 +257,17 @@ func _finish() -> void:
 	_grip = ""
 	_started = false
 	if kind in KNOBS:
+		var tap := kind == "turn" and not _cancelled and _grip_far < TAP_TRAVEL \
+			and Time.get_ticks_msec() - _press_msec < TAP_SECONDS * 1000.0
 		if started:
+			if tap:
+				_nudge_steps = Vector2i(TAP_STEPS, 0)
+				_aim()
 			action_requested.emit("grip_end", kind)
+		elif tap:
+			# A tap while the last change settles waits too, and taps add up.
+			var taps := int(_queued.get("taps", 0))
+			_queued = {"kind": kind, "press": _grip_press, "point": _grip_press, "taps": taps + 1}
 		elif not _cancelled and _grip_point.distance_to(_grip_press) > 4.0:
 			_queued = {"kind": kind, "press": _grip_press, "point": _grip_point}
 	elif not _cancelled and _grip_at(_grip_point) == kind:
@@ -394,6 +349,8 @@ func _press(point: Vector2, index: int) -> bool:
 	_grip = kind
 	_grip_press = point
 	_grip_point = point
+	_press_msec = Time.get_ticks_msec()
+	_grip_far = 0.0
 	_started = false
 	if kind in KNOBS:
 		_pull_knob = kind
@@ -410,11 +367,10 @@ func _start_knob() -> void:
 	_grip_yaw = _yaw()
 	_grip_pitch = _pitch()
 	if _grip == "turn":
-		# The ball opens with the stone of the mirror's facing on the knob.
-		_dial_lean = Vector2.ZERO
-		_dial_rest = 0.0
-		_pad_view = Vector2(0.0, _grip_pitch)
-		_dial_centre = _pad_place(_grip_press - Vector2(0.0, DIAL_RADIUS * sin(PAD_VIEW_TILT)))
+		_nudge_from = _grip_press
+		_nudge_way = Vector2.ZERO
+		_nudge_reach = 0.0
+		_nudge_steps = Vector2i.ZERO
 	action_requested.emit("grip_begin", {"kind": _grip, "point": _grip_press})
 	# The slide made while the knob waited counts from the press.
 	if not _grip_point.is_equal_approx(_grip_press):
@@ -425,12 +381,16 @@ func _run_queued() -> void:
 	if _busy or not _available:
 		return
 	var held := {"kind": _grip, "press": _grip_press, "point": _grip_point, "started": _started}
+	var taps := int(_queued.get("taps", 0))
 	_grip = _queued["kind"]
 	_grip_press = _queued["press"]
 	_grip_point = _queued["point"]
 	_queued = {}
 	_started = false
 	_start_knob()
+	if taps > 0:
+		_nudge_steps = Vector2i(TAP_STEPS * taps, 0)
+		_aim()
 	action_requested.emit("grip_end", _grip)
 	_grip = held["kind"]
 	_grip_press = held["press"]
@@ -443,44 +403,44 @@ func _move_grip() -> void:
 	if _grip != "turn":
 		action_requested.emit("grip_drag", _grip_point)
 		return
-	_dial_lean = (_grip_point - _grip_press) / PAD_STEP
-	action_requested.emit("grip_aim", {
-		"yaw": _grip_yaw + clampf(_dial_lean.x, -PAD_TURNS, PAD_TURNS) * AIM_STEP,
-		"pitch": _grip_pitch + _dial_lean.y * AIM_STEP})
+	if _nudge_way != Vector2.ZERO:
+		# After a step, the next push is ready when the thumb comes back
+		# NUDGE_RETURN from the farthest place it went that way.
+		var along := (_grip_point - _nudge_from).dot(_nudge_way)
+		_nudge_reach = maxf(_nudge_reach, along)
+		if _nudge_reach - along >= NUDGE_RETURN:
+			_nudge_from = _grip_point
+			_nudge_way = Vector2.ZERO
+		return
+	var push := _grip_point - _nudge_from
+	if push.length() < NUDGE_PUSH:
+		return
+	var way := Vector2(signf(push.x), 0.0) if absf(push.x) >= absf(push.y) else Vector2(0.0, signf(push.y))
+	if push.normalized().dot(way) < cos(NUDGE_SLANT):
+		return
+	_nudge_way = way
+	_nudge_reach = push.dot(way)
+	var steps := _nudge_steps + Vector2i(way)
+	if absf(_grip_pitch + steps.y * AIM_STEP) > PI * 0.5 + 0.01:
+		# The tilt is at its end: no step, only a short tick.
+		Input.vibrate_handheld(5)
+		return
+	_nudge_steps = steps
+	_aim()
 
-## The thumb's travel on the pad for a turn and a tilt, in radians. A positive
-## turn (anticlockwise on the screen) is to the right; a positive tilt (toward
-## the ground) is down.
-static func pad_travel(turn: float, tilt: float) -> Vector2:
-	return Vector2(turn, tilt) / AIM_STEP * PAD_STEP
-
-## Where the pad's centre goes for `point`: there, but moved to stay on the
-## screen.
-func _pad_place(point: Vector2) -> Vector2:
-	var room := get_viewport().get_visible_rect().grow(-8.0 - DIAL_RADIUS)
-	return point.clamp(room.position, room.end)
-
-## Where the stone of a facing (`turn` from the press, `pitch`) is on the ball
-## now, on a ball of radius 1; z is toward the viewer. On the ball the ground
-## is the top pole and the sky the bottom one, and a turn to the right is to
-## the left: so a roll of the ball toward the thumb's way brings that facing's
-## stone to the front, where the hold began.
-func _ball_point(turn: float, pitch: float) -> Vector3:
-	var longitude := _pad_view.x - turn
-	var point := Vector3(sin(longitude) * cos(pitch), sin(pitch), cos(longitude) * cos(pitch))
-	return point.rotated(Vector3.RIGHT, _pad_view.y + PAD_VIEW_TILT)
+## Asks the game for the facing of this hold's steps.
+func _aim() -> void:
+	action_requested.emit("grip_aim", {"yaw": _grip_yaw + _nudge_steps.x * AIM_STEP, "pitch": _grip_pitch + _nudge_steps.y * AIM_STEP})
 
 ## The mirror went to its next step: the held knob answers.
 func tick() -> void:
 	_tick = 1.0
-	_ripple = 1.0
 	Input.vibrate_handheld(10)
 
 func _process(delta: float) -> void:
 	var drawn := shown and _camera != null
 	_glass.visible = drawn
 	if not drawn:
-		_orb.visible = false
 		return
 	var before := _open
 	var spring := _spring(_open, _open_velocity, 1.0 if _available else 0.0, delta)
@@ -492,7 +452,8 @@ func _process(delta: float) -> void:
 		_start_knob()
 	var moving := not is_equal_approx(before, _open) or _open_velocity != 0.0 or _tick > 0.0
 	if _grip in KNOBS:
-		var drag := _grip_point - _grip_press
+		# The turn knob goes with each push and comes back with the thumb.
+		var drag := _grip_point - (_nudge_from if _grip == "turn" and _started else _grip_press)
 		var target := Vector2.ZERO
 		if drag.length() > 0.5:
 			target = drag.normalized() * PULL_LIMIT * (1.0 - exp(-drag.length() / PULL_SOFTNESS))
@@ -507,40 +468,12 @@ func _process(delta: float) -> void:
 	else:
 		_pull = Vector2.ZERO
 	_tick = move_toward(_tick, 0.0, delta / 0.2)
-	_ripple = move_toward(_ripple, 0.0, delta / RIPPLE_SECONDS)
-	if _ripple > 0.0:
-		moving = true
-	# The rest counts only after the first move, so a new player can read the
-	# pad at the start of a hold.
-	if _grip == "turn" and _started and not _grip_point.is_equal_approx(_grip_press):
-		var rest_before := _dial_rest
-		_dial_rest += delta
-		if rest_before < DIAL_REST_SECONDS + 0.3:
-			moving = true
 	var undo_before := _undo_shown
 	spring = _spring(_undo_shown, _undo_velocity, 1.0 if can_undo else 0.0, delta)
 	_undo_shown = spring.x
 	_undo_velocity = spring.y
 	if not is_equal_approx(undo_before, _undo_shown) or _undo_velocity != 0.0:
 		moving = true
-	var dial_before := _dial
-	spring = _spring(_dial, _dial_velocity, 1.0 if _grip == "turn" and _started else 0.0, delta)
-	_dial = spring.x
-	_dial_velocity = spring.y
-	if _dial != dial_before or _dial_velocity != 0.0:
-		moving = true
-	# A stage that loads while the pad still closes has no mirror to follow.
-	if _dialling() and _state.has("pivot"):
-		# The ball rolls with the thumb, without steps; after the release it
-		# rolls to the facing the mirror took. A half turn takes the short way.
-		var target := Vector2(_pad_view.x + wrapf(_yaw() - _grip_yaw - _pad_view.x, -PI, PI), _pitch())
-		if _grip == "turn" and _started:
-			target = Vector2(clampf(_dial_lean.x, -PAD_TURNS, PAD_TURNS) * AIM_STEP,
-				clampf(_grip_pitch + _dial_lean.y * AIM_STEP, -PI * 0.5, PI * 0.5))
-		var view_before := _pad_view
-		_pad_view = _pad_view.lerp(target, 1.0 - exp(-delta * 30.0))
-		if not _pad_view.is_equal_approx(view_before):
-			moving = true
 	var hold_before := _hold
 	var holding := _grip in KNOBS and _started
 	_hold = move_toward(_hold, 1.0 if holding else 0.0, delta / (HOLD_IN_SECONDS if holding else HOLD_OUT_SECONDS))
@@ -561,34 +494,21 @@ func _process(delta: float) -> void:
 	_glass.position = centre + _pull * 0.15 - _glass.size * 0.5
 	_glass_material.set_shader_parameter("size", _glass.size)
 	_glass_material.set_shader_parameter("half_size", half)
-	_glass_material.set_shader_parameter("fade", lerpf(1.0, HOLD_GLASS_ALPHA, smoothstep(0.0, 1.0, _hold)) * (1.0 - smoothstep(0.0, 0.6, _dial)))
-	_orb.visible = _dialling()
-	if _orb.visible:
-		var radius := _dial_radius()
-		_orb.size = Vector2.ONE * radius * 2.4
-		_orb.position = _dial_at() - _orb.size * 0.5
-		_orb_material.set_shader_parameter("size", _orb.size)
-		_orb_material.set_shader_parameter("radius", radius)
-		_orb_material.set_shader_parameter("fade", smoothstep(0.0, 0.3, _dial) * _dial_opacity())
+	_glass_material.set_shader_parameter("fade", lerpf(1.0, HOLD_GLASS_ALPHA, smoothstep(0.0, 1.0, _hold)))
 	if moving:
 		_overlay.queue_redraw()
-		_dial_overlay.queue_redraw()
 
 func _draw_bar(canvas: Control) -> void:
 	if not shown or _camera == null:
 		return
 	var open := _eased()
 	var middle := centre + _pull * 0.15
-	# The pad lies over the bar: the other controls go while it shows.
-	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold)) * (1.0 - smoothstep(0.0, 0.6, _dial))
+	var dim := lerpf(1.0, HOLD_OTHERS_ALPHA, smoothstep(0.0, 1.0, _hold))
 	for index: int in [1, 0]:
 		var kind := KNOBS[index]
 		# The mirror button opens into the turn knob; the lift knob comes in.
 		var morph := kind == "turn"
 		var alpha := 1.0 if morph else smoothstep(0.1, 0.7, open)
-		# The turn knob opens into the pad: it fades as the pad grows.
-		if morph:
-			alpha *= 1.0 - smoothstep(0.0, 0.4, _dial)
 		if alpha <= 0.01:
 			continue
 		if _grip != kind:
@@ -619,71 +539,6 @@ func _draw_bar(canvas: Control) -> void:
 	canvas.draw_set_transform_matrix(Transform2D.IDENTITY)
 	_draw_hint(canvas, open)
 
-## Whether the pad shows: the turn knob is held, or its pad still grows or
-## shrinks.
-func _dialling() -> bool:
-	return _dial != 0.0 or _dial_velocity != 0.0
-
-## How far the pad is open, from 0 to 1. The game fades the prompt with it.
-func dial_amount() -> float:
-	return clampf(_dial, 0.0, 1.0)
-
-## The pad's radius and centre now. It grows from the turn knob.
-func _dial_radius() -> float:
-	return lerpf(KNOB, DIAL_RADIUS, maxf(_dial, 0.0))
-
-func _dial_at() -> Vector2:
-	return (centre + _pull * 0.15).lerp(_dial_centre, clampf(_dial, 0.0, 1.0))
-
-## How clear the pad is: it lets the stage show while the thumb rests after a
-## slide.
-func _dial_opacity() -> float:
-	if _grip != "turn":
-		return 1.0
-	return lerpf(1.0, DIAL_REST_ALPHA, smoothstep(DIAL_REST_SECONDS, DIAL_REST_SECONDS + 0.3, _dial_rest))
-
-## The marks on the ball: stepping stones (trial, owner 2026-11-19). One pale
-## stone for each facing that this hold can reach, 45 degrees apart on the
-## ball: rows of tilt round its poles and columns of turn from pole to pole.
-## The thumb rolls the ball, as a trackball: the stones go the way the thumb
-## goes, and the stone that comes to the point where the hold began is the
-## facing the mirror goes to. There is no stone past a limit (past half a
-## turn, past the sky, past the ground), so the ball shows where it stops.
-## Stones on the far side do not show, and stones near the rim are smaller and
-## fainter. A hollow ring is the stone of the facing at the press: a release
-## with it back at the start changes nothing. No mark on the ball is dark:
-## the dark part is the mirror, on the stage. At each step a ring spreads
-## from the start point.
-func _draw_dial(canvas: Control) -> void:
-	if not _dialling() or not shown or _camera == null:
-		return
-	var at := _dial_at()
-	var radius := _dial_radius()
-	var clear := smoothstep(0.3, 0.9, _dial) * _dial_opacity()
-	if clear <= 0.01:
-		return
-	var tilt := roundi(_grip_pitch / AIM_STEP)
-	for row: int in range(-2 - tilt, 3 - tilt):
-		var pitch := _grip_pitch + row * AIM_STEP
-		# Every turn of a facing at a pole is the same point: one stone.
-		var pole := absf(absf(pitch) - PI * 0.5) < 0.01
-		for column: int in range(-PAD_TURNS, PAD_TURNS + 1):
-			if pole and column != 0:
-				continue
-			var point := _ball_point(column * AIM_STEP, pitch)
-			if point.z <= 0.0:
-				continue
-			var spot := at + Vector2(point.x, -point.y) * radius
-			var ink := Color(INK, clear * 0.55 * smoothstep(0.0, 0.45, point.z))
-			var size := lerpf(0.55, 1.0, point.z)
-			if column == 0 and row == 0:
-				canvas.draw_arc(spot, DIAL_BEAD * size, 0.0, TAU, 32, ink, 1.5, true)
-			else:
-				canvas.draw_circle(spot, STONE * size, ink, true, -1.0, true)
-	if _ripple > 0.0:
-		var start := at + Vector2(0.0, sin(PAD_VIEW_TILT)) * radius
-		canvas.draw_arc(start, lerpf(DIAL_BEAD, RIPPLE_RADIUS, 1.0 - _ripple), 0.0, TAU, 40, Color(INK, clear * 0.45 * _ripple * _ripple), 1.5, true)
-
 ## The ripples and the finger mark of the control that the prompt names.
 func _draw_hint(canvas: Control, open: float) -> void:
 	if hint.is_empty() or _active:
@@ -713,9 +568,11 @@ func _draw_hint(canvas: Control, open: float) -> void:
 		return
 	# The slide: a finger mark comes down on the knob, goes its way and fades.
 	# A pause follows. Its dark ring shows on a white knob, its light ring on
-	# the water.
+	# the water. On the turn knob the finger mark only taps.
 	var way := Vector2.RIGHT
-	if hint == "lift":
+	if hint == "turn":
+		way = Vector2.ZERO
+	elif hint == "lift":
 		way = Vector2.DOWN
 	elif hint == "move":
 		# Along the ground axis that goes up and to the right on the screen,
@@ -778,7 +635,9 @@ func _draw_mark(canvas: Control, kind: String, radius: float, ink: Color) -> voi
 					UiIcons._stroke(canvas, [Vector2(-1.7, lift + 2.0) * unit, Vector2(1.7, lift - 2.0) * unit], pale, width)
 			UiIcons._stroke(canvas, UiIcons._rounded(frame, 2.0 * unit), ink, width)
 		"turn":
-			UiIcons._stroke(canvas, UiIcons._arc(Vector2.ZERO, 8.6 * unit, Vector2.ONE, -60.0, 240.0), pale, width)
+			# Four small pale dots: a push each way is one step.
+			for way: Vector2 in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+				canvas.draw_circle(way * 8.6 * unit, 1.9 * unit, pale, true, -1.0, true)
 		"lift":
 			UiIcons._stroke(canvas, [Vector2(0.0, -10.0) * unit, Vector2(0.0, 10.0) * unit], pale, width)
 		"undo":

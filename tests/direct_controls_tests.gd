@@ -386,21 +386,15 @@ func check_turn_knob() -> void:
 	var yaw: float = game.mirror["yaw"]
 	var pitch: float = game.mirror["pitch"]
 	events.clear()
-	await drag(start, start + dial_travel(PI * 0.25, 0.0))
-	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: one step to the right on the pad turns the mirror 45 degrees")
+	await drag(start, start + Vector2(24, 0))
+	check(is_equal_approx(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI), PI * 0.25), "Turn: one push of the turn knob to the right turns the mirror 45 degrees")
 	check(pivot().is_equal_approx(before), "Turn: turning keeps the mirror's centre")
 	check("turn" in events, "Turn: a turn reports turn")
-	# Four steps to the left in one hold is a half turn; the tilt stays.
+	# Four pushes to the left in one hold, each with a way back, are a half
+	# turn; the tilt stays.
 	yaw = game.mirror["yaw"]
-	mouse_button(start, true)
-	await process_frame
-	for step: int in range(1, 25):
-		mouse_move(start + dial_travel(-PI * step / 24.0, 0.0))
-		await process_frame
-	await frames(6)
-	mouse_button(start + dial_travel(-PI, 0.0), false)
-	await direct_settled()
-	check(is_equal_approx(absf(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI)), PI) and is_equal_approx(float(game.mirror["pitch"]), pitch), "Turn: four steps in one hold is a half turn, and the tilt stays")
+	await nudge(Vector2.LEFT, 4)
+	check(is_equal_approx(absf(wrapf(float(game.mirror["yaw"]) - yaw, -PI, PI)), PI) and is_equal_approx(float(game.mirror["pitch"]), pitch), "Turn: four pushes in one hold are a half turn, and the tilt stays")
 	game.undo()
 	await direct_settled()
 	await point(Vector3.BACK)
@@ -410,39 +404,57 @@ func check_turn_knob() -> void:
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Turn: asking for the opposite way is the half turn")
 
 
-## The finger travel on the turn pad that turns the mirror by `turn` and tilts
-## it by `tilt` from its facing now.
-func dial_travel(turn: float, tilt: float) -> Vector2:
-	return game.bar.pad_travel(turn, tilt)
+## The thumb on the turn knob makes `pushes` pushes of 24 points along `way`
+## in one hold, each followed by a way back of 12 points.
+func nudge(way: Vector2, pushes: int) -> void:
+	var at := knob(0)
+	mouse_button(at, true)
+	await process_frame
+	for push: int in pushes:
+		for target: Vector2 in [at + way * 24.0, at + way * 12.0]:
+			var from := at
+			for step: int in range(1, 9):
+				mouse_move(from.lerp(target, step / 8.0))
+				await process_frame
+			at = target
+	await frames(6)
+	mouse_button(at, false)
+	await direct_settled()
 
 
 func check_freedom_sign() -> void:
-	## While the lift knob is held, the guide shows its sign: its pale lines at
-	## the mirror. The held turn knob grows into its pad instead, and the world
-	## shows only where the mirror faces. Each goes when the knob is let go.
+	## While a knob is held, the guide shows its sign at the mirror: the lift
+	## knob its upright line, the turn knob the ring of its eight facings with
+	## the facing now and the facing at the start. Each goes when the knob is
+	## let go. The turn knob is held longer than a tap, which would turn.
 	await load_stage("01_route")
 	await press_mirror_button()
 	for index: int in game.bar.KNOBS.size():
 		var kind: String = game.bar.KNOBS[index]
 		mouse_button(knob(index), true)
-		await frames(6)
+		var held_until := Time.get_ticks_msec() + int(game.bar.TAP_SECONDS * 1000.0) + 50
+		while Time.get_ticks_msec() < held_until:
+			await process_frame
 		var lines: bool = not game.placement_guide.get_visible_traces().is_empty()
 		if kind == "turn":
-			for wait: int in 120:
-				if game.bar._dial >= 1.0:
-					break
-				await process_frame
-			check(game.placement_guide._data.get("sign", false) and not lines and game.placement_guide._data.get("target") is Vector3 and game.bar._dial >= 1.0,
-				"Sign: holding the turn knob grows it into the pad, and the world shows only where the mirror faces")
+			var dots := 0
+			for mark: Dictionary in game.placement_guide.get_visible_marks():
+				if mark["kind"] == "dot":
+					dots += 1
+			check(game.placement_guide._data.get("sign", false) and lines and (game.placement_guide._data.get("dots", []) as Array).size() == 8
+				and dots > 0 and game.placement_guide._data.get("target") is Vector3,
+				"Sign: holding the turn knob shows the ring of eight facings at the mirror")
 		else:
 			check(game.placement_guide._data.get("sign", false) and lines, "Sign: holding the %s knob shows its lines at the mirror" % kind)
+		var facing: Vector3 = MirrorRules.normal(game.mirror)
 		mouse_button(knob(index), false)
 		await direct_settled()
 		for wait: int in 120:
-			if game.placement_guide._data.is_empty() and game.bar._dial == 0.0:
+			if game.placement_guide._data.is_empty():
 				break
 			await process_frame
-		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty() and game.bar._dial == 0.0, "Sign: letting go of the %s knob takes its sign away" % kind)
+		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty() and MirrorRules.normal(game.mirror).is_equal_approx(facing),
+			"Sign: letting go of the %s knob after a hold takes its sign away and changes nothing" % kind)
 
 
 func check_first_raise_follows_her_look() -> void:

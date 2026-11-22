@@ -104,10 +104,34 @@ func travel(world: Vector3) -> Vector2:
 	return (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
 
 
-## The finger travel on the turn knob's pad that turns the mirror by `turn`
-## and tilts it by `tilt` from its facing now.
-func dial_travel(turn: float, tilt: float) -> Vector2:
-	return game.bar.pad_travel(turn, tilt)
+## A finger presses at `from`, goes through each point in turn, rests, and
+## lifts.
+func path(from: Vector2, points: Array[Vector2]) -> void:
+	button(from, true)
+	await process_frame
+	var last := from
+	for target: Vector2 in points:
+		for step: int in range(1, 9):
+			move(last.lerp(target, step / 8.0))
+			await process_frame
+		last = target
+	await frames(12)
+	button(last, false)
+	await settled()
+	await frames(20)
+
+
+## A press and a lift at once, with no travel.
+func tap(point: Vector2) -> void:
+	button(point, true)
+	await process_frame
+	button(point, false)
+
+
+## The way the mirror faces, on the screen, from its pivot.
+func facing_on_screen() -> Vector2:
+	var pivot: Vector3 = game.mirror["pivot"]
+	return game.camera.unproject_position(pivot + MirrorRules.normal(game.mirror)) - game.camera.unproject_position(pivot)
 
 
 func run() -> void:
@@ -181,10 +205,11 @@ func check_bar(size: Vector2i) -> void:
 	await frames(30)
 	game.walker.route.clear()
 
-	# A held knob fades the others and the glass, and they recover.
-	button(knob(0), true)
+	# A held knob fades the others and the glass, and they recover. (The lift
+	# knob: a short press of the turn knob is a tap, which turns.)
+	button(knob(1), true)
 	check(await until_exact(func() -> float: return game.bar._hold, 1.0), "%s: the hold amount comes to 1 while a knob is held" % label)
-	button(knob(0), false)
+	button(knob(1), false)
 	check(await until_exact(func() -> float: return game.bar._hold, 0.0), "%s: the hold amount goes back to 0 after the release" % label)
 	await settled()
 	await frames(20)
@@ -202,68 +227,80 @@ func check_bar(size: Vector2i) -> void:
 	var moved: Vector3 = game.mirror["pivot"] - pivot
 	check(is_equal_approx(moved.y, 1.0) and is_zero_approx(moved.x) and is_zero_approx(moved.z), "%s: the lift knob lifts by 1 and nothing else" % label)
 
-	# One hold that turns and tilts.
+	# The turn knob nudges: each push of 16 points is one step of 45 degrees.
+	# One hold turns and tilts: a push to the right, back 12, a push up.
 	var turns := [0]
 	game.tutorial_event.connect(func(event: String) -> void:
 		if event == "turn": turns[0] += 1)
 	var yaw := degrees("yaw")
 	var pitch := degrees("pitch")
+	var history_at: int = game.history.size()
 	from = knob(0)
-	await drag(from, from + dial_travel(PI * 0.25, -PI * 0.25))
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch") - pitch, -45.0), "%s: one slide on a slant on the pad turns and tilts" % label)
+	await path(from, [from + Vector2(24, 0), from + Vector2(12, 0), from + Vector2(12, -20)])
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch") - pitch, -45.0),
+		"%s: in one hold, a push to the right, back, and a push up turn and tilt" % label)
 	game.undo()
 	await settled()
 	await frames(20)
 
-	# The turn pad: one step to the right turns by +45 degrees, anticlockwise
-	# on the screen, as the near edge of a turntable that the thumb pushes.
-	var pivot_screen: Vector2 = game.camera.unproject_position(game.mirror["pivot"])
-	var facing_before: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - pivot_screen
-	await drag(from, from + dial_travel(PI * 0.25, PI * 0.1))
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0), "%s: one step to the right on the pad turns by +45 degrees" % label)
-	check(is_equal_approx(degrees("pitch"), pitch), "%s: a drift of 0.4 step down does not tilt" % label)
-	var facing_after: Vector2 = game.camera.unproject_position(game.mirror["pivot"] + MirrorRules.normal(game.mirror)) - game.camera.unproject_position(game.mirror["pivot"])
-	check(facing_before.cross(facing_after) < 0.0, "%s: a slide to the right turns the mirror anticlockwise on the screen" % label)
+	# A push to the right turns by +45 degrees, anticlockwise on the screen,
+	# as the near edge of a turntable that the thumb pushes.
+	var facing_before := facing_on_screen()
+	await drag(from, from + Vector2(24, 7))
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0), "%s: one push to the right turns by +45 degrees" % label)
+	check(is_equal_approx(degrees("pitch"), pitch), "%s: a drift of 7 points down does not tilt" % label)
+	check(facing_before.cross(facing_on_screen()) < 0.0, "%s: a push to the right turns the mirror anticlockwise on the screen" % label)
 
-	# A slide up tilts the mirror 45 degrees to the sky.
-	await drag(from, from + dial_travel(0.0, -PI * 0.25))
-	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a slide up tilts the mirror to face the sky" % label)
-
-	# The ball rolls the way the thumb goes: a roll of one step brings that
-	# facing's stone to the start point, and the start stone goes the thumb's
-	# way (right on the screen is +x, up is +y on the ball).
-	var bar = game.bar
-	var front := Vector3.BACK.rotated(Vector3.RIGHT, bar.PAD_VIEW_TILT)
-	bar._pad_view = Vector2(PI * 0.25, 0.0)
-	check(bar._ball_point(PI * 0.25, 0.0).is_equal_approx(front) and bar._ball_point(0.0, 0.0).x > 0.1,
-		"%s: a roll to the right brings the next turn's stone to the start point" % label)
-	bar._pad_view = Vector2(0.0, -PI * 0.25)
-	check(bar._ball_point(0.0, -PI * 0.25).is_equal_approx(front) and bar._ball_point(0.0, 0.0).y > front.y + 0.1,
-		"%s: a roll up brings the stone toward the sky to the start point" % label)
-	bar._pad_view = Vector2.ZERO
+	# A long push is still one step.
+	await drag(from, from + Vector2(90, 0))
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 90.0), "%s: a long push is one step" % label)
 	game.undo()
 	await settled()
 	await frames(20)
 
-	# A second drag at once after a release is not lost.
+	# A push on a slant gives no step.
+	await drag(from, from + Vector2(20, 20))
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch"), pitch),
+		"%s: a push on a slant changes nothing" % label)
+
+	# A push up tilts the mirror 45 degrees to the sky. Past the sky, a push
+	# gives no step.
+	await drag(from, from + Vector2(0, -24))
+	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a push up tilts the mirror to face the sky" % label)
+	await drag(from, from + Vector2(0, -24))
+	await drag(from, from + Vector2(0, -24))
+	check(is_equal_approx(degrees("pitch"), -90.0), "%s: past the sky, a push gives no step" % label)
+	game.undo()
+	await settled()
+	game.undo()
+	await settled()
+	await frames(20)
+
+	# A tap turns one step clockwise on the screen.
+	facing_before = facing_on_screen()
+	await tap(from)
+	await settled()
+	await frames(20)
+	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 0.0) and is_equal_approx(degrees("pitch"), pitch),
+		"%s: a tap turns by -45 degrees" % label)
+	check(facing_before.cross(facing_on_screen()) > 0.0, "%s: a tap turns the mirror clockwise on the screen" % label)
+
+	# Fast changes are not lost: a push to the left, a tap at once while it
+	# settles, then two fast pushes to the right are four turns.
 	turns[0] = 0
-	await drag(from, from + dial_travel(-PI * 0.25, 0.0), false)
+	var fast_yaw := degrees("yaw")
+	await drag(from, from + Vector2(-24, 0), false)
 	await frames(2)
-	var waited := 2
-	button(from, true)
-	while not game.bar._started and waited < 600:
-		waited += 1
-		await process_frame
-	button(from, false)
+	await tap(from)
 	await settled()
 	await frames(20)
-	await drag(from, from + dial_travel(PI * 0.25, 0.0), false)
+	await drag(from, from + Vector2(24, 0), false)
 	await frames(2)
-	await drag(from, from + dial_travel(PI * 0.25, 0.0))
+	await drag(from, from + Vector2(24, 0))
 	await settled()
 	await frames(40)
 	await settled()
-	check(turns[0] == 3 and is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 90.0), "%s: fast drags (left, right, right) are three turns" % label)
+	check(turns[0] == 4 and is_equal_approx(wrapf(degrees("yaw") - fast_yaw, -180.0, 180.0), 0.0), "%s: fast changes (left, tap, right, right) are four turns" % label)
 
 	# The Undo button is to the left of the bar. A press takes one change back.
 	var undo: Vector2 = game.bar._undo_point()
@@ -276,7 +313,7 @@ func check_bar(size: Vector2i) -> void:
 	await settled()
 	check(game.history.size() == changes - 1 and not game.dragging, "%s: a press on the Undo button takes one change back" % label)
 	# Undo takes each change back.
-	for index: int in 4:
+	while game.history.size() > history_at:
 		game.undo()
 		await settled()
 	await frames(20)

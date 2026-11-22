@@ -22,7 +22,7 @@ The game plays with the **direct controls** (trial 03 in `GAME_DESIGN.md`):
 | Raise / lower the mirror | Mirror button, low in the middle. It opens into the bar; the red button beside the bar lowers the mirror. A lowered mirror keeps its place | M |
 | Move the mirror | Slide on the mirror's glass. The mirror goes under the finger on the ground, in half-unit steps | Arrow keys |
 | Lift the mirror | Hold the lift knob (right of the bar) and slide up or down | Page Up / Page Down |
-| Turn the mirror | Hold the turn knob (left of the bar): it opens into a ball of ice with stones on it, which the thumb rolls. Slide sideways to turn the mirror in steps of 45°, up to tilt it to the sky, down to tilt it to the ground; a slant does both in one hold | — |
+| Turn the mirror | Tap the turn knob (left of the bar) to turn the mirror 45° clockwise. Or hold it and push: each short push is one step of 45°. Push sideways to turn, up to tilt to the sky, down to tilt to the ground; let the thumb come back a little between pushes | — |
 | Turn camera | Swipe or drag sideways on empty space | Q / E |
 | Undo a change | Undo button, to the left of the bar. A drag that ends where it started changes nothing | Z |
 | Cancel a drag | — | Escape |

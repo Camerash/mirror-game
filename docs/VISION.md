@@ -883,6 +883,23 @@ styles and words.
   degrees, the other way from a slide to the right now, so both ways must
   be equally easy. The agent's advice: a trial of Nudge with the ring of
   eight dots at the mirror. The owner decides.
+- TRIAL (2026-11-23, owner: "Try the nudge. I also love the tap idea, with
+  the tap maybe going 45º turn instead of whole 90 and hide the 45 behind a
+  gesture. The main question is that how to tilt."), built: the ball pad is
+  gone. The held turn knob nudges: a push of 16 points is one step of 45
+  degrees, and a way back of 8 points readies the next push. Sideways turns
+  and up or down tilts, in one hold; a push more than 30 degrees from an
+  axis gives no step, and a long push is one step. A tap turns the mirror
+  one step clockwise on the screen, so "Another way round" needs two taps;
+  the prompt there is "Tap the knob to turn". While the knob is held, the
+  sign at the mirror is a faint ring with a dot at each of the eight
+  facings (for a tilt, the upright half ring of five), a dark dot where the
+  mirror faces now and a pale ring where the hold began. The knob's mark is
+  a dark dot with four small pale dots. The tilt in this trial is a push up
+  or down on the same knob; the owner judges it in play. Seen at phone
+  size: when the mirror faces the camera, the half ring of the tilt is seen
+  edge-on and shows as an upright line. Review:
+  `test-output/polish/turn-ideas/nudge/` (git-ignored).
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then

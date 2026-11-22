@@ -892,8 +892,6 @@ func _update_bar() -> void:
 		bar.glass_point = camera.unproject_position(shown_state["pivot"])
 	bar.set_state(shown_state, direct_controls and phase != "transition", not can_edit() or _manipulating() or camera.busy)
 	bar.update_view(camera)
-	# The prompt is gone before the growing pad reaches its line.
-	hud.set_prompt_fade(smoothstep(0.0, 0.25, bar.dial_amount()))
 
 func _open_preview(proposal: Dictionary) -> void:
 	if not can_edit():
@@ -2029,14 +2027,15 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	var dots: Array[Dictionary] = []
 	var references := PackedVector3Array([displayed["pivot"]])
 	var destination: Vector3 = target["pivot"]
+	var aim_traces: Array[Dictionary] = []
 	if kind in ["ground","height"]:
 		dots = Targets.position_dots(displayed["pivot"],origin["pivot"],level["limits"],kind == "height")
 	elif kind == "aim":
-		# The turn knob: its dial shows the ways (`_draw_dial` in
-		# `world/mirror_bar.gd`), so the world shows only the foot and the
-		# side that the mirror will face.
-		var aimed := MirrorRules.normalized(target)
-		destination = _aim_point(displayed, float(aimed["yaw"]), float(aimed["pitch"]))
+		var facings := _aim_sign(displayed, MirrorRules.normalized(origin), MirrorRules.normalized(target))
+		dots = facings["dots"]
+		aim_traces = facings["traces"]
+		references = facings["references"]
+		destination = facings["target"]
 	elif kind.begins_with("size_"):
 		var key := kind.trim_prefix("size_")
 		dots = Targets.resize_dots(origin,displayed,key,level["limits"])
@@ -2052,8 +2051,43 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	var data := {"dots":dots,"references":references,"target":destination}
 	if direct_controls and kind in ["ground","height","aim"]:
 		data["sign"] = true
-		data["traces"] = _sign_traces(displayed,kind)
+		data["traces"] = aim_traces if kind == "aim" else _sign_traces(displayed,kind)
 	return data
+
+## The sign of the turn knob (trial, owner 2026-11-23: the nudge). A faint
+## ring round the mirror with a dot at each of the eight facings at its tilt;
+## for a tilt, or a pane that lies flat, the upright half ring of the five
+## tilts. Dots far round the ring are fainter. The dark dot is where the
+## mirror faces now; the pale ring is where the hold began, so the thumb can
+## push back to it.
+func _aim_sign(displayed: Dictionary, start: Dictionary, target: Dictionary) -> Dictionary:
+	var now := MirrorRules.normalized(displayed)
+	var yaw := float(now["yaw"])
+	var pitch := float(now["pitch"])
+	var start_pitch := float(start["pitch"])
+	var tilting := not is_equal_approx(float(target["pitch"]), start_pitch) or is_equal_approx(absf(start_pitch), PI * 0.5)
+	var dots: Array[Dictionary] = []
+	var line := PackedVector3Array()
+	var weights := PackedFloat32Array()
+	if tilting:
+		for step: int in range(-2, 3):
+			var angle := step * Bar.AIM_STEP
+			dots.append({"position": _aim_point(displayed, yaw, angle), "weight": lerpf(1.0, 0.45, absf(angle - pitch) / PI)})
+		for index: int in 25:
+			line.append(_aim_point(displayed, yaw, lerpf(-PI * 0.5, PI * 0.5, index / 24.0)))
+			weights.append(0.4)
+	else:
+		var start_yaw := float(start["yaw"])
+		for step: int in 8:
+			var angle := start_yaw + step * Bar.AIM_STEP
+			dots.append({"position": _aim_point(displayed, angle, pitch), "weight": lerpf(1.0, 0.45, absf(wrapf(angle - yaw, -PI, PI)) / PI)})
+		for index: int in 49:
+			line.append(_aim_point(displayed, yaw + index * TAU / 48.0, pitch))
+			weights.append(0.4)
+	var traces: Array[Dictionary] = [{"points": line, "weights": weights}]
+	return {"dots": dots, "traces": traces,
+		"references": PackedVector3Array([_aim_point(displayed, yaw, pitch)]),
+		"target": _aim_point(displayed, float(start["yaw"]), start_pitch)}
 
 ## A point of the turn knob's sign: the side that the mirror faces at `yaw`
 ## and `pitch`, on a ball round its foot, past the ends of its pane.
@@ -2064,12 +2098,10 @@ func _aim_point(state: Dictionary, yaw: float, pitch: float) -> Vector3:
 ## The pale lines of a held knob's sign: the pale part of the knob's mark
 ## (`_draw_mark` in `world/mirror_bar.gd`), made large at the mirror. Move: a
 ## line along each way of the ground. Lift: an upright line. A line fades with
-## its distance from the mirror, as the dots do. The turn knob has no lines:
-## its dial shows its ways.
+## its distance from the mirror, as the dots do. The turn knob's ring is in
+## `_aim_sign`.
 func _sign_traces(displayed: Dictionary, kind: String) -> Array[Dictionary]:
 	var traces: Array[Dictionary] = []
-	if kind == "aim":
-		return traces
 	var pivot: Vector3 = displayed["pivot"]
 	for axis: int in ([1] if kind == "height" else [0, 2]):
 		var low := maxf(float(level["limits"]["min"][axis]), pivot[axis] - Targets.GUIDE_RADIUS)

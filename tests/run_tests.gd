@@ -119,6 +119,13 @@ func _test_lifecycle() -> void:
 	_check(game.apply_preview(), "Removal can be confirmed on original support")
 	await _frames(5)
 	_check(game.mirror == {"enabled": false} and game.preview_origin.is_empty(), "Confirmed removal discards the live transform")
+	# The view fits the stage again after the removal; the press is taken
+	# when it is still, through the view as it is then.
+	var waits := 0
+	while game.camera.busy and waits < 120:
+		waits += 1
+		await _frames(1)
+	point = game.camera.unproject_position(Vector3(4, 0, 1))
 	game.create_mirror(point)
 	await _preview_ready()
 	_check(game.preview.get("pivot", Vector3.INF).is_equal_approx(Vector3(4, 0, 1)), "Creation after removal uses the new press: " + str(game.preview.get("pivot")))
