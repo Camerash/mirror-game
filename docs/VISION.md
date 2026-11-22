@@ -817,7 +817,8 @@ styles and words.
   reports: `lens-board-reports.md`; the code: `proof-code/lens/` (all
   git-ignored).
 - LENS (2026-11-21, owner: "Although the difference is subtle it really
-  helped with the read", then "Try it"), built for the owner to try: the
+  helped with the read", then "Try it"; 2026-11-22: "Yes, keep 30°"),
+  built and kept: the
   stage camera has a perspective lens of 30 degrees from the top to the
   bottom of the view. The angles of the view do not change. Each pose is
   made as a flat pose, and the lens then stands back on the same line, so
@@ -839,8 +840,8 @@ styles and words.
   `tests/direct_controls_tests.gd`). Not
   changed: the ground arrows of the mirror bar take their directions at
   the middle of the world; with a lens, the true directions change a
-  little across the stage (not measured). Not judged yet: the owner's eye
-  on the phone. Review:
+  little across the stage (not measured). The owner kept 30 degrees;
+  45 degrees is not built. Review:
   `test-output/polish/float/lens-build-motion.mp4`, `lens-build-stages.jpg`
   and `lens-build-turns.jpg` (git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
