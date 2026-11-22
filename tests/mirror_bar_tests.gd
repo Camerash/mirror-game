@@ -229,9 +229,6 @@ func check_bar(size: Vector2i) -> void:
 
 	# The turn knob nudges: each push of 16 points is one step of 45 degrees.
 	# One hold turns and tilts: a push to the right, back 12, a push up.
-	var turns := [0]
-	game.tutorial_event.connect(func(event: String) -> void:
-		if event == "turn": turns[0] += 1)
 	var yaw := degrees("yaw")
 	var pitch := degrees("pitch")
 	var history_at: int = game.history.size()
@@ -286,21 +283,21 @@ func check_bar(size: Vector2i) -> void:
 	check(facing_before.cross(facing_on_screen()) > 0.0, "%s: a tap turns the mirror clockwise on the screen" % label)
 
 	# Fast changes are not lost: a push to the left, a tap at once while it
-	# settles, then two fast pushes to the right are four turns.
-	turns[0] = 0
+	# settles, then three fast pushes to the right while the mirror still
+	# turns. Changes that wait add up. Each lost change would give a
+	# different end: -45 - 45 + 3 * 45 is +45 only with all five.
 	var fast_yaw := degrees("yaw")
 	await drag(from, from + Vector2(-24, 0), false)
 	await frames(2)
 	await tap(from)
-	await settled()
-	await frames(20)
-	await drag(from, from + Vector2(24, 0), false)
-	await frames(2)
-	await drag(from, from + Vector2(24, 0))
-	await settled()
-	await frames(40)
-	await settled()
-	check(turns[0] == 4 and is_equal_approx(wrapf(degrees("yaw") - fast_yaw, -180.0, 180.0), 0.0), "%s: fast changes (left, tap, right, right) are four turns" % label)
+	await frames(4)
+	for push: int in 3:
+		await drag(from, from + Vector2(24, 0), false)
+		await frames(2)
+	for wait: int in 8:
+		await settled()
+		await frames(20)
+	check(is_equal_approx(wrapf(degrees("yaw") - fast_yaw, -180.0, 180.0), 45.0), "%s: fast changes (left, tap, right, right, right) all count" % label)
 
 	# The Undo button is to the left of the bar. A press takes one change back.
 	var undo: Vector2 = game.bar._undo_point()

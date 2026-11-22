@@ -220,6 +220,7 @@ func run() -> void:
 	await check_tap_through_glass()
 	await check_turn_knob()
 	await check_freedom_sign()
+	await check_heavy_turn()
 	await check_buried_comes_back()
 	await check_first_raise_follows_her_look()
 	await check_stay_and_fall()
@@ -455,6 +456,48 @@ func check_freedom_sign() -> void:
 			await process_frame
 		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty() and MirrorRules.normal(game.mirror).is_equal_approx(facing),
 			"Sign: letting go of the %s knob after a hold takes its sign away and changes nothing" % kind)
+
+
+func check_heavy_turn() -> void:
+	## A turn moves like a large, heavy structure. The motion is stepped here
+	## by frames of 1/60 s, with no real frames between: from rest it starts
+	## slowly, one step of 45 degrees comes to rest in 0.5 to 0.9 s, and a
+	## step asked for while it moves keeps its speed, so two steps in a row
+	## take less time than two single steps.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var start: Dictionary = MirrorRules.normalized(game.mirror)
+	var yaw := float(start["yaw"])
+	var pitch := float(start["pitch"])
+	var tick := 1.0 / 60.0
+	game.begin_grip("turn", knob(1))
+	game.aim_to(yaw + PI * 0.25, pitch)
+	var single := 0
+	var early := 0.0
+	while game.turning and single < 300:
+		game._turn_display(tick)
+		single += 1
+		if single == 6:
+			early = absf(float(game.display_preview["yaw"]) - yaw)
+	check(game.pointing and early < deg_to_rad(5.0) and single >= 30 and single <= 54
+		and is_equal_approx(float(game.display_preview["yaw"]), yaw + PI * 0.25),
+		"Heavy turn: one step starts slowly and comes to rest in 0.5 to 0.9 s (%d frames)" % single)
+	game.aim_to(yaw + PI * 0.5, pitch)
+	for frame: int in 20:
+		game._turn_display(tick)
+	var speed: float = game.turn_speed.x
+	game.aim_to(yaw + PI * 0.75, pitch)
+	game._turn_display(tick)
+	var kept: bool = speed > 0.5 and game.turn_speed.x >= speed - game.TURN_ACCELERATION * tick * 1.01
+	var double := 21
+	while game.turning and double < 300:
+		game._turn_display(tick)
+		double += 1
+	check(kept and double < single * 2, "Heavy turn: a step asked for while it moves keeps its speed (%d frames for two steps)" % double)
+	game.end_grip("turn")
+	await direct_settled()
+	check(is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - yaw - PI * 0.75, -PI, PI)) and not game.turning,
+		"Heavy turn: on release the change applies at the shown facing")
 
 
 func check_first_raise_follows_her_look() -> void:

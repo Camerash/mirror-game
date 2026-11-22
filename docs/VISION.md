@@ -149,7 +149,12 @@ chapter's scale, so a slide plays a phrase. Today: silent snaps.
 
 **Turning the mirror.** Feeling: choosing where to look. Motion: the glass
 swings about its centre with a little weight, settling at each direction.
-Sound: a rising or falling interval. Today: a 0.22 s turn.
+Sound: a rising or falling interval. Today (owner, 2026-11-23: "much more
+slower, like moving a real large structure, but not too too slow"): the
+turn and the tilt gather speed, go at most about 100 degrees a second, and
+slow to a stop on the step; one step of 45 degrees takes about 0.7 s, two
+about 1.1 s, and a step asked for while it moves keeps its speed. Before:
+0.18 s for a step while held, 0.10 s for a tap.
 
 **Lowering the mirror.** Feeling: letting go; an exhale, bittersweet. Motion:
 the copy (mirror glass since 2026-11-17) goes back into the pane, and the
@@ -899,7 +904,15 @@ styles and words.
   or down on the same knob; the owner judges it in play. Seen at phone
   size: when the mirror faces the camera, the half ring of the tilt is seen
   edge-on and shows as an upright line. Review:
-  `test-output/polish/turn-ideas/nudge/` (git-ignored).
+  `test-output/polish/turn-ideas/nudge/` (git-ignored). The owner kept the
+  push up or down for the tilt (2026-11-23: "Keep it.") and asked for a
+  slower turn, like a real large structure. Built: the heavy turn (see
+  "Turning the mirror" above; `TURN_SPEED` and `TURN_ACCELERATION` in
+  `game.gd`). Changes of the turn knob made while the last change settles
+  wait, and their steps add up. A tap or a push that waits starts after
+  the last change applies, so two taps are two turns with a short stop
+  between, not one long turn. Review: `test-output/polish/turn-ideas/heavy/`
+  (git-ignored).
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then

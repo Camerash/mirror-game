@@ -42,7 +42,9 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   the move control stays as it is (owner, 2026-11-20; the rail lock is
   withdrawn). The ball pad of the turn knob went (owner, 2026-11-19); the
   turn knob nudges (trial, owner 2026-11-23: "Try the nudge"): each short
-  push is one step of 45 degrees and a tap turns one step clockwise.
+  push is one step of 45 degrees and a tap turns one step clockwise. The
+  turn moves like a heavy structure (owner, 2026-11-23): about 0.7 s for a
+  step (`TURN_SPEED`, `TURN_ACCELERATION` and `_turn_display` in `game.gd`).
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

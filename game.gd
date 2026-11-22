@@ -58,6 +58,13 @@ const MIN_HALF_STEP := 40.0
 ## the stage, and it is this part of the way from there down to its lowest row.
 const KNOB_GAIN := 0.8
 const KNOB_FOLLOW_SECONDS := 0.18
+## A turn or a tilt moves like a large, heavy structure (owner, 2026-11-23):
+## it gathers speed at TURN_ACCELERATION (radians per second per second),
+## goes at most TURN_SPEED (radians per second), and slows to a stop on its
+## step. A new step while it moves keeps its speed. One step of 45 degrees
+## takes about 0.7 seconds, two steps about 1.1 (`_turn_display`).
+const TURN_SPEED := 1.8
+const TURN_ACCELERATION := 6.0
 ## The sign of a held knob (`_sign_traces`): a line has a point each this many
 ## units.
 const SIGN_STEP := 0.125
@@ -166,6 +173,11 @@ var angle_snap := 15.0
 var edit_mode := "move"
 var display_target: Dictionary = {}
 var display_motion: Tween
+## The shown turn and tilt move by `_turn_display`, not by `display_motion`:
+## whether they move, their speeds (yaw, pitch), and what to call at rest.
+var turning := false
+var turn_speed := Vector2.ZERO
+var turn_finished := Callable()
 var rotation_selected_angle := 0.0
 var placement_guide := PlacementGuide.new()
 var guide_kind := ""
@@ -968,6 +980,15 @@ func _animate_display(target: Dictionary, seconds: float, finished := Callable()
 	var initial := _display_state().duplicate(true)
 	display_target = target.duplicate(true)
 	display_preview = initial
+	# With the direct controls, a turn or a tilt, or the end of one that still
+	# moves, goes by the heavy motion of `_turn_display`. It does not change
+	# the place or the size. The ring of the classic editor follows its
+	# pointer at once.
+	turning = direct_controls and (turn_speed != Vector2.ZERO or not is_equal_approx(float(initial["yaw"]), float(target["yaw"])) \
+		or not is_equal_approx(float(initial["pitch"]), float(target["pitch"])))
+	if turning:
+		turn_finished = finished
+		return
 	display_motion = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	display_motion.tween_method(func(weight: float) -> void:
 		display_preview = Targets.interpolate(initial, target, weight)
@@ -975,6 +996,44 @@ func _animate_display(target: Dictionary, seconds: float, finished := Callable()
 		_update_preview(), 0.0, 1.0, seconds)
 	if finished.is_valid():
 		display_motion.tween_callback(finished)
+
+## Moves the shown yaw and pitch toward the display target. Each angle keeps
+## its speed from frame to frame, and the speed changes by at most
+## TURN_ACCELERATION: it is never more than lets the mirror stop on the
+## target, so a turn that changes way first slows, then comes back.
+func _turn_display(delta: float) -> void:
+	if not turning:
+		return
+	if display_target.is_empty() or display_preview.is_empty():
+		turning = false
+		turn_speed = Vector2.ZERO
+		return
+	var shown := display_target.duplicate(true)
+	var resting := true
+	for index: int in 2:
+		var key: String = ["yaw", "pitch"][index]
+		var angle := float(display_preview[key])
+		var left := float(display_target[key]) - angle
+		var wanted := signf(left) * minf(TURN_SPEED, sqrt(2.0 * TURN_ACCELERATION * absf(left)))
+		var speed := move_toward(turn_speed[index], wanted, TURN_ACCELERATION * delta)
+		if is_zero_approx(left) or (signf(speed) == signf(left) and absf(left) <= absf(speed) * delta):
+			# It arrives this frame, at a speed too low to see the stop.
+			angle = float(display_target[key])
+			speed = 0.0
+		else:
+			angle += speed * delta
+			resting = false
+		shown[key] = angle
+		turn_speed[index] = speed
+	display_preview = MirrorRules.sync(shown)
+	display_basis = MirrorRules.frame(display_preview)
+	_update_preview()
+	if resting:
+		turning = false
+		var finished := turn_finished
+		turn_finished = Callable()
+		if finished.is_valid():
+			finished.call()
 
 func _invalidate_prediction() -> void:
 	predictor.cancel()
@@ -1074,6 +1133,9 @@ func _cancel_manipulation(keep_waiting := false) -> void:
 	cancelling_gesture = true
 	if display_motion and display_motion.is_valid():
 		display_motion.kill()
+	turning = false
+	turn_speed = Vector2.ZERO
+	turn_finished = Callable()
 	display_target.clear()
 	gesture.cancel()
 	if rings.is_inside_tree():
@@ -1507,6 +1569,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _process(delta: float) -> void:
+	_turn_display(delta)
 	gesture.advance(delta)
 	sheet.set_hover(_pointer_on_sheet or _manipulating())
 	if guide_preview_enabled and guide_kind.is_empty():

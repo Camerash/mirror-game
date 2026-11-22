@@ -176,7 +176,8 @@ var _pull := Vector2.ZERO
 var _pull_velocity := Vector2.ZERO
 var _pull_knob := ""
 var _tick := 0.0
-## A slide or taps made and released while the last change still settled.
+## A slide, or the added steps of turn changes, made and released while the
+## last change still settled.
 var _queued: Dictionary = {}
 var _glass := ColorRect.new()
 var _glass_material := ShaderMaterial.new()
@@ -264,10 +265,14 @@ func _finish() -> void:
 				_nudge_steps = Vector2i(TAP_STEPS, 0)
 				_aim()
 			action_requested.emit("grip_end", kind)
-		elif tap:
-			# A tap while the last change settles waits too, and taps add up.
-			var taps := int(_queued.get("taps", 0))
-			_queued = {"kind": kind, "press": _grip_press, "point": _grip_press, "taps": taps + 1}
+		elif kind == "turn" and not _cancelled:
+			# A tap or a push while the last change settles waits too, and the
+			# steps of such changes add up: with a slow turn, two quick pushes
+			# often both come in that time.
+			var step := Vector2i(TAP_STEPS, 0) if tap else Vector2i(_push_way(_grip_point - _grip_press))
+			if step != Vector2i.ZERO:
+				var waiting: Vector2i = _queued.get("steps", Vector2i.ZERO)
+				_queued = {"kind": kind, "press": _grip_press, "point": _grip_press, "steps": waiting + step}
 		elif not _cancelled and _grip_point.distance_to(_grip_press) > 4.0:
 			_queued = {"kind": kind, "press": _grip_press, "point": _grip_point}
 	elif not _cancelled and _grip_at(_grip_point) == kind:
@@ -381,15 +386,15 @@ func _run_queued() -> void:
 	if _busy or not _available:
 		return
 	var held := {"kind": _grip, "press": _grip_press, "point": _grip_point, "started": _started}
-	var taps := int(_queued.get("taps", 0))
+	var steps: Vector2i = _queued.get("steps", Vector2i.ZERO)
 	_grip = _queued["kind"]
 	_grip_press = _queued["press"]
 	_grip_point = _queued["point"]
 	_queued = {}
 	_started = false
 	_start_knob()
-	if taps > 0:
-		_nudge_steps = Vector2i(TAP_STEPS * taps, 0)
+	if steps != Vector2i.ZERO:
+		_nudge_steps = steps
 		_aim()
 	action_requested.emit("grip_end", _grip)
 	_grip = held["kind"]
@@ -413,10 +418,8 @@ func _move_grip() -> void:
 			_nudge_way = Vector2.ZERO
 		return
 	var push := _grip_point - _nudge_from
-	if push.length() < NUDGE_PUSH:
-		return
-	var way := Vector2(signf(push.x), 0.0) if absf(push.x) >= absf(push.y) else Vector2(0.0, signf(push.y))
-	if push.normalized().dot(way) < cos(NUDGE_SLANT):
+	var way := _push_way(push)
+	if way == Vector2.ZERO:
 		return
 	_nudge_way = way
 	_nudge_reach = push.dot(way)
@@ -427,6 +430,14 @@ func _move_grip() -> void:
 		return
 	_nudge_steps = steps
 	_aim()
+
+## The way of a push of the turn knob: right, left, up or down. None when
+## the push is shorter than NUDGE_PUSH or on a slant past NUDGE_SLANT.
+func _push_way(push: Vector2) -> Vector2:
+	if push.length() < NUDGE_PUSH:
+		return Vector2.ZERO
+	var way := Vector2(signf(push.x), 0.0) if absf(push.x) >= absf(push.y) else Vector2(0.0, signf(push.y))
+	return way if push.normalized().dot(way) >= cos(NUDGE_SLANT) else Vector2.ZERO
 
 ## Asks the game for the facing of this hold's steps.
 func _aim() -> void:
