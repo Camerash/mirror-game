@@ -837,10 +837,10 @@ styles and words.
   counts the finger's travel as if it began at the mirror. Through a lens,
   one unit shows at a different size at the bar, so a slide from the bar
   moved the mirror an incorrect distance (found by
-  `tests/direct_controls_tests.gd`). Not
-  changed: the ground arrows of the mirror bar take their directions at
-  the middle of the world; with a lens, the true directions change a
-  little across the stage (not measured). The owner kept 30 degrees;
+  `tests/direct_controls_tests.gd`). The move hint of the mirror bar
+  takes its direction at the mirror too (2026-11-22, owner: "Yes, fix
+  it"): through a lens, the direction of an axis changes a little across
+  the stage. The owner kept 30 degrees;
   45 degrees is not built. Review:
   `test-output/polish/float/lens-build-motion.mp4`, `lens-build-stages.jpg`
   and `lens-build-turns.jpg` (git-ignored).

@@ -753,10 +753,12 @@ func _set_ceramic(canvas: Control, at: Vector2, radius: float, colour: Color, al
 	canvas.draw_circle(Vector2(-radius * 0.28, -radius * 0.44), radius * 0.2, Color(1.0, 1.0, 1.0, 0.5 * alpha), true, -1.0, true)
 	canvas.draw_arc(Vector2.ZERO, radius - 0.4, 0.0, TAU, 48, Color(0.30, 0.36, 0.40, 0.16 * alpha), 1.0, true)
 
-## The screen directions of the two ground axes in this view.
+## The screen directions of the two ground axes at the mirror. Through a
+## lens, the direction of an axis changes across the screen.
 func _ground_axes() -> Array[Vector2]:
-	var origin := _camera.unproject_position(Vector3.ZERO)
-	return [(_camera.unproject_position(Vector3.RIGHT) - origin).normalized(), (_camera.unproject_position(Vector3.BACK) - origin).normalized()]
+	var pivot: Vector3 = _state.get("pivot", Vector3.ZERO)
+	var origin := _camera.unproject_position(pivot)
+	return [(_camera.unproject_position(pivot + Vector3.RIGHT) - origin).normalized(), (_camera.unproject_position(pivot + Vector3.BACK) - origin).normalized()]
 
 func _draw_mark(canvas: Control, kind: String, radius: float, ink: Color) -> void:
 	if ink.a <= 0.01:
