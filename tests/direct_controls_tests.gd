@@ -221,6 +221,9 @@ func run() -> void:
 	await check_turn_knob()
 	await check_freedom_sign()
 	await check_heavy_turn()
+	await check_held_turn()
+	await check_joined_turn()
+	await check_level_ring()
 	await check_buried_comes_back()
 	await check_first_raise_follows_her_look()
 	await check_stay_and_fall()
@@ -461,7 +464,7 @@ func check_freedom_sign() -> void:
 func check_heavy_turn() -> void:
 	## A turn moves like a large, heavy structure. The motion is stepped here
 	## by frames of 1/60 s, with no real frames between: from rest it starts
-	## slowly, one step of 45 degrees comes to rest in 0.5 to 0.9 s, and a
+	## slowly, one step of 45 degrees comes to rest in 0.4 to 0.7 s, and a
 	## step asked for while it moves keeps its speed, so two steps in a row
 	## take less time than two single steps.
 	await load_stage("01_route")
@@ -479,9 +482,9 @@ func check_heavy_turn() -> void:
 		single += 1
 		if single == 6:
 			early = absf(float(game.display_preview["yaw"]) - yaw)
-	check(game.pointing and early < deg_to_rad(5.0) and single >= 30 and single <= 54
+	check(game.pointing and early < deg_to_rad(5.0) and single >= 24 and single <= 42
 		and is_equal_approx(float(game.display_preview["yaw"]), yaw + PI * 0.25),
-		"Heavy turn: one step starts slowly and comes to rest in 0.5 to 0.9 s (%d frames)" % single)
+		"Heavy turn: one step starts slowly and comes to rest in 0.4 to 0.7 s (%d frames)" % single)
 	game.aim_to(yaw + PI * 0.5, pitch)
 	for frame: int in 20:
 		game._turn_display(tick)
@@ -498,6 +501,96 @@ func check_heavy_turn() -> void:
 	await direct_settled()
 	check(is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - yaw - PI * 0.75, -PI, PI)) and not game.turning,
 		"Heavy turn: on release the change applies at the shown facing")
+
+
+func check_held_turn() -> void:
+	## A push of the turn knob that holds keeps the mirror turning at full
+	## speed, one step after another (owner, 2026-11-24: a way to turn many
+	## times). When the push ends, the mirror stops on the facing it goes to,
+	## at most one step and its stopping distance on. A held tilt stops at the
+	## sky. Stepped by frames of 1/60 s, as the heavy turn.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var yaw := float(MirrorRules.normalized(game.mirror)["yaw"])
+	var tick := 1.0 / 60.0
+	game.begin_grip("turn", knob(1))
+	game.aim_by(Vector2i(1, 0), Vector2i(1, 0))
+	var top := 0.0
+	var slowed := false
+	for frame: int in 90:
+		game._turn_display(tick)
+		top = maxf(top, game.turn_speed.x)
+		slowed = slowed or (frame >= 20 and game.turn_speed.x < top - 0.001)
+	var released := float(game.display_preview["yaw"])
+	check(not slowed and is_equal_approx(top, game.TURN_SPEED) and released - yaw > PI * 0.75,
+		"Held turn: the mirror keeps turning at full speed while the push holds (%.0f degrees in 1.5 s)" % rad_to_deg(released - yaw))
+	game.aim_by(Vector2i.ZERO, Vector2i.ZERO)
+	var rest := 0
+	while game.turning and rest < 300:
+		game._turn_display(tick)
+		rest += 1
+	var end := float(game.display_preview["yaw"])
+	var stopping: float = game.TURN_SPEED * game.TURN_SPEED / (2.0 * game.TURN_ACCELERATION)
+	check(is_equal_approx(snappedf(end - yaw, PI * 0.25), end - yaw) and end - released > stopping * 0.9 and end - released < PI * 0.25 + stopping + 0.05,
+		"Held turn: when the push ends, the mirror stops smoothly on the next facing it can reach (%.0f degrees on)" % rad_to_deg(end - released))
+	game.aim_by(Vector2i(0, -1), Vector2i(0, -1))
+	for frame: int in 180:
+		game._turn_display(tick)
+	check(is_equal_approx(float(game.display_preview["pitch"]), -PI * 0.5), "Held turn: a held tilt stops at the sky")
+	game.end_grip("turn")
+	await direct_settled()
+	check(is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - end, -PI, PI)) and not game.turning and game.turn_hold == Vector2i.ZERO,
+		"Held turn: on release the change applies at the facing where it stopped")
+
+
+func check_joined_turn() -> void:
+	## A press of the turn knob while the last turn still moves joins it
+	## (owner, 2026-11-24: "must be smooth"): the speed stays, and the steps
+	## apply as one change when the mirror is at rest.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var yaw := float(MirrorRules.normalized(game.mirror)["yaw"])
+	var history_at: int = game.history.size()
+	var tick := 1.0 / 60.0
+	game.begin_grip("turn", knob(1))
+	game.aim_by(Vector2i(1, 0), Vector2i.ZERO)
+	game.end_grip("turn")
+	for frame: int in 12:
+		game._turn_display(tick)
+	var joinable: bool = game.turn_joinable()
+	var speed: float = game.turn_speed.x
+	game.begin_grip("turn", knob(1))
+	game.aim_by(Vector2i(1, 0), Vector2i.ZERO)
+	game._turn_display(tick)
+	check(joinable and game.pointing and not game.translating_settle and speed > 0.5 and game.turn_speed.x >= speed,
+		"Joined turn: a press while the turn still moves joins it and keeps its speed")
+	game.end_grip("turn")
+	await direct_settled()
+	check(game.history.size() == history_at + 1 and is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - yaw - PI * 0.5, -PI, PI)),
+		"Joined turn: the two steps apply as one change")
+
+
+func check_level_ring() -> void:
+	## The ring of the turn knob keeps its centre at the mirror's centre when
+	## the mirror is tilted (owner, 2026-11-24): the eight dots and the dark
+	## dot lie on a level ring through the centre.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var tilted: Dictionary = MirrorRules.normalized(game.mirror)
+	tilted["pitch"] = -PI * 0.25
+	tilted = MirrorRules.sync(tilted)
+	var sign: Dictionary = game._aim_sign(tilted, tilted, tilted)
+	var pivot: Vector3 = tilted["pivot"]
+	var centre := Vector3.ZERO
+	var level := true
+	for dot: Dictionary in sign["dots"]:
+		var point: Vector3 = dot["position"]
+		centre += point
+		level = level and is_equal_approx(point.y, pivot.y)
+	centre /= maxf(1.0, sign["dots"].size())
+	var orb: Vector3 = sign["references"][0]
+	check(sign["dots"].size() == 8 and level and centre.is_equal_approx(pivot) and is_equal_approx(orb.y, pivot.y),
+		"Level ring: on a tilted mirror the ring and the dark dot are level, round the mirror's centre")
 
 
 func check_first_raise_follows_her_look() -> void:

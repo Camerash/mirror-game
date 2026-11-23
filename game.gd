@@ -62,9 +62,10 @@ const KNOB_FOLLOW_SECONDS := 0.18
 ## it gathers speed at TURN_ACCELERATION (radians per second per second),
 ## goes at most TURN_SPEED (radians per second), and slows to a stop on its
 ## step. A new step while it moves keeps its speed. One step of 45 degrees
-## takes about 0.7 seconds, two steps about 1.1 (`_turn_display`).
-const TURN_SPEED := 1.8
-const TURN_ACCELERATION := 6.0
+## takes about 0.53 seconds, two steps about 0.87 (`_turn_display`). The
+## owner found 1.8 and 6.0 "a tit bit too slow" (2026-11-24).
+const TURN_SPEED := 2.4
+const TURN_ACCELERATION := 9.0
 ## The sign of a held knob (`_sign_traces`): a line has a point each this many
 ## units.
 const SIGN_STEP := 0.125
@@ -178,6 +179,9 @@ var display_motion: Tween
 var turning := false
 var turn_speed := Vector2.ZERO
 var turn_finished := Callable()
+## The way (x turn, y tilt) that the held turn knob keeps the mirror going;
+## zero when no push holds (`_hold_turn`).
+var turn_hold := Vector2i.ZERO
 var rotation_selected_angle := 0.0
 var placement_guide := PlacementGuide.new()
 var guide_kind := ""
@@ -842,6 +846,18 @@ func begin_grip(kind: String, point: Vector2) -> void:
 		return
 	if not direct_controls or pointing or not mirror.get("enabled", false):
 		return
+	if turn_joinable():
+		# A press while the last turn still moves joins it: the facing it goes
+		# to and its speed stay, and the change applies once, at rest.
+		if display_motion and display_motion.is_valid():
+			display_motion.kill()
+		translating_settle = false
+		_finish_kind = ""
+		turn_finished = Callable()
+		_direct_apply = false
+		pointing = true
+		_refresh()
+		return
 	if not _open_direct_preview(mirror):
 		return
 	pointing = true
@@ -870,6 +886,46 @@ func aim_to(yaw: float, pitch: float) -> void:
 	target["pitch"] = aim_selected["pitch"]
 	_follow_target(MirrorRules.sync(target))
 
+## The held turn knob adds `steps` (x turn, right is +; y tilt, down is +) to
+## the facing the mirror goes to, and keeps it going the way `hold` while
+## that is not zero (`_hold_turn`). A tilt past the sky or the ground gives
+## no step, only a short tick.
+func aim_by(steps: Vector2i, hold: Vector2i) -> void:
+	if not direct_controls or not pointing:
+		return
+	turn_hold = hold
+	var pitch := float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP
+	if absf(pitch) > PI * 0.5 + 0.01:
+		Input.vibrate_handheld(5)
+		steps.y = 0
+		pitch = float(aim_selected["pitch"])
+	if steps != Vector2i.ZERO:
+		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, pitch)
+
+## While a push of the turn knob holds, the mirror keeps going: the next step
+## is added when what is left of the turn is no more than the mirror needs to
+## stop from its full speed, so it never slows down. A mirror that still
+## turns the other way first comes to its facing, so a push held against the
+## turn does not add a step in each frame. When the push ends, the mirror
+## stops on the facing it goes to, the nearest it can reach smoothly.
+func _hold_turn(delta: float) -> void:
+	var lead := TURN_SPEED * TURN_SPEED / (2.0 * TURN_ACCELERATION) + TURN_SPEED * delta
+	var steps := Vector2i.ZERO
+	for index: int in 2:
+		var key: String = ["yaw", "pitch"][index]
+		var way := turn_hold[index]
+		if way != 0 and turn_speed[index] * way >= 0.0 and (float(aim_selected[key]) - float(display_preview[key])) * way <= lead:
+			steps[index] = way
+	if absf(float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP) > PI * 0.5 + 0.01:
+		steps.y = 0
+	if steps != Vector2i.ZERO:
+		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP)
+
+## Whether a press of the turn knob now joins the last turn: it was let go,
+## and it has not yet come to rest and applied.
+func turn_joinable() -> bool:
+	return direct_controls and translating_settle and _finish_kind == "point" and pending.is_empty() and not camera.busy
+
 ## The held knob is let go: the change applies.
 func end_grip(kind: String) -> void:
 	if not direct_controls or cancelling_gesture:
@@ -878,6 +934,7 @@ func end_grip(kind: String) -> void:
 		if not pointing:
 			return
 		pointing = false
+		turn_hold = Vector2i.ZERO
 		translating_settle = true
 		_finish_kind = "point"
 		_animate_display(display_target, 0.10, _translation_finished)
@@ -902,7 +959,7 @@ func _update_bar() -> void:
 	var shown_state := _display_state()
 	if shown_state.has("pivot"):
 		bar.glass_point = camera.unproject_position(shown_state["pivot"])
-	bar.set_state(shown_state, direct_controls and phase != "transition", not can_edit() or _manipulating() or camera.busy)
+	bar.set_state(shown_state, direct_controls and phase != "transition", not can_edit() or _manipulating() or camera.busy, turn_joinable())
 	bar.update_view(camera)
 
 func _open_preview(proposal: Dictionary) -> void:
@@ -1002,6 +1059,10 @@ func _animate_display(target: Dictionary, seconds: float, finished := Callable()
 ## TURN_ACCELERATION: it is never more than lets the mirror stop on the
 ## target, so a turn that changes way first slows, then comes back.
 func _turn_display(delta: float) -> void:
+	# A held push also starts a mirror at rest again, after it came back from
+	# a turn the other way.
+	if pointing and turn_hold != Vector2i.ZERO and not display_target.is_empty() and not display_preview.is_empty():
+		_hold_turn(delta)
 	if not turning:
 		return
 	if display_target.is_empty() or display_preview.is_empty():
@@ -1136,6 +1197,7 @@ func _cancel_manipulation(keep_waiting := false) -> void:
 	turning = false
 	turn_speed = Vector2.ZERO
 	turn_finished = Callable()
+	turn_hold = Vector2i.ZERO
 	display_target.clear()
 	gesture.cancel()
 	if rings.is_inside_tree():
@@ -1469,7 +1531,7 @@ func _action(action: String, value: Variant) -> void:
 		"classic_controls": set_direct_controls(not bool(value))
 		"grip_begin": begin_grip(str(value["kind"]), value["point"])
 		"grip_drag": grip_to(value)
-		"grip_aim": aim_to(float(value["yaw"]), float(value["pitch"]))
+		"grip_aim": aim_by(value.get("steps", Vector2i.ZERO), value.get("hold", Vector2i.ZERO))
 		"grip_end": end_grip(str(value))
 		"angle_snap":
 			if not _manipulating() and is_finite(float(value)):
@@ -2118,9 +2180,11 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 	return data
 
 ## The sign of the turn knob (trial, owner 2026-11-23: the nudge). A faint
-## ring round the mirror with a dot at each of the eight facings at its tilt;
-## for a tilt, or a pane that lies flat, the upright half ring of the five
-## tilts. Dots far round the ring are fainter. The dark dot is where the
+## level ring through the mirror's centre with a dot at each of the eight
+## facings; for a tilt, or a pane that lies flat, the upright half ring of the
+## five tilts. Both rings keep their centre at the mirror's centre: a tilted
+## mirror does not move or shrink the level ring (owner, 2026-11-24). Dots
+## far round the ring are fainter. The dark dot, on the ring, is where the
 ## mirror faces now; the pale ring is where the hold began, so the thumb can
 ## push back to it.
 func _aim_sign(displayed: Dictionary, start: Dictionary, target: Dictionary) -> Dictionary:
@@ -2143,10 +2207,13 @@ func _aim_sign(displayed: Dictionary, start: Dictionary, target: Dictionary) -> 
 		var start_yaw := float(start["yaw"])
 		for step: int in 8:
 			var angle := start_yaw + step * Bar.AIM_STEP
-			dots.append({"position": _aim_point(displayed, angle, pitch), "weight": lerpf(1.0, 0.45, absf(wrapf(angle - yaw, -PI, PI)) / PI)})
+			dots.append({"position": _aim_point(displayed, angle, 0.0), "weight": lerpf(1.0, 0.45, absf(wrapf(angle - yaw, -PI, PI)) / PI)})
 		for index: int in 49:
-			line.append(_aim_point(displayed, yaw + index * TAU / 48.0, pitch))
+			line.append(_aim_point(displayed, yaw + index * TAU / 48.0, 0.0))
 			weights.append(0.4)
+		# The dark dot and the pale ring sit on the level ring.
+		pitch = 0.0
+		start_pitch = 0.0
 	var traces: Array[Dictionary] = [{"points": line, "weights": weights}]
 	return {"dots": dots, "traces": traces,
 		"references": PackedVector3Array([_aim_point(displayed, yaw, pitch)]),

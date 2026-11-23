@@ -43,8 +43,12 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   withdrawn). The ball pad of the turn knob went (owner, 2026-11-19); the
   turn knob nudges (trial, owner 2026-11-23: "Try the nudge"): each short
   push is one step of 45 degrees and a tap turns one step clockwise. The
-  turn moves like a heavy structure (owner, 2026-11-23): about 0.7 s for a
-  step (`TURN_SPEED`, `TURN_ACCELERATION` and `_turn_display` in `game.gd`).
+  turn moves like a heavy structure (owner, 2026-11-23): about 0.53 s for a
+  step since 2026-11-24 (`TURN_SPEED`, `TURN_ACCELERATION` and
+  `_turn_display` in `game.gd`). A push that holds keeps the mirror turning
+  (`_hold_turn`), and a press while the last turn still moves joins it
+  (`turn_joinable`; the bar gets it in `set_state`). The bar sends steps
+  and a held way (`grip_aim`, `aim_by`); the game owns the facing.
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

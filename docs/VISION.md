@@ -150,11 +150,13 @@ chapter's scale, so a slide plays a phrase. Today: silent snaps.
 **Turning the mirror.** Feeling: choosing where to look. Motion: the glass
 swings about its centre with a little weight, settling at each direction.
 Sound: a rising or falling interval. Today (owner, 2026-11-23: "much more
-slower, like moving a real large structure, but not too too slow"): the
-turn and the tilt gather speed, go at most about 100 degrees a second, and
-slow to a stop on the step; one step of 45 degrees takes about 0.7 s, two
-about 1.1 s, and a step asked for while it moves keeps its speed. Before:
-0.18 s for a step while held, 0.10 s for a tap.
+slower, like moving a real large structure, but not too too slow"; then
+2026-11-24: "a tit bit too slow"): the turn and the tilt gather speed, go
+at most about 140 degrees a second, and slow to a stop on the step; one
+step of 45 degrees takes about 0.53 s, two about 0.87 s, and a step asked
+for while it moves keeps its speed. A held push keeps it turning at full
+speed, and quick taps join into one turn. Before: 0.67 s and 1.12 s (from
+2026-11-23); first 0.18 s for a step while held, 0.10 s for a tap.
 
 **Lowering the mirror.** Feeling: letting go; an exhale, bittersweet. Motion:
 the copy (mirror glass since 2026-11-17) goes back into the pane, and the
@@ -912,6 +914,26 @@ styles and words.
   wait, and their steps add up. A tap or a push that waits starts after
   the last change applies, so two taps are two turns with a short stop
   between, not one long turn. Review: `test-output/polish/turn-ideas/heavy/`
+  (git-ignored).
+- BUILT (2026-11-24, after play on the phone; owner: "Rotation is a tit bit
+  too slow. Also, the two quick pushes doesn't work well since I cannot
+  trigger the second rotation, and I also think we would probably need to
+  figure out a way for turning multiple times continuously. Lifting finger
+  is okay but must be smooth and intuitive to use." and "the rings
+  indicator should always have origin in the center of mirror, even when it
+  is tilted, just use the lit up orb to indication current position"; the
+  plan was approved: "Yes, build it"). The cause of the lost second push:
+  the next push started where the thumb came back, so the way back to the
+  press counted as a push the other way and turned the mirror back. Now
+  the start of the next push follows the thumb back, as far as the press.
+  A push that holds keeps the mirror turning at full speed, one step after
+  another, with a tick at each; when the thumb comes back or lifts, the
+  mirror stops on the next facing it can reach smoothly. A press while the
+  last turn still moves joins that turn, so quick taps and pushes make one
+  smooth turn and one change (one Undo). The level ring of the eight
+  facings goes through the mirror's centre at full size, also when the
+  mirror is tilted; the dark dot moves on it. The turn is a little faster
+  (0.53 s for a step). Review: `test-output/polish/turn-ideas/joystick/`
   (git-ignored).
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle

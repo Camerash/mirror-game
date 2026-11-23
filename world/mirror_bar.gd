@@ -12,7 +12,6 @@ extends Node3D
 ## the state change. Sizes are in points: one unit is one point (game.gd).
 signal action_requested(action: String, value: Variant)
 
-const Rules := preload("res://core/mirror_state.gd")
 const INK := Color(0.20, 0.25, 0.27, 0.9)
 
 class BarOverlay extends Control:
@@ -68,19 +67,24 @@ const HOLD_GLASS_ALPHA := 0.3
 const PULL_LIMIT := 6.0
 const PULL_SOFTNESS := 90.0
 ## The held turn knob nudges the mirror (trial, owner 2026-11-23: "Try the
-## nudge", from a round of three blind advisors). A short push of the knob is
-## one step of 45 degrees; the thumb then comes back a little, and the next
-## push is ready. A push sideways turns the mirror and a push up or down tilts
-## it, both in one hold. A push on a slant gives no step, so the curved sweep
-## of a thumb does not step the other axis, and a long push is still one
-## step. The thumb pushes the near edge of a turntable: a push to the right
-## turns the mirror anticlockwise on the screen. Up tilts its face to the sky.
-## A tap (owner: "the tap maybe going 45º turn") turns the mirror one step
-## clockwise on the screen. Nothing grows under the thumb: the world shows
-## each step, and the game draws the ring of facings at the mirror. The ball
-## pad before it went (owner, 2026-11-19: "The ball disc is a bit hard to
-## use").
-## The push that makes a step, and the way back that readies the next push.
+## nudge", from a round of three blind advisors). A push of the knob is one
+## step of 45 degrees. While the thumb stays out, the mirror keeps turning
+## that way, one step after another (owner, 2026-11-24: a way to turn many
+## times; the game adds the steps, `_hold_turn` in game.gd). When the thumb
+## comes back a little, the hold ends and the next push is ready. The start
+## of the next push then follows the thumb back toward the press, so the way
+## back is never a push the other way. A push sideways turns the mirror and a
+## push up or down tilts it, both in one hold. A push on a slant gives no
+## step, so the curved sweep of a thumb does not step the other axis. The
+## thumb pushes the near edge of a turntable: a push to the right turns the
+## mirror anticlockwise on the screen. Up tilts its face to the sky. A tap
+## (owner: "the tap maybe going 45º turn") turns the mirror one step
+## clockwise on the screen. A press while the last turn still moves joins
+## that turn, so quick taps make one smooth turn (the game says when, in
+## `set_state`). Nothing grows under the thumb: the world shows each step,
+## and the game draws the ring of facings at the mirror. The ball pad before
+## it went (owner, 2026-11-19: "The ball disc is a bit hard to use").
+## The push that makes a step, and the way back that ends its hold.
 const NUDGE_PUSH := 16.0
 const NUDGE_RETURN := 8.0
 ## A push counts for an axis only within this angle of it.
@@ -150,17 +154,19 @@ var _started := false
 var _cancelled := false
 var _grip_press := Vector2.ZERO
 var _grip_point := Vector2.ZERO
-var _grip_yaw := 0.0
-var _grip_pitch := 0.0
 ## Where the push now starts: the press, then the thumb's place each time
 ## it comes back after a step.
 var _nudge_from := Vector2.ZERO
-## The way of the last step (a unit vector), until the thumb comes back.
+## The way of the push that holds (a unit vector), until the thumb comes back.
 var _nudge_way := Vector2.ZERO
+## The way of the last push, after its hold ended: `_nudge_from` follows the
+## thumb back along it, as far as the press.
+var _nudge_last := Vector2.ZERO
 ## How far the thumb went that way, from `_nudge_from`, since the step.
 var _nudge_reach := 0.0
-## The steps of this hold: x is the turn (right is +), y the tilt (down is +).
-var _nudge_steps := Vector2i.ZERO
+## Whether a press of the turn knob can join the last turn while it still
+## moves. The game sets it with the state.
+var _joinable := false
 ## When the knob was pressed, and the farthest the thumb went from the press:
 ## a tap is a short press with no travel.
 var _press_msec := 0
@@ -198,10 +204,11 @@ func _shade(rect: ColorRect, material: ShaderMaterial, code: String) -> void:
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect.visible = false
 
-func set_state(state: Dictionary, available: bool, busy: bool) -> void:
+func set_state(state: Dictionary, available: bool, busy: bool, joinable := false) -> void:
 	_state = state
 	_available = available and state.has("pivot") and bool(state.get("enabled", false))
 	_busy = busy
+	_joinable = joinable
 	if not _available and _active and _grip in KNOBS:
 		cancel()
 	_overlay.queue_redraw()
@@ -262,8 +269,7 @@ func _finish() -> void:
 			and Time.get_ticks_msec() - _press_msec < TAP_SECONDS * 1000.0
 		if started:
 			if tap:
-				_nudge_steps = Vector2i(TAP_STEPS, 0)
-				_aim()
+				_aim(Vector2i(TAP_STEPS, 0), Vector2i.ZERO)
 			action_requested.emit("grip_end", kind)
 		elif kind == "turn" and not _cancelled:
 			# A tap or a push while the last change settles waits too, and the
@@ -278,12 +284,6 @@ func _finish() -> void:
 	elif not _cancelled and _grip_at(_grip_point) == kind:
 		action_requested.emit("undo" if kind == "undo" else "mirror_toggle", null)
 	_overlay.queue_redraw()
-
-func _yaw() -> float:
-	return float(Rules.normalized(_state)["yaw"])
-
-func _pitch() -> float:
-	return float(Rules.normalized(_state)["pitch"])
 
 ## The open amount that the drawing uses. It can pass 1 or 0 a little.
 func _eased() -> float:
@@ -364,18 +364,17 @@ func _press(point: Vector2, index: int) -> bool:
 	return true
 
 ## The held knob starts its change. A knob pressed while the last change
-## still settles waits here, so a fast second drag is not lost.
+## still settles waits here, so a fast second drag is not lost. The turn
+## knob does not wait while the last turn still moves: it joins that turn.
 func _start_knob() -> void:
-	if _busy:
+	if _busy and not (_grip == "turn" and _joinable):
 		return
 	_started = true
-	_grip_yaw = _yaw()
-	_grip_pitch = _pitch()
 	if _grip == "turn":
 		_nudge_from = _grip_press
 		_nudge_way = Vector2.ZERO
+		_nudge_last = Vector2.ZERO
 		_nudge_reach = 0.0
-		_nudge_steps = Vector2i.ZERO
 	action_requested.emit("grip_begin", {"kind": _grip, "point": _grip_press})
 	# The slide made while the knob waited counts from the press.
 	if not _grip_point.is_equal_approx(_grip_press):
@@ -383,7 +382,7 @@ func _start_knob() -> void:
 
 ## Makes the slide that waited, as one complete change.
 func _run_queued() -> void:
-	if _busy or not _available:
+	if not _available or (_busy and not (_queued["kind"] == "turn" and _joinable)):
 		return
 	var held := {"kind": _grip, "press": _grip_press, "point": _grip_point, "started": _started}
 	var steps: Vector2i = _queued.get("steps", Vector2i.ZERO)
@@ -394,8 +393,7 @@ func _run_queued() -> void:
 	_started = false
 	_start_knob()
 	if steps != Vector2i.ZERO:
-		_nudge_steps = steps
-		_aim()
+		_aim(steps, Vector2i.ZERO)
 	action_requested.emit("grip_end", _grip)
 	_grip = held["kind"]
 	_grip_press = held["press"]
@@ -409,27 +407,30 @@ func _move_grip() -> void:
 		action_requested.emit("grip_drag", _grip_point)
 		return
 	if _nudge_way != Vector2.ZERO:
-		# After a step, the next push is ready when the thumb comes back
-		# NUDGE_RETURN from the farthest place it went that way.
+		# The push holds, and the mirror keeps going, until the thumb comes
+		# back NUDGE_RETURN from the farthest place it went that way.
 		var along := (_grip_point - _nudge_from).dot(_nudge_way)
 		_nudge_reach = maxf(_nudge_reach, along)
-		if _nudge_reach - along >= NUDGE_RETURN:
-			_nudge_from = _grip_point
-			_nudge_way = Vector2.ZERO
-		return
+		if _nudge_reach - along < NUDGE_RETURN:
+			return
+		_nudge_last = _nudge_way
+		_nudge_way = Vector2.ZERO
+		_nudge_from = _grip_point
+		_aim(Vector2i.ZERO, Vector2i.ZERO)
+	if _nudge_last != Vector2.ZERO:
+		# The start of the next push follows the thumb back, as far as the
+		# press. A push the other way counts from the press.
+		var back := (_grip_point - _nudge_from).dot(_nudge_last)
+		var room := (_nudge_from - _grip_press).dot(_nudge_last)
+		if back < 0.0 and room > 0.0:
+			_nudge_from += _nudge_last * maxf(back, -room)
 	var push := _grip_point - _nudge_from
 	var way := _push_way(push)
 	if way == Vector2.ZERO:
 		return
 	_nudge_way = way
 	_nudge_reach = push.dot(way)
-	var steps := _nudge_steps + Vector2i(way)
-	if absf(_grip_pitch + steps.y * AIM_STEP) > PI * 0.5 + 0.01:
-		# The tilt is at its end: no step, only a short tick.
-		Input.vibrate_handheld(5)
-		return
-	_nudge_steps = steps
-	_aim()
+	_aim(Vector2i(way), Vector2i(way))
 
 ## The way of a push of the turn knob: right, left, up or down. None when
 ## the push is shorter than NUDGE_PUSH or on a slant past NUDGE_SLANT.
@@ -439,9 +440,12 @@ func _push_way(push: Vector2) -> Vector2:
 	var way := Vector2(signf(push.x), 0.0) if absf(push.x) >= absf(push.y) else Vector2(0.0, signf(push.y))
 	return way if push.normalized().dot(way) >= cos(NUDGE_SLANT) else Vector2.ZERO
 
-## Asks the game for the facing of this hold's steps.
-func _aim() -> void:
-	action_requested.emit("grip_aim", {"yaw": _grip_yaw + _nudge_steps.x * AIM_STEP, "pitch": _grip_pitch + _nudge_steps.y * AIM_STEP})
+## Asks the game to add `steps` (x is the turn, right is +; y is the tilt,
+## down is +) to the facing the mirror goes to, and to keep going the way
+## `hold` while it is not zero. The game owns the facing: it knows where the
+## mirror is and how fast it turns.
+func _aim(steps: Vector2i, hold: Vector2i) -> void:
+	action_requested.emit("grip_aim", {"steps": steps, "hold": hold})
 
 ## The mirror went to its next step: the held knob answers.
 func tick() -> void:
