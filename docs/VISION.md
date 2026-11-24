@@ -851,6 +851,34 @@ styles and words.
   45 degrees is not built. Review:
   `test-output/polish/float/lens-build-motion.mp4`, `lens-build-stages.jpg`
   and `lens-build-turns.jpg` (git-ignored).
+- NARROW LENS TEST (2026-11-25, owner: "Can we try this trick?"), no
+  decision yet. The owner's idea: a narrow lens of 10 to 15 degrees with
+  the camera far back looks almost flat, but keeps a little perspective,
+  and many games that look flat use it. The game already does this at 30
+  degrees (the lens stands 31 to 42 units from the middle). The test, as
+  scratch code on the build: the same framing at 30, 15, 12 and 10
+  degrees, at phone size. Measured on three stages:
+
+  | Lens | Distance (units) | Back of the stage smaller | Lift against the matching slide |
+  | --- | --- | --- | --- |
+  | 30 (now) | 32 to 40 | 17 percent | 6 to 7 percent larger |
+  | 15 | 65 to 81 | 9 percent | 3 percent |
+  | 12 | 81 to 102 | 7 percent | 2 to 2.6 percent |
+  | 10 | 97 to 122 | 6 percent | 2 percent |
+
+  On "Another way round", the slide that matches a lift of 1.5 units lands
+  8.7 points from it on the screen at 30 degrees, and 2.1 to 2.4 points at
+  15 and 10 degrees (2 in the old flat view). So a narrow lens takes back
+  most of the depth cue that the owner said "really helped with the read";
+  the light of the mirror on the water stays the main cue. The look: the
+  stage is almost the same, with edges nearer to parallel; the houses,
+  fence and trees behind it look flatter and larger. One side effect: the
+  shadow map must cover a longer view, so her shadow on the snow becomes
+  weak; when the view starts 40 units before its middle (`near`), the
+  shadow is as clear as at 30 degrees. Nothing else changes: the fit, the
+  touch, the image in the ice and the snow follow the lens. Review:
+  `test-output/polish/lens-narrow/` (stills, `lift-slide.jpg`,
+  `lens-narrow-compare.mp4`, `proof-code/`; git-ignored).
 - HISTORY (2026-11-19, owner: "Yes. That is it."), not built: the move
   control is a rail lock. A slide that starts on the glass picks the
   nearest of the two ground axes in its first points of travel, the mirror
