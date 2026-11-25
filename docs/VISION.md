@@ -851,8 +851,9 @@ styles and words.
   45 degrees is not built. Review:
   `test-output/polish/float/lens-build-motion.mp4`, `lens-build-stages.jpg`
   and `lens-build-turns.jpg` (git-ignored).
-- NARROW LENS TEST (2026-11-25, owner: "Can we try this trick?"), no
-  decision yet. The owner's idea: a narrow lens of 10 to 15 degrees with
+- NARROW LENS TEST (2026-11-25, owner: "Can we try this trick?"), decided
+  (owner, 2026-11-25: "Keep 30°"): the lens stays at 30 degrees, and no
+  narrow lens is built. The owner's idea: a narrow lens of 10 to 15 degrees with
   the camera far back looks almost flat, but keeps a little perspective,
   and many games that look flat use it. The game already does this at 30
   degrees (the lens stands 31 to 42 units from the middle). The test, as
