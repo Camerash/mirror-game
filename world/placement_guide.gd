@@ -74,6 +74,11 @@ var _opacity := 1.0
 var _fade: Tween
 ## True while the sign fades out.
 var _leaving := false
+## The sign stays at least this long after it comes, so that a tap on a knob,
+## which changes nothing, still shows what the knob does (owner, 2026-11-25:
+## a tap shows no way).
+const LEAST_SHOWN := 1.0
+var _shown_msec := 0
 var _style := Style.DEFAULTS.duplicate()
 var _halo_texture := GradientTexture2D.new()
 
@@ -102,6 +107,7 @@ func show_guides(data: Dictionary) -> void:
 		_opacity = 0.0
 	_data = data.duplicate(true)
 	if arriving:
+		_shown_msec = Time.get_ticks_msec()
 		_fade_to(1.0, "appear")
 
 func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
@@ -124,7 +130,15 @@ func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, 
 func finish() -> void:
 	if _data.is_empty() or _leaving:
 		return
-	_fade_to(0.0, "dismiss")
+	var stay := LEAST_SHOWN - (Time.get_ticks_msec() - _shown_msec) / 1000.0
+	if stay > 0.0:
+		# It fades all the way in, stays, and then goes.
+		var rest := Motion.duration("appear") * (1.0 - _opacity)
+		_fade_to(1.0, "appear", rest)
+		_fade.tween_interval(maxf(stay - rest, 0.0))
+		_add_fade(1.0, 0.0, "dismiss", Motion.duration("dismiss"))
+	else:
+		_fade_to(0.0, "dismiss")
 	_leaving = true
 	_fade.tween_callback(clear)
 
@@ -211,12 +225,16 @@ func _set_opacity(value: float) -> void:
 	_redraw()
 
 ## Fades the whole sign from where it is now to `opacity`, by the motion of
-## `verb`.
-func _fade_to(opacity: float, verb: String) -> void:
+## `verb`, in its time or in `seconds`.
+func _fade_to(opacity: float, verb: String, seconds := -1.0) -> void:
 	_cancel_fade()
 	_leaving = false
 	_fade = create_tween()
-	_fade.tween_method(_set_opacity, _opacity, opacity, Motion.duration(verb)) \
+	_add_fade(_opacity, opacity, verb, Motion.duration(verb) if seconds < 0.0 else seconds)
+
+## Adds a fade from `from` to `to` after the steps that `_fade` has.
+func _add_fade(from: float, to: float, verb: String, seconds: float) -> void:
+	_fade.tween_method(_set_opacity, from, to, seconds) \
 		.set_trans(Motion.VERBS[verb][1]).set_ease(Motion.VERBS[verb][2])
 
 func _cancel_fade() -> void:

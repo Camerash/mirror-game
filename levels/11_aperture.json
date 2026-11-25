@@ -86,7 +86,7 @@
   "prompts": [
     {
       "id": "lower_mirror",
-      "text": "Hold, then slide down",
+      "text": "Push the knob down to lower",
       "control": "lift",
       "after": "no_path",
       "until": "lower"

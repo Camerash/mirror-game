@@ -92,21 +92,24 @@ func press_mirror_button() -> void:
 
 ## A finger on the mirror's centre drags along one axis (0 x, 1 y, 2 z).
 func slide(axis: int, units: float) -> void:
-	## A glass slide (x or z) or the lift knob (y) is held, dragged until the
-	## mirror goes `units` along one axis, and let go.
-	var pivot: Vector3 = game.mirror["pivot"]
-	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
-	var origin: Vector2 = game.camera.unproject_position(pivot)
-	var unit: Vector2 = game.camera.unproject_position(pivot + [Vector3.RIGHT, Vector3.UP, Vector3.RIGHT][axis]) - origin
-	var gain: float = unit.length() / game._screen_axes(pivot)[mini(axis, 1)].length()
+	## A glass slide (x or z) is held, dragged until the mirror goes `units`
+	## along one axis, and let go. The lift knob (y) is held, pushed once for
+	## each step of height, and let go.
 	var start: Vector2 = game.bar.centre
-	var finish: Vector2 = start + (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
-	game.begin_grip("lift" if axis == 1 else "move", start)
-	for step: int in range(1, 13):
-		game.grip_to(start.lerp(finish, step / 12.0))
-		await process_frame
+	var kind := "lift" if axis == 1 else "move"
+	game.begin_grip(kind, start)
+	if axis == 1:
+		for step: int in roundi(absf(units) / game.LIFT_STEP):
+			game.lift_by(int(signf(units)), 0)
+	else:
+		var pivot: Vector3 = game.mirror["pivot"]
+		var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
+		var finish: Vector2 = start + game.camera.unproject_position(pivot + world) - game.camera.unproject_position(pivot)
+		for step: int in range(1, 13):
+			game._drag(start.lerp(finish, step / 12.0))
+			await process_frame
 	await frames(8)
-	game.end_grip("lift" if axis == 1 else "move")
+	game.end_grip(kind)
 	await direct_settled()
 
 

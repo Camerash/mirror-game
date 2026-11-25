@@ -92,18 +92,6 @@ func knob(index: int) -> Vector2:
 	return game.bar.centre + Vector2(game.bar._knob_x(index, 1.0), 0.0)
 
 
-## The finger travel that moves the mirror by `world`.
-func travel(world: Vector3) -> Vector2:
-	var pivot: Vector3 = game.mirror["pivot"]
-	var origin: Vector2 = game.camera.unproject_position(pivot)
-	var unit: Vector2 = game.camera.unproject_position(pivot + Vector3.RIGHT) - origin
-	var gain: float = unit.length() / game._screen_axes(pivot)[0].length()
-	if absf(world.y) > 0.0:
-		unit = game.camera.unproject_position(pivot + Vector3.UP) - origin
-		gain = unit.length() / game._screen_axes(pivot)[1].length()
-	return (game.camera.unproject_position(pivot + world) - origin) / (gain * game.KNOB_GAIN)
-
-
 ## A finger presses at `from`, goes through each point in turn, rests, and
 ## lifts.
 func path(from: Vector2, points: Array[Vector2]) -> void:
@@ -121,8 +109,8 @@ func path(from: Vector2, points: Array[Vector2]) -> void:
 	await frames(20)
 
 
-## A quick push of the turn knob: out to `offset` and back to the press in a
-## few frames, then a lift, with no wait.
+## A quick push of a knob: out to `offset` and back to the press in a few
+## frames, then a lift, with no wait.
 func quick_push(point: Vector2, offset: Vector2) -> void:
 	button(point, true)
 	await process_frame
@@ -219,8 +207,7 @@ func check_bar(size: Vector2i) -> void:
 	await frames(30)
 	game.walker.route.clear()
 
-	# A held knob fades the others and the glass, and they recover. (The lift
-	# knob: a short press of the turn knob is a tap, which turns.)
+	# A held knob fades the others and the glass, and they recover.
 	button(knob(1), true)
 	check(await until_exact(func() -> float: return game.bar._hold, 1.0), "%s: the hold amount comes to 1 while a knob is held" % label)
 	button(knob(1), false)
@@ -234,12 +221,32 @@ func check_bar(size: Vector2i) -> void:
 	check(game.bar.KNOBS == ["turn", "lift"] and game.bar._grip_at(knob(0)) == "turn" and game.bar._grip_at(knob(1)) == "lift",
 		"%s: the bar has two knobs, turn to the left and lift to the right" % label)
 
-	# The lift knob.
+	# The lift knob works as the turn knob (owner, 2026-11-25): out and back
+	# to the press twice, up, is two steps of half a unit; a push to the side
+	# gives none.
 	pivot = game.mirror["pivot"]
 	var from := knob(1)
-	await drag(from, from + travel(Vector3.UP))
+	await path(from, [from + Vector2(0, -24), from, from + Vector2(0, -24), from])
 	var moved: Vector3 = game.mirror["pivot"] - pivot
-	check(is_equal_approx(moved.y, 1.0) and is_zero_approx(moved.x) and is_zero_approx(moved.z), "%s: the lift knob lifts by 1 and nothing else" % label)
+	check(is_equal_approx(moved.y, 1.0) and is_zero_approx(moved.x) and is_zero_approx(moved.z), "%s: two pushes up of the lift knob lift by 1 and nothing else" % label)
+	await path(from, [from + Vector2(24, 0), from])
+	check((game.mirror["pivot"] as Vector3).is_equal_approx(pivot + moved), "%s: a push to the side of the lift knob changes nothing" % label)
+
+	# Quick pushes of the lift knob join the lift that still moves: one change.
+	var lift_at: int = game.history.size()
+	for count: int in 2:
+		await quick_push(from, Vector2(0, 24))
+		await frames(4)
+	await settled()
+	await frames(20)
+	check((game.mirror["pivot"] as Vector3).is_equal_approx(pivot) and game.history.size() == lift_at + 1,
+		"%s: two quick pushes down of the lift knob join into one change of -1" % label)
+	# One Undo takes the joined lift back. The checks of the tilt below need
+	# the mirror one unit up: lower, a pane that faces the sky cuts her ground.
+	game.undo()
+	await settled()
+	await frames(20)
+	check((game.mirror["pivot"] as Vector3).is_equal_approx(pivot + moved), "%s: one Undo takes back the joined lift" % label)
 
 	# The turn knob nudges: each push of 16 points is one step of 45 degrees.
 	# The pushes here come back before they hold long enough to add a step
@@ -294,46 +301,49 @@ func check_bar(size: Vector2i) -> void:
 		await settled()
 	await frames(20)
 
-	# A tap turns one step clockwise on the screen.
-	facing_before = facing_on_screen()
-	await tap(from)
-	await settled()
-	await frames(20)
-	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 0.0) and is_equal_approx(degrees("pitch"), pitch),
-		"%s: a tap turns by -45 degrees" % label)
-	check(facing_before.cross(facing_on_screen()) > 0.0, "%s: a tap turns the mirror clockwise on the screen" % label)
+	# A tap changes nothing (owner, 2026-11-25: a tap shows no way), on
+	# either knob, and Undo gets nothing. It still shows the knob's sign, which
+	# stays a moment.
+	for index: int in 2:
+		var at := knob(index)
+		var shown_before: Dictionary = game.mirror.duplicate(true)
+		var taps_at: int = game.history.size()
+		await tap(at)
+		await frames(6)
+		var sign_shown: bool = game.placement_guide._data.get("sign", false)
+		await settled()
+		await frames(20)
+		check(MirrorRules.same(game.mirror, shown_before) and game.history.size() == taps_at and sign_shown,
+			"%s: a tap on the %s knob changes nothing, and shows its sign" % [label, game.bar.KNOBS[index]])
 
-	# Quick taps join the turn that still moves (owner, 2026-11-24: "must be
-	# smooth"): each tap comes while the mirror still turns, so three taps
+	# Quick pushes join the turn that still moves (owner, 2026-11-24: "must be
+	# smooth"): each push comes while the mirror still turns, so three pushes
 	# are one change of -135 degrees, and one Undo takes all of it back.
-	var tap_yaw := degrees("yaw")
-	var taps_at: int = game.history.size()
+	var quick_yaw := degrees("yaw")
+	var quick_at: int = game.history.size()
 	for count: int in 3:
-		await tap(from)
+		await quick_push(from, Vector2(-24, 0))
 		await frames(4)
 	await settled()
 	await frames(20)
-	check(is_equal_approx(wrapf(degrees("yaw") - tap_yaw, -180.0, 180.0), -135.0) and game.history.size() == taps_at + 1,
-		"%s: three quick taps join into one change of -135 degrees" % label)
+	check(is_equal_approx(wrapf(degrees("yaw") - quick_yaw, -180.0, 180.0), -135.0) and game.history.size() == quick_at + 1,
+		"%s: three quick pushes join into one change of -135 degrees" % label)
 	game.undo()
 	await settled()
 	await frames(20)
-	check(is_equal_approx(wrapf(degrees("yaw") - tap_yaw, -180.0, 180.0), 0.0), "%s: one Undo takes back the joined turn" % label)
+	check(is_equal_approx(wrapf(degrees("yaw") - quick_yaw, -180.0, 180.0), 0.0), "%s: one Undo takes back the joined turn" % label)
 
-	# Fast changes are not lost: a push to the left, a tap, then three quick
-	# pushes to the right, each while the mirror still turns or settles. Each
-	# lost change would give a different end: -45 - 45 + 3 * 45 is +45 only
-	# with all five.
+	# Fast changes are not lost: a push to the left, then three quick pushes
+	# to the right, each while the mirror still turns or settles. Each lost
+	# change would give a different end: -45 + 3 * 45 is +90 only with all four.
 	var fast_yaw := degrees("yaw")
 	await quick_push(from, Vector2(-24, 0))
-	await tap(from)
-	await frames(4)
 	for push: int in 3:
 		await quick_push(from, Vector2(24, 0))
 	for wait: int in 8:
 		await settled()
 		await frames(20)
-	check(is_equal_approx(wrapf(degrees("yaw") - fast_yaw, -180.0, 180.0), 45.0), "%s: fast changes (left, tap, right, right, right) all count" % label)
+	check(is_equal_approx(wrapf(degrees("yaw") - fast_yaw, -180.0, 180.0), 90.0), "%s: fast changes (left, right, right, right) all count" % label)
 
 	# The Undo button is to the left of the bar. A press takes one change back.
 	var undo: Vector2 = game.bar._undo_point()

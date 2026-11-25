@@ -130,28 +130,23 @@ func knob(index: int) -> Vector2:
 	return game.bar.centre + Vector2(game.bar._knob_x(index, 1.0), 0.0)
 
 
-## The finger travel that moves the mirror by `world`.
-func travel(world: Vector3) -> Vector2:
-	var origin: Vector2 = game.camera.unproject_position(pivot())
-	var unit: Vector2 = game.camera.unproject_position(pivot() + Vector3.RIGHT) - origin
-	var gain: float = unit.length() / game._screen_axes(pivot())[0].length()
-	if absf(world.y) > 0.0:
-		unit = game.camera.unproject_position(pivot() + Vector3.UP) - origin
-		gain = unit.length() / game._screen_axes(pivot())[1].length()
-	return (game.camera.unproject_position(pivot() + world) - origin) / (gain * game.KNOB_GAIN)
-
-
-## The command path of a glass slide (x or z) or the lift knob (y): the slide
-## goes on until the mirror goes `units` along `axis`.
 func slide(axis: int, units: float) -> void:
-	var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
+	## A glass slide (x or z) is held, dragged until the mirror goes `units`
+	## along one axis, and let go. The lift knob (y) is held, pushed once for
+	## each step of height, and let go.
 	var start: Vector2 = game.bar.centre
-	var finish: Vector2 = start + travel(world)
 	var kind := "lift" if axis == 1 else "move"
 	game.begin_grip(kind, start)
-	for step: int in range(1, 13):
-		game.grip_to(start.lerp(finish, step / 12.0))
-		await process_frame
+	if axis == 1:
+		for step: int in roundi(absf(units) / game.LIFT_STEP):
+			game.lift_by(int(signf(units)), 0)
+	else:
+		var pivot: Vector3 = game.mirror["pivot"]
+		var world: Vector3 = [Vector3.RIGHT, Vector3.UP, Vector3.BACK][axis] * units
+		var finish: Vector2 = start + game.camera.unproject_position(pivot + world) - game.camera.unproject_position(pivot)
+		for step: int in range(1, 13):
+			game._drag(start.lerp(finish, step / 12.0))
+			await process_frame
 	await frames(8)
 	game.end_grip(kind)
 	await direct_settled()
@@ -224,6 +219,8 @@ func run() -> void:
 	await check_held_turn()
 	await check_release_stop()
 	await check_joined_turn()
+	await check_held_lift()
+	await check_joined_lift()
 	await check_level_ring()
 	await check_full_tilt()
 	await check_sign_fades()
@@ -313,26 +310,37 @@ func ground_travel(world: Vector3) -> Vector2:
 
 
 func check_lift_knob() -> void:
+	## The lift knob works as the turn knob (owner, 2026-11-25: "same
+	## behaviour as the rotation"): each push up or down is one step of
+	## height, a push to the side gives none, and a tap changes nothing.
 	await load_stage("01_route")
 	await press_mirror_button()
 	var start := knob(1)
 	var before := pivot()
+	var history_at: int = game.history.size()
 	events.clear()
-	var finish := start + travel(Vector3.UP)
 	mouse_button(start, true)
 	await process_frame
-	for step: int in range(1, 13):
-		mouse_move(start.lerp(finish, step / 12.0))
+	for step: int in range(1, 9):
+		mouse_move(start + Vector2(0, -24) * (step / 8.0))
 		await process_frame
-	await frames(8)
 	check(game.dragging and game.guide_kind == "height", "Lift: the guide shows the height")
-	mouse_button(finish, false)
+	mouse_move(start + Vector2(0, -12))
+	await frames(6)
+	mouse_button(start + Vector2(0, -12), false)
 	await direct_settled()
-	check(pivot().is_equal_approx(before + Vector3(0, 1, 0)), "Lift: the lift knob raises the mirror one unit, and nothing else")
-	var risen := pivot()
-	await drag(start, start - travel(Vector3.UP))
-	check(pivot().is_equal_approx(risen - Vector3(0, 1, 0)), "Lift: a slide the other way lowers it again")
+	check(pivot().is_equal_approx(before + Vector3(0, 0.5, 0)), "Lift: one push up raises the mirror one step, and nothing else")
+	await nudge(Vector2.UP, 2, 1)
+	check(pivot().is_equal_approx(before + Vector3(0, 1.5, 0)), "Lift: two pushes up in one hold are two steps")
+	await nudge(Vector2.DOWN, 3, 1)
+	check(pivot().is_equal_approx(before), "Lift: pushes down lower it again")
 	check("lower" in events, "Lift: lowering the mirror reports lower")
+	var changes: int = game.history.size()
+	await nudge(Vector2.RIGHT, 1, 1)
+	await tap(start)
+	await direct_settled()
+	check(pivot().is_equal_approx(before) and game.history.size() == changes and changes == history_at + 3,
+		"Lift: a push to the side and a tap change nothing")
 
 
 func check_glass_slide() -> void:
@@ -411,10 +419,11 @@ func check_turn_knob() -> void:
 	check(MirrorRules.normal(game.mirror).is_equal_approx(Vector3.FORWARD), "Turn: asking for the opposite way is the half turn")
 
 
-## The thumb on the turn knob makes `pushes` pushes of 24 points along `way`
-## in one hold, each followed by a way back of 12 points.
-func nudge(way: Vector2, pushes: int) -> void:
-	var at := knob(0)
+## The thumb on a knob (the turn knob, or `index` 1 the lift knob) makes
+## `pushes` pushes of 24 points along `way` in one hold, each followed by a
+## way back of 12 points.
+func nudge(way: Vector2, pushes: int, index := 0) -> void:
+	var at := knob(index)
 	mouse_button(at, true)
 	await process_frame
 	for push: int in pushes:
@@ -433,13 +442,13 @@ func check_freedom_sign() -> void:
 	## While a knob is held, the guide shows its sign at the mirror: the lift
 	## knob its upright line, the turn knob the ring of its eight facings with
 	## the facing now and the facing at the start. Each goes when the knob is
-	## let go. The turn knob is held longer than a tap, which would turn.
+	## let go.
 	await load_stage("01_route")
 	await press_mirror_button()
 	for index: int in game.bar.KNOBS.size():
 		var kind: String = game.bar.KNOBS[index]
 		mouse_button(knob(index), true)
-		var held_until := Time.get_ticks_msec() + int(game.bar.TAP_SECONDS * 1000.0) + 50
+		var held_until := Time.get_ticks_msec() + 350
 		while Time.get_ticks_msec() < held_until:
 			await process_frame
 		var lines: bool = not game.placement_guide.get_visible_traces().is_empty()
@@ -456,9 +465,9 @@ func check_freedom_sign() -> void:
 		var facing: Vector3 = MirrorRules.normal(game.mirror)
 		mouse_button(knob(index), false)
 		await direct_settled()
-		for wait: int in 120:
-			if game.placement_guide._data.is_empty():
-				break
+		# A sign stays at least LEAST_SHOWN, then fades out.
+		var deadline := Time.get_ticks_msec() + 3000
+		while not game.placement_guide._data.is_empty() and Time.get_ticks_msec() < deadline:
 			await process_frame
 		check(game.placement_guide._data.is_empty() and game.placement_guide.get_visible_traces().is_empty() and MirrorRules.normal(game.mirror).is_equal_approx(facing),
 			"Sign: letting go of the %s knob after a hold takes its sign away and changes nothing" % kind)
@@ -607,6 +616,82 @@ func check_joined_turn() -> void:
 	await direct_settled()
 	check(game.history.size() == history_at + 1 and is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - yaw - PI * 0.5, -PI, PI)),
 		"Joined turn: the two steps apply as one change")
+
+
+func check_held_lift() -> void:
+	## A held push of the lift knob keeps the mirror going at full speed, one
+	## step after another, as the held turn. When the push ends, it stops on
+	## the step it goes to, braking at most LIFT_STOP. At the edge of the
+	## placement area it stops on the last step, with one bump and the edge
+	## hint. Stepped by frames of 1/60 s, as the heavy turn.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var height := pivot().y
+	var top_limit := float(game.level["limits"]["max"][1])
+	var history_at: int = game.history.size()
+	var tick := 1.0 / 60.0
+	game.begin_grip("lift", knob(1))
+	game.lift_by(1, 1)
+	var top := 0.0
+	var slowed := false
+	for frame: int in 60:
+		game._turn_display(tick)
+		top = maxf(top, game.lift_speed)
+		slowed = slowed or (frame >= 20 and game.lift_speed < top - 0.001)
+	var released := (game.display_preview["pivot"] as Vector3).y
+	check(not slowed and is_equal_approx(top, game.LIFT_SPEED) and released - height > 1.0,
+		"Held lift: the mirror keeps rising at full speed while the push holds (%.2f units in 1 s)" % (released - height))
+	game.lift_by(0, 0)
+	var rest := 0
+	var firmest := 0.0
+	var speed_was: float = game.lift_speed
+	while game.turning and rest < 300:
+		game._turn_display(tick)
+		if game.turning:
+			firmest = maxf(firmest, (speed_was - game.lift_speed) / tick)
+		speed_was = game.lift_speed
+		rest += 1
+	var end := (game.display_preview["pivot"] as Vector3).y
+	var step: float = game.LIFT_STEP
+	var next := height + ceilf((released - height) / step - 0.001) * step
+	check(is_equal_approx(end, next) and firmest <= game.LIFT_STOP + 0.01,
+		"Held lift: when the push ends, the mirror stops on the step it goes to (%.2f units on, braking at most %.1f)" % [end - released, firmest])
+	check(not game.lift_edge and not game.limit_hint_shown, "Held lift: no bump and no edge hint inside the area")
+	game.lift_by(1, 1)
+	for frame: int in 240:
+		game._turn_display(tick)
+	check(is_equal_approx((game.display_preview["pivot"] as Vector3).y, top_limit) and not game.turning and game.lift_edge and game.limit_hint_shown,
+		"Held lift: at the edge of the area it stops on the last step, with a bump and the edge hint")
+	game.end_grip("lift")
+	await direct_settled()
+	check(is_equal_approx(pivot().y, top_limit) and game.history.size() == history_at + 1 and game.lift_hold == 0,
+		"Held lift: on release the change applies where it stopped, as one change")
+
+
+func check_joined_lift() -> void:
+	## A press of the lift knob while the last lift still moves joins it, as
+	## a press of the turn knob does: the speed stays, and the steps apply as
+	## one change when the mirror is at rest.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var height := pivot().y
+	var history_at: int = game.history.size()
+	var tick := 1.0 / 60.0
+	game.begin_grip("lift", knob(1))
+	game.lift_by(1, 0)
+	game.end_grip("lift")
+	for frame: int in 12:
+		game._turn_display(tick)
+	var joinable: bool = game.lift_joinable()
+	var speed: float = game.lift_speed
+	game.begin_grip("lift", knob(1))
+	game.lift_by(1, 0)
+	game._turn_display(tick)
+	check(joinable and game.dragging and not game.translating_settle and speed > 0.3 and game.lift_speed >= speed,
+		"Joined lift: a press while the lift still moves joins it and keeps its speed")
+	game.end_grip("lift")
+	await direct_settled()
+	check(game.history.size() == history_at + 1 and is_equal_approx(pivot().y, height + 1.0), "Joined lift: the two steps apply as one change")
 
 
 func check_level_ring() -> void:
@@ -761,15 +846,15 @@ func check_stay_and_fall() -> void:
 	check(walked, "Stay: the traveller walks out onto the copy")
 	var place: Vector3 = game.walker.position
 	var start: Vector2 = game.bar.centre
-	var finish: Vector2 = start + travel(Vector3(1.5, 0, 0))
+	var finish: Vector2 = start + ground_travel(Vector3(1.5, 0, 0))
 	game.begin_grip("move", start)
 	for step: int in range(1, 13):
-		game.grip_to(start.lerp(finish, step / 12.0))
+		game._drag(start.lerp(finish, step / 12.0))
 		await process_frame
 	await frames(40)
 	check(game.dragging and not game.preview_view.ghost.visible and game.prediction["status"] == "pending", "Stay: mid-drag, nothing predicts or shows a fall")
 	check(game.walker.position.is_equal_approx(place), "Stay: she keeps her place while the copy moves under the finger")
-	game.grip_to(start)
+	game._drag(start)
 	await frames(30)
 	game.end_grip("move")
 	await direct_settled()

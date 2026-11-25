@@ -74,7 +74,8 @@ func _integration() -> void:
 	check(game.preview == before and game.solids == collision and game.history.is_empty(), "Guide display leaves world and history unchanged")
 	game.gesture.advance(0.5)
 	game._pointer(point,false,9)
-	await create_timer(0.25).timeout
+	# A sign stays at least LEAST_SHOWN, then fades out.
+	await create_timer(game.placement_guide.LEAST_SHOWN + 0.3).timeout
 	check(game.placement_guide.get_visible_marks().is_empty() and game.phase == "preview", "Held release fades without confirming")
 	game.set_edit_mode("rotate")
 	await _settle(game)

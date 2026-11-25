@@ -39,7 +39,8 @@ func _run() -> void:
 	await create_timer(0.1).timeout
 	guide.update_view(camera, [], Rect2(Vector2.ZERO, root.size), [])
 	_check(not guide.get_visible_marks().is_empty(), "Fade retains marks until it completes")
-	await create_timer(0.2).timeout
+	# A sign stays at least LEAST_SHOWN after it comes, then fades out.
+	await create_timer(guide.LEAST_SHOWN + 0.2).timeout
 	_check(guide.get_visible_marks().is_empty(), "Fade clears marks after its duration")
 	guide.clear()
 	_check(guide.get_visible_marks().is_empty(), "Clear removes retained marks")

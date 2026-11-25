@@ -53,10 +53,7 @@ const APPLY_STEPS := 3
 ## the stage is drawn small (phones), a half step would otherwise be a few
 ## pixels; the mirror then moves slower than the finger.
 const MIN_HALF_STEP := 40.0
-## The bar's knobs: the mirror goes this part of the finger's travel, it
-## takes this long to go to a new step, the bar is at least this far below
-## the stage, and it is this part of the way from there down to its lowest row.
-const KNOB_GAIN := 0.8
+## A slide on the glass takes this long to go to a new step.
 const KNOB_FOLLOW_SECONDS := 0.18
 ## A turn or a tilt moves like a large, heavy structure (owner, 2026-11-23):
 ## it gathers speed at TURN_ACCELERATION (radians per second per second),
@@ -72,6 +69,16 @@ const TURN_ACCELERATION := 9.0
 ## found that the mirror went too far after a release (2026-11-25:
 ## "Overshoot on release"); see `_release_hold`.
 const TURN_STOP := 20.0
+## The lift knob moves the mirror up and down as the turn knob turns it
+## (owner, 2026-11-25: "same behaviour as the rotation"): one push is one
+## step of LIFT_STEP, a held push keeps it going, and it stops on release as
+## the turn does. Its motion is the turn's, scaled so that a step of height
+## takes as long as a step of turn (units per second, and per second per
+## second).
+const LIFT_STEP := 0.5
+const LIFT_SPEED := TURN_SPEED * LIFT_STEP / Bar.AIM_STEP
+const LIFT_ACCELERATION := TURN_ACCELERATION * LIFT_STEP / Bar.AIM_STEP
+const LIFT_STOP := TURN_STOP * LIFT_STEP / Bar.AIM_STEP
 ## The sign of a held knob (`_sign_traces`): a line has a point each this many
 ## units.
 const SIGN_STEP := 0.125
@@ -198,6 +205,15 @@ var turn_hold := Vector2i.ZERO
 ## The facing that the pushes of the hold asked for, without the steps that
 ## the hold added: a release never stops short of it.
 var turn_pushed := {"yaw": 0.0, "pitch": 0.0}
+## The held lift knob, as the turn knob above: the way a held push keeps the
+## mirror going (+1 up, -1 down, 0 none), the height its pushes asked for,
+## the speed and the brake of the shown height, and whether the push met the
+## edge of the placement area (one bump for each push).
+var lift_hold := 0
+var lift_pushed := 0.0
+var lift_speed := 0.0
+var lift_brake := LIFT_ACCELERATION
+var lift_edge := false
 var rotation_selected_angle := 0.0
 var placement_guide := PlacementGuide.new()
 var guide_kind := ""
@@ -826,7 +842,8 @@ func nudge_mirror(axis: int, amount: float) -> void:
 			tutorial_event.emit("lower")
 
 ## A slide on the mirror's glass, or the lift knob held. `point` is where the
-## finger went down; the mirror goes by the finger's travel from there.
+## finger went down; a slide goes by the finger's travel from there
+## (`_drag`), the lift knob by its pushes (`lift_by`).
 func _begin_slide(point: Vector2, lift: bool) -> void:
 	if not direct_controls or dragging or not mirror.get("enabled", false):
 		return
@@ -838,39 +855,34 @@ func _begin_slide(point: Vector2, lift: bool) -> void:
 	drag_touch = gesture.pointer
 	drag_origin = point
 	drag_pivot = preview["pivot"]
-	if lift:
-		drag_axis = camera.unproject_position(drag_pivot + Vector3.UP) - camera.unproject_position(drag_pivot)
+	lift_hold = 0
+	lift_pushed = drag_pivot.y
+	lift_edge = false
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
 	_begin_constellation("height" if lift else "ground", preview)
 	_refresh()
 
-## Where the finger counts as being for a held knob. The drag is slowed where
-## the stage is drawn small, so that a half step takes at least MIN_HALF_STEP
-## of travel.
-func _knob_point(point: Vector2) -> Vector2:
-	var origin := camera.unproject_position(drag_pivot)
-	var axis := 1 if height_drag else 0
-	var unit := camera.unproject_position(drag_pivot + [Vector3.RIGHT, Vector3.UP][axis]) - origin
-	return drag_origin + (point - drag_origin) * (KNOB_GAIN * unit.length() / maxf(_screen_axes(drag_pivot)[axis].length(), 0.001))
-
-## A knob of the bar is held. `point` is where the finger went down.
+## A knob of the bar is held. `point` is where the finger went down. A press
+## while the knob's last change still moves joins it: where it goes and its
+## speed stay, and the change applies once, at rest (owner, 2026-11-24: "must
+## be smooth").
 func begin_grip(kind: String, point: Vector2) -> void:
 	if kind != "turn":
+		if kind == "lift" and lift_joinable():
+			_join_settle()
+			dragging = true
+			lift_pushed = _lift_height()
+			lift_edge = false
+			_refresh()
+			return
 		_begin_slide(point, kind == "lift")
 		return
 	if not direct_controls or pointing or not mirror.get("enabled", false):
 		return
 	if turn_joinable():
-		# A press while the last turn still moves joins it: the facing it goes
-		# to and its speed stay, and the change applies once, at rest.
-		if display_motion and display_motion.is_valid():
-			display_motion.kill()
-		translating_settle = false
-		_finish_kind = ""
-		turn_finished = Callable()
-		_direct_apply = false
+		_join_settle()
 		pointing = true
 		turn_pushed = aim_selected.duplicate()
 		_refresh()
@@ -888,10 +900,57 @@ func begin_grip(kind: String, point: Vector2) -> void:
 	_begin_constellation("aim", preview)
 	_refresh()
 
-## The held lift knob: the finger is at `point`.
-func grip_to(point: Vector2) -> void:
-	if direct_controls and dragging:
-		_drag(_knob_point(point))
+## The settle of the last change stops, so that a new press continues it.
+func _join_settle() -> void:
+	if display_motion and display_motion.is_valid():
+		display_motion.kill()
+	translating_settle = false
+	_finish_kind = ""
+	turn_finished = Callable()
+	_direct_apply = false
+
+## The held lift knob adds `steps` (up is +) to the height the mirror goes
+## to, and keeps it going the way `hold` while that is not zero
+## (`_hold_lift`). It is the turn knob's `aim_by` for the height.
+func lift_by(steps: int, hold: int) -> void:
+	if not direct_controls or not dragging or not height_drag:
+		return
+	var released := lift_hold if hold != lift_hold else 0
+	if hold != lift_hold:
+		lift_edge = false
+	lift_hold = hold
+	_release_lift(released)
+	if steps != 0:
+		lift_edge = false
+		lift_brake = LIFT_ACCELERATION
+		_lift_to(_lift_height() + steps * LIFT_STEP)
+		lift_pushed = _lift_height()
+
+## The height the held lift knob goes to.
+func _lift_height() -> float:
+	return (display_target["pivot"] as Vector3).y
+
+## Sends the mirror to `height`. Past the edge of the placement area it stays
+## where it goes (`_lift_edge`). With `tick` false, no haptic tick.
+func _lift_to(height: float, tick := true) -> void:
+	if not _lift_allowed(height):
+		_lift_edge()
+		return
+	var pivot: Vector3 = preview["pivot"]
+	pivot.y = height
+	var target := preview.duplicate(true)
+	target["pivot"] = MirrorRules.snapped_pivot(pivot, level["limits"])
+	_follow_target(MirrorRules.sync(target), tick)
+
+## The lift knob pushes against the edge of the placement area: one firm bump
+## for the push, and the hint once in a hold.
+func _lift_edge() -> void:
+	if not lift_edge:
+		lift_edge = true
+		bar.bump()
+	if not limit_hint_shown:
+		hud.show_hint("Edge of the placement area.")
+		limit_hint_shown = true
 
 ## The held turn knob asks for a turn and a tilt. Each goes to its nearest
 ## step of 45 degrees. Both go all the way round (owner, 2026-11-25: "the
@@ -974,6 +1033,43 @@ func _hold_turn(delta: float) -> void:
 	if steps != Vector2i.ZERO:
 		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP)
 
+## A held push of the lift knob ended, as `_release_hold` for the turn: the
+## mirror stops on the step it goes to now, never short of what the pushes
+## asked for, and brakes as hard as that stop needs, up to LIFT_STOP.
+func _release_lift(released: int) -> void:
+	if released == 0 or display_preview.is_empty():
+		return
+	# Measured along the way of the push, so that the next step is up.
+	var shown := (display_preview["pivot"] as Vector3).y * released
+	var farthest := _lift_height() * released
+	var stop := clampf(ceilf(shown / LIFT_STEP - 0.001) * LIFT_STEP, minf(lift_pushed * released, farthest), farthest)
+	var speed := lift_speed * released
+	if speed > 0.0 and stop - shown > 0.0001:
+		lift_brake = clampf(speed * speed / (2.0 * (stop - shown)), LIFT_ACCELERATION, LIFT_STOP)
+	# No tick: a tick is a new step.
+	_lift_to(stop * released, false)
+
+## While a push of the lift knob holds, the mirror keeps going, as
+## `_hold_turn` for the turn. At the edge of the placement area it stops on
+## the last step, and the bump comes when it is there.
+func _hold_lift(delta: float) -> void:
+	var lead := LIFT_SPEED * LIFT_SPEED / (2.0 * LIFT_ACCELERATION) + LIFT_SPEED * delta
+	var left := (_lift_height() - (display_preview["pivot"] as Vector3).y) * lift_hold
+	var next := _lift_height() + lift_hold * LIFT_STEP
+	if lift_speed * lift_hold >= 0.0 and left <= lead and (left <= 0.001 or _lift_allowed(next)):
+		_lift_to(next)
+
+## Whether the mirror can go to `height`: it is inside the placement area.
+func _lift_allowed(height: float) -> bool:
+	var pivot: Vector3 = preview["pivot"]
+	pivot.y = height
+	return is_equal_approx(MirrorRules.snapped_pivot(pivot, level["limits"]).y, height)
+
+## Whether a press of the lift knob now joins the last lift, as
+## `turn_joinable` for the turn.
+func lift_joinable() -> bool:
+	return direct_controls and translating_settle and _finish_kind == "move" and height_drag and pending.is_empty() and not camera.busy
+
 ## Whether a press of the turn knob now joins the last turn: it was let go,
 ## and it has not yet come to rest and applied.
 func turn_joinable() -> bool:
@@ -993,6 +1089,9 @@ func end_grip(kind: String) -> void:
 		_finish_kind = "point"
 		_animate_display(display_target, 0.10, _translation_finished)
 	elif dragging:
+		if height_drag:
+			_release_lift(lift_hold)
+			lift_hold = 0
 		_finish_drag()
 	else:
 		return
@@ -1013,7 +1112,8 @@ func _update_bar() -> void:
 	var shown_state := _display_state()
 	if shown_state.has("pivot"):
 		bar.glass_point = camera.unproject_position(shown_state["pivot"])
-	bar.set_state(shown_state, direct_controls and phase != "transition", not can_edit() or _manipulating() or camera.busy, turn_joinable())
+	bar.set_state(shown_state, direct_controls and phase != "transition", not can_edit() or _manipulating() or camera.busy,
+		"turn" if turn_joinable() else "lift" if lift_joinable() else "")
 	bar.update_view(camera)
 
 func _open_preview(proposal: Dictionary) -> void:
@@ -1091,12 +1191,13 @@ func _animate_display(target: Dictionary, seconds: float, finished := Callable()
 	var initial := _display_state().duplicate(true)
 	display_target = target.duplicate(true)
 	display_preview = initial
-	# With the direct controls, a turn or a tilt, or the end of one that still
-	# moves, goes by the heavy motion of `_turn_display`. It does not change
-	# the place or the size. The ring of the classic editor follows its
-	# pointer at once.
+	# With the direct controls, a turn or a tilt, a change of the lift knob,
+	# or the end of one that still moves, goes by the heavy motion of
+	# `_turn_display`. It does not change the size, nor the place on the
+	# ground. The ring of the classic editor follows its pointer at once.
+	var lifted := height_drag and (lift_speed != 0.0 or not is_equal_approx((initial["pivot"] as Vector3).y, (target["pivot"] as Vector3).y))
 	turning = direct_controls and (turn_speed != Vector2.ZERO or not is_equal_approx(float(initial["yaw"]), float(target["yaw"])) \
-		or not is_equal_approx(float(initial["pitch"]), float(target["pitch"])))
+		or not is_equal_approx(float(initial["pitch"]), float(target["pitch"])) or lifted)
 	if turning:
 		turn_finished = finished
 		return
@@ -1108,52 +1209,68 @@ func _animate_display(target: Dictionary, seconds: float, finished := Callable()
 	if finished.is_valid():
 		display_motion.tween_callback(finished)
 
-## Moves the shown yaw and pitch toward the display target. Each angle keeps
-## its speed from frame to frame, and the speed changes by at most
-## TURN_ACCELERATION: it is never more than lets the mirror stop on the
-## target, so a turn that changes way first slows, then comes back.
+## Moves the shown yaw and pitch, and the height of the lift knob, toward the
+## display target by the heavy motion (`_heavy_step`).
 func _turn_display(delta: float) -> void:
 	# A held push also starts a mirror at rest again, after it came back from
 	# a turn the other way.
-	if pointing and turn_hold != Vector2i.ZERO and not display_target.is_empty() and not display_preview.is_empty():
-		_hold_turn(delta)
+	if not display_target.is_empty() and not display_preview.is_empty():
+		if pointing and turn_hold != Vector2i.ZERO:
+			_hold_turn(delta)
+		if dragging and height_drag and lift_hold != 0:
+			_hold_lift(delta)
 	if not turning:
 		return
 	if display_target.is_empty() or display_preview.is_empty():
 		turning = false
 		turn_speed = Vector2.ZERO
 		turn_brake = Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
+		lift_speed = 0.0
+		lift_brake = LIFT_ACCELERATION
 		return
 	var shown := display_target.duplicate(true)
 	var resting := true
 	for index: int in 2:
 		var key: String = ["yaw", "pitch"][index]
-		var angle := float(display_preview[key])
-		var left := float(display_target[key]) - angle
-		var brake := turn_brake[index]
-		var wanted := signf(left) * minf(TURN_SPEED, sqrt(2.0 * brake * absf(left)))
-		var braking := absf(wanted) < absf(turn_speed[index]) and signf(wanted) == signf(turn_speed[index])
-		var speed := move_toward(turn_speed[index], wanted, (brake if braking else TURN_ACCELERATION) * delta)
-		if is_zero_approx(left) or (signf(speed) == signf(left) and absf(left) <= absf(speed) * delta):
-			# It arrives this frame, mostly at a speed too low to see the stop.
-			# After a release just before a facing it stops here firmly.
-			angle = float(display_target[key])
-			speed = 0.0
-		else:
-			angle += speed * delta
-			resting = false
-		shown[key] = angle
-		turn_speed[index] = speed
+		var step := _heavy_step(float(display_preview[key]), float(display_target[key]), turn_speed[index],
+			TURN_SPEED, TURN_ACCELERATION, turn_brake[index], delta)
+		shown[key] = step.x
+		turn_speed[index] = step.y
+		resting = resting and step.z == 0.0
+	if height_drag:
+		var pivot: Vector3 = shown["pivot"]
+		var step := _heavy_step((display_preview["pivot"] as Vector3).y, pivot.y, lift_speed, LIFT_SPEED, LIFT_ACCELERATION, lift_brake, delta)
+		pivot.y = step.x
+		shown["pivot"] = pivot
+		lift_speed = step.y
+		resting = resting and step.z == 0.0
 	display_preview = MirrorRules.sync(shown)
 	display_basis = MirrorRules.frame(display_preview)
 	_update_preview()
 	if resting:
 		turning = false
 		turn_brake = Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
+		lift_brake = LIFT_ACCELERATION
 		var finished := turn_finished
 		turn_finished = Callable()
 		if finished.is_valid():
 			finished.call()
+
+## One frame of the heavy motion on one axis: `value` goes toward `target`.
+## Its speed changes by at most `acceleration`, or by `brake` while it slows;
+## it is never more than `top`, nor more than lets it stop on the target, so
+## a motion that changes way first slows, then comes back. Returns the new
+## value, the new speed, and 1 while it still moves (0 when it arrives).
+static func _heavy_step(value: float, target: float, speed: float, top: float, acceleration: float, brake: float, delta: float) -> Vector3:
+	var left := target - value
+	var wanted := signf(left) * minf(top, sqrt(2.0 * brake * absf(left)))
+	var braking := absf(wanted) < absf(speed) and signf(wanted) == signf(speed)
+	speed = move_toward(speed, wanted, (brake if braking else acceleration) * delta)
+	if is_zero_approx(left) or (signf(speed) == signf(left) and absf(left) <= absf(speed) * delta):
+		# It arrives this frame, mostly at a speed too low to see the stop.
+		# After a release just before a step it stops here firmly.
+		return Vector3(target, 0.0, 0.0)
+	return Vector3(value + speed * delta, speed, 1.0)
 
 func _invalidate_prediction() -> void:
 	predictor.cancel()
@@ -1264,6 +1381,9 @@ func _cancel_manipulation(keep_waiting := false) -> void:
 	turn_brake = Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
 	turn_finished = Callable()
 	turn_hold = Vector2i.ZERO
+	lift_speed = 0.0
+	lift_brake = LIFT_ACCELERATION
+	lift_hold = 0
 	display_target.clear()
 	gesture.cancel()
 	if rings.is_inside_tree():
@@ -1596,7 +1716,7 @@ func _action(action: String, value: Variant) -> void:
 		"mirror_toggle": toggle_mirror()
 		"classic_controls": set_direct_controls(not bool(value))
 		"grip_begin": begin_grip(str(value["kind"]), value["point"])
-		"grip_drag": grip_to(value)
+		"grip_lift": lift_by(int(value.get("steps", 0)), int(value.get("hold", 0)))
 		"grip_aim": aim_by(value.get("steps", Vector2i.ZERO), value.get("hold", Vector2i.ZERO))
 		"grip_end": end_grip(str(value))
 		"angle_snap":

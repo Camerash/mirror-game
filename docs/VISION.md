@@ -155,8 +155,10 @@ slower, like moving a real large structure, but not too too slow"; then
 at most about 140 degrees a second, and slow to a stop on the step; one
 step of 45 degrees takes about 0.53 s, two about 0.87 s, and a step asked
 for while it moves keeps its speed. A held push keeps it turning at full
-speed, and quick taps join into one turn. The tilt goes all the way round
-(2026-11-25). Before: 0.67 s and 1.12 s (from
+speed, and quick pushes join into one turn. The tilt goes all the way round
+(2026-11-25). The lift knob moves the mirror up and down in the same way
+(2026-11-25): a step of half a unit takes as long as a step of turn. A tap
+changes nothing. Before: 0.67 s and 1.12 s (from
 2026-11-23); first 0.18 s for a step while held, 0.10 s for a tap.
 
 **Lowering the mirror.** Feeling: letting go; an exhale, bittersweet. Motion:
@@ -928,7 +930,8 @@ styles and words.
   and up or down tilts, in one hold; a push more than 30 degrees from an
   axis gives no step, and a long push is one step. A tap turns the mirror
   one step clockwise on the screen, so "Another way round" needs two taps;
-  the prompt there is "Tap the knob to turn". While the knob is held, the
+  the prompt there is "Tap the knob to turn" (both changed 2026-11-25: a
+  tap changes nothing). While the knob is held, the
   sign at the mirror is a faint ring with a dot at each of the eight
   facings (for a tilt, the upright half ring of five), a dark dot where the
   mirror faces now and a pale ring where the hold began. The knob's mark is
@@ -999,6 +1002,28 @@ styles and words.
   mirror at 33 degrees, stops at 45 (before: 90); thumb out 0.5 s, mirror
   at 47, stops at 90; thumb out 1.0 s, mirror at 116, stops at 135.
   Review: `test-output/polish/turn-ideas/release-stop/` (git-ignored).
+- BUILT (2026-11-25, after play on the phone; owner: "The slide up and down
+  button should have the same behaviour as the rotation, holding should
+  move to that direction continuously. Also, tapping the rotation button
+  should probably not rotate the mirror since there are no direction
+  indication."). Three blind advisors (touch feel, puzzle design, code
+  risk) agreed with both. They also found that the old lift knob needed
+  40 points of drag for each half step, so the full height (about 480
+  points) went past the bottom of the screen. The plan was approved
+  ("Approve the plan"). Now the lift knob works as the turn knob on its
+  one axis: a push up or down of 16 points is one step of half a unit, a
+  held push keeps the mirror going, and when the thumb comes back or
+  lifts, the mirror stops on the step it goes to. A push to the side gives
+  nothing. The height has the heavy motion of the turn, scaled so that a
+  step takes as long (about 0.53 s; at most about 1.5 units a second). A
+  press while the last lift still moves joins it (one change). At the
+  edge of the placement area it stops on the last step, with one firmer
+  bump and the edge hint. A tap on either knob changes nothing: the
+  press shows the knob's sign, which now stays at least 1 s, so a tap is
+  a look at what the knob does. The prompts say "Push the knob sideways
+  to turn" and "Push the knob down to lower"; the finger mark on a knob
+  shows a short push and a hold. Lost: the quick quarter turn by a tap.
+  Review: `test-output/polish/lift-push/` (git-ignored).
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then

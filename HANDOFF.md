@@ -42,7 +42,12 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   the move control stays as it is (owner, 2026-11-20; the rail lock is
   withdrawn). The ball pad of the turn knob went (owner, 2026-11-19); the
   turn knob nudges (trial, owner 2026-11-23: "Try the nudge"): each short
-  push is one step of 45 degrees and a tap turns one step clockwise. The
+  push is one step of 45 degrees; a tap changes nothing (since 2026-11-25).
+  The lift knob works the same way on its one axis (2026-11-25: `lift_by`,
+  `_hold_lift`, `_release_lift`, `lift_joinable`; the height moves in
+  `_turn_display` by `_heavy_step` with `LIFT_SPEED` and
+  `LIFT_ACCELERATION`; at the edge, `_lift_edge` and `bar.bump`). A sign
+  stays at least `PlacementGuide.LEAST_SHOWN` (1 s), so a tap shows it. The
   turn moves like a heavy structure (owner, 2026-11-23): about 0.53 s for a
   step since 2026-11-24 (`TURN_SPEED`, `TURN_ACCELERATION` and
   `_turn_display` in `game.gd`). A push that holds keeps the mirror turning
@@ -115,7 +120,7 @@ screen, and the turn knob nudges in steps (since 2026-11-23); a round mirror but
 opens into the bar; a red button lowers the mirror. Sizes are in points:
 one unit is one point on every platform (`game.gd`), and a desktop window
 opens phone-shaped (`app.gd`). Code: `world/mirror_bar.gd` draws it and
-reads the finger; `game.begin_grip`, `grip_to`, `aim_to`, `end_grip` change
+reads the finger; `game.begin_grip`, `aim_by`, `lift_by`, `end_grip` change
 the mirror. The arrow (`world/mirror_arrow.gd`) and the corner mirror
 button are removed. Tilt and 45-degree turns are permitted on each
 stage. `tests/mirror_bar_tests.gd` presses the bar with real mouse events.
