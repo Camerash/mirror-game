@@ -69,7 +69,11 @@ var _visible_marks: Array[Dictionary] = []
 ## The seen parts of the sign's lines: each is a run of {screen, alpha}.
 var _visible_traces: Array[Array] = []
 var _opacity := 1.0
+## The sign fades in when it comes ("appear") and out when it goes
+## ("dismiss"), so no part of it shows or goes at once (owner, 2026-11-25).
 var _fade: Tween
+## True while the sign fades out.
+var _leaving := false
 var _style := Style.DEFAULTS.duplicate()
 var _halo_texture := GradientTexture2D.new()
 
@@ -93,9 +97,12 @@ func set_style(settings: Dictionary) -> void:
 	_redraw()
 
 func show_guides(data: Dictionary) -> void:
-	_cancel_fade()
-	_opacity = 1.0
+	var arriving := _data.is_empty() or _leaving
+	if _data.is_empty():
+		_opacity = 0.0
 	_data = data.duplicate(true)
+	if arriving:
+		_fade_to(1.0, "appear")
 
 func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, excluded: Array[Rect2]) -> void:
 	_visible_marks.clear()
@@ -115,15 +122,15 @@ func update_view(camera: Camera3D, solids: Array[Dictionary], safe_rect: Rect2, 
 	_redraw()
 
 func finish() -> void:
-	if _data.is_empty() or _is_fading():
+	if _data.is_empty() or _leaving:
 		return
-	_fade = create_tween()
-	_fade.tween_method(_set_opacity, _opacity, 0.0, Motion.duration("dismiss")) \
-		.set_trans(Motion.VERBS["dismiss"][1]).set_ease(Motion.VERBS["dismiss"][2])
+	_fade_to(0.0, "dismiss")
+	_leaving = true
 	_fade.tween_callback(clear)
 
 func clear() -> void:
 	_cancel_fade()
+	_leaving = false
 	_data.clear()
 	_visible_marks.clear()
 	_visible_traces.clear()
@@ -203,13 +210,19 @@ func _set_opacity(value: float) -> void:
 	_opacity = value
 	_redraw()
 
+## Fades the whole sign from where it is now to `opacity`, by the motion of
+## `verb`.
+func _fade_to(opacity: float, verb: String) -> void:
+	_cancel_fade()
+	_leaving = false
+	_fade = create_tween()
+	_fade.tween_method(_set_opacity, _opacity, opacity, Motion.duration(verb)) \
+		.set_trans(Motion.VERBS[verb][1]).set_ease(Motion.VERBS[verb][2])
+
 func _cancel_fade() -> void:
 	if _fade != null and _fade.is_valid():
 		_fade.kill()
 	_fade = null
-
-func _is_fading() -> bool:
-	return _fade != null and _fade.is_valid() and _fade.is_running()
 
 func _redraw() -> void:
 	if is_instance_valid(_canvas):

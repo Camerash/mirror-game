@@ -155,7 +155,8 @@ slower, like moving a real large structure, but not too too slow"; then
 at most about 140 degrees a second, and slow to a stop on the step; one
 step of 45 degrees takes about 0.53 s, two about 0.87 s, and a step asked
 for while it moves keeps its speed. A held push keeps it turning at full
-speed, and quick taps join into one turn. Before: 0.67 s and 1.12 s (from
+speed, and quick taps join into one turn. The tilt goes all the way round
+(2026-11-25). Before: 0.67 s and 1.12 s (from
 2026-11-23); first 0.18 s for a step while held, 0.10 s for a tap.
 
 **Lowering the mirror.** Feeling: letting go; an exhale, bittersweet. Motion:
@@ -964,6 +965,27 @@ styles and words.
   mirror is tilted; the dark dot moves on it. The turn is a little faster
   (0.53 s for a step). Review: `test-output/polish/turn-ideas/joystick/`
   (git-ignored).
+- BUILT (2026-11-25, after play on the phone; owner: "It feels nice, with
+  some rotation snapping being non confident / uncertain enough." and "the
+  turn ring is now shown even if the mirror is tilting when the mirror
+  reaches the middle point. Also, the tilting of the mirror should be full
+  360º" and "make sure the indication ring and components fades in and
+  out"). The cause of the turn ring in a tilt: the sign showed the tilt
+  ring only while the tilt went to another pitch than where the hold
+  began, so a tilt back to that pitch (often the level middle) showed the
+  level ring. Now the last push of the hold chooses the ring (`aim_ring`).
+  The tilt goes all the way round, as the turn does: a held tilt rolls the
+  pane on past the sky about its own level axis, and the upright ring
+  shows the eight tilts. A pane past the sky faces back; the level ring
+  shows its dark dot on that side. One whole roll is no change. The sign
+  (the rings, the dots, the lines, the dark dot and the pale ring) fades in
+  when a knob is held (0.36 s) and fades out after the change (0.24 s).
+  Before, it showed at once, and the apply cut its fade-out. OPEN: the
+  uncertain snap. Measured: when the thumb comes back from a held push, the
+  mirror goes on for 21 to 60 degrees, because the next step is added
+  about 20 degrees before each facing; a thumb that comes back at 0.4 s,
+  with the mirror at 38 degrees, gives 90 degrees, not 45. Review:
+  `test-output/polish/turn-ideas/full-tilt/` (git-ignored).
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then

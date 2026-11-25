@@ -99,6 +99,10 @@ var rings := Rings.new()
 var direct_controls := false
 ## The turn and the tilt that the held turn knob has selected.
 var aim_selected := {"yaw": 0.0, "pitch": 0.0}
+## The ring of the turn knob's sign: "turn" (the level ring) or "tilt" (the
+## upright ring). The last push of the hold chooses it, so a tilt that comes
+## back to where it began keeps the tilt ring (owner, 2026-11-25).
+var aim_ring := "turn"
 var bar := Bar.new()
 ## True while the turn knob is held; `point_origin` is the mirror it started
 ## from.
@@ -863,6 +867,7 @@ func begin_grip(kind: String, point: Vector2) -> void:
 	pointing = true
 	point_origin = preview.duplicate(true)
 	aim_selected = {"yaw": float(point_origin["yaw"]), "pitch": float(point_origin["pitch"])}
+	aim_ring = "tilt" if MirrorRules.horizontal(preview) else "turn"
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
 	_invalidate_prediction()
@@ -875,12 +880,14 @@ func grip_to(point: Vector2) -> void:
 		_drag(_knob_point(point))
 
 ## The held turn knob asks for a turn and a tilt. Each goes to its nearest
-## step of 45 degrees.
+## step of 45 degrees. Both go all the way round (owner, 2026-11-25: "the
+## tilting of the mirror should be full 360"): a tilt past the sky rolls the
+## pane on about its own level axis, so it then faces back.
 func aim_to(yaw: float, pitch: float) -> void:
 	if not direct_controls or not pointing or not is_finite(yaw) or not is_finite(pitch):
 		return
 	aim_selected["yaw"] = Targets.step(yaw, aim_selected["yaw"], Bar.AIM_STEP)
-	aim_selected["pitch"] = Targets.step(clampf(pitch, -PI * 0.5, PI * 0.5), aim_selected["pitch"], Bar.AIM_STEP)
+	aim_selected["pitch"] = Targets.step(pitch, aim_selected["pitch"], Bar.AIM_STEP)
 	var target := point_origin.duplicate(true)
 	target["yaw"] = aim_selected["yaw"]
 	target["pitch"] = aim_selected["pitch"]
@@ -888,19 +895,19 @@ func aim_to(yaw: float, pitch: float) -> void:
 
 ## The held turn knob adds `steps` (x turn, right is +; y tilt, down is +) to
 ## the facing the mirror goes to, and keeps it going the way `hold` while
-## that is not zero (`_hold_turn`). A tilt past the sky or the ground gives
-## no step, only a short tick.
+## that is not zero (`_hold_turn`). A push up or down shows the tilt ring,
+## a push to the side the level ring (`aim_ring`).
 func aim_by(steps: Vector2i, hold: Vector2i) -> void:
 	if not direct_controls or not pointing:
 		return
 	turn_hold = hold
-	var pitch := float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP
-	if absf(pitch) > PI * 0.5 + 0.01:
-		Input.vibrate_handheld(5)
-		steps.y = 0
-		pitch = float(aim_selected["pitch"])
+	var way := steps + hold
+	if way.y != 0:
+		aim_ring = "tilt"
+	elif way.x != 0:
+		aim_ring = "turn"
 	if steps != Vector2i.ZERO:
-		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, pitch)
+		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP)
 
 ## While a push of the turn knob holds, the mirror keeps going: the next step
 ## is added when what is left of the turn is no more than the mirror needs to
@@ -916,8 +923,6 @@ func _hold_turn(delta: float) -> void:
 		var way := turn_hold[index]
 		if way != 0 and turn_speed[index] * way >= 0.0 and (float(aim_selected[key]) - float(display_preview[key])) * way <= lead:
 			steps[index] = way
-	if absf(float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP) > PI * 0.5 + 0.01:
-		steps.y = 0
 	if steps != Vector2i.ZERO:
 		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP)
 
@@ -1189,8 +1194,14 @@ func _rotation_finished() -> void:
 ## `keep_waiting` leaves a knob of the bar that is held but has not
 ## started its change: the end of the last change must not drop it.
 func _cancel_manipulation(keep_waiting := false) -> void:
+	# A held change that is cancelled loses its sign at once. A sign that is
+	# only fading out after its change, as when the change applies, keeps
+	# fading.
+	if guide_kind.is_empty() and not guide_preview_enabled:
+		placement_guide.finish()
+	else:
+		_clear_constellation()
 	guide_preview_enabled = false
-	_clear_constellation()
 	cancelling_gesture = true
 	if display_motion and display_motion.is_valid():
 		display_motion.kill()
@@ -1899,6 +1910,9 @@ func _translation_finished() -> void:
 	var turned := kind == "point" and not is_zero_approx(wrapf(float(display_target.get("yaw", 0.0)) - float(point_origin.get("yaw", 0.0)), -PI, PI))
 	point_origin.clear()
 	preview = display_target.duplicate(true)
+	if kind == "point":
+		# A tilt goes all the way round: one whole roll is no change.
+		preview["pitch"] = wrapf(float(preview["pitch"]), -PI, PI)
 	display_preview.clear()
 	display_target.clear()
 	resize_origin.clear()
@@ -2128,8 +2142,13 @@ func _update_guide_view() -> void:
 func _update_constellation() -> void:
 	var displayed := _display_state()
 	if phase != "preview" or not displayed.get("enabled",false):
+		# The change applied, or the mirror went down: the sign fades out.
+		# Only a cancel clears it at once (`_cancel_manipulation`).
 		guide_preview_enabled = false
-		_clear_constellation()
+		guide_kind = ""
+		guide_origin.clear()
+		guide_ring.clear()
+		placement_guide.finish()
 		return
 	if guide_kind.is_empty():
 		if guide_preview_enabled:
@@ -2181,30 +2200,33 @@ func _constellation_data(displayed: Dictionary, target: Dictionary, kind: String
 
 ## The sign of the turn knob (trial, owner 2026-11-23: the nudge). A faint
 ## level ring through the mirror's centre with a dot at each of the eight
-## facings; for a tilt, or a pane that lies flat, the upright half ring of the
-## five tilts. Both rings keep their centre at the mirror's centre: a tilted
-## mirror does not move or shrink the level ring (owner, 2026-11-24). Dots
-## far round the ring are fainter. The dark dot, on the ring, is where the
-## mirror faces now; the pale ring is where the hold began, so the thumb can
-## push back to it.
-func _aim_sign(displayed: Dictionary, start: Dictionary, target: Dictionary) -> Dictionary:
+## facings; for a tilt, or a pane that lies flat, the upright ring of the
+## eight tilts (`aim_ring`). Both rings keep their centre at the mirror's
+## centre: a tilted mirror does not move or shrink the level ring (owner,
+## 2026-11-24). Dots far round the ring are fainter. The dark dot, on the
+## ring, is where the mirror faces now; the pale ring is where the hold
+## began, so the thumb can push back to it.
+func _aim_sign(displayed: Dictionary, start: Dictionary, _target: Dictionary) -> Dictionary:
 	var now := MirrorRules.normalized(displayed)
 	var yaw := float(now["yaw"])
 	var pitch := float(now["pitch"])
+	var start_yaw := float(start["yaw"])
 	var start_pitch := float(start["pitch"])
-	var tilting := not is_equal_approx(float(target["pitch"]), start_pitch) or is_equal_approx(absf(start_pitch), PI * 0.5)
 	var dots: Array[Dictionary] = []
 	var line := PackedVector3Array()
 	var weights := PackedFloat32Array()
-	if tilting:
-		for step: int in range(-2, 3):
+	if aim_ring == "tilt":
+		for step: int in 8:
 			var angle := step * Bar.AIM_STEP
-			dots.append({"position": _aim_point(displayed, yaw, angle), "weight": lerpf(1.0, 0.45, absf(angle - pitch) / PI)})
-		for index: int in 25:
-			line.append(_aim_point(displayed, yaw, lerpf(-PI * 0.5, PI * 0.5, index / 24.0)))
+			dots.append({"position": _aim_point(displayed, yaw, angle), "weight": lerpf(1.0, 0.45, absf(wrapf(angle - pitch, -PI, PI)) / PI)})
+		for index: int in 49:
+			line.append(_aim_point(displayed, yaw, pitch + index * TAU / 48.0))
 			weights.append(0.4)
+		# The pale ring sits on this ring, at the tilt where the hold began.
+		start_yaw = yaw
 	else:
-		var start_yaw := float(start["yaw"])
+		yaw = _level_yaw(yaw, pitch)
+		start_yaw = _level_yaw(start_yaw, start_pitch)
 		for step: int in 8:
 			var angle := start_yaw + step * Bar.AIM_STEP
 			dots.append({"position": _aim_point(displayed, angle, 0.0), "weight": lerpf(1.0, 0.45, absf(wrapf(angle - yaw, -PI, PI)) / PI)})
@@ -2217,7 +2239,12 @@ func _aim_sign(displayed: Dictionary, start: Dictionary, target: Dictionary) -> 
 	var traces: Array[Dictionary] = [{"points": line, "weights": weights}]
 	return {"dots": dots, "traces": traces,
 		"references": PackedVector3Array([_aim_point(displayed, yaw, pitch)]),
-		"target": _aim_point(displayed, float(start["yaw"]), start_pitch)}
+		"target": _aim_point(displayed, start_yaw, start_pitch)}
+
+## The way a pane at `yaw` and `pitch` faces on the level ring. Tilted past
+## the sky or the ground, it faces back: half round from `yaw`.
+static func _level_yaw(yaw: float, pitch: float) -> float:
+	return yaw + PI if cos(pitch) < -0.001 else yaw
 
 ## A point of the turn knob's sign: the side that the mirror faces at `yaw`
 ## and `pitch`, on a ball round its foot, past the ends of its pane.

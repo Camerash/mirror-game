@@ -278,17 +278,20 @@ func check_bar(size: Vector2i) -> void:
 	check(is_equal_approx(wrapf(degrees("yaw") - yaw, -180.0, 180.0), 45.0) and is_equal_approx(degrees("pitch"), pitch),
 		"%s: a push on a slant changes nothing" % label)
 
-	# A push up tilts the mirror 45 degrees to the sky. Past the sky, a push
-	# gives no step.
+	# A push up tilts the mirror 45 degrees to the sky. The tilt goes all the
+	# way round (owner, 2026-11-25): past the sky, a push tilts on, and the
+	# mirror then faces back.
 	await path(from, [from + Vector2(0, -24), from])
 	check(is_equal_approx(degrees("pitch") - pitch, -45.0) and MirrorRules.normal(game.mirror).y > 0.5, "%s: a push up tilts the mirror to face the sky" % label)
+	var facing := MirrorRules.normal(game.mirror)
 	await path(from, [from + Vector2(0, -24), from])
 	await path(from, [from + Vector2(0, -24), from])
-	check(is_equal_approx(degrees("pitch"), -90.0), "%s: past the sky, a push gives no step" % label)
-	game.undo()
-	await settled()
-	game.undo()
-	await settled()
+	var behind := MirrorRules.normal(game.mirror)
+	check(is_equal_approx(degrees("pitch") - pitch, -135.0) and behind.y > 0.5 and Vector2(behind.x, behind.z).dot(Vector2(facing.x, facing.z)) < 0.0,
+		"%s: past the sky, a push tilts on, and the mirror faces back" % label)
+	for change: int in 3:
+		game.undo()
+		await settled()
 	await frames(20)
 
 	# A tap turns one step clockwise on the screen.

@@ -48,7 +48,12 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   `_turn_display` in `game.gd`). A push that holds keeps the mirror turning
   (`_hold_turn`), and a press while the last turn still moves joins it
   (`turn_joinable`; the bar gets it in `set_state`). The bar sends steps
-  and a held way (`grip_aim`, `aim_by`); the game owns the facing.
+  and a held way (`grip_aim`, `aim_by`); the game owns the facing. The
+  tilt has no stop (owner, 2026-11-25); a turn that applies wraps the
+  pitch, so one whole roll is no change. The last push of a hold chooses
+  the ring of the sign (`aim_ring`). The sign fades in and out
+  (`PlacementGuide.show_guides` and `finish`); only a cancel of a held
+  change clears it at once (`_cancel_manipulation`).
 - Since 2026-11-18: a stone is always its whole source stone, cut by planes
   in the shader (`_cuts` in `world/world_view.gd`); a turn of the view keeps
   one world pivot (`StageCamera.turn`); the bar has a fixed row

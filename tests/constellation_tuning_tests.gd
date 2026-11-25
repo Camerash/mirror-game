@@ -55,7 +55,7 @@ func _run() -> void:
 	game.hud._gear.pressed.emit()
 	game._action("guide_preview",true)
 	game.remove_mirror()
-	check(not game.guide_preview_enabled and game.placement_guide._data.is_empty(),"Removal clears preview")
+	check(not game.guide_preview_enabled and (game.placement_guide._data.is_empty() or game.placement_guide._leaving),"Removal fades the preview out")
 	game.cancel_preview()
 	check(not game.guide_preview_enabled,"Cancel leaves debug preview off")
 	await settle(game)

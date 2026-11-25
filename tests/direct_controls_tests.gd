@@ -224,6 +224,8 @@ func run() -> void:
 	await check_held_turn()
 	await check_joined_turn()
 	await check_level_ring()
+	await check_full_tilt()
+	await check_sign_fades()
 	await check_buried_comes_back()
 	await check_first_raise_follows_her_look()
 	await check_stay_and_fall()
@@ -507,8 +509,9 @@ func check_held_turn() -> void:
 	## A push of the turn knob that holds keeps the mirror turning at full
 	## speed, one step after another (owner, 2026-11-24: a way to turn many
 	## times). When the push ends, the mirror stops on the facing it goes to,
-	## at most one step and its stopping distance on. A held tilt stops at the
-	## sky. Stepped by frames of 1/60 s, as the heavy turn.
+	## at most one step and its stopping distance on. A held tilt goes on past
+	## the sky (owner, 2026-11-25: full 360 degrees). Stepped by frames of
+	## 1/60 s, as the heavy turn.
 	await load_stage("01_route")
 	await press_mirror_button()
 	var yaw := float(MirrorRules.normalized(game.mirror)["yaw"])
@@ -536,7 +539,7 @@ func check_held_turn() -> void:
 	game.aim_by(Vector2i(0, -1), Vector2i(0, -1))
 	for frame: int in 180:
 		game._turn_display(tick)
-	check(is_equal_approx(float(game.display_preview["pitch"]), -PI * 0.5), "Held turn: a held tilt stops at the sky")
+	check(float(game.display_preview["pitch"]) < -PI, "Held turn: a held tilt goes on past the sky (%.0f degrees)" % rad_to_deg(float(game.display_preview["pitch"])))
 	game.end_grip("turn")
 	await direct_settled()
 	check(is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - end, -PI, PI)) and not game.turning and game.turn_hold == Vector2i.ZERO,
@@ -591,6 +594,69 @@ func check_level_ring() -> void:
 	var orb: Vector3 = sign["references"][0]
 	check(sign["dots"].size() == 8 and level and centre.is_equal_approx(pivot) and is_equal_approx(orb.y, pivot.y),
 		"Level ring: on a tilted mirror the ring and the dark dot are level, round the mirror's centre")
+
+
+func check_full_tilt() -> void:
+	## The tilt goes all the way round, as the turn does (owner, 2026-11-25).
+	## The last push of a hold chooses the ring of the sign: a tilt that comes
+	## back to where it began keeps the upright ring. A pane past the sky faces
+	## back, and the level ring shows it there. One whole roll is no change.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var start: Dictionary = MirrorRules.normalized(game.mirror)
+	var history_at: int = game.history.size()
+	game.begin_grip("turn", knob(1))
+	game.aim_by(Vector2i(0, -1), Vector2i.ZERO)
+	game.aim_by(Vector2i(0, 1), Vector2i.ZERO)
+	var sign: Dictionary = game._aim_sign(game._display_state(), start, start)
+	var pivot: Vector3 = start["pivot"]
+	var upright := false
+	for dot: Dictionary in sign["dots"]:
+		upright = upright or absf((dot["position"] as Vector3).y - pivot.y) > 1.0
+	check(game.aim_ring == "tilt" and sign["dots"].size() == 8 and upright,
+		"Full tilt: a tilt back to where it began keeps the upright ring of eight tilts")
+	game.aim_by(Vector2i(1, 0), Vector2i.ZERO)
+	check(game.aim_ring == "turn", "Full tilt: a push to the side shows the level ring")
+	game.aim_by(Vector2i(-1, 0), Vector2i.ZERO)
+	for step: int in 8:
+		game.aim_by(Vector2i(0, -1), Vector2i.ZERO)
+	check(is_equal_approx(float(game.aim_selected["pitch"]), float(start["pitch"]) - TAU), "Full tilt: eight pushes up roll the mirror once round")
+	game.end_grip("turn")
+	await direct_settled()
+	check(game.history.size() == history_at and MirrorRules.same(game.mirror, start), "Full tilt: one whole roll is no change")
+	var back: Dictionary = start.duplicate(true)
+	back["pitch"] = PI
+	back = MirrorRules.sync(back)
+	game.aim_ring = "turn"
+	sign = game._aim_sign(back, back, back)
+	var normal := MirrorRules.normal(back)
+	var orb: Vector3 = sign["references"][0] - pivot
+	check(Vector2(orb.x, orb.z).dot(Vector2(normal.x, normal.z)) > 0.5, "Full tilt: on the level ring, a pane past the sky shows the way it faces")
+
+
+func check_sign_fades() -> void:
+	## The sign of a held knob fades in when the knob is held, and fades out
+	## after the change applies; the apply does not cut the fade (owner,
+	## 2026-11-25).
+	await load_stage("01_route")
+	await press_mirror_button()
+	game.begin_grip("turn", knob(1))
+	var first: float = game.placement_guide._opacity
+	await create_timer(0.5).timeout
+	check(first < 0.01 and is_equal_approx(game.placement_guide._opacity, 1.0),
+		"Sign fades: it starts unseen and fades in (%.2f, then %.2f)" % [first, game.placement_guide._opacity])
+	game.aim_by(Vector2i(1, 0), Vector2i.ZERO)
+	game.end_grip("turn")
+	var last := 1.0
+	var applied := false
+	for index: int in 1200:
+		if game.placement_guide._data.is_empty():
+			break
+		last = game.placement_guide._opacity
+		applied = applied or game.phase != "preview"
+		await process_frame
+	check(applied and game.placement_guide._data.is_empty() and last < 0.3,
+		"Sign fades: after the change applies it fades out, and is not cut (last seen at %.2f)" % last)
 
 
 func check_first_raise_follows_her_look() -> void:
