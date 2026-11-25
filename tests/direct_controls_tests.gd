@@ -222,6 +222,7 @@ func run() -> void:
 	await check_freedom_sign()
 	await check_heavy_turn()
 	await check_held_turn()
+	await check_release_stop()
 	await check_joined_turn()
 	await check_level_ring()
 	await check_full_tilt()
@@ -508,8 +509,9 @@ func check_heavy_turn() -> void:
 func check_held_turn() -> void:
 	## A push of the turn knob that holds keeps the mirror turning at full
 	## speed, one step after another (owner, 2026-11-24: a way to turn many
-	## times). When the push ends, the mirror stops on the facing it goes to,
-	## at most one step and its stopping distance on. A held tilt goes on past
+	## times). When the push ends, the mirror stops on the facing it turns to
+	## then, and starts no step that the hold added (owner, 2026-11-25:
+	## "Overshoot on release"); it brakes up to TURN_STOP. A held tilt goes on past
 	## the sky (owner, 2026-11-25: full 360 degrees). Stepped by frames of
 	## 1/60 s, as the heavy turn.
 	await load_stage("01_route")
@@ -529,13 +531,18 @@ func check_held_turn() -> void:
 		"Held turn: the mirror keeps turning at full speed while the push holds (%.0f degrees in 1.5 s)" % rad_to_deg(released - yaw))
 	game.aim_by(Vector2i.ZERO, Vector2i.ZERO)
 	var rest := 0
+	var firmest := 0.0
+	var speed_was: float = game.turn_speed.x
 	while game.turning and rest < 300:
 		game._turn_display(tick)
+		if game.turning:
+			firmest = maxf(firmest, (speed_was - game.turn_speed.x) / tick)
+		speed_was = game.turn_speed.x
 		rest += 1
 	var end := float(game.display_preview["yaw"])
-	var stopping: float = game.TURN_SPEED * game.TURN_SPEED / (2.0 * game.TURN_ACCELERATION)
-	check(is_equal_approx(snappedf(end - yaw, PI * 0.25), end - yaw) and end - released > stopping * 0.9 and end - released < PI * 0.25 + stopping + 0.05,
-		"Held turn: when the push ends, the mirror stops smoothly on the next facing it can reach (%.0f degrees on)" % rad_to_deg(end - released))
+	var next := yaw + ceilf((released - yaw) / (PI * 0.25) - 0.001) * PI * 0.25
+	check(is_equal_approx(end, next) and firmest <= game.TURN_STOP + 0.01,
+		"Held turn: when the push ends, the mirror stops on the facing it turns to (%.0f degrees on, braking at most %.1f)" % [rad_to_deg(end - released), firmest])
 	game.aim_by(Vector2i(0, -1), Vector2i(0, -1))
 	for frame: int in 180:
 		game._turn_display(tick)
@@ -544,6 +551,35 @@ func check_held_turn() -> void:
 	await direct_settled()
 	check(is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - end, -PI, PI)) and not game.turning and game.turn_hold == Vector2i.ZERO,
 		"Held turn: on release the change applies at the facing where it stopped")
+
+
+func check_release_stop() -> void:
+	## The owner's case (2026-11-25: "Overshoot on release"): a push held
+	## about 0.4 s, and the thumb comes back with the mirror at 38 degrees.
+	## The hold has already asked for 90; the mirror stops at 45.
+	await load_stage("01_route")
+	await press_mirror_button()
+	var yaw := float(MirrorRules.normalized(game.mirror)["yaw"])
+	var tick := 1.0 / 60.0
+	game.begin_grip("turn", knob(1))
+	game.aim_by(Vector2i(1, 0), Vector2i(1, 0))
+	var frame := 0
+	while float(game.display_preview["yaw"]) - yaw < deg_to_rad(38.0) and frame < 120:
+		game._turn_display(tick)
+		frame += 1
+	var asked := float(game.aim_selected["yaw"]) - yaw
+	game.aim_by(Vector2i.ZERO, Vector2i.ZERO)
+	var rest := 0
+	var farthest := 0.0
+	while game.turning and rest < 300:
+		game._turn_display(tick)
+		farthest = maxf(farthest, float(game.display_preview["yaw"]) - yaw)
+		rest += 1
+	check(is_equal_approx(asked, PI * 0.5) and is_equal_approx(float(game.display_preview["yaw"]) - yaw, PI * 0.25) and farthest <= PI * 0.25 + 0.0001,
+		"Release stop: let go at 38 degrees after the hold asked for 90, the mirror stops at 45 and does not pass it (asked %.0f, stopped %.0f, farthest %.1f)" % [rad_to_deg(asked), rad_to_deg(float(game.display_preview["yaw"]) - yaw), rad_to_deg(farthest)])
+	game.end_grip("turn")
+	await direct_settled()
+	check(is_zero_approx(wrapf(float(MirrorRules.normalized(game.mirror)["yaw"]) - yaw - PI * 0.25, -PI, PI)), "Release stop: the change applies at 45 degrees")
 
 
 func check_joined_turn() -> void:

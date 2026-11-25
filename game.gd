@@ -66,6 +66,12 @@ const KNOB_FOLLOW_SECONDS := 0.18
 ## owner found 1.8 and 6.0 "a tit bit too slow" (2026-11-24).
 const TURN_SPEED := 2.4
 const TURN_ACCELERATION := 9.0
+## When the thumb comes back from a held push, the mirror stops on the facing
+## it turns to now, and brakes as hard as it must for that, up to this
+## (radians per second per second; 8 degrees from full speed). The owner
+## found that the mirror went too far after a release (2026-11-25:
+## "Overshoot on release"); see `_release_hold`.
+const TURN_STOP := 20.0
 ## The sign of a held knob (`_sign_traces`): a line has a point each this many
 ## units.
 const SIGN_STEP := 0.125
@@ -182,10 +188,16 @@ var display_motion: Tween
 ## whether they move, their speeds (yaw, pitch), and what to call at rest.
 var turning := false
 var turn_speed := Vector2.ZERO
+## How hard the turn and the tilt brake (yaw, pitch): TURN_ACCELERATION, or
+## more for the stop after a release (`_release_hold`).
+var turn_brake := Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
 var turn_finished := Callable()
 ## The way (x turn, y tilt) that the held turn knob keeps the mirror going;
 ## zero when no push holds (`_hold_turn`).
 var turn_hold := Vector2i.ZERO
+## The facing that the pushes of the hold asked for, without the steps that
+## the hold added: a release never stops short of it.
+var turn_pushed := {"yaw": 0.0, "pitch": 0.0}
 var rotation_selected_angle := 0.0
 var placement_guide := PlacementGuide.new()
 var guide_kind := ""
@@ -860,6 +872,7 @@ func begin_grip(kind: String, point: Vector2) -> void:
 		turn_finished = Callable()
 		_direct_apply = false
 		pointing = true
+		turn_pushed = aim_selected.duplicate()
 		_refresh()
 		return
 	if not _open_direct_preview(mirror):
@@ -867,6 +880,7 @@ func begin_grip(kind: String, point: Vector2) -> void:
 	pointing = true
 	point_origin = preview.duplicate(true)
 	aim_selected = {"yaw": float(point_origin["yaw"]), "pitch": float(point_origin["pitch"])}
+	turn_pushed = aim_selected.duplicate()
 	aim_ring = "tilt" if MirrorRules.horizontal(preview) else "turn"
 	display_target = preview.duplicate(true)
 	display_preview = preview.duplicate(true)
@@ -882,8 +896,9 @@ func grip_to(point: Vector2) -> void:
 ## The held turn knob asks for a turn and a tilt. Each goes to its nearest
 ## step of 45 degrees. Both go all the way round (owner, 2026-11-25: "the
 ## tilting of the mirror should be full 360"): a tilt past the sky rolls the
-## pane on about its own level axis, so it then faces back.
-func aim_to(yaw: float, pitch: float) -> void:
+## pane on about its own level axis, so it then faces back. With `tick`
+## false, a held knob gives no haptic tick for the change.
+func aim_to(yaw: float, pitch: float, tick := true) -> void:
 	if not direct_controls or not pointing or not is_finite(yaw) or not is_finite(pitch):
 		return
 	aim_selected["yaw"] = Targets.step(yaw, aim_selected["yaw"], Bar.AIM_STEP)
@@ -891,7 +906,7 @@ func aim_to(yaw: float, pitch: float) -> void:
 	var target := point_origin.duplicate(true)
 	target["yaw"] = aim_selected["yaw"]
 	target["pitch"] = aim_selected["pitch"]
-	_follow_target(MirrorRules.sync(target))
+	_follow_target(MirrorRules.sync(target), tick)
 
 ## The held turn knob adds `steps` (x turn, right is +; y tilt, down is +) to
 ## the facing the mirror goes to, and keeps it going the way `hold` while
@@ -900,14 +915,47 @@ func aim_to(yaw: float, pitch: float) -> void:
 func aim_by(steps: Vector2i, hold: Vector2i) -> void:
 	if not direct_controls or not pointing:
 		return
+	var released := Vector2i(turn_hold.x if hold.x != turn_hold.x else 0, turn_hold.y if hold.y != turn_hold.y else 0)
 	turn_hold = hold
 	var way := steps + hold
 	if way.y != 0:
 		aim_ring = "tilt"
 	elif way.x != 0:
 		aim_ring = "turn"
+	_release_hold(released)
 	if steps != Vector2i.ZERO:
+		for index: int in 2:
+			if steps[index] != 0:
+				turn_brake[index] = TURN_ACCELERATION
 		aim_to(float(aim_selected["yaw"]) + steps.x * Bar.AIM_STEP, float(aim_selected["pitch"]) + steps.y * Bar.AIM_STEP)
+		turn_pushed = aim_selected.duplicate()
+
+## A held push of the turn knob ended (the way of each axis in `released`):
+## the thumb came back, or lifted. The mirror stops on the facing it turns to
+## now, and starts no other step that the hold added (owner, 2026-11-25:
+## "Overshoot on release"). It never stops short of what the pushes asked
+## for. It brakes as hard as that stop needs, between TURN_ACCELERATION and
+## TURN_STOP; a facing nearer than one frame of travel stops it at once.
+func _release_hold(released: Vector2i) -> void:
+	if released == Vector2i.ZERO or display_preview.is_empty():
+		return
+	var aim := aim_selected.duplicate()
+	for index: int in 2:
+		var way := released[index]
+		if way == 0:
+			continue
+		var key: String = ["yaw", "pitch"][index]
+		# Measured along the way of the push, so that the next facing is up.
+		var shown := float(display_preview[key]) * way
+		var farthest := float(aim_selected[key]) * way
+		var next := ceilf(shown / Bar.AIM_STEP - 0.001) * Bar.AIM_STEP
+		var stop := clampf(next, minf(float(turn_pushed[key]) * way, farthest), farthest)
+		aim[key] = stop * way
+		var speed := turn_speed[index] * way
+		if speed > 0.0 and stop - shown > 0.0001:
+			turn_brake[index] = clampf(speed * speed / (2.0 * (stop - shown)), TURN_ACCELERATION, TURN_STOP)
+	# No tick: a tick is a new step.
+	aim_to(float(aim["yaw"]), float(aim["pitch"]), false)
 
 ## While a push of the turn knob holds, the mirror keeps going: the next step
 ## is added when what is left of the turn is no more than the mirror needs to
@@ -938,6 +986,7 @@ func end_grip(kind: String) -> void:
 	if kind == "turn":
 		if not pointing:
 			return
+		_release_hold(turn_hold)
 		pointing = false
 		turn_hold = Vector2i.ZERO
 		translating_settle = true
@@ -1027,12 +1076,12 @@ func set_edit_mode(mode: String) -> void:
 func _mode_busy() -> bool:
 	return _manipulating() or gesture.active or not pending.is_empty() or prediction["status"] == "pending" or camera.busy
 
-func _follow_target(target: Dictionary) -> void:
+func _follow_target(target: Dictionary, tick := true) -> void:
 	if target == display_target:
 		return
 	# A held knob, or a slide on the glass.
 	var held := bar.is_active() or (direct_controls and dragging)
-	if held:
+	if held and tick:
 		bar.tick()
 	_animate_display(target, KNOB_FOLLOW_SECONDS if held else 0.10)
 
@@ -1073,6 +1122,7 @@ func _turn_display(delta: float) -> void:
 	if display_target.is_empty() or display_preview.is_empty():
 		turning = false
 		turn_speed = Vector2.ZERO
+		turn_brake = Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
 		return
 	var shown := display_target.duplicate(true)
 	var resting := true
@@ -1080,10 +1130,13 @@ func _turn_display(delta: float) -> void:
 		var key: String = ["yaw", "pitch"][index]
 		var angle := float(display_preview[key])
 		var left := float(display_target[key]) - angle
-		var wanted := signf(left) * minf(TURN_SPEED, sqrt(2.0 * TURN_ACCELERATION * absf(left)))
-		var speed := move_toward(turn_speed[index], wanted, TURN_ACCELERATION * delta)
+		var brake := turn_brake[index]
+		var wanted := signf(left) * minf(TURN_SPEED, sqrt(2.0 * brake * absf(left)))
+		var braking := absf(wanted) < absf(turn_speed[index]) and signf(wanted) == signf(turn_speed[index])
+		var speed := move_toward(turn_speed[index], wanted, (brake if braking else TURN_ACCELERATION) * delta)
 		if is_zero_approx(left) or (signf(speed) == signf(left) and absf(left) <= absf(speed) * delta):
-			# It arrives this frame, at a speed too low to see the stop.
+			# It arrives this frame, mostly at a speed too low to see the stop.
+			# After a release just before a facing it stops here firmly.
 			angle = float(display_target[key])
 			speed = 0.0
 		else:
@@ -1096,6 +1149,7 @@ func _turn_display(delta: float) -> void:
 	_update_preview()
 	if resting:
 		turning = false
+		turn_brake = Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
 		var finished := turn_finished
 		turn_finished = Callable()
 		if finished.is_valid():
@@ -1207,6 +1261,7 @@ func _cancel_manipulation(keep_waiting := false) -> void:
 		display_motion.kill()
 	turning = false
 	turn_speed = Vector2.ZERO
+	turn_brake = Vector2(TURN_ACCELERATION, TURN_ACCELERATION)
 	turn_finished = Callable()
 	turn_hold = Vector2i.ZERO
 	display_target.clear()

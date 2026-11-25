@@ -958,7 +958,8 @@ styles and words.
   the start of the next push follows the thumb back, as far as the press.
   A push that holds keeps the mirror turning at full speed, one step after
   another, with a tick at each; when the thumb comes back or lifts, the
-  mirror stops on the next facing it can reach smoothly. A press while the
+  mirror stops on the next facing it can reach smoothly (changed
+  2026-11-25: on the facing it turns to then). A press while the
   last turn still moves joins that turn, so quick taps and pushes make one
   smooth turn and one change (one Undo). The level ring of the eight
   facings goes through the mirror's centre at full size, also when the
@@ -980,12 +981,24 @@ styles and words.
   shows its dark dot on that side. One whole roll is no change. The sign
   (the rings, the dots, the lines, the dark dot and the pale ring) fades in
   when a knob is held (0.36 s) and fades out after the change (0.24 s).
-  Before, it showed at once, and the apply cut its fade-out. OPEN: the
-  uncertain snap. Measured: when the thumb comes back from a held push, the
-  mirror goes on for 21 to 60 degrees, because the next step is added
-  about 20 degrees before each facing; a thumb that comes back at 0.4 s,
-  with the mirror at 38 degrees, gives 90 degrees, not 45. Review:
+  Before, it showed at once, and the apply cut its fade-out. The uncertain
+  snap: see the next entry. Review:
   `test-output/polish/turn-ideas/full-tilt/` (git-ignored).
+- BUILT (2026-11-25; owner, asked which snap felt uncertain: "Overshoot on
+  release"). Cause, measured: while a push holds, the next step is added
+  about 20 degrees before each facing, so that the mirror does not slow
+  down; when the thumb came back, the mirror went on for 21 to 60 degrees.
+  A thumb that came back at 0.4 s, with the mirror at 38 degrees, gave 90
+  degrees, not 45. Now, when the thumb comes back or lifts, the mirror
+  stops on the facing it turns to then, and starts no step that the hold
+  added; it never stops short of what the pushes asked for. It brakes as
+  hard as that stop needs, up to `TURN_STOP` (20 radians per second per
+  second, 8 degrees from full speed; the normal brake is 9); a facing
+  nearer than one frame of travel stops it at once. The release gives no
+  tick, because a tick is a new step. Seen at phone size: thumb out 0.4 s,
+  mirror at 33 degrees, stops at 45 (before: 90); thumb out 0.5 s, mirror
+  at 47, stops at 90; thumb out 1.0 s, mirror at 116, stops at 135.
+  Review: `test-output/polish/turn-ideas/release-stop/` (git-ignored).
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then

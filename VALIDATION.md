@@ -1,7 +1,17 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the full tilt, the kept tilt ring and the fades of the sign — 2026-11-25
+# Latest check: the stop after a held push — 2026-11-25
+
+- Why: the owner, asked which snap felt uncertain: "Overshoot on release".
+- Cause (measured with a model of `_turn_display` and `_hold_turn`): while a push holds, the next step is added about 20 degrees before each facing, so that the mirror does not slow down. When the thumb came back, the mirror went on for 21 to 60 degrees; a thumb that came back at 0.4 s, with the mirror at 38 degrees, gave 90 degrees.
+- Change: `game.gd` `_release_hold`: when a held push ends (the thumb comes back, or lifts), the mirror stops on the facing it turns to then, and starts no step that the hold added; `turn_pushed` keeps it from stopping short of what the pushes asked for. `turn_brake` lets that stop brake up to `TURN_STOP` (20 radians per second per second, against 9 for the other stops); a facing nearer than one frame of travel stops it at once. The release gives no tick (`aim_to` and `_follow_target` take `tick`). Normal steps, taps and the held turn move as before.
+- Workers: none.
+- Tests: all 29 test scripts. All pass except the old failure in `legal_angles_tests` (47 checks, 1 failure: "Native capsule crosses uphill joint at 45 degrees"). `direct_controls_tests` 101 (new: the owner's case, a release at 38 degrees after the hold asked for 90, stops at 45, does not pass it, and applies at 45; changed: a released held turn stops on the first facing at or after the release, and brakes at most `TURN_STOP`). `mirror_bar_tests` 77, `run_tests` 804.
+- Seen in the engine at phone size (428x926 points, windowed, 60 frames a second, `test-output/polish/turn-ideas/release-stop/`, git-ignored) on "Another way round", a push to the right held, then back: thumb out 0.40 s, mirror at 33 degrees, the hold had asked for 90, stopped at 45; thumb out 0.50 s, mirror at 47, stopped at 90; thumb out 1.00 s, mirror at 116, stopped at 135; thumb out 0.17 s, mirror at 5, stopped at 45.
+- Not checked: play by a person; the feel of the firmer stop on the phone.
+
+# Earlier check: the full tilt, the kept tilt ring and the fades of the sign — 2026-11-25
 
 - Why: after play on the phone, the owner: "It feels nice, with some rotation snapping being non confident / uncertain enough." and "the turn ring is now shown even if the mirror is tilting when the mirror reaches the middle point. Also, the tilting of the mirror should be full 360º" and "make sure the indication ring and components fades in and out".
 - Causes: `_aim_sign` showed the tilt ring only while the tilt went to another pitch than where the hold began, so a tilt back to that pitch showed the level ring. `aim_to`, `aim_by` and `_hold_turn` stopped the tilt at 90 degrees. The sign appeared at full strength at once, and the apply of a change cleared it at once (`_execute_pending` calls `_cancel_manipulation`), so its fade-out was cut after about two frames.
@@ -9,7 +19,7 @@ keeps them; this log is not rewritten to match.
 - Workers: none.
 - Tests: all 29 test scripts. All pass except the old failure in `legal_angles_tests` (47 checks, 1 failure: "Native capsule crosses uphill joint at 45 degrees"). `direct_controls_tests` 99 (new: a tilt back to where it began keeps the upright ring of eight tilts; a push to the side shows the level ring; eight pushes up roll the mirror once round, and one whole roll is no change; on the level ring a pane past the sky shows the way it faces; the sign starts unseen and fades in; after the change applies the sign fades out and is not cut; changed: a held tilt goes on past the sky). `mirror_bar_tests` 77 (changed: past the sky a push tilts on, and the mirror faces back). `constellation_tuning_tests` 25 (changed: removal fades the debug preview out). `run_tests` 804.
 - Seen in the engine at phone size (428x926 points, windowed, 60 frames a second, `test-output/polish/turn-ideas/full-tilt/`, git-ignored) on "Another way round": the sign's strength 0, 0.62 and 1.0 at 1, 6 and 26 frames after the press; a tilt up and back down kept the upright ring; after the release the strength went 1.0, 0.93, 0.42, 0 at 6-frame steps while the game went back to play; a push up held about 1.8 s rolled the pane to -196 degrees and it applied at 135 degrees; at that facing her slab went, she fell, and the game came back at the move before (pitch 0) 16 frames later.
-- Measured, not changed (the owner's "uncertain" snap is not yet clear): when the thumb comes back from a held push, the mirror goes on for 21 to 60 degrees, because the next step is added about 20 degrees before each facing. A thumb that comes back at 0.4 s, with the mirror at 38 degrees, gives 90 degrees.
+- Measured, not changed in this check (changed in the check above): when the thumb comes back from a held push, the mirror goes on for 21 to 60 degrees, because the next step is added about 20 degrees before each facing. A thumb that comes back at 0.4 s, with the mirror at 38 degrees, gives 90 degrees.
 - Not checked: play by a person; the feel on the phone.
 
 # Earlier check: the held turn, the joined turn and the level ring — 2026-11-24

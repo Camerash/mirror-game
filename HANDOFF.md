@@ -50,7 +50,10 @@ is in `VALIDATION.md`. The still-water rules for the surface still stand.
   (`turn_joinable`; the bar gets it in `set_state`). The bar sends steps
   and a held way (`grip_aim`, `aim_by`); the game owns the facing. The
   tilt has no stop (owner, 2026-11-25); a turn that applies wraps the
-  pitch, so one whole roll is no change. The last push of a hold chooses
+  pitch, so one whole roll is no change. When a held push ends, the
+  mirror stops on the facing it turns to then (`_release_hold`), braking
+  up to `TURN_STOP` (`turn_brake`); `turn_pushed` keeps it from stopping
+  short of what the pushes asked for. The last push of a hold chooses
   the ring of the sign (`aim_ring`). The sign fades in and out
   (`PlacementGuide.show_guides` and `finish`); only a cancel of a held
   change clears it at once (`_cancel_manipulation`).
