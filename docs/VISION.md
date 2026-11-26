@@ -157,7 +157,8 @@ step of 45 degrees takes about 0.53 s, two about 0.87 s, and a step asked
 for while it moves keeps its speed. A held push keeps it turning at full
 speed, and quick pushes join into one turn. The tilt goes all the way round
 (2026-11-25). The lift knob moves the mirror up and down in the same way
-(2026-11-25): a step of half a unit takes as long as a step of turn. A tap
+(2026-11-25), at twice the pace (2026-11-26: "too slow"): a step of half a
+unit takes about 0.4 s, and a held push goes about 6 steps a second. A tap
 changes nothing. Before: 0.67 s and 1.12 s (from
 2026-11-23); first 0.18 s for a step while held, 0.10 s for a tap.
 
@@ -1024,6 +1025,25 @@ styles and words.
   to turn" and "Push the knob down to lower"; the finger mark on a knob
   shows a short push and a hold. Lost: the quick quarter turn by a tap.
   Review: `test-output/polish/lift-push/` (git-ignored).
+- BUILT (2026-11-26, after play on the phone; owner: "Feels like the
+  height change of the mirror is too slow."). Cause: a step of height took
+  as long as a step of turn, but it is a much smaller move on the screen
+  (about 20 to 25 points). Now the lift goes at twice the pace
+  (`LIFT_PACE` 2): one step takes about 0.4 s (before 0.55), a held push
+  goes about 6 steps a second (before 3), and the full height of "Only
+  the ground" (8 units) takes about 3 s (before 5.5). The turn is not
+  changed.
+- OPEN (2026-11-26; owner: "position hint dots seems too concentrated, for
+  both move and height. They are correct tho. I was thinking either shrink
+  them, or to not allow non-half step positions."). The half steps stay:
+  the copy moves two units for each unit of the mirror, so whole-unit
+  steps would let a copy reach only every second block place, and the
+  stages use half places. Proof of three ways (smaller dots; a ruler with
+  whole units as now and half units small and faint; only the stops within
+  one unit), at about the phone's pixel density:
+  `test-output/polish/dots/` (git-ignored). Note: the sign of a held knob
+  draws each dot at 2.4 points (`_draw_sign` in
+  `world/placement_guide.gd`); the style's size does not change it.
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then

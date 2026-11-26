@@ -72,13 +72,16 @@ const TURN_STOP := 20.0
 ## The lift knob moves the mirror up and down as the turn knob turns it
 ## (owner, 2026-11-25: "same behaviour as the rotation"): one push is one
 ## step of LIFT_STEP, a held push keeps it going, and it stops on release as
-## the turn does. Its motion is the turn's, scaled so that a step of height
-## takes as long as a step of turn (units per second, and per second per
-## second).
+## the turn does. Its motion is the turn's, scaled to the step and made
+## LIFT_PACE times as fast: a step of height is a small move on the screen,
+## and at the turn's pace it was "too slow" (owner, 2026-11-26). One step
+## takes about 0.4 s; a held push goes about 6 steps a second (units per
+## second, and per second per second).
 const LIFT_STEP := 0.5
-const LIFT_SPEED := TURN_SPEED * LIFT_STEP / Bar.AIM_STEP
-const LIFT_ACCELERATION := TURN_ACCELERATION * LIFT_STEP / Bar.AIM_STEP
-const LIFT_STOP := TURN_STOP * LIFT_STEP / Bar.AIM_STEP
+const LIFT_PACE := 2.0
+const LIFT_SPEED := TURN_SPEED * LIFT_STEP / Bar.AIM_STEP * LIFT_PACE
+const LIFT_ACCELERATION := TURN_ACCELERATION * LIFT_STEP / Bar.AIM_STEP * LIFT_PACE
+const LIFT_STOP := TURN_STOP * LIFT_STEP / Bar.AIM_STEP * LIFT_PACE
 ## The sign of a held knob (`_sign_traces`): a line has a point each this many
 ## units.
 const SIGN_STEP := 0.125

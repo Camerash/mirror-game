@@ -634,13 +634,13 @@ func check_held_lift() -> void:
 	game.lift_by(1, 1)
 	var top := 0.0
 	var slowed := false
-	for frame: int in 60:
+	for frame: int in 30:
 		game._turn_display(tick)
 		top = maxf(top, game.lift_speed)
 		slowed = slowed or (frame >= 20 and game.lift_speed < top - 0.001)
 	var released := (game.display_preview["pivot"] as Vector3).y
-	check(not slowed and is_equal_approx(top, game.LIFT_SPEED) and released - height > 1.0,
-		"Held lift: the mirror keeps rising at full speed while the push holds (%.2f units in 1 s)" % (released - height))
+	check(not slowed and is_equal_approx(top, game.LIFT_SPEED) and released - height > 0.8,
+		"Held lift: the mirror keeps rising at full speed while the push holds (%.2f units in 0.5 s)" % (released - height))
 	game.lift_by(0, 0)
 	var rest := 0
 	var firmest := 0.0

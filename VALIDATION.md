@@ -1,7 +1,16 @@
 Entries before commit `b1d2b6d` name studies that were removed. Git history
 keeps them; this log is not rewritten to match.
 
-# Latest check: the lift knob as the turn knob, and a tap that changes nothing — 2026-11-25
+# Latest check: the faster lift — 2026-11-26
+
+- Why: the owner, after play on the phone: "Feels like the height change of the mirror is too slow."
+- Change: `game.gd` `LIFT_PACE` 2.0: `LIFT_SPEED`, `LIFT_ACCELERATION` and `LIFT_STOP` are the turn's values scaled to the step, times 2 (about 3.06 units a second, 11.5 and 25.5 per second per second). The turn is not changed.
+- Workers: none.
+- Tests: `direct_controls_tests` 110 (the held lift is now held 0.5 s, not 1 s, so that it does not meet the top of the area), `mirror_bar_tests` 83, `prompt_tests` 94, `level_solvability_tests` 67, `mirror_light_tests` 20, `run_tests` 804; no failure.
+- Seen in the engine at phone size (60 frames a second, `test-output/polish/lift-push/fast/`, git-ignored) on "Only the ground": one push, the mirror stops at +0.5 about 0.4 s after the push; a push held 0.9 s, the mirror at +2.27 when the thumb came back, stopped at +2.5; holds to the top (5) and the bottom (-3) stop there.
+- Not checked: the feel on the phone.
+
+# Earlier check: the lift knob as the turn knob, and a tap that changes nothing — 2026-11-25
 
 - Why: the owner, after play on the phone: "The slide up and down button should have the same behaviour as the rotation, holding should move to that direction continuously. Also, tapping the rotation button should probably not rotate the mirror since there are no direction indication." Three blind advisors (Plan agents on Opus: touch feel, puzzle design, code risk) agreed with both; the plan was approved ("Approve the plan").
 - Change, bar (`world/mirror_bar.gd`): the lift knob uses the push and hold of the turn knob on its one axis (`_push_way` takes the knob; a push to the side of the lift knob gives none), and sends `grip_lift` (up is +). The tap turn is removed (`TAP_SECONDS`, `TAP_TRAVEL`, `TAP_STEPS`, `_press_msec`, `_grip_far`). A push made while another change settles waits, and the steps of pushes of one knob add up; a press joins the last change of its own knob (`set_state` takes the knob name). `bump` gives a longer vibration (30 ms) at the edge. The finger mark of a knob's prompt shows a short push (28 points) and a hold.
