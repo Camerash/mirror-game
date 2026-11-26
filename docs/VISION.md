@@ -1044,6 +1044,20 @@ styles and words.
   `test-output/polish/dots/` (git-ignored). Note: the sign of a held knob
   draws each dot at 2.4 points (`_draw_sign` in
   `world/placement_guide.gd`); the style's size does not change it.
+  2026-11-27, the owner: "Can we ask Fable agents to reimagine the system,
+  with codex image mockups?" Three blind Fable designers (lenses: the look,
+  the puzzle read, touch and motion) gave three concepts, with image
+  mockups (not engine proofs): "Rain rings" (no overlay; at each step the
+  light pool on the water leaves a ring; height as rings round the pool),
+  "Seam light" (where a copy meets a stone at the same height, the shared
+  edge glows; at the mirror only its stop and the next stop each way) and
+  "The Beat" (the mirror's stop, an open ring on the next stop, a short
+  fading trail; a tick ladder beside the lift knob). All three remove the
+  field of dots and the axis lines; two chose the same core (the mirror's
+  stop and the next stop in each direction, four for a move, two for a
+  lift). The agent's advice: an engine proof of that core first, then
+  each addition alone. Review: `test-output/polish/sign-ideas/index.html`
+  and `sign-ideas-sheet.jpg` (git-ignored). The owner decides.
 - OPEN (2026-11-19): a warning before a fall. Owner: "would be nice but it
   depends on how we achieve it. Don't want it to hinder the puzzle
   experience." OPEN: what a block that comes onto her does (now: dark, then
